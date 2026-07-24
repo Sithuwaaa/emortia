@@ -104,7 +104,7 @@ input,textarea,button{font-family:inherit;}
   .music-bg *{animation:none !important;}
 }
 /* ---- synced lyrics ---- */
-.lyrics-box{position:relative;max-height:300px;overflow-y:auto;scrollbar-width:none;text-align:center;-webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 16%,#000 84%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0%,#000 16%,#000 84%,transparent 100%);}
+.lyrics-box{position:relative;max-height:340px;overflow-y:auto;scrollbar-width:none;text-align:center;-webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 18%,#000 82%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0%,#000 18%,#000 82%,transparent 100%);}
 .lyrics-box::-webkit-scrollbar{display:none;}
 .lyrics-line{transition:color .25s ease,opacity .25s ease,font-size .2s ease,font-weight .2s ease;}
 .lyrics-line:hover{color:var(--text) !important;opacity:1 !important;}
@@ -261,9 +261,9 @@ input,textarea,button{font-family:inherit;}
         </button>
       </div>
 
-      <!-- synced lyrics -->
-      <div style="margin-bottom:40px;padding:24px 20px;border:1px solid var(--line);border-radius:22px;background:var(--panel2);">
-        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.16em;color:var(--mute);text-transform:uppercase;margin-bottom:6px;text-align:center;">Lyrics</div>
+      <!-- lyrics, floating over the dreamy scene -->
+      <div style="margin:8px 0 44px;padding:6px 12px;text-align:center;">
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.18em;color:var(--mute);text-transform:uppercase;margin-bottom:16px;">Lyrics</div>
         {{ lyricsPanel }}
       </div>
 
@@ -541,6 +541,8 @@ input,textarea,button{font-family:inherit;}
     </div>
   </sc-if>
 
+  <div>{{ syncPanel }}</div>
+
   <!-- ============ THEME SWITCHER ============ -->
   <div style="position:fixed;right:18px;bottom:112px;z-index:48;display:flex;align-items:center;gap:11px;background:var(--bar2);backdrop-filter:blur(14px);border:1px solid var(--line2);border-radius:999px;padding:8px 13px;box-shadow:0 14px 34px rgba(0,0,0,0.4);">
     <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.16em;color:var(--mute);text-transform:uppercase;">Theme</span>
@@ -626,7 +628,7 @@ class Component extends DCLogic {
       durLabel:this.fmt(x.d),
       src: x.src || ('audio/' + slugify(x.t) + '.mp3'),
     }));
-    this.state = { page:'home', theme:'burgundy', hero:'a', menuOpen:false, poems:[], poemsLoaded:false, openPoem:null, playing:false, idx:0, progress:0, volume:0.78, queueOpen:false, contact:{name:'',email:'',msg:''}, sent:false, wb:null, activeSheet:0, wsQuery:'', gridVer:0, wsDirty:false, notes:this.loadNotes(), noteDraft:'', cal:this.todayParts(), selKey:this.todayKey(), audioMissing:false };
+    this.state = { page:'home', theme:'burgundy', hero:'a', menuOpen:false, poems:[], poemsLoaded:false, openPoem:null, playing:false, idx:0, progress:0, volume:0.78, queueOpen:false, contact:{name:'',email:'',msg:''}, sent:false, wb:null, activeSheet:0, wsQuery:'', gridVer:0, wsDirty:false, notes:this.loadNotes(), noteDraft:'', cal:this.todayParts(), selKey:this.todayKey(), audioMissing:false, syncTimes:[] };
     this.WB_KEY='emortia_workbook_v1';
     this.NOTES_KEY='emortia_notes_v1';
     this.audio = new Audio();
@@ -643,7 +645,7 @@ class Component extends DCLogic {
     this.audio.currentTime = 0;
     this._lastLyricIdx = -1;
     this.loadLyrics(i);
-    this.setState({ idx:i, progress:0, audioMissing:false });
+    this.setState({ idx:i, progress:0, audioMissing:false, syncTimes:[] });
     if(autoplay){
       this.audio.play().catch(()=>this.setState({playing:false, audioMissing:true}));
     }
@@ -759,6 +761,16 @@ class Component extends DCLogic {
     this.bindAudioEvents();
     this.loadTrack(this.state.idx, false);
     this.loadLyrics(this.state.idx);
+    this._checkHash=()=>this.setState({});   // hash is read at render time; just force a re-render
+    window.addEventListener('hashchange', this._checkHash);
+    this._onKey=(e)=>{
+      if(!this.isSyncMode()) return;
+      const tag=(e.target.tagName||'').toLowerCase();
+      if(tag==='input'||tag==='textarea'||e.target.isContentEditable) return;
+      if(e.code==='Space'){ e.preventDefault(); this.syncTap(); }
+      else if(e.code==='Backspace'){ e.preventDefault(); this.syncUndo(); }
+    };
+    window.addEventListener('keydown', this._onKey);
     fetch('poems/poems.txt').then(r=>r.ok?r.text():Promise.reject()).then(t=>{
       this.setState({poems:this.parsePoems(t), poemsLoaded:true});
     }).catch(()=>this.setState({poems:[], poemsLoaded:true}));
@@ -770,7 +782,11 @@ class Component extends DCLogic {
       this.setState({wb, wsDirty:dirty});
     }).catch(e=>{ console.warn('workbook load failed',e); this.setState({wb:null, wsEmpty:true}); });
   }
-  componentWillUnmount(){ this.audio.pause(); }
+  componentWillUnmount(){
+    this.audio.pause();
+    if(this._onKey) window.removeEventListener('keydown', this._onKey);
+    if(this._checkHash) window.removeEventListener('hashchange', this._checkHash);
+  }
 
   go(p){ return ()=>this.setState({page:p, queueOpen:false, menuOpen:false}); }
   setHero(h){ return ()=>this.setState({hero:h}); }
@@ -973,17 +989,85 @@ class Component extends DCLogic {
       return React.createElement('div',{key:i, id:'lyric-'+i, className:'lyrics-line',
         onClick: synced? ()=>{ this.audio.currentTime=l.time; this._lastLyricIdx=-1; this.setState({progress:l.time}); this.syncLyricsScroll(); } : undefined,
         style:{
-          padding:'7px 2px', cursor:synced?'pointer':'default',
+          padding:'10px 2px', cursor:synced?'pointer':'default',
           fontFamily:"'Hanken Grotesk',system-ui,sans-serif",
-          fontSize:isA?'20px':'16px', lineHeight:1.4,
+          fontSize:isA?'clamp(22px,3vw,30px)':'clamp(16px,2vw,19px)', lineHeight:1.45,
           fontWeight:isA?700:500,
-          color:isA?'var(--text)':(near?'var(--dim)':'var(--mute)'),
-          opacity:isA?1:(synced?(near?0.7:0.4):0.9),
-          textShadow:isA?'0 0 18px var(--glowSoft)':'none',
+          color:isA?'var(--text)':(near?'var(--text2)':'var(--dim)'),
+          opacity:isA?1:(synced?(near?0.72:0.42):0.92),
+          textShadow:isA?'0 2px 22px rgba(0,0,0,0.8), 0 0 26px var(--glowSoft)':'0 2px 14px rgba(0,0,0,0.75)',
         }}, l.text || '♪');
     });
     return React.createElement('div',{id:'lyricsBox', className:'lyrics-box'},
-      React.createElement('div',{style:{padding: synced?'130px 4px':'8px 4px'}}, lines));
+      React.createElement('div',{style:{padding: synced?'140px 4px':'8px 4px'}}, lines));
+  }
+
+  // ---- tap-to-sync helper (open the site with #sync in the URL) ----
+  isSyncMode(){ return (location.hash||'').toLowerCase()==='#sync'; }
+  fmtLrcTime(t){
+    t=Math.max(0,t);
+    const m=Math.floor(t/60), s=Math.floor(t%60), cs=Math.floor((t-Math.floor(t))*100);
+    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+String(cs).padStart(2,'0');
+  }
+  syncLines(){ return (this.lyricsCache[this.tracks[this.state.idx].slug]||[]); }
+  syncTap(){
+    const n=this.syncLines().length;
+    const times=(this.state.syncTimes||[]).slice();
+    if(!n || times.length>=n) return;
+    times.push(this.audio.currentTime);
+    this.setState({syncTimes:times});
+  }
+  syncUndo(){ const t=(this.state.syncTimes||[]).slice(); t.pop(); this.setState({syncTimes:t}); }
+  syncReset(){ this.setState({syncTimes:[]}); }
+  syncLrc(){
+    const times=this.state.syncTimes||[];
+    return this.syncLines().map((l,i)=>(times[i]!=null?'['+this.fmtLrcTime(times[i])+'] ':'')+(l.text||'')).join('\n')+'\n';
+  }
+  syncDownload(){
+    const t=this.tracks[this.state.idx];
+    const blob=new Blob([this.syncLrc()],{type:'text/plain;charset=utf-8'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download=t.slug+'.lrc';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1200);
+  }
+  renderSyncPanel(){
+    // NOTE: return an element (never null) — this runtime does not clear a slot
+    // whose value goes from an element back to null, which would leave the panel stuck on screen.
+    if(!this.isSyncMode()) return React.createElement('div',{style:{display:'none'}});
+    const t=this.tracks[this.state.idx];
+    const lines=this.syncLines();
+    const times=this.state.syncTimes||[];
+    const done=times.length, total=lines.length;
+    const next= done<total ? (lines[done].text||'♪') : null;
+    const btn=(label,onClick,accent)=>React.createElement('button',{onClick, style:{
+      background:accent?'var(--accent)':'none', color:accent?'var(--bg)':'var(--dim)',
+      border:accent?'none':'1px solid var(--line3)', borderRadius:'8px',
+      padding:'7px 12px', fontSize:'12px', fontWeight:accent?700:600, cursor:'pointer',
+      fontFamily:"'Space Mono',monospace",
+    }},label);
+    return React.createElement('div',{style:{
+      position:'fixed', left:'18px', bottom:'150px', zIndex:60, width:'290px',
+      background:'var(--bar2)', backdropFilter:'blur(14px)',
+      border:'1px solid var(--line3)', borderRadius:'16px', padding:'14px',
+      boxShadow:'0 18px 44px rgba(0,0,0,0.55)', fontFamily:"'Hanken Grotesk',system-ui,sans-serif",
+    }},
+      React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10.5px',letterSpacing:'0.14em',color:'var(--accent)',textTransform:'uppercase',marginBottom:'4px'}},'Sync mode'),
+      React.createElement('div',{style:{fontWeight:700,fontSize:'14px',marginBottom:'2px'}}, t.t),
+      React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11px',color:'var(--mute)',marginBottom:'10px'}}, done+' / '+total+' lines tapped'),
+      next
+        ? React.createElement('div',{style:{fontSize:'14px',color:'var(--text2)',lineHeight:1.45,padding:'9px 11px',background:'var(--surface2)',border:'1px solid var(--line2)',borderRadius:'10px',marginBottom:'10px'}},
+            React.createElement('span',{style:{color:'var(--mute)',fontSize:'11px',fontFamily:"'Space Mono',monospace",display:'block',marginBottom:'3px'}},'NEXT LINE'), next)
+        : React.createElement('div',{style:{fontSize:'13px',color:'#34c98b',padding:'9px 0',marginBottom:'6px'}},'All lines tapped — download below.'),
+      React.createElement('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap'}},
+        btn('Tap  ⎵', ()=>this.syncTap(), true),
+        btn('Undo', ()=>this.syncUndo()),
+        btn('Reset', ()=>this.syncReset()),
+        btn('Download .lrc', ()=>this.syncDownload())
+      ),
+      React.createElement('div',{style:{fontSize:'11px',color:'var(--faint)',lineHeight:1.5,marginTop:'9px'}},
+        'Play the song and press Space exactly when each line starts. Backspace undoes. Then download and save the file into audio/lyrics/.')
+    );
   }
 
   wave(opts){
@@ -1178,6 +1262,7 @@ class Component extends DCLogic {
       musicBgClass: (s.page==='music' && s.playing) ? 'music-bg on' : 'music-bg',
       musicScene: s.page==='music' ? this.renderMusicBg() : null,
       lyricsPanel: s.page==='music' ? this.renderLyrics() : null,
+      syncPanel: this.renderSyncPanel(),
       queueOpen:s.queueOpen,
 
       socialLinks: this.socials(),

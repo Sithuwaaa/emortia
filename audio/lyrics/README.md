@@ -37,6 +37,28 @@ These are shown statically (no highlight/scroll). The three files here
 start out this way so lyrics appear right now; replace each with a synced
 version whenever you're ready.
 
+## Making a synced file with the built-in tap tool
+
+You don't need any other software. Open the site with `#sync` on the end
+of the URL, e.g.
+
+```
+https://sithuwaaa.github.io/emortia-musix/#sync
+```
+
+A small **Sync mode** panel appears (only for you — it is hidden unless
+`#sync` is in the URL). Then:
+
+1. Go to the Music tab and pick the song.
+2. Press play.
+3. Press **Space** (or click **Tap**) at the exact moment each line starts.
+   The panel shows which line is next and how many are done.
+   **Backspace** / **Undo** fixes a mistap; **Reset** starts over.
+4. When every line is tapped, click **Download .lrc**.
+5. Save that file over the song's file in this folder and commit.
+
+The lyrics are now synced. Re-tap any time to refine the timings.
+
 ## Notes
 
 - Metadata tags like `[ar:...]`, `[ti:...]`, `[by:...]` are ignored safely.
