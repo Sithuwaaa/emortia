@@ -37,7 +37,7 @@ These are shown statically (no highlight/scroll). The three files here
 start out this way so lyrics appear right now; replace each with a synced
 version whenever you're ready.
 
-## Making a synced file with the built-in tap tool
+## The built-in Time-sync editor
 
 You don't need any other software. Open the site with `#sync` on the end
 of the URL, e.g.
@@ -46,18 +46,45 @@ of the URL, e.g.
 https://sithuwaaa.github.io/emortia-musix/#sync
 ```
 
-A small **Sync mode** panel appears (only for you — it is hidden unless
-`#sync` is in the URL). Then:
+A **Time-sync** drawer opens on the right (only for you — it is hidden
+unless `#sync` is in the URL). It loads the song's current timings, so
+you can either sync from scratch or fine-tune an existing file.
 
-1. Go to the Music tab and pick the song.
-2. Press play.
-3. Press **Space** (or click **Tap**) at the exact moment each line starts.
-   The panel shows which line is next and how many are done.
-   **Backspace** / **Undo** fixes a mistap; **Reset** starts over.
-4. When every line is tapped, click **Download .lrc**.
-5. Save that file over the song's file in this folder and commit.
+**Rough pass — tap it in**
 
-The lyrics are now synced. Re-tap any time to refine the timings.
+1. Go to the Music tab, pick the song, press play.
+2. Press **Space** at the moment each line starts. The next line to be
+   tapped is outlined, and the live playhead is shown at the top.
+3. **Backspace** clears the last tap if you were late.
+
+**Fine pass — nudge it exact**
+
+Each line has its own row:
+
+| Control | What it does |
+|---------|--------------|
+| `×`     | clear this line's time |
+| `«` `‹` | −1s / −0.1s |
+| time    | type an exact time (`00:22.29`) |
+| `›` `»` | +0.1s / +1s |
+| `▶`     | play the song from this line |
+
+`shift all −0.1 / +0.1` moves every line at once — use it when the whole
+file is consistently early or late.
+
+The lyrics on the page behind the drawer update **live** as you edit, so
+you can watch the highlight land while you tune.
+
+**Saving**
+
+Your edits are kept in this browser as a draft (the header says
+"unsaved draft"). Nothing is published until you export:
+
+- **Copy LRC** → paste straight into the file on GitHub, or
+- **Download .lrc** → save it over the song's file in this folder.
+
+**Clear all** empties the timings; **Revert to file** throws the draft
+away and reloads whatever is committed.
 
 ## Notes
 

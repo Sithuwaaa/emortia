@@ -645,7 +645,7 @@ class Component extends DCLogic {
     this.audio.currentTime = 0;
     this._lastLyricIdx = -1;
     this.loadLyrics(i);
-    this.setState({ idx:i, progress:0, audioMissing:false, syncTimes:[] });
+    this.setState({ idx:i, progress:0, audioMissing:false });
     if(autoplay){
       this.audio.play().catch(()=>this.setState({playing:false, audioMissing:true}));
     }
@@ -767,8 +767,13 @@ class Component extends DCLogic {
       if(!this.isSyncMode()) return;
       const tag=(e.target.tagName||'').toLowerCase();
       if(tag==='input'||tag==='textarea'||e.target.isContentEditable) return;
-      if(e.code==='Space'){ e.preventDefault(); this.syncTap(); }
-      else if(e.code==='Backspace'){ e.preventDefault(); this.syncUndo(); }
+      if(e.code==='Space'){ e.preventDefault(); this.tapNext(); }
+      else if(e.code==='Backspace'){
+        e.preventDefault();
+        const times=this.state.syncTimes||[];
+        let last=-1; for(let i=0;i<times.length;i++) if(times[i]!=null) last=i;
+        if(last>=0) this.setLineTime(last,null);
+      }
     };
     window.addEventListener('keydown', this._onKey);
     fetch('poems/poems.txt').then(r=>r.ok?r.text():Promise.reject()).then(t=>{
@@ -953,11 +958,65 @@ class Component extends DCLogic {
   }
   loadLyrics(idx){
     const slug=this.tracks[idx].slug;
-    if(this.lyricsCache[slug]!==undefined) return;
+    if(this.lyricsCache[slug]!==undefined){ this.refreshSyncTimes(idx); return; }
     this.lyricsCache[slug]=null;   // loading
     fetch('audio/lyrics/'+slug+'.lrc').then(r=>r.ok?r.text():Promise.reject()).then(txt=>{
-      this.lyricsCache[slug]=this.parseLyrics(txt); this._lastLyricIdx=-1; this.setState({});
-    }).catch(()=>{ this.lyricsCache[slug]=[]; this.setState({}); });
+      this.lyricsCache[slug]=this.parseLyrics(txt); this._lastLyricIdx=-1; this.refreshSyncTimes(idx);
+    }).catch(()=>{ this.lyricsCache[slug]=[]; this.refreshSyncTimes(idx); });
+  }
+
+  // ---- timing model: file times, overlaid with a local unsaved draft ----
+  draftKey(slug){ return 'emortia_lrc_'+slug; }
+  refreshSyncTimes(idx){
+    const slug=this.tracks[idx==null?this.state.idx:idx].slug;
+    const ly=this.lyricsCache[slug];
+    if(!ly || !ly.length){ this.setState({syncTimes:[]}); return; }
+    let times=ly.map(l=>(l.time==null?null:l.time));
+    try{
+      const raw=localStorage.getItem(this.draftKey(slug));
+      if(raw){ const d=JSON.parse(raw); if(Array.isArray(d)&&d.length===ly.length) times=d.map(v=>v==null?null:Number(v)); }
+    }catch(e){}
+    this._lastLyricIdx=-1;
+    this.setState({syncTimes:times});
+  }
+  hasDraft(){ try{ return !!localStorage.getItem(this.draftKey(this.tracks[this.state.idx].slug)); }catch(e){ return false; } }
+  saveDraft(times){
+    try{ localStorage.setItem(this.draftKey(this.tracks[this.state.idx].slug), JSON.stringify(times)); }catch(e){}
+  }
+  // lyric lines with the working (draft) timings applied — what the page actually shows
+  effectiveLines(){
+    const ly=this.lyricsCache[this.tracks[this.state.idx].slug];
+    if(!ly || !ly.length) return ly;
+    const times=this.state.syncTimes;
+    if(!times || times.length!==ly.length) return ly;
+    return ly.map((l,i)=>({text:l.text, time:times[i]}));
+  }
+  commitTimes(times){ this.saveDraft(times); this._lastLyricIdx=-1; this.setState({syncTimes:times}); }
+  setLineTime(i,t){
+    const times=(this.state.syncTimes||[]).slice();
+    times[i]= t==null ? null : Math.max(0, Math.round(t*100)/100);
+    this.commitTimes(times);
+  }
+  nudgeLine(i,d){ const t=(this.state.syncTimes||[])[i]; if(t==null) return; this.setLineTime(i,t+d); }
+  playFromLine(i){
+    const t=(this.state.syncTimes||[])[i]; if(t==null) return;
+    this.audio.currentTime=t; this.setState({progress:t});
+    this.audio.play().catch(()=>{});
+  }
+  tapNext(){
+    const times=(this.state.syncTimes||[]).slice();
+    const i=times.findIndex(v=>v==null);
+    if(i<0) return;
+    this.setLineTime(i, this.audio.currentTime);
+  }
+  offsetAll(d){
+    const times=(this.state.syncTimes||[]).map(v=>v==null?null:Math.max(0, Math.round((v+d)*100)/100));
+    this.commitTimes(times);
+  }
+  clearAllTimes(){ this.commitTimes((this.state.syncTimes||[]).map(()=>null)); }
+  discardDraft(){
+    try{ localStorage.removeItem(this.draftKey(this.tracks[this.state.idx].slug)); }catch(e){}
+    this.refreshSyncTimes();
   }
   activeLyric(ly, ct){
     let a=-1;
@@ -966,7 +1025,7 @@ class Component extends DCLogic {
   }
   syncLyricsScroll(){
     const box=document.getElementById('lyricsBox'); if(!box) return;
-    const ly=this.lyricsCache[this.tracks[this.state.idx].slug];
+    const ly=this.effectiveLines();
     if(!ly || !ly.length || ly[0].time==null) return;
     const a=this.activeLyric(ly, this.audio.currentTime);
     if(a<0 || a===this._lastLyricIdx) return;
@@ -977,17 +1036,17 @@ class Component extends DCLogic {
   }
   renderLyrics(){
     const t=this.tracks[this.state.idx];
-    const ly=this.lyricsCache[t.slug];
+    const ly=this.effectiveLines();
     const noteStyle={fontFamily:"'Space Mono',monospace",fontSize:'13px',color:'var(--mute)',padding:'26px 4px',lineHeight:1.6};
     if(ly===undefined || ly===null) return React.createElement('div',{style:noteStyle},'Loading lyrics…');
     if(!ly.length) return React.createElement('div',{style:noteStyle},'Lyrics coming soon — drop audio/lyrics/'+t.slug+'.lrc to add them.');
-    const synced=ly[0].time!=null;
+    const synced=ly.some(l=>l.time!=null);
     const active=synced?this.activeLyric(ly, this.state.progress):-1;
     const lines=ly.map((l,i)=>{
       const isA=i===active;
       const near=synced && Math.abs(i-active)===1;
       return React.createElement('div',{key:i, id:'lyric-'+i, className:'lyrics-line',
-        onClick: synced? ()=>{ this.audio.currentTime=l.time; this._lastLyricIdx=-1; this.setState({progress:l.time}); this.syncLyricsScroll(); } : undefined,
+        onClick: (synced && l.time!=null)? ()=>{ this.audio.currentTime=l.time; this._lastLyricIdx=-1; this.setState({progress:l.time}); this.syncLyricsScroll(); } : undefined,
         style:{
           padding:'10px 2px', cursor:synced?'pointer':'default',
           fontFamily:"'Hanken Grotesk',system-ui,sans-serif",
@@ -1005,68 +1064,120 @@ class Component extends DCLogic {
   // ---- tap-to-sync helper (open the site with #sync in the URL) ----
   isSyncMode(){ return (location.hash||'').toLowerCase()==='#sync'; }
   fmtLrcTime(t){
-    t=Math.max(0,t);
-    const m=Math.floor(t/60), s=Math.floor(t%60), cs=Math.floor((t-Math.floor(t))*100);
+    // work in whole centiseconds so float noise can't shave 0.01s off a round-trip
+    let cs=Math.round(Math.max(0,t)*100);
+    const m=Math.floor(cs/6000); cs-=m*6000;
+    const s=Math.floor(cs/100);  cs-=s*100;
     return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+String(cs).padStart(2,'0');
   }
-  syncLines(){ return (this.lyricsCache[this.tracks[this.state.idx].slug]||[]); }
-  syncTap(){
-    const n=this.syncLines().length;
-    const times=(this.state.syncTimes||[]).slice();
-    if(!n || times.length>=n) return;
-    times.push(this.audio.currentTime);
-    this.setState({syncTimes:times});
-  }
-  syncUndo(){ const t=(this.state.syncTimes||[]).slice(); t.pop(); this.setState({syncTimes:t}); }
-  syncReset(){ this.setState({syncTimes:[]}); }
   syncLrc(){
-    const times=this.state.syncTimes||[];
-    return this.syncLines().map((l,i)=>(times[i]!=null?'['+this.fmtLrcTime(times[i])+'] ':'')+(l.text||'')).join('\n')+'\n';
+    const ly=this.effectiveLines()||[];
+    return ly.map(l=>(l.time!=null?'['+this.fmtLrcTime(l.time)+'] ':'')+(l.text||'')).join('\n')+'\n';
   }
   syncDownload(){
-    const t=this.tracks[this.state.idx];
     const blob=new Blob([this.syncLrc()],{type:'text/plain;charset=utf-8'});
     const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob); a.download=t.slug+'.lrc';
+    a.href=URL.createObjectURL(blob); a.download=this.tracks[this.state.idx].slug+'.lrc';
     document.body.appendChild(a); a.click();
     setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1200);
+  }
+  syncCopy(){
+    const txt=this.syncLrc();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(()=>{ this.setState({syncCopied:true}); setTimeout(()=>this.setState({syncCopied:false}),1600); }).catch(()=>{});
+    }
   }
   renderSyncPanel(){
     // NOTE: return an element (never null) — this runtime does not clear a slot
     // whose value goes from an element back to null, which would leave the panel stuck on screen.
     if(!this.isSyncMode()) return React.createElement('div',{style:{display:'none'}});
     const t=this.tracks[this.state.idx];
-    const lines=this.syncLines();
+    const ly=this.lyricsCache[t.slug]||[];
     const times=this.state.syncTimes||[];
-    const done=times.length, total=lines.length;
-    const next= done<total ? (lines[done].text||'♪') : null;
-    const btn=(label,onClick,accent)=>React.createElement('button',{onClick, style:{
-      background:accent?'var(--accent)':'none', color:accent?'var(--bg)':'var(--dim)',
-      border:accent?'none':'1px solid var(--line3)', borderRadius:'8px',
-      padding:'7px 12px', fontSize:'12px', fontWeight:accent?700:600, cursor:'pointer',
-      fontFamily:"'Space Mono',monospace",
+    const total=ly.length, done=times.filter(v=>v!=null).length;
+    const nextIdx=times.findIndex(v=>v==null);
+    const ct=this.state.progress||0;
+
+    const mini=(label,onClick,title)=>React.createElement('button',{onClick,title,style:{
+      background:'none',border:'1px solid var(--line2)',borderRadius:'6px',color:'var(--dim)',
+      cursor:'pointer',padding:'4px 7px',fontSize:'11px',lineHeight:1,fontFamily:"'Space Mono',monospace",
     }},label);
-    return React.createElement('div',{style:{
-      position:'fixed', left:'18px', bottom:'150px', zIndex:60, width:'290px',
-      background:'var(--bar2)', backdropFilter:'blur(14px)',
-      border:'1px solid var(--line3)', borderRadius:'16px', padding:'14px',
-      boxShadow:'0 18px 44px rgba(0,0,0,0.55)', fontFamily:"'Hanken Grotesk',system-ui,sans-serif",
+    const btn=(label,onClick,kind)=>React.createElement('button',{onClick,style:{
+      background: kind==='primary'?'var(--accent)':(kind==='danger'?'none':'none'),
+      color: kind==='primary'?'var(--bg)':(kind==='danger'?'#f0523f':'var(--dim)'),
+      border: kind==='primary'?'none':'1px solid '+(kind==='danger'?'#5e2b25':'var(--line3)'),
+      borderRadius:'9px',padding:'8px 12px',fontSize:'12px',
+      fontWeight:kind==='primary'?700:600,cursor:'pointer',fontFamily:"'Space Mono',monospace",
+    }},label);
+
+    const rows=ly.map((l,i)=>{
+      const tm=times[i];
+      const isNext=i===nextIdx;
+      const isActive=tm!=null && ct>=tm && (i+1>=ly.length || times[i+1]==null || ct<times[i+1]);
+      return React.createElement('div',{key:i,style:{
+        display:'flex',alignItems:'center',gap:'6px',padding:'6px 8px',borderRadius:'9px',
+        background:isActive?'color-mix(in oklab, var(--accent) 16%, transparent)':(isNext?'var(--surface2)':'transparent'),
+        border:'1px solid '+(isNext?'var(--accent)':'transparent'),
+      }},
+        mini('×',()=>this.setLineTime(i,null),'Clear this line'),
+        mini('«',()=>this.nudgeLine(i,-1),'-1s'),
+        mini('‹',()=>this.nudgeLine(i,-0.1),'-0.1s'),
+        React.createElement('input',{
+          value: tm!=null?this.fmtLrcTime(tm):'--:--.--',
+          onChange:(e)=>{
+            const m=/^(\d{1,2}):(\d{2})(?:[.:](\d{1,2}))?$/.exec(e.target.value.trim());
+            if(m) this.setLineTime(i, (+m[1])*60 + (+m[2]) + (m[3]?(+((m[3]+'0').slice(0,2)))/100:0));
+          },
+          style:{width:'78px',textAlign:'center',background:'var(--bg)',border:'1px solid var(--line2)',
+            borderRadius:'6px',color:tm!=null?'var(--text)':'var(--faint)',fontSize:'12px',padding:'5px 4px',
+            fontFamily:"'Space Mono',monospace",outline:'none'},
+        }),
+        mini('›',()=>this.nudgeLine(i,0.1),'+0.1s'),
+        mini('»',()=>this.nudgeLine(i,1),'+1s'),
+        mini('▶',()=>this.playFromLine(i),'Play from here'),
+        React.createElement('div',{style:{flex:1,minWidth:0,fontSize:'13px',lineHeight:1.35,
+          color:isActive?'var(--text)':(tm!=null?'var(--text2)':'var(--mute)'),
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, l.text||'♪')
+      );
+    });
+
+    return React.createElement('div',{className:'sync-drawer',style:{
+      position:'fixed',right:'0',top:'0',bottom:'0',zIndex:60,width:'min(460px,100vw)',
+      background:'var(--bar2)',backdropFilter:'blur(16px)',borderLeft:'1px solid var(--line3)',
+      boxShadow:'-14px 0 44px rgba(0,0,0,0.5)',display:'flex',flexDirection:'column',
+      fontFamily:"'Hanken Grotesk',system-ui,sans-serif",
     }},
-      React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10.5px',letterSpacing:'0.14em',color:'var(--accent)',textTransform:'uppercase',marginBottom:'4px'}},'Sync mode'),
-      React.createElement('div',{style:{fontWeight:700,fontSize:'14px',marginBottom:'2px'}}, t.t),
-      React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11px',color:'var(--mute)',marginBottom:'10px'}}, done+' / '+total+' lines tapped'),
-      next
-        ? React.createElement('div',{style:{fontSize:'14px',color:'var(--text2)',lineHeight:1.45,padding:'9px 11px',background:'var(--surface2)',border:'1px solid var(--line2)',borderRadius:'10px',marginBottom:'10px'}},
-            React.createElement('span',{style:{color:'var(--mute)',fontSize:'11px',fontFamily:"'Space Mono',monospace",display:'block',marginBottom:'3px'}},'NEXT LINE'), next)
-        : React.createElement('div',{style:{fontSize:'13px',color:'#34c98b',padding:'9px 0',marginBottom:'6px'}},'All lines tapped — download below.'),
-      React.createElement('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap'}},
-        btn('Tap  ⎵', ()=>this.syncTap(), true),
-        btn('Undo', ()=>this.syncUndo()),
-        btn('Reset', ()=>this.syncReset()),
-        btn('Download .lrc', ()=>this.syncDownload())
+      // header
+      React.createElement('div',{style:{padding:'16px 16px 12px',borderBottom:'1px solid var(--line2)'}},
+        React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
+          React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10.5px',letterSpacing:'0.16em',color:'var(--accent)',textTransform:'uppercase'}},'Time-sync'),
+          React.createElement('a',{href:'#',onClick:(e)=>{e.preventDefault();location.hash='';},
+            style:{color:'var(--mute)',fontSize:'18px',textDecoration:'none',lineHeight:1}},'×')),
+        React.createElement('div',{style:{fontWeight:700,fontSize:'17px',margin:'4px 0 2px'}}, t.t),
+        React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11px',color:'var(--mute)'}},
+          done+' / '+total+' lines synced'+(this.hasDraft()?'  ·  unsaved draft':'')),
+        React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11px',color:'var(--accent)',marginTop:'6px'}},
+          'playhead  '+this.fmtLrcTime(ct))
       ),
-      React.createElement('div',{style:{fontSize:'11px',color:'var(--faint)',lineHeight:1.5,marginTop:'9px'}},
-        'Play the song and press Space exactly when each line starts. Backspace undoes. Then download and save the file into audio/lyrics/.')
+      // rows
+      React.createElement('div',{style:{flex:1,overflowY:'auto',padding:'10px 10px'}}, rows.length?rows:
+        React.createElement('div',{style:{color:'var(--mute)',fontSize:'13px',padding:'20px 6px'}},'No lyrics file for this song yet.')),
+      // footer controls
+      React.createElement('div',{style:{padding:'12px 14px 14px',borderTop:'1px solid var(--line2)',display:'flex',flexDirection:'column',gap:'9px'}},
+        React.createElement('div',{style:{display:'flex',gap:'6px',alignItems:'center',flexWrap:'wrap'}},
+          btn(nextIdx<0?'All lines set':'Tap line '+(nextIdx+1)+'   ⎵', ()=>this.tapNext(),'primary'),
+          mini('shift all −0.1',()=>this.offsetAll(-0.1)),
+          mini('shift all +0.1',()=>this.offsetAll(0.1))
+        ),
+        React.createElement('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap'}},
+          btn(this.state.syncCopied?'Copied ✓':'Copy LRC', ()=>this.syncCopy()),
+          btn('Download .lrc', ()=>this.syncDownload()),
+          btn('Clear all', ()=>this.clearAllTimes(),'danger'),
+          this.hasDraft()? btn('Revert to file', ()=>this.discardDraft(),'danger') : null
+        ),
+        React.createElement('div',{style:{fontSize:'11px',color:'var(--faint)',lineHeight:1.55}},
+          'Play the song and press Space on each line. Arrows nudge ±0.1s / ±1s, ▶ replays a line, and the page behind updates live. Your edits are kept in this browser — Copy or Download when done, then paste into audio/lyrics/'+t.slug+'.lrc.')
+      )
     );
   }
 
