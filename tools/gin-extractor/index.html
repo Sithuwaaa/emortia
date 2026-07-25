@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#16203a">
+<title>GIN Extractor</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy:#16203a;
+    --navy-2:#1d2a4d;
+    --accent:#ffb020;
+    --accent-ink:#231a04;
+    --ok:#2e9e5b;
+    --err:#d8543c;
+    --bg:#e9edf4;
+    --card:#ffffff;
+    --card-2:#f4f6fa;
+    --line:#dde3ec;
+    --text:#1c2433;
+    --muted:#68738a;
+  }
+  html[data-theme="dark"]{
+    --bg:#12161d;
+    --card:#1b202a;
+    --card-2:#232a36;
+    --line:#303948;
+    --text:#e8ebf1;
+    --muted:#8c96a8;
+    --ok:#4fc47f;
+    --err:#e5674f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    font-size:15px;line-height:1.5}
+
+  .hdr{position:fixed;top:0;left:0;right:0;z-index:20;background:var(--navy);color:#fff;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  .hdr .logo{width:30px;height:30px;border-radius:7px}
+  .hdr h1{font-size:18px;font-weight:700;letter-spacing:.01em;margin-right:auto}
+  .pill{font-size:11.5px;background:var(--navy-2);border:1px solid rgba(255,255,255,.15);
+    color:#cfd6e6;border-radius:999px;padding:4px 11px;white-space:nowrap}
+  .pill b{color:var(--accent);font-weight:600}
+  .theme{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;
+    width:34px;height:34px;font-size:16px;cursor:pointer;line-height:1}
+  .theme:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  main{max-width:1120px;margin:0 auto;
+    padding:calc(env(safe-area-inset-top) + 74px) 16px calc(env(safe-area-inset-bottom) + 40px)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 1px 3px rgba(20,30,60,.06);margin-bottom:16px;overflow:hidden}
+  .card-pad{padding:16px}
+
+  #drop{border:2px dashed var(--line);border-radius:11px;background:var(--card-2);
+    padding:38px 16px;text-align:center;cursor:pointer;transition:border-color .15s}
+  #drop:hover,#drop.over{border-color:var(--accent)}
+  #drop:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  #drop .big{font-size:17px;font-weight:700}
+  #drop .hint{color:var(--muted);font-size:13px;margin-top:5px}
+  #drop input{display:none}
+
+  .filelog{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+  .filelog:empty{display:none}
+  .frow{display:flex;align-items:center;gap:10px;background:var(--card-2);border:1px solid var(--line);
+    border-radius:9px;padding:8px 12px;font-size:13px}
+  .frow .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+  .frow .st{font-size:12px;white-space:nowrap;font-weight:600}
+  .st.ok{color:var(--ok)} .st.err{color:var(--err)} .st.dup{color:#b07908} .st.busy{color:var(--muted)}
+  html[data-theme="dark"] .st.dup{color:var(--accent)}
+
+  .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .bar h2{font-size:16px;font-weight:700;margin-right:auto}
+  .count{font-size:12.5px;color:var(--muted)}
+  button.btn{font-weight:600;font-size:13.5px;border:none;border-radius:9px;padding:9px 16px;cursor:pointer}
+  button.btn:disabled{opacity:.4;cursor:not-allowed}
+  button.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .primary{background:var(--accent);color:var(--accent-ink)}
+  .ghost{background:var(--card-2);color:var(--text);border:1px solid var(--line)}
+
+  .tablebox{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:1000px;font-size:13px}
+  th{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+    text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;
+    background:var(--card);position:sticky;top:0}
+  td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;white-space:nowrap}
+  td.num{text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  td.sn{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-line}
+  .empty{padding:34px;text-align:center;color:var(--muted);font-size:14px}
+
+  footer{color:var(--muted);font-size:12px;text-align:center;padding:8px 0 20px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="hdr">
+  <img class="logo" src="icon-192.png" alt="">
+  <h1>GIN Extractor</h1>
+  <span class="pill" id="pill"><b>0</b> materials saved</span>
+  <button class="theme" id="themeBtn" aria-label="Toggle theme">☾</button>
+</header>
+
+<main>
+  <div class="card card-pad">
+    <div id="drop" tabindex="0" role="button" aria-label="Add PDF files">
+      <div class="big">Drop GIN PDFs here</div>
+      <div class="hint">or tap to browse · multiple files supported · nothing is uploaded anywhere</div>
+      <input type="file" id="fileInput" accept="application/pdf" multiple>
+    </div>
+    <div class="filelog" id="filelog"></div>
+  </div>
+
+  <div class="card">
+    <div class="bar">
+      <h2>Materials</h2>
+      <span class="count" id="count">0 rows</span>
+      <button class="btn ghost" id="clearBtn" disabled>Clear all</button>
+      <button class="btn primary" id="exportBtn" disabled>Download Excel</button>
+    </div>
+    <div class="tablebox">
+      <table aria-label="Extracted GIN materials">
+        <thead>
+          <tr>
+            <th>GI Number</th><th>Reservation</th><th>Item Code</th><th>Description</th>
+            <th>UOM</th><th>Qty</th><th>S/N</th><th>Location</th><th>Source File</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Runs entirely on your device · Dialog Axiata SAP GIN format · data persists offline</footer>
+</main>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ---------- persistence (v3 schema: one row per material) ---------- */
+const STORE_KEY = 'gin_rows_v4';
+const THEME_KEY = 'gin_theme';
+let rows = [];
+try { rows = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { rows = []; }
+const seenGIN = new Set(rows.map(r => r.gin).filter(Boolean));
+
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(rows)); } catch (e) { /* quota */ }
+}
+
+/* ---------- theme ---------- */
+const themeBtn = document.getElementById('themeBtn');
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === 'dark' ? '☀' : '☾';
+  try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+}
+applyTheme(localStorage.getItem(THEME_KEY) ||
+  (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+themeBtn.addEventListener('click', () =>
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+/* ---------- elements ---------- */
+const drop = document.getElementById('drop');
+const input = document.getElementById('fileInput');
+const filelog = document.getElementById('filelog');
+const tbody = document.getElementById('tbody');
+const countEl = document.getElementById('count');
+const pill = document.getElementById('pill');
+const exportBtn = document.getElementById('exportBtn');
+const clearBtn = document.getElementById('clearBtn');
+
+drop.addEventListener('click', () => input.click());
+drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+input.addEventListener('change', () => { handleFiles(input.files); input.value = ''; });
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+
+clearBtn.addEventListener('click', () => {
+  if (!confirm('Clear all extracted materials?')) return;
+  rows = []; seenGIN.clear(); filelog.innerHTML = ''; save(); render();
+});
+exportBtn.addEventListener('click', exportExcel);
+
+/* ---------- file intake ---------- */
+async function handleFiles(fileList) {
+  const files = [...fileList].filter(f => /\.pdf$/i.test(f.name));
+  for (const file of files) {
+    const entry = logRow(file.name, 'reading…', 'busy');
+    try {
+      const doc = await parsePDF(file);
+      if (!doc.giNumber && doc.items.length === 0) {
+        setStatus(entry, 'not a GIN? no data found', 'err');
+        continue;
+      }
+      const dup = doc.giNumber && seenGIN.has(doc.giNumber);
+      if (doc.giNumber) seenGIN.add(doc.giNumber);
+
+      let rowCount = 0;
+      for (const it of doc.items) {
+        // one row per serial number, all fields repeated so no cell is blank;
+        // materials without serials get a single row with an empty S/N cell
+        const sns = it.sns.length ? it.sns : [''];
+        for (const sn of sns) {
+          rows.push({
+            gin: doc.giNumber, docDate: doc.docDate, resNo: doc.resNo,
+            itemNum: it.num, code: it.code, desc: it.desc, uom: it.uom, qty: it.qty,
+            sn: sn, loc: it.loc,
+            file: file.name
+          });
+          rowCount++;
+        }
+      }
+      setStatus(entry,
+        (dup ? 'duplicate GI · ' : '') +
+        `${doc.items.length} material(s) → ${rowCount} row(s) · GI ${doc.giNumber || '—'}`,
+        dup ? 'dup' : 'ok');
+    } catch (err) {
+      console.error(err);
+      setStatus(entry, 'failed to read PDF', 'err');
+    }
+  }
+  save();
+  render();
+}
+
+function logRow(name, status, cls) {
+  const div = document.createElement('div');
+  div.className = 'frow';
+  div.innerHTML = `<span class="name"></span><span class="st ${cls}"></span>`;
+  div.querySelector('.name').textContent = name;
+  div.querySelector('.st').textContent = status;
+  filelog.appendChild(div);
+  return div;
+}
+function setStatus(entry, status, cls) {
+  const st = entry.querySelector('.st');
+  st.textContent = status;
+  st.className = 'st ' + cls;
+}
+
+/* ==================================================================
+   PDF PARSING — column-aware, verified against real Dialog GINs.
+   Fragments are assigned to table columns by x-position; page
+   footers ("Page No", timestamps, "GIN :") are filtered out.
+   ================================================================== */
+
+const SKIP_RE = /^-{3,}$|^Date\s*:?$|^(Issued by|Checked By|Received by|Checked By-Security Officer)$/i;
+const JUNK_RE = /^Page\s*No\b|^\d{2}\.\d{2}\.\d{4}\s*\/\s*\d{2}:\d{2}|^GIN\s*:/i;
+
+async function parsePDF(file) {
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+  const allLines = [];
+  const allItems = [];
+  let prevCols = null;
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const frags = tc.items
+      .filter(it => it.str.trim())
+      .map(it => ({ x: it.transform[4], y: it.transform[5], s: it.str }));
+
+    allLines.push(...groupIntoLines(frags));
+    const res = parsePageItems(frags, prevCols);
+    allItems.push(...res.items);
+    if (res.cols) prevCols = res.cols;
+  }
+
+  const d = extractHeaderFields(allLines);
+  d.items = allItems;
+  return d;
+}
+
+function groupIntoLines(frags) {
+  const buckets = [];
+  for (const f of frags) {
+    let b = buckets.find(b => Math.abs(b.y - f.y) < 3);
+    if (!b) { b = { y: f.y, frags: [] }; buckets.push(b); }
+    b.frags.push(f);
+  }
+  buckets.sort((a, b) => b.y - a.y);
+  return buckets.map(b =>
+    b.frags.sort((a, b) => a.x - b.x).map(f => f.s).join(' ')
+      .replace(/\s+/g, ' ').trim()
+  );
+}
+
+function grab(text, label) {
+  const re = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*:?\\s*(.+)', 'i');
+  for (const line of text) {
+    const m = line.match(re);
+    if (m && m[1].trim() && m[1].trim() !== ':') return m[1].replace(/^:\s*/, '').trim();
+  }
+  return '';
+}
+
+function extractHeaderFields(lines) {
+  return {
+    giNumber:  (grab(lines,'GI Number').match(/\d+/) || [''])[0],
+    docDate:    grab(lines,'Document Date').split(' ')[0] || '',
+    resNo:     (grab(lines,'Reservation number').match(/\d+/) || [''])[0],
+    plantName:  grab(lines,'Plant-Name'),
+    slocName:   grab(lines,'Storage Location-Name'),
+    issuedBy:   grab(lines,'Issued by'),
+    requestedBy:grab(lines,'Requested by'),
+    issuedTo:   grab(lines,'Issued To'),
+    movType:   (grab(lines,'Movement Type').match(/\d+/) || [''])[0],
+    order:     (grab(lines,'Order').match(/\d+/) || [''])[0],
+    createdBy:  grab(lines,'Created by'),
+    items: []
+  };
+}
+
+function findHeader(frags) {
+  const labels = [
+    { key: 'num',  re: /^#$/ },
+    { key: 'code', re: /^ITEM\s*CODE$/i },
+    { key: 'desc', re: /^DESCRIPTION$/i },
+    { key: 'uom',  re: /^UOM$/i },
+    { key: 'qty',  re: /^QTY$/i },
+    { key: 'sn',   re: /^S\/N$/i },
+    { key: 'loc',  re: /^LOCATION$/i }
+  ];
+  const byY = [];
+  for (const f of frags) {
+    let b = byY.find(b => Math.abs(b.y - f.y) < 3);
+    if (!b) { b = { y: f.y, frags: [] }; byY.push(b); }
+    b.frags.push(f);
+  }
+  for (const line of byY) {
+    const found = {};
+    for (const f of line.frags) {
+      const t = f.s.trim();
+      for (const l of labels) if (l.re.test(t) && !(l.key in found)) found[l.key] = f.x;
+    }
+    if ('code' in found && 'desc' in found && 'qty' in found && 'loc' in found) {
+      if (!('num' in found)) found.num = 0;
+      if (!('uom' in found)) found.uom = (found.desc + found.qty) / 2;
+      if (!('sn' in found))  found.sn  = (found.qty + found.loc) / 2;
+      return { y: line.y, cols: found };
+    }
+  }
+  return null;
+}
+
+function assignColumn(x, cols) {
+  const order = ['num','code','desc','uom','qty','sn','loc'];
+  const xs = order.map(k => cols[k]);
+  let col = order[0];
+  for (let i = 1; i < order.length; i++) {
+    const boundary = (xs[i - 1] + xs[i]) / 2;
+    if (x >= boundary - 2) col = order[i];
+  }
+  return col;
+}
+
+/* SAP wraps mid-token: lines whose boundary words carry underscores
+   (or end in - / _) re-join with no space. */
+function joinDescLines(descLines) {
+  let out = '';
+  for (const line of descLines) {
+    if (!out) { out = line; continue; }
+    const lastWord = out.split(/\s+/).pop();
+    const firstWord = line.split(/\s+/)[0];
+    const noSpace = /[_\-\/]$/.test(out) || lastWord.includes('_') || firstWord.includes('_');
+    out += (noSpace ? '' : ' ') + line;
+  }
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+function parsePageItems(frags, prevCols) {
+  const hdr = findHeader(frags);
+  const cols = hdr ? hdr.cols : prevCols;
+  if (!cols) return { items: [], cols: null };
+  const topY = hdr ? hdr.y : Infinity;
+
+  const buckets = [];
+  for (const f of frags) {
+    if (f.y >= topY - 1) continue;              // only rows below the table header
+    const t = f.s.trim();
+    if (SKIP_RE.test(t) || JUNK_RE.test(t)) continue;  // signatures + page footers
+    let b = buckets.find(b => Math.abs(b.y - f.y) < 3);
+    if (!b) { b = { y: f.y, frags: [] }; buckets.push(b); }
+    b.frags.push(f);
+  }
+  buckets.sort((a, b) => b.y - a.y);
+
+  const items = [];
+  let cur = null;
+  for (const line of buckets) {
+    line.frags.sort((a, b) => a.x - b.x);
+    const cells = { num:[], code:[], desc:[], uom:[], qty:[], sn:[], loc:[] };
+    for (const f of line.frags) {
+      const t = f.s.trim();
+      const colKey = assignColumn(f.x, cols);
+      if (colKey === 'num') {
+        const m = t.match(/^(\d{1,3})\s+(\d{8,12})(?:\s+(.*))?$/);
+        if (m) {
+          cells.num.push(m[1]); cells.code.push(m[2]);
+          if (m[3]) cells.desc.push(m[3]);
+          continue;
+        }
+      }
+      cells[colKey].push(t);
+    }
+    const numTok = cells.num.join(' ').trim();
+    if (/^\d{1,3}$/.test(numTok)) {
+      if (cur) items.push(cur);
+      cur = { num: numTok, code:'', descLines:[], uom:'', qty:'', snToks:[], locFrags:[] };
+    }
+    if (!cur) continue;
+    if (cells.code.length) cur.code = (cur.code + cells.code.join('')).trim();
+    if (cells.desc.length) cur.descLines.push(cells.desc.join(' '));
+    if (cells.uom.length && !cur.uom) cur.uom = cells.uom.join(' ').trim();
+    if (cells.qty.length && !cur.qty) cur.qty = cells.qty.join(' ').trim();
+    if (cells.sn.length)   cur.snToks.push(...cells.sn.join(' ').split(/\s+/));
+    if (cells.loc.length)  cur.locFrags.push(...cells.loc);
+  }
+  if (cur) items.push(cur);
+
+  return {
+    items: items.map(it => ({
+      num:  it.num,
+      code: it.code.replace(/\s+/g, ''),
+      desc: joinDescLines(it.descLines),
+      uom:  it.uom.toUpperCase(),
+      qty:  parseFloat(String(it.qty).replace(/,/g, '')) || it.qty,
+      sns:  it.snToks.filter(Boolean),
+      loc:  it.locFrags.join('').replace(/\s+/g, '').replace(/GIN:?\d*$/i, '')
+    })),
+    cols
+  };
+}
+
+/* ---------- render + export ---------- */
+function render() {
+  countEl.textContent = rows.length + ' row' + (rows.length === 1 ? '' : 's');
+  pill.innerHTML = `<b>${rows.length}</b> material${rows.length === 1 ? '' : 's'} saved`;
+  exportBtn.disabled = clearBtn.disabled = rows.length === 0;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">No data yet — add some GIN PDFs above.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = '';
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td class="mono"></td><td class="mono"></td><td class="mono"></td><td></td>` +
+      `<td class="mono"></td><td class="num"></td><td class="mono"></td><td class="mono"></td><td class="mono"></td>`;
+    const cells = tr.children;
+    [r.gin, r.resNo, r.code, r.desc, r.uom, r.qty, r.sn, r.loc, r.file]
+      .forEach((v, i) => cells[i].textContent = v ?? '');
+    tbody.appendChild(tr);
+  }
+}
+
+function exportExcel() {
+  const header = ['GI Number','Reservation No','Item Code','Description','UOM','Qty','S/N','Location','Source File'];
+  const data = rows.map(r => [r.gin, r.resNo, r.code, r.desc, r.uom, r.qty, r.sn, r.loc, r.file]);
+  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+  ws['!cols'] = [12,13,12,42,6,7,22,26,16].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'GIN Materials');
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `GIN_Materials_${stamp}.xlsx`);
+}
+
+render();
+
+/* ---------- service worker ---------- */
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>
