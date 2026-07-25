@@ -266,6 +266,7 @@ async function parsePDF(file) {
   const allLines = [];
   const allItems = [];
   let prevCols = null;
+  let open = null;   // an item still being built when a page ends (spans the break)
 
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
@@ -275,13 +276,15 @@ async function parsePDF(file) {
       .map(it => ({ x: it.transform[4], y: it.transform[5], s: it.str }));
 
     allLines.push(...groupIntoLines(frags));
-    const res = parsePageItems(frags, prevCols);
+    const res = parsePageItems(frags, prevCols, open);
     allItems.push(...res.items);
+    open = res.open;                 // carry the unfinished item into the next page
     if (res.cols) prevCols = res.cols;
   }
+  if (open) allItems.push(open);     // flush the final item
 
   const d = extractHeaderFields(allLines);
-  d.items = allItems;
+  d.items = allItems.map(finalizeItem);
   return d;
 }
 
@@ -382,10 +385,22 @@ function joinDescLines(descLines) {
   return out.replace(/\s+/g, ' ').trim();
 }
 
-function parsePageItems(frags, prevCols) {
+function finalizeItem(it) {
+  return {
+    num:  it.num,
+    code: it.code.replace(/\s+/g, ''),
+    desc: joinDescLines(it.descLines),
+    uom:  it.uom.toUpperCase(),
+    qty:  parseFloat(String(it.qty).replace(/,/g, '')) || it.qty,
+    sns:  it.snToks.filter(Boolean),
+    loc:  it.locFrags.join('').replace(/\s+/g, '').replace(/GIN:?\d*$/i, '')
+  };
+}
+
+function parsePageItems(frags, prevCols, carryItem) {
   const hdr = findHeader(frags);
   const cols = hdr ? hdr.cols : prevCols;
-  if (!cols) return { items: [], cols: null };
+  if (!cols) return { items: [], cols: null, open: carryItem || null };
   const topY = hdr ? hdr.y : Infinity;
 
   const buckets = [];
@@ -400,12 +415,14 @@ function parsePageItems(frags, prevCols) {
   buckets.sort((a, b) => b.y - a.y);
 
   const items = [];
-  let cur = null;
+  let cur = carryItem || null;   // continue an item carried over from the previous page
   for (const line of buckets) {
     line.frags.sort((a, b) => a.x - b.x);
     const cells = { num:[], code:[], desc:[], uom:[], qty:[], sn:[], loc:[] };
     for (const f of line.frags) {
-      const t = f.s.trim();
+      // strip a trailing "GIN : 12345" tag SAP glues onto the last cell of a page
+      const t = f.s.trim().replace(/\s*GIN\s*:?\s*\d+\s*$/i, '').trim();
+      if (!t) continue;
       const colKey = assignColumn(f.x, cols);
       if (colKey === 'num') {
         const m = t.match(/^(\d{1,3})\s+(\d{8,12})(?:\s+(.*))?$/);
@@ -422,7 +439,7 @@ function parsePageItems(frags, prevCols) {
       if (cur) items.push(cur);
       cur = { num: numTok, code:'', descLines:[], uom:'', qty:'', snToks:[], locFrags:[] };
     }
-    if (!cur) continue;
+    if (!cur) continue;  // stray text before the first item and with no carried item
     if (cells.code.length) cur.code = (cur.code + cells.code.join('')).trim();
     if (cells.desc.length) cur.descLines.push(cells.desc.join(' '));
     if (cells.uom.length && !cur.uom) cur.uom = cells.uom.join(' ').trim();
@@ -430,20 +447,8 @@ function parsePageItems(frags, prevCols) {
     if (cells.sn.length)   cur.snToks.push(...cells.sn.join(' ').split(/\s+/));
     if (cells.loc.length)  cur.locFrags.push(...cells.loc);
   }
-  if (cur) items.push(cur);
-
-  return {
-    items: items.map(it => ({
-      num:  it.num,
-      code: it.code.replace(/\s+/g, ''),
-      desc: joinDescLines(it.descLines),
-      uom:  it.uom.toUpperCase(),
-      qty:  parseFloat(String(it.qty).replace(/,/g, '')) || it.qty,
-      sns:  it.snToks.filter(Boolean),
-      loc:  it.locFrags.join('').replace(/\s+/g, '').replace(/GIN:?\d*$/i, '')
-    })),
-    cols
-  };
+  // Do NOT push `cur` here — it may continue on the next page. Return it as "open".
+  return { items, cols, open: cur };
 }
 
 /* ---------- render + export ---------- */
