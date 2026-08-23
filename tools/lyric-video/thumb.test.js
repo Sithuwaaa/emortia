@@ -25,62 +25,58 @@ console.log('\nthe two shapes');
   is('and 16:9 is not',             T.isSquare(1280, 720), false);
 }
 
-console.log('\nthe band under the picture');
+console.log('\nthe frame, and where the words sit on it');
 {
   const sq = T.layout(3000, 3000), wide = T.layout(1280, 720);
 
-  /* the whole point of the design: nothing sits over the photograph, so the
-     picture and the band must exactly fill the frame and never overlap */
-  is('the picture and the band fill the square',
-     sq.photoH + sq.plinthH, 3000);
-  is('and fill the wide one',
-     wide.photoH + wide.plinthH, 720);
-  is('the band starts where the picture stops',
-     [sq.plinthTop === sq.photoH, wide.plinthTop === wide.photoH], [true, true]);
+  is('the square knows it is square',   sq.square, true);
+  is('and the wide one does not',       wide.square, false);
+  is('both keep a margin',              [sq.padX > 0, wide.padX > 0], [true, true]);
+  /* the wide frame is short, so its title is a bigger share of the height -
+     otherwise the same song reads half the size on YouTube as on the cover */
+  is('the wide title is proportionally bigger',
+     (wide.titleSize / 720) > (sq.titleSize / 3000), true);
+  is('the title dwarfs the name',
+     [sq.titleSize > sq.artistSize * 3, wide.titleSize > wide.artistSize * 3], [true, true]);
+  is('a title has room before the edge',
+     [sq.maxTextW < 3000 - sq.padX, wide.maxTextW < 1280 - wide.padX], [true, true]);
+  is('the scrim does not reach the top',
+     [sq.scrimH < 3000, wide.scrimH < 720], [true, true]);
+  is('bigger when asked',
+     T.layout(3000,3000,{titleScale:1.5}).titleSize > sq.titleSize, true);
 
-  /* a band that ate the picture would defeat it */
-  is('the picture keeps most of the square',
-     sq.photoH / 3000 > 0.7, true);
-  is('and most of the wide one',
-     wide.photoH / 720 > 0.72, true);
+  const sqS = T.typeSpots(sq, 3000, 1), wideS = T.typeSpots(wide, 720, 1);
+  const onFrame = (y, h) => y > 0 && y < h;
+  is('the square title is on the frame',  onFrame(sqS.titleYs[0], 3000), true);
+  is('the square name is too',            onFrame(sqS.artistY, 3000), true);
+  is('the wide title is on the frame',    onFrame(wideS.titleYs[0], 720), true);
+  is('the wide name is too',              onFrame(wideS.artistY, 720), true);
+  is('the name sits under the song',
+     [sqS.artistY > sqS.titleYs[0], wideS.artistY > wideS.titleYs[0]], [true, true]);
+  is('both start at the margin',          [sqS.x, wideS.x], [sq.padX, wide.padX]);
+  is('and the type is low in the frame',
+     [sqS.artistY / 3000 > 0.8, wideS.artistY / 720 > 0.75], [true, true]);
 
-  is('the square stacks its type',   sq.stack, true);
-  is('the wide one sets it on a line', wide.stack, false);
-  is('both keep a margin',
-     [sq.padX > 0, wide.padX > 0], [true, true]);
-
-  /* the band can be pushed and pulled, within reason */
-  is('a deeper band is allowed',
-     T.layout(3000, 3000, {plinth:0.4}).plinthH, 1200);
-  is('but not one that swallows the frame',
-     T.layout(3000, 3000, {plinth:0.9}).plinthH, 1500);
-  is('nor one too thin to hold the words',
-     T.layout(3000, 3000, {plinth:0.01}).plinthH, 360);
-  is('rubbish falls back to something sane',
-     T.layout(3000, 3000, {plinth:'x'}).plinthH > 0, true);
+  /* A wrapped title must push its own top up and leave the name where it is,
+     or a long song title walks the name off the bottom of the frame. */
+  const one = T.typeSpots(sq, 3000, 1), two = T.typeSpots(sq, 3000, 2);
+  is('two lines, the name has not moved',  two.artistY, one.artistY);
+  is('the last line has not moved either', two.titleYs[1], one.titleYs[0]);
+  is('and the first line went up',         two.titleYs[0] < one.titleYs[0], true);
+  is('three lines still fit on the frame', T.typeSpots(sq,3000,3).titleYs[0] > 0, true);
+  is('no lines still gives one spot',      T.typeSpots(sq,3000,0).titleYs.length, 1);
 }
 
-console.log('\nwhere the words land');
+console.log('\nwrapping a long title');
 {
-  const sq = T.layout(3000, 3000), sqT = T.typeSpots(sq);
-  const wide = T.layout(1280, 720), wideT = T.typeSpots(wide);
-
-  /* every line has to be inside the band - one pixel above it and the letters
-     are on the photograph, which is the thing this design exists to avoid */
-  const inBand = (lay, y) => y > lay.plinthTop && y <= lay.plinthTop + lay.plinthH;
-  is('the square title is on the band',   inBand(sq, sqT.titleY), true);
-  is('the square artist is too',          inBand(sq, sqT.artistY), true);
-  is('the wide title is on the band',     inBand(wide, wideT.titleY), true);
-  is('the wide artist is too',            inBand(wide, wideT.artistY), true);
-
-  is('stacked, the artist sits under the title', sqT.artistY > sqT.titleY, true);
-  is('and starts at the margin',                 sqT.artistX, sq.padX);
-  is('on one line, the artist goes right',       wideT.artistAlign, 'right');
-  is('and the drawing decides where',            wideT.artistX, null);
-
-  /* the title must not print above the top of its own band either */
-  is('the square title clears the band top',
-     sqT.titleY - sq.titleSize >= sq.plinthTop, true);
+  const measure = t => t.length * 10;
+  is('a short title stays on one line', T.wrap('one two', 1000, measure), ['one two']);
+  is('a long one breaks',               T.wrap('aaa bbb ccc ddd', 80, measure).length, 2);
+  is('nothing wraps to nothing',        T.wrap('', 500, measure), []);
+  is('and neither does nothing at all', T.wrap(null, 500, measure), []);
+  is('one word too wide is still kept', T.wrap('supercalifragilistic', 50, measure), ['supercalifragilistic']);
+  is('every word survives the break',
+     T.wrap('one two three four five', 80, measure).join(' ').split(' ').length, 5);
 }
 
 console.log('\nfitting the photograph');

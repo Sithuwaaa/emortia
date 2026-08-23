@@ -221,10 +221,8 @@
       </div>
 
       <div class="panel" style="margin-top:14px">
-        <h2><span class="dot"></span>Night plinth<span class="tag" id="artFmtTag"></span></h2>
-        <p class="note">The photograph runs at full strength with nothing laid over it, and the
-          words sit underneath on solid ink. Every other way round puts the letters on the picture,
-          where they stop reading the moment anything behind them is light.</p>
+        <h2><span class="dot"></span>Full bleed<span class="tag" id="artFmtTag"></span></h2>
+        <p class="note">The photograph is the whole frame, edge to edge. The song sits low on the left with the name small underneath, and a soft darkening gathers in that corner so the letters read without the picture being dimmed everywhere else.</p>
       </div>
     </div>
 
@@ -266,14 +264,7 @@
       </div>
 
       <div class="panel">
-        <h2><span class="dot"></span>The band</h2>
-        <div class="fld"><label class="f" for="artInk">Ink</label>
-          <input id="artInk" type="color" value="#0d0a0f"></div>
-        <div class="fld"><label class="f" for="artCream">Letters</label>
-          <input id="artCream" type="color" value="#f3ece4"></div>
-        <div class="fld"><label class="f" for="artPlinth">Depth <span id="artPlinthV">26%</span></label>
-          <input id="artPlinth" type="range" min="0.14" max="0.42" step="0.01" value="0.26"></div>
-        <div class="fld"><label class="f"><input type="checkbox" id="artRule" checked style="width:auto;margin-right:8px">Rule before the name</label></div>
+        <h2><span class="dot"></span>Legibility</h2><p class="note" style="margin-bottom:11px">A soft darkening gathered in the corner the words sit in. Enough that a bright photograph does not swallow the title; not so much that a dark one turns to mud.</p><div class="fld"><label class="f" for="artScrim">Scrim <span id="artScrimV">100%</span></label><input id="artScrim" type="range" min="0" max="1.6" step="0.05" value="1"></div><div class="fld"><label class="f" for="artCream">Letters</label><input id="artCream" type="color" value="#f3ece4"></div>
       </div>
     </div>
   </div>
@@ -1132,12 +1123,13 @@ function newProject(opt){
 
 /* ---------- the artwork ----------
 
-   Night plinth. The photograph across the top at full strength, the words
-   underneath on solid ink, and nothing over the picture at all. */
+   Full bleed. The photograph is the whole frame, the song sits low on the
+   left with the name under it, and a scrim gathers in that corner so the
+   letters read without dimming the picture everywhere else. */
 const A = {
   fmt:'cover', photo:'', focus:0.5,
   title:'', artist:'EMORTIA MUSIX', face:'alakamanda', scale:1,
-  ink:'#0d0a0f', cream:'#f3ece4', plinth:0.26, rule:true
+  cream:'#f3ece4', scrim:1
 };
 const A_KEY = 'artwork_v1';
 let ART_IMG = null;
@@ -1154,73 +1146,74 @@ function drawArt(){
   const f = T.formatById(A.fmt);
   if (cv.width !== f.w || cv.height !== f.h){ cv.width = f.w; cv.height = f.h; }
   const W = cv.width, H = cv.height;
-  const lay = T.layout(W, H, { plinth:A.plinth, titleScale:A.scale });
-  const spot = T.typeSpots(lay);
+  const lay = T.layout(W, H, { titleScale:A.scale });
 
   cx.clearRect(0, 0, W, H);
-  cx.fillStyle = A.ink; cx.fillRect(0, 0, W, H);
+  cx.fillStyle = '#0d0a0f'; cx.fillRect(0, 0, W, H);
 
-  /* the photograph, covering the space above the band and nothing else. It is
-     clipped to that box so it cannot bleed onto the ink, which is the one
-     thing that would undo the whole design. */
+  /* the photograph, full bleed - the whole frame, nothing cropped off it */
   if (ART_IMG && ART_IMG.complete && ART_IMG.naturalWidth){
-    const box = T.coverBox(ART_IMG.naturalWidth, ART_IMG.naturalHeight, W, lay.photoH, A.focus);
-    cx.save();
-    cx.beginPath(); cx.rect(0, 0, W, lay.photoH); cx.clip();
+    const box = T.coverBox(ART_IMG.naturalWidth, ART_IMG.naturalHeight, W, H, A.focus);
     cx.drawImage(ART_IMG, box.x, box.y, box.w, box.h);
-    cx.restore();
   } else {
-    cx.fillStyle = 'rgba(255,255,255,0.05)';
-    cx.fillRect(0, 0, W, lay.photoH);
+    cx.fillStyle = 'rgba(255,255,255,0.05)'; cx.fillRect(0, 0, W, H);
     cx.fillStyle = 'rgba(255,255,255,0.30)';
     cx.font = artFace(Math.round(H * 0.022), 500, 'latin');
     cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillText('drop a photograph', W / 2, lay.photoH / 2);
+    cx.fillText('drop a photograph', W / 2, H / 2);
   }
 
-  /* a hairline where the picture meets the ink, so the join is deliberate
-     rather than looking like the image simply ran out */
-  cx.fillStyle = 'rgba(255,255,255,0.10)';
-  cx.fillRect(0, lay.photoH, W, Math.max(1, Math.round(H * 0.0012)));
+  /* The scrim. A wash up from the foot, and a pool gathered on the bottom
+     left corner where the words are.
+
+     The pool is radial rather than a second linear gradient across the width.
+     A linear one has to be drawn into a rectangle, and the top edge of that
+     rectangle is a hard line straight across the photograph - visible on any
+     picture that is not already dark there. A radial fades in every
+     direction at once and has no edge to show. */
+  if (A.scrim > 0){
+    const s = A.scrim;
+    const up = cx.createLinearGradient(0, H, 0, H - lay.scrimH);
+    up.addColorStop(0,    'rgba(6,4,8,' + (0.82 * s).toFixed(3) + ')');
+    up.addColorStop(0.42, 'rgba(6,4,8,' + (0.30 * s).toFixed(3) + ')');
+    up.addColorStop(1,    'rgba(6,4,8,0)');
+    cx.fillStyle = up; cx.fillRect(0, H - lay.scrimH, W, lay.scrimH);
+
+    const r = Math.round(Math.max(W, H) * (lay.square ? 0.72 : 0.86));
+    const pool = cx.createRadialGradient(0, H, 0, 0, H, r);
+    pool.addColorStop(0,    'rgba(6,4,8,' + (0.52 * s).toFixed(3) + ')');
+    pool.addColorStop(0.55, 'rgba(6,4,8,' + (0.18 * s).toFixed(3) + ')');
+    pool.addColorStop(1,    'rgba(6,4,8,0)');
+    cx.fillStyle = pool; cx.fillRect(0, 0, W, H);
+  }
 
   cx.textBaseline = 'alphabetic';
   cx.textAlign = 'left';
 
-  /* the song */
-  if (A.title){
-    cx.font = artFace(lay.titleSize, 700, A.face);
+  /* the song, wrapped if it needs to be, growing upward off the name */
+  cx.font = artFace(lay.titleSize, 700, A.face);
+  const rows = T.wrap(A.title, lay.maxTextW, t => cx.measureText(t).width);
+  const spots = T.typeSpots(lay, H, rows.length);
+
+  if (rows.length){
+    /* a whisper of shadow, so an edge landing on something pale still reads
+       without the scrim having to be heavy enough to flatten the picture */
+    cx.shadowColor = 'rgba(0,0,0,0.45)';
+    cx.shadowBlur = Math.round(H * 0.012);
     cx.fillStyle = A.cream;
-    cx.fillText(A.title, lay.padX, spot.titleY);
+    rows.forEach((r, i) => cx.fillText(r, spots.x, spots.titleYs[i]));
+    cx.shadowBlur = 0; cx.shadowColor = 'transparent';
   }
 
-  /* whoever made it, small and spaced, with a rule leading into it */
+  /* whoever made it: small, spaced wide, quieter than the song */
   if (A.artist){
     cx.font = artFace(lay.artistSize, 600, 'latin');
-    cx.letterSpacing = Math.round(lay.artistSize * 0.26) + 'px';
-    cx.fillStyle = 'rgba(243,236,228,0.62)';
-    const label = A.artist.toUpperCase();
-    if (spot.artistAlign === 'right'){
-      cx.textAlign = 'right';
-      cx.fillText(label, W - lay.padX, spot.artistY);
-      if (A.rule){
-        const wLab = cx.measureText(label).width;
-        cx.fillStyle = 'rgba(243,236,228,0.32)';
-        cx.fillRect(W - lay.padX - wLab - lay.ruleGap - lay.ruleW,
-                    spot.artistY - Math.round(lay.artistSize * 0.30),
-                    lay.ruleW, Math.max(1, Math.round(H * 0.0016)));
-      }
-      cx.textAlign = 'left';
-    } else {
-      let x = lay.padX;
-      if (A.rule){
-        cx.fillStyle = 'rgba(243,236,228,0.32)';
-        cx.fillRect(x, spot.artistY - Math.round(lay.artistSize * 0.30),
-                    lay.ruleW, Math.max(1, Math.round(H * 0.0016)));
-        x += lay.ruleW + lay.ruleGap;
-        cx.fillStyle = 'rgba(243,236,228,0.62)';
-      }
-      cx.fillText(label, x, spot.artistY);
-    }
+    cx.letterSpacing = Math.round(lay.artistSize * 0.42) + 'px';
+    cx.fillStyle = 'rgba(243,236,228,0.72)';
+    cx.shadowColor = 'rgba(0,0,0,0.45)';
+    cx.shadowBlur = Math.round(H * 0.008);
+    cx.fillText(A.artist.toUpperCase(), spots.x, spots.artistY);
+    cx.shadowBlur = 0; cx.shadowColor = 'transparent';
     cx.letterSpacing = '0px';
   }
 }
@@ -1244,11 +1237,10 @@ function setArtPhoto(src, label){
 function paintArtFields(){
   $('artTitle').value = A.title; $('artArtist').value = A.artist;
   $('artFace').value = A.face;   $('artScale').value = A.scale;
-  $('artInk').value = A.ink;     $('artCream').value = A.cream;
-  $('artPlinth').value = A.plinth; $('artRule').checked = !!A.rule;
+  $('artCream').value = A.cream; $('artScrim').value = A.scrim;
   $('artFocus').value = A.focus;
   $('artScaleV').textContent = Math.round(A.scale * 100) + '%';
-  $('artPlinthV').textContent = Math.round(A.plinth * 100) + '%';
+  $('artScrimV').textContent = Math.round(A.scrim * 100) + '%';
   $('artFocusV').textContent = A.focus < 0.34 ? 'top' : A.focus > 0.66 ? 'bottom' : 'middle';
   const f = T.formatById(A.fmt);
   $('artFmtTag').textContent = f.w + ' × ' + f.h;
@@ -1817,10 +1809,9 @@ function boot(){
     };
   };
   artBind('artTitle','title'); artBind('artArtist','artist');
-  artBind('artFace','face');   artBind('artInk','ink'); artBind('artCream','cream');
-  artBind('artRule','rule');
+  artBind('artFace','face');   artBind('artCream','cream');
   artBind('artScale','scale', v => Math.round(v*100)+'%', 'artScaleV');
-  artBind('artPlinth','plinth', v => Math.round(v*100)+'%', 'artPlinthV');
+  artBind('artScrim','scrim', v => Math.round(v*100)+'%', 'artScrimV');
   artBind('artFocus','focus', v => v < 0.34 ? 'top' : v > 0.66 ? 'bottom' : 'middle', 'artFocusV');
 
   wireDrop('artPhotoDrop','artPhotoFile', f => {
