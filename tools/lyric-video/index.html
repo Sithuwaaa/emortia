@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0d0b14">
-<title>Lyric Video</title>
+<title>Video &amp; Artwork</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +17,7 @@
 <script src="../_lib/access.js"></script>
 <script>Access.protect({ owner: true });</script>
 <script src="lyric.js"></script>
+<script src="thumb.js"></script>
 <!-- Turns the encoder's output into an actual .mp4. WebCodecs hands back raw
      H.264 and AAC; without a muxer they are not a file anything will play. -->
 <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/build/mp4-muxer.min.js" defer></script>
@@ -107,7 +108,10 @@
   /* the stage */
   .stagewrap{background:#000;border:1px solid var(--line);border-radius:14px;overflow:hidden;
     display:grid;place-items:center;padding:14px;min-height:280px}
-  canvas#stage{max-width:100%;max-height:70vh;display:block;border-radius:6px;
+  /* Both stages, not just the video one. The artwork canvas is three thousand
+     pixels square because that is what the stores want out of it; without
+     this it tried to draw at three thousand pixels on screen. */
+  canvas#stage,canvas#artStage{max-width:100%;max-height:70vh;display:block;border-radius:6px;
     box-shadow:0 20px 60px rgba(0,0,0,.6)}
   .transport{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-top:12px}
   .play{width:46px;height:46px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;
@@ -167,6 +171,14 @@
   .exbar{display:none;width:100%;height:5px;border-radius:3px;background:var(--card-2);
     border:1px solid var(--line);overflow:hidden;margin-top:10px}
   .exbar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease}
+  /* the two halves of the tool */
+  .modes{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .mode{border:1px solid var(--line);background:var(--card-2);color:var(--muted);border-radius:10px;
+    padding:9px 17px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
+    transition:transform .15s ease,border-color .15s ease,color .15s ease}
+  .mode:hover{transform:translateY(-1px);border-color:var(--accent);color:var(--text)}
+  .mode.on{background:var(--accent);color:var(--accent-ink);border-color:transparent;
+    box-shadow:0 6px 16px var(--glowSoft)}
   body.tapping{caret-color:transparent}
   body.tapping .transport{box-shadow:0 0 0 2px var(--accent)}
 
@@ -186,12 +198,88 @@
   <a class="brand" href="../../" title="Emortia · back to the site">
     <span class="logo"><i></i><i></i><i></i><i></i></span><span class="bname">Emortia</span></a>
   <span class="hsep" aria-hidden="true"></span>
-  <h1>Lyric Video</h1>
+  <h1>Video &amp; Artwork</h1>
   <button class="theme" id="themeBtn" aria-label="Toggle theme">☾</button>
 </header>
 
 <main>
-  <div class="cols">
+  <!-- One song needs two things made for it, and both want the same picture,
+       the same title and the same mark - so they live in one tool and share
+       what they have in common rather than being asked for twice. -->
+  <div class="modes" id="modes">
+    <button class="mode on" data-mode="video">▶ Lyric video</button>
+    <button class="mode" data-mode="art">▧ Artwork</button>
+  </div>
+
+  <!-- ============ ARTWORK ============ -->
+  <div class="cols" id="artView" style="display:none">
+    <div>
+      <div class="stagewrap"><canvas id="artStage" width="3000" height="3000"></canvas></div>
+      <div class="bar" style="margin-top:12px">
+        <button class="btn on" id="artSave">⬇ Save the artwork</button>
+        <span class="clock" id="artInfo"></span>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <h2><span class="dot"></span>Night plinth<span class="tag" id="artFmtTag"></span></h2>
+        <p class="note">The photograph runs at full strength with nothing laid over it, and the
+          words sit underneath on solid ink. Every other way round puts the letters on the picture,
+          where they stop reading the moment anything behind them is light.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2><span class="dot"></span>Shape</h2>
+        <div class="chips" id="artFormats"></div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="dot"></span>The photograph</h2>
+        <img id="artPhotoThumb" class="thumb" alt="" style="display:none">
+        <div class="drop" id="artPhotoDrop"><b id="artPhotoName">drop the photograph</b>
+          <span>or use the cover art already loaded</span>
+          <input id="artPhotoFile" type="file" accept="image/*"></div>
+        <div class="bar" style="margin-top:10px">
+          <button class="btn sm" id="artUseCover">Use the song's cover</button>
+        </div>
+        <div class="fld" style="margin-top:11px">
+          <label class="f" for="artFocus">Crop <span id="artFocusV">middle</span></label>
+          <input id="artFocus" type="range" min="0" max="1" step="0.05" value="0.5"></div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="dot"></span>The words</h2>
+        <div class="fld"><label class="f" for="artTitle">Song</label>
+          <input id="artTitle" maxlength="60" placeholder="හරන හිත"></div>
+        <div class="fld"><label class="f" for="artArtist">Underneath</label>
+          <input id="artArtist" maxlength="40" value="EMORTIA MUSIX"></div>
+        <div class="fld"><label class="f" for="artFace">Face</label>
+          <select id="artFace">
+            <option value="alakamanda">UN-Alakamanda</option>
+            <option value="agni">UN-Agni</option>
+            <option value="isiwara">UN-Isiwara</option>
+            <option value="latin">Bricolage (Latin)</option>
+          </select></div>
+        <div class="fld"><label class="f" for="artScale">Size <span id="artScaleV">100%</span></label>
+          <input id="artScale" type="range" min="0.6" max="1.6" step="0.05" value="1"></div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="dot"></span>The band</h2>
+        <div class="fld"><label class="f" for="artInk">Ink</label>
+          <input id="artInk" type="color" value="#0d0a0f"></div>
+        <div class="fld"><label class="f" for="artCream">Letters</label>
+          <input id="artCream" type="color" value="#f3ece4"></div>
+        <div class="fld"><label class="f" for="artPlinth">Depth <span id="artPlinthV">26%</span></label>
+          <input id="artPlinth" type="range" min="0.14" max="0.42" step="0.01" value="0.26"></div>
+        <div class="fld"><label class="f"><input type="checkbox" id="artRule" checked style="width:auto;margin-right:8px">Rule before the name</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LYRIC VIDEO ============ -->
+  <div class="cols" id="videoView">
     <div>
       <div class="stagewrap"><canvas id="stage" width="1080" height="1920"></canvas></div>
       <div class="transport">
@@ -360,6 +448,7 @@
    ============================================================ */
 const $ = id => document.getElementById(id);
 const L = window.LyricCore;
+const T = window.ThumbCore;
 
 const KEY = 'lyricvideo_v1';
 const TRACKS = [
@@ -1041,6 +1130,147 @@ function newProject(opt){
   if (!o.silent) toast('Started a new project – the words and settings are still here to build on');
 }
 
+/* ---------- the artwork ----------
+
+   Night plinth. The photograph across the top at full strength, the words
+   underneath on solid ink, and nothing over the picture at all. */
+const A = {
+  fmt:'cover', photo:'', focus:0.5,
+  title:'', artist:'EMORTIA MUSIX', face:'alakamanda', scale:1,
+  ink:'#0d0a0f', cream:'#f3ece4', plinth:0.26, rule:true
+};
+const A_KEY = 'artwork_v1';
+let ART_IMG = null;
+const artFace = (px, weight, which) => {
+  const fam = which === 'agni' ? '"UN-Agni"'
+            : which === 'isiwara' ? '"UN-Isiwara"'
+            : which === 'latin' ? '"Bricolage Grotesque"'
+            : '"UN-Alakamanda"';
+  return (weight || 700) + ' ' + px + 'px ' + fam + ', "Hanken Grotesk", system-ui, sans-serif';
+};
+
+function drawArt(){
+  const cv = $('artStage'), cx = cv.getContext('2d');
+  const f = T.formatById(A.fmt);
+  if (cv.width !== f.w || cv.height !== f.h){ cv.width = f.w; cv.height = f.h; }
+  const W = cv.width, H = cv.height;
+  const lay = T.layout(W, H, { plinth:A.plinth, titleScale:A.scale });
+  const spot = T.typeSpots(lay);
+
+  cx.clearRect(0, 0, W, H);
+  cx.fillStyle = A.ink; cx.fillRect(0, 0, W, H);
+
+  /* the photograph, covering the space above the band and nothing else. It is
+     clipped to that box so it cannot bleed onto the ink, which is the one
+     thing that would undo the whole design. */
+  if (ART_IMG && ART_IMG.complete && ART_IMG.naturalWidth){
+    const box = T.coverBox(ART_IMG.naturalWidth, ART_IMG.naturalHeight, W, lay.photoH, A.focus);
+    cx.save();
+    cx.beginPath(); cx.rect(0, 0, W, lay.photoH); cx.clip();
+    cx.drawImage(ART_IMG, box.x, box.y, box.w, box.h);
+    cx.restore();
+  } else {
+    cx.fillStyle = 'rgba(255,255,255,0.05)';
+    cx.fillRect(0, 0, W, lay.photoH);
+    cx.fillStyle = 'rgba(255,255,255,0.30)';
+    cx.font = artFace(Math.round(H * 0.022), 500, 'latin');
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText('drop a photograph', W / 2, lay.photoH / 2);
+  }
+
+  /* a hairline where the picture meets the ink, so the join is deliberate
+     rather than looking like the image simply ran out */
+  cx.fillStyle = 'rgba(255,255,255,0.10)';
+  cx.fillRect(0, lay.photoH, W, Math.max(1, Math.round(H * 0.0012)));
+
+  cx.textBaseline = 'alphabetic';
+  cx.textAlign = 'left';
+
+  /* the song */
+  if (A.title){
+    cx.font = artFace(lay.titleSize, 700, A.face);
+    cx.fillStyle = A.cream;
+    cx.fillText(A.title, lay.padX, spot.titleY);
+  }
+
+  /* whoever made it, small and spaced, with a rule leading into it */
+  if (A.artist){
+    cx.font = artFace(lay.artistSize, 600, 'latin');
+    cx.letterSpacing = Math.round(lay.artistSize * 0.26) + 'px';
+    cx.fillStyle = 'rgba(243,236,228,0.62)';
+    const label = A.artist.toUpperCase();
+    if (spot.artistAlign === 'right'){
+      cx.textAlign = 'right';
+      cx.fillText(label, W - lay.padX, spot.artistY);
+      if (A.rule){
+        const wLab = cx.measureText(label).width;
+        cx.fillStyle = 'rgba(243,236,228,0.32)';
+        cx.fillRect(W - lay.padX - wLab - lay.ruleGap - lay.ruleW,
+                    spot.artistY - Math.round(lay.artistSize * 0.30),
+                    lay.ruleW, Math.max(1, Math.round(H * 0.0016)));
+      }
+      cx.textAlign = 'left';
+    } else {
+      let x = lay.padX;
+      if (A.rule){
+        cx.fillStyle = 'rgba(243,236,228,0.32)';
+        cx.fillRect(x, spot.artistY - Math.round(lay.artistSize * 0.30),
+                    lay.ruleW, Math.max(1, Math.round(H * 0.0016)));
+        x += lay.ruleW + lay.ruleGap;
+        cx.fillStyle = 'rgba(243,236,228,0.62)';
+      }
+      cx.fillText(label, x, spot.artistY);
+    }
+    cx.letterSpacing = '0px';
+  }
+}
+
+function saveArt(){ try { localStorage.setItem(A_KEY, JSON.stringify(A)); } catch(e){} }
+function loadArt(){
+  try { const v = JSON.parse(localStorage.getItem(A_KEY) || 'null'); if (v) Object.assign(A, v); } catch(e){}
+}
+
+function setArtPhoto(src, label){
+  const im = new Image();
+  im.crossOrigin = 'anonymous';
+  im.onload = () => { ART_IMG = im; $('artPhotoThumb').src = src;
+    $('artPhotoThumb').style.display = 'block';
+    $('artPhotoName').textContent = label || 'photograph loaded';
+    drawArt(); };
+  im.onerror = () => toast('That picture could not be read', 4000);
+  im.src = src;
+}
+
+function paintArtFields(){
+  $('artTitle').value = A.title; $('artArtist').value = A.artist;
+  $('artFace').value = A.face;   $('artScale').value = A.scale;
+  $('artInk').value = A.ink;     $('artCream').value = A.cream;
+  $('artPlinth').value = A.plinth; $('artRule').checked = !!A.rule;
+  $('artFocus').value = A.focus;
+  $('artScaleV').textContent = Math.round(A.scale * 100) + '%';
+  $('artPlinthV').textContent = Math.round(A.plinth * 100) + '%';
+  $('artFocusV').textContent = A.focus < 0.34 ? 'top' : A.focus > 0.66 ? 'bottom' : 'middle';
+  const f = T.formatById(A.fmt);
+  $('artFmtTag').textContent = f.w + ' × ' + f.h;
+  $('artInfo').textContent = f.name + ' · ' + f.w + '×' + f.h + ' · png';
+  $('artFormats').innerHTML = T.FORMATS.map(x =>
+    '<button class="chip' + (x.id === A.fmt ? ' on' : '') + '" data-af="' + x.id + '">' +
+    x.name + ' <em>' + x.ratio + '</em></button>').join('');
+  [...$('artFormats').querySelectorAll('button')].forEach(b => b.onclick = () => {
+    A.fmt = b.dataset.af; saveArt(); paintArtFields(); drawArt();
+  });
+}
+
+function setMode(m){
+  const art = m === 'art';
+  $('artView').style.display = art ? '' : 'none';
+  $('videoView').style.display = art ? 'none' : '';
+  [...$('modes').querySelectorAll('.mode')].forEach(b =>
+    b.classList.toggle('on', b.dataset.mode === m));
+  try { localStorage.setItem('artwork_mode', m); } catch(e){}
+  if (art) drawArt();
+}
+
 /* ---------- exporting ----------
 
    Recording meant playing the song and filming the screen: it took as long as
@@ -1508,6 +1738,8 @@ function boot(){
   document.addEventListener('keydown', onTapKey);
   paintWords();
 
+
+
   /* the projects */
   $('projSave').onclick = () => saveProject({});
   $('projNew').onclick  = () => newProject({});
@@ -1570,6 +1802,53 @@ function boot(){
       $('artName').textContent = f.name; draw(audio.currentTime || 0); };
     im.src = url;
   });
+
+  /* ---- the artwork ---- */
+  loadArt();
+  if (!A.title && S.title) A.title = S.title;
+  paintArtFields();
+  const artBind = (id, key, fmt, out) => {
+    const el = $(id);
+    el.oninput = el.onchange = () => {
+      A[key] = el.type === 'checkbox' ? el.checked
+             : el.type === 'range' ? +el.value : el.value;
+      if (out) $(out).textContent = fmt(A[key]);
+      saveArt(); drawArt();
+    };
+  };
+  artBind('artTitle','title'); artBind('artArtist','artist');
+  artBind('artFace','face');   artBind('artInk','ink'); artBind('artCream','cream');
+  artBind('artRule','rule');
+  artBind('artScale','scale', v => Math.round(v*100)+'%', 'artScaleV');
+  artBind('artPlinth','plinth', v => Math.round(v*100)+'%', 'artPlinthV');
+  artBind('artFocus','focus', v => v < 0.34 ? 'top' : v > 0.66 ? 'bottom' : 'middle', 'artFocusV');
+
+  wireDrop('artPhotoDrop','artPhotoFile', f => {
+    A.photo = ''; saveArt();
+    setArtPhoto(URL.createObjectURL(f), f.name);
+  });
+  /* the song's own cover is usually the photograph you want, and it is
+     already loaded for the video - no reason to go and find it again */
+  $('artUseCover').onclick = () => {
+    if (!ART || !ART.src){ toast('Load a cover on the video side first'); return; }
+    setArtPhoto(ART.src, 'the song\'s cover');
+  };
+  $('artSave').onclick = () => {
+    drawArt();
+    $('artStage').toBlob(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = T.fileName(A.title || S.title, A.fmt);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast('Saved ' + a.download + ' · ' + L.humanSize(b.size));
+    }, 'image/png');
+  };
+  [...$('modes').querySelectorAll('.mode')].forEach(b =>
+    b.onclick = () => setMode(b.dataset.mode));
+  let m0 = 'video';
+  try { m0 = localStorage.getItem('artwork_mode') || 'video'; } catch(e){}
+  setMode(m0);
 
   showExport();
 
