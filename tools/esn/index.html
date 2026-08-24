@@ -186,12 +186,17 @@
      looking at it - the arrow sits on the corner rather than in a menu */
   /* the UMPT login: dots on the tab, shown on request. It is on somebody's
      screen all day, and a password nobody asked to see should not be. */
-  .pw{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.16em;
-    border:1px solid var(--line3);border-radius:7px;background:var(--card-2);
-    color:var(--muted);padding:4px 9px;cursor:pointer;white-space:nowrap}
-  .pw:hover{border-color:var(--accent);color:var(--text)}
+  /* The UMPT login, set like the serials next to it - a whole column of them
+     should read in one pass, and select in one click.
+
+     Not word-break:break-all. In a column this narrow that broke every
+     password into a vertical stack of single characters, which is worse than
+     hiding it was. It stays on one line and the table scrolls, the same as
+     every other long value here. */
   .pwval{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--text);
-    word-break:break-all;-webkit-user-select:all;user-select:all}
+    white-space:nowrap;-webkit-user-select:all;user-select:all;
+    background:var(--card-2);border:1px solid var(--line);border-radius:6px;
+    padding:3px 8px;display:inline-block}
   .shots{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
   .shot{position:relative;display:inline-block;line-height:0}
   .shot .dl{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;padding:0;
@@ -453,11 +458,10 @@ function draftHtml(d, i){
       '<button class="btn sm" data-cardadd="' + d.uid + '">+ Add card</button>' +
     '</div>' +
 
-    /* The board's own login, kept with the site it belongs to. It is typed in
-       the open rather than as dots: this is a cabinet credential being copied
-       off a screen, and hiding it from the person entering it only makes it
-       easier to get wrong. It is masked on the Filed tab, where it is sitting
-       on somebody's screen all day. */
+    /* The board's own login, kept with the site it belongs to. In the open
+       here and on the Filed tab both: it is equipment data, the same kind of
+       thing as the serials beside it, and a value nobody can read at a glance
+       is one somebody will go and ask for instead. */
     '<div style="margin-top:14px"><label class="f">UMPT password</label>' +
       '<input placeholder="the board login for this site" value="' + esc(d.umptPassword || '') +
       '" data-pw="' + d.uid + '" autocomplete="off" spellcheck="false" ' +
@@ -518,9 +522,11 @@ function renderFiled(){
         (['esnPhoto','esnFull','omIpPhoto'].filter(k => r[k]).length > 1
           ? '<button class="btn sm" data-dlall="' + esc(r.id) + '" title="Download every picture on this site">All</button>' : '') +
         '</div></td>' +
+      /* Shown outright, the same as the serials beside it. It is a board
+         login off a cabinet, not anybody's account - and a number you have to
+         click before you can read is a number you cannot scan a column of. */
       '<td>' + (r.umptPassword
-          ? '<button class="pw" data-pw-show="' + esc(r.id) + '" title="Show it">••••••</button>' +
-            '<span class="pwval" id="pw-' + esc(r.id) + '" hidden>' + esc(r.umptPassword) + '</span>'
+          ? '<span class="pwval" title="Click to select">' + esc(r.umptPassword) + '</span>'
           : '<span class="note">—</span>') + '</td>' +
       '<td class="wrap note">' + esc(r.note || '') + '</td>' +
       /* The reader's own clock. This printed the raw UTC string straight out
@@ -823,16 +829,6 @@ function wire(){
   });
 
   /* the arrow on the corner of a thumbnail */
-  /* show one password, and put the others back - only ever one on screen */
-  [...document.querySelectorAll('[data-pw-show]')].forEach(b => b.onclick = () => {
-    const v = document.getElementById('pw-' + b.dataset.pwShow);
-    if (!v) return;
-    const showing = !v.hidden;
-    [...document.querySelectorAll('.pwval')].forEach(x => x.hidden = true);
-    [...document.querySelectorAll('.pw')].forEach(x => x.hidden = false);
-    if (!showing){ v.hidden = false; b.hidden = true; }
-  });
-
   [...document.querySelectorAll('[data-dl]')].forEach(b => b.onclick = e => {
     e.stopPropagation();
     const r = FILED.find(x => x.id === b.dataset.dl);
