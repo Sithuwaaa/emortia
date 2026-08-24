@@ -416,6 +416,7 @@
       esn_photo: rec.esnPhoto || null, esn_full: rec.esnFull || null,
       om_ip_photo: rec.omIpPhoto || null,
       cards: rec.cards || [], note: rec.note || null,
+      umpt_password: rec.umptPassword || null,
       created_by: s.user.id, created_email: s.user.email || null
     };
     const q = rec.id

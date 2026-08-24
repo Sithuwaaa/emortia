@@ -76,6 +76,7 @@
       id: null, siteId: '', siteName: '', runOm: false,
       esnPhoto: null, esnFull: null, omIpPhoto: null,
       cards: [{ type: '', serial: '' }],
+      umptPassword: '',
       note: '', savedAt: null
     };
   }
@@ -112,7 +113,10 @@
 
      The only work done here is reading the size and the type, so the tool can
      say what it is holding and give the upload the right extension. */
-  const MAX_BYTES = 50 * 1024 * 1024;
+  /* A hundred megabytes, raised from fifty. Nothing here is compressed, so a
+     full-resolution grab off a 4K screen is a big file - and being refused at
+     the point of filing means going back to the site for it. */
+  const MAX_BYTES = 100 * 1024 * 1024;
 
   function prepare(file) {
     return new Promise((resolve, reject) => {
@@ -164,6 +168,7 @@
      details repeat down the rows so the sheet can be filtered and sorted
      without anything being looked up again. */
   const COLS = ['Site ID', 'Site Name', 'Card Type', 'Serial No', 'Run O&M Script',
+                'UMPT Password',
                 'ESN Photo', 'Full Screenshot', 'O&M IP Screenshot',
                 'Note', 'Filed By', 'Filed At'];
 
@@ -178,17 +183,55 @@
       ];
       const tail = [
         (r.runOm != null ? r.runOm : r.run_om) ? 'Yes' : 'No',
+        r.umptPassword || r.umpt_password || '',
         links[r.esnPhoto || r.esn_photo] || (r.esnPhoto || r.esn_photo || ''),
         links[r.esnFull || r.esn_full] || (r.esnFull || r.esn_full || ''),
         links[r.omIpPhoto || r.om_ip_photo] || (r.omIpPhoto || r.om_ip_photo || ''),
         r.note || '',
         r.createdName || r.created_name || (r.createdEmail || r.created_email || '').split('@')[0] || '',
-        (r.createdAt || r.created_at || '').replace('T', ' ').slice(0, 19)
+        /* the reader's own clock, not UTC - see localStamp */
+        localStamp(r.createdAt || r.created_at || '', true)
       ];
       if (!cards.length) out.push(base.concat(['', '']).concat(tail));
       else cards.forEach(c => out.push(base.concat([norm(c.type), norm(c.serial)]).concat(tail)));
     });
     return out;
+  }
+
+  /* --------------------------------------------------------------- the clock
+
+     The database stamps rows in UTC, which is right - it is the only zone
+     that means the same thing everywhere. What was wrong was printing it
+     straight out: chopping the T out of the ISO string and showing what is
+     left. Sri Lanka is five and a half hours ahead, so a record filed at 11:36
+     in the morning appeared on the list as 06:06, and every time on the tab
+     was off by the same amount without ever looking obviously broken.
+
+     These read it as an instant and render it in whatever zone the reader is
+     actually sitting in. */
+  function localStamp(iso, withSeconds) {
+    const d = new Date(iso || '');
+    if (!isFinite(d.getTime())) return '';
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+           ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) +
+           (withSeconds ? ':' + p(d.getSeconds()) : '');
+  }
+
+  /* how long ago, for the list - "filed 3 min ago" tells you more at a glance
+     than a timestamp you have to subtract in your head */
+  function agoStamp(iso, now) {
+    const d = new Date(iso || '');
+    if (!isFinite(d.getTime())) return '';
+    const ms = (now == null ? Date.now() : now) - d.getTime();
+    if (ms < 0) return 'just now';
+    const m = Math.floor(ms / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago');
+    const days = Math.floor(h / 24);
+    return days === 1 ? 'yesterday' : days + ' days ago';
   }
 
   /* ------------------------------------------------------- who may change it
@@ -237,6 +280,7 @@
       runOm: !!row.run_om,
       esnPhoto: row.esn_photo, esnFull: row.esn_full, omIpPhoto: row.om_ip_photo,
       cards: Array.isArray(row.cards) && row.cards.length ? row.cards : [{ type: '', serial: '' }],
+      umptPassword: row.umpt_password || '',
       note: row.note || '',
       /* the name, not the address - and the local part stands in for records
          filed before names were kept */
@@ -253,6 +297,6 @@
     blank, liveCards, check, why,
     editableFor, leftLabel, pathsOf, EDIT_MS,
     prepare, imageFrom, extOf, sizeLabel, MAX_BYTES,
-    toRows, fromRow
+    toRows, fromRow, localStamp, agoStamp
   };
 });

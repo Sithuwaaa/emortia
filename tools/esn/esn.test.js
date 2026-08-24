@@ -143,14 +143,20 @@ console.log('\nthe export');
   is('card and serial land in their columns', [rows[0][2], rows[0][3]], ['UMPTg2','2150A']);
   is('the tick is readable', [rows[0][4], rows[2][4]], ['Yes','No']);
   is('a site with no cards still gets a row', [rows[2][0], rows[2][2], rows[2][3]], ['KI5032','','']);
-  is('the time is readable', rows[0][10], '2026-08-17 04:05:06');
+  /* The stamp is UTC in the database and local on the screen. Printing the
+     ISO string straight out showed 04:05 for a record filed at 09:35 in
+     Colombo, and it never looked broken enough to notice. */
+  is('the time is the reader\'s own, not UTC',
+     rows[0][11], E.localStamp('2026-08-17T04:05:06.000Z', true));
+  is('and it really is converted',
+     rows[0][11] === '2026-08-17 04:05:06', new Date('2026-08-17T04:05:06.000Z').getTimezoneOffset() === 0);
   is('every row is as wide as the header', [...new Set(rows.map(r => r.length))], [E.COLS.length]);
 
   /* the paths are private; the export carries links when it has been given
      them, and the raw path when it has not */
   const linked = E.toRows(recs, { 'p/a.webp':'https://signed/a' });
-  is('a signed link is used when there is one', linked[0][5], 'https://signed/a');
-  is('and the path stands in when there is not', linked[0][6], 'p/b.webp');
+  is('a signed link is used when there is one', linked[0][6], 'https://signed/a');
+  is('and the path stands in when there is not', linked[0][7], 'p/b.webp');
 }
 
 console.log('\nwho may change a filed record');
@@ -186,7 +192,7 @@ console.log('\nthe pictures are left exactly as they arrive');
   is('a jpeg does too',            E.extOf('image/jpeg'), 'jpg');
   is('and a webp',                 E.extOf('image/webp'), 'webp');
   is('anything odd becomes a jpg', E.extOf('image/heic'), 'jpg');
-  is('the ceiling is 50MB',        E.MAX_BYTES, 50 * 1024 * 1024);
+  is('the ceiling is 100MB',       E.MAX_BYTES, 100 * 1024 * 1024);
   is('sizes read the way people say them',
      [E.sizeLabel(2048), E.sizeLabel(11 * 1048576)], ['2kB', '11.0MB']);
   is('nothing in here resizes any more', typeof E.shrink, 'undefined');
@@ -200,6 +206,55 @@ console.log('\ncoming back from the database');
   is('an empty card list becomes one blank row to type into', r.cards.length, 1);
   is('a null note becomes an empty one', r.note, '');
   is('the id is kept, so saving edits rather than duplicates', r.id, 'u1');
+}
+
+console.log('\nthe UMPT password');
+{
+  const rec = E.fromRow({ site_id:'MU5051', cards:[{type:'UMPTg2',serial:'X'}],
+    umpt_password:'Sw0rd!', created_at:'2026-08-17T04:05:06.000Z' });
+  is('it comes back off the row',        rec.umptPassword, 'Sw0rd!');
+  is('a blank record has an empty one',  E.blank().umptPassword, '');
+  is('a row without one is empty, not undefined',
+     E.fromRow({ site_id:'X', cards:[] }).umptPassword, '');
+
+  const rows = E.toRows([rec]);
+  is('it has a column of its own',       E.COLS[5], 'UMPT Password');
+  is('and the value lands in it',        rows[0][5], 'Sw0rd!');
+  /* the site details repeat down its rows, and this is one of them */
+  is('every row of a site carries it',
+     E.toRows([E.fromRow({ site_id:'A', umpt_password:'p',
+       cards:[{type:'a',serial:'1'},{type:'b',serial:'2'}] })]).map(r => r[5]), ['p','p']);
+}
+
+console.log('\nthe clock');
+{
+  const iso = '2026-08-17T04:05:06.000Z';
+  /* The database stamps in UTC, which is right. Printing that string straight
+     out was not: Colombo is five and a half hours ahead, so a record filed at
+     09:35 showed as 04:05 and never looked broken enough to notice. */
+  is('a stamp without seconds',      E.localStamp(iso).length, 16);
+  is('and one with them',            E.localStamp(iso, true).length, 19);
+  is('it is the reader\'s own clock',
+     E.localStamp(iso, true),
+     (d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' +
+           String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' +
+           String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0'))(new Date(iso)));
+  is('and not the ISO string chopped up',
+     E.localStamp(iso, true) === iso.replace('T',' ').slice(0,19),
+     new Date().getTimezoneOffset() === 0);
+  is('nothing in, nothing out',      E.localStamp(''), '');
+  is('rubbish in, nothing out',      E.localStamp('not a date'), '');
+
+  const now = Date.parse('2026-08-17T05:05:06.000Z');
+  is('an hour ago',   E.agoStamp(iso, now), '1 hour ago');
+  is('minutes ago',   E.agoStamp('2026-08-17T05:00:06.000Z', now), '5 min ago');
+  is('just filed',    E.agoStamp('2026-08-17T05:05:00.000Z', now), 'just now');
+  is('yesterday',     E.agoStamp('2026-08-16T05:05:06.000Z', now), 'yesterday');
+  is('days',          E.agoStamp('2026-08-14T05:05:06.000Z', now), '3 days ago');
+  /* a laptop a few seconds behind the server must not read as the future */
+  is('a clock slightly behind still says now',
+     E.agoStamp('2026-08-17T05:05:30.000Z', now), 'just now');
+  is('nothing in, nothing out',      E.agoStamp(''), '');
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');

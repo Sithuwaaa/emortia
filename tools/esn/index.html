@@ -184,6 +184,14 @@
   .thumb{width:52px;height:38px;object-fit:cover;border-radius:6px;background:#000;cursor:zoom-in;display:block}
   /* the picture, and the one thing anyone wants to do with it that is not
      looking at it - the arrow sits on the corner rather than in a menu */
+  /* the UMPT login: dots on the tab, shown on request. It is on somebody's
+     screen all day, and a password nobody asked to see should not be. */
+  .pw{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.16em;
+    border:1px solid var(--line3);border-radius:7px;background:var(--card-2);
+    color:var(--muted);padding:4px 9px;cursor:pointer;white-space:nowrap}
+  .pw:hover{border-color:var(--accent);color:var(--text)}
+  .pwval{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--text);
+    word-break:break-all;-webkit-user-select:all;user-select:all}
   .shots{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
   .shot{position:relative;display:inline-block;line-height:0}
   .shot .dl{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;padding:0;
@@ -445,6 +453,15 @@ function draftHtml(d, i){
       '<button class="btn sm" data-cardadd="' + d.uid + '">+ Add card</button>' +
     '</div>' +
 
+    /* The board's own login, kept with the site it belongs to. It is typed in
+       the open rather than as dots: this is a cabinet credential being copied
+       off a screen, and hiding it from the person entering it only makes it
+       easier to get wrong. It is masked on the Filed tab, where it is sitting
+       on somebody's screen all day. */
+    '<div style="margin-top:14px"><label class="f">UMPT password</label>' +
+      '<input placeholder="the board login for this site" value="' + esc(d.umptPassword || '') +
+      '" data-pw="' + d.uid + '" autocomplete="off" spellcheck="false" ' +
+      'style="font-family:\'Space Mono\',monospace"></div>' +
     '<div style="margin-top:14px"><label class="f">Note</label>' +
       '<input placeholder="anything worth saying about this one" value="' + esc(d.note) + '" data-note="' + d.uid + '"></div>' +
 
@@ -501,13 +518,21 @@ function renderFiled(){
         (['esnPhoto','esnFull','omIpPhoto'].filter(k => r[k]).length > 1
           ? '<button class="btn sm" data-dlall="' + esc(r.id) + '" title="Download every picture on this site">All</button>' : '') +
         '</div></td>' +
+      '<td>' + (r.umptPassword
+          ? '<button class="pw" data-pw-show="' + esc(r.id) + '" title="Show it">••••••</button>' +
+            '<span class="pwval" id="pw-' + esc(r.id) + '" hidden>' + esc(r.umptPassword) + '</span>'
+          : '<span class="note">—</span>') + '</td>' +
       '<td class="wrap note">' + esc(r.note || '') + '</td>' +
-      '<td class="note" style="white-space:nowrap">' + esc((r.createdAt || '').replace('T',' ').slice(0,16)) + '<br>' +
+      /* The reader's own clock. This printed the raw UTC string straight out
+         of the database and was five and a half hours out on every record,
+         without ever looking wrong enough to question. */
+      '<td class="note" style="white-space:nowrap">' + esc(E.localStamp(r.createdAt)) + '<br>' +
+        '<span style="opacity:.65">' + esc(E.agoStamp(r.createdAt)) + '</span><br>' +
         esc(r.createdName || '') + '</td>' +
       '<td>' + actionsHtml(r) + '</td></tr>';
   }).join('');
   return '<div class="gridwrap"><table><thead><tr>' +
-    ['Site ID','Site name','','Cards','Screens','Note','Filed',''].map(c => '<th>' + c + '</th>').join('') +
+    ['Site ID','Site name','','Cards','Screens','UMPT','Note','Filed',''].map(c => '<th>' + c + '</th>').join('') +
     '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
@@ -636,6 +661,7 @@ async function save(uid){
       id: d.id, siteId: E.upper(d.siteId), siteName: d.siteName,
       runOm: d.runOm, cards: E.liveCards(d),
       esnPhoto: paths.esnPhoto, esnFull: paths.esnFull, omIpPhoto: paths.omIpPhoto,
+      umptPassword: d.umptPassword,
       note: d.note
     });
     d.id = row.id; d.saved = true; d.busy = null;
@@ -719,6 +745,8 @@ function wire(){
   });
   [...document.querySelectorAll('[data-note]')].forEach(el => {
     el.oninput = () => { const d = find(el.dataset.note); if (d){ d.note = el.value; saveDrafts(); } };
+  [...document.querySelectorAll('[data-pw]')].forEach(el => {
+    el.oninput = () => { const d = find(el.dataset.pw); if (d){ d.umptPassword = el.value; d.saved = false; saveDrafts(); } }; });
   });
   [...document.querySelectorAll('[data-om]')].forEach(el => {
     el.onchange = () => { const d = find(el.dataset.om); if (!d) return;
@@ -795,6 +823,16 @@ function wire(){
   });
 
   /* the arrow on the corner of a thumbnail */
+  /* show one password, and put the others back - only ever one on screen */
+  [...document.querySelectorAll('[data-pw-show]')].forEach(b => b.onclick = () => {
+    const v = document.getElementById('pw-' + b.dataset.pwShow);
+    if (!v) return;
+    const showing = !v.hidden;
+    [...document.querySelectorAll('.pwval')].forEach(x => x.hidden = true);
+    [...document.querySelectorAll('.pw')].forEach(x => x.hidden = false);
+    if (!showing){ v.hidden = false; b.hidden = true; }
+  });
+
   [...document.querySelectorAll('[data-dl]')].forEach(b => b.onclick = e => {
     e.stopPropagation();
     const r = FILED.find(x => x.id === b.dataset.dl);
@@ -827,6 +865,7 @@ function wire(){
         /* the paths it already has, so the check passes and an untouched
            picture is kept rather than wiped on save */
         esnPhoto: r.esnPhoto, esnFull: r.esnFull, omIpPhoto: r.omIpPhoto,
+        umptPassword: r.umptPassword || '',
         cards: (r.cards && r.cards.length ? r.cards : [{ type:'', serial:'' }]).map(c => ({ ...c })),
         note: r.note, editing: true, nameTouched: true
       });
