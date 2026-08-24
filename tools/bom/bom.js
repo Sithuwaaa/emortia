@@ -266,15 +266,17 @@ const CATALOGUE = [
 
   /* ---- RRU with Bracket - straight from the design ---- */
   { cat:'RRU with Bracket', name:'RRU5910 (GL900)', unit:'nos', from:'design',
-    ref:{ kind:'rru', model:'RRU5910' }, fit:'23/23' },
+    ref:{ kind:'rru', model:'RRU5910 (GL900)' }, fit:'23/23' },
   { cat:'RRU with Bracket', name:'Radio 2271 (GL900)', unit:'nos', from:'design',
-    ref:{ kind:'rru', model:'Radio 2271' }, fit:'9/9' },
-  { cat:'RRU with Bracket', name:'RRU 4490 B1+B3 (L1800 + L2100)', unit:'nos', from:'design',
-    ref:{ kind:'rru', model:'RRU 4490 B1+B3' }, fit:'9/9' },
-  { cat:'RRU with Bracket', name:'RRU 5909(L21)', unit:'nos', from:'design',
-    ref:{ kind:'rru', model:'RRU5909' }, fit:'23/23' },
-  { cat:'RRU with Bracket', name:'RRU5909 B3 (L18)', unit:'nos', from:'design',
-    ref:{ kind:'rru', model:'RRU5909 B3' } },
+    ref:{ kind:'rru', model:'Radio 2271 (GL900)' }, fit:'9/9' },
+  { cat:'RRU with Bracket', name:'RRU 4490 B1+B3 (L1800+L2100)', unit:'nos', from:'design',
+    ref:{ kind:'rru', model:'RRU 4490 B1+B3 (L1800+L2100)' }, fit:'9/9' },
+  { cat:'RRU with Bracket', name:'RRU5909 (L2100)', unit:'nos', from:'design',
+    ref:{ kind:'rru', model:'RRU5909 (L2100)' }, fit:'23/23' },
+  { cat:'RRU with Bracket', name:'RRU5909 (GL900)', unit:'nos', from:'design',
+    ref:{ kind:'rru', model:'RRU5909 (GL900)' } },
+  { cat:'RRU with Bracket', name:'RRU5909 B3 (L1800)', unit:'nos', from:'design',
+    ref:{ kind:'rru', model:'RRU5909 B3 (L1800)' } },
 
   /* ---- Connectors ---- */
   { cat:'Connectors', name:'Y Connectors', unit:'nos', from:'rule',

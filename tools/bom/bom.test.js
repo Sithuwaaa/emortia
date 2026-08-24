@@ -164,7 +164,10 @@ console.log('MU5051 - 3 sectors, 5 RRUs, 20m, Huawei, MW-HYB 18G');
 {
   const b = built['MU5051'];
   is('RRU5910 (GL900)',                  qtyOf(b, 'RRU5910 (GL900)'), 2);
-  is('RRU 5909(L21)',                    qtyOf(b, 'RRU 5909(L21)'), 3);
+  /* Renamed with the rest: a radio is named by its part and the band the
+     box carries, because RRU5909 (GL900) and RRU5909 (L2100) are two
+     different radios and the catalogue used to have only the L21 line. */
+  is('RRU5909 (L2100)',                  qtyOf(b, 'RRU5909 (L2100)'), 3);
   is('the antenna, from the design',     qtyOf(b, 'SXPWL4WH-16/18-65/65-IVT-R1_10P'), 3);
   is('Huawei BBU3910',                   qtyOf(b, 'Huawei BBU3910 with UPEU, FAN Card & Power Cable'), 1);
   is('UMPTg2',                           qtyOf(b, 'UMPTg2'), 1);
@@ -263,7 +266,7 @@ console.log('\nthe rules, against what a person wrote');
   exact('UBBPg1a');
   exact('BB6631 with Power Cables');
   exact('RRU5910 (GL900)');
-  exact('RRU 5909(L21)');
+  exact('RRU5909 (L2100)');
   exact('Radio 2271 (GL900)');
   exact('RRU 4490 B1+B3 (L1800 + L2100)');
 }

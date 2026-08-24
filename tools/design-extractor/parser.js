@@ -22,6 +22,14 @@
   if (typeof root !== 'undefined') root.DesignParser = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
 
+  /* Which bands one physical radio can carry. Loaded from the page in the
+     browser and required under node, so the tests can reach it too. If it is
+     missing the parser still runs and simply splits every radio per
+     technology, which over-orders rather than under-orders. */
+  const MAT = (typeof root !== 'undefined' && root.Materials)
+    || (typeof require === 'function' ? (function(){ try { return require('./materials.js'); } catch(e){ return null; } })() : null)
+    || { boxesFor: (m, techs) => (techs || []).map(t => [t]) };
+
   const TECHS = ['G900','G1800','L850','L900','L1800','L2100','L2600','L2300(HBB)','L2300(MBB)'];
   const BANKS = [['lteMbb','AP_LTE_MBB'], ['lteHbb','AP_LTE_HBB']];
 
@@ -146,10 +154,25 @@
         netRru:            gn('AP_Sector_Antenna_Net Addition RRU Sec ' + n) || 0,
         cells: []
       };
+      /* The Final column first, the addition column behind it.
+
+         Final is what the sector ends up carrying once the additions and the
+         removals have both happened, which is the thing worth recording - and
+         it is written with the band on it, RRU5909/GL rather than a bare
+         RRU5909. But it is only filled in for some bands: in the 2026 MBB book
+         it is there for G900 and G1800 and empty everywhere else, and in the
+         2025 HBB book it is empty throughout. So it is preferred where it
+         exists and the addition stands in where it does not, rather than
+         switching to it wholesale and losing seventeen hundred entries. */
       TECHS.forEach(t => {
-        const m = g('AP_' + t + '_Radio addition Sec ' + n);
+        const fin = g('AP_' + t + '_Final Radio configuration Sec ' + n);
+        const add = g('AP_' + t + '_Radio addition Sec ' + n);
+        const m = fin || add;
         if (!m) return;
         sec.cells.push({ tech: t, model: m,
+          fromFinal: !!fin,
+          isNew: !!add,                    // only an addition is material to order
+          removed: g('AP_' + t + '_Radio removal Sec ' + n),
           shared: SHARE.test(m), noise: NOISE.test(m),
           source: g('AP_' + t + '_Radio addition source Sec ' + n) });
       });
@@ -175,10 +198,56 @@
           else shared.push(Object.assign({ sector: sec.sector, techs: [c.tech] }, readShare(c.model)));
           return;
         }
-        if (!box.has(c.model)) box.set(c.model, []);
-        box.get(c.model).push(c.tech);
+        /* Keyed on the part, not on how the cell happened to spell it. The
+           Final column writes Radio 2271/GL and the addition column writes
+           Radio 2271, and preferring Final per technology means one radio
+           arrives under both spellings - which counted it twice, 278 of one
+           and 278 of the other, for 278 actual radios.
+
+           The qualified spelling is kept for display, because /GL and
+           \LO_L23 are the part of the name that says which variant it is. */
+        const key = MAT.baseModel(c.model) || c.model;
+        if (!box.has(key)) box.set(key, { label: c.model, techs: [], qual: null, qualFor: null });
+        const b = box.get(key);
+        b.techs.push(c.tech);
+        /* The qualified spelling and the technology it was written against.
+           RRU5909/GL came off the G900 Final cell and describes the 900 unit;
+           the L2100 unit on the same sector is a different radio and must not
+           inherit that name. */
+        if (c.fromFinal && /[\/\\]/.test(c.model) && !b.qual){
+          b.qual = c.model; b.qualFor = c.tech;
+        }
       });
-      sec.radios = [...box.entries()].map(([model, techs]) => ({ model, techs }));
+      /* One box per model was wrong, and wrong in a way that ordered too few.
+         RRU5909 is written under G900, L900 and L2100 in the same book, and
+         the L21 unit is not the same radio as the GL900 one - you cannot take
+         one to a site and use it for the other. Merging them by name ordered
+         one radio where two were needed.
+
+         Splitting by technology instead would be wrong the other way: RRU 4490
+         B1+B3 sits under L1800 and L2100 and is genuinely one box doing both,
+         which is what the part number says.
+
+         So the materials table decides, model by model, which technologies a
+         single unit can carry at once. Anything it has never heard of is split
+         per technology - one spare costs less than a second trip. */
+      sec.radios = [];
+      box.forEach((b, key) => {
+        MAT.boxesFor(key, b.techs).forEach(group => {
+          /* One name for one part, carrying the band the box actually serves -
+             RRU5909 (GL900) and RRU5909 (L2100) are two lines because they are
+             two radios. This is the name the BOM matches on, so the two tools
+             have to agree; how the sheet happened to spell it is kept beside
+             it for anyone reading the extract. */
+          sec.radios.push({
+            model: MAT.variantName(key, group),
+            part:  key,
+            band:  MAT.bandLabel(group),
+            asWritten: b.qual || b.label,
+            techs: group
+          });
+        });
+      });
       sec.rruModels = sec.radios.map(r => r.model);
       sec.radios.forEach(r => {
         if (!rru[r.model]) rru[r.model] = { count: 0, sectors: [], techs: [] };
