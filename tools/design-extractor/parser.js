@@ -22,13 +22,29 @@
   if (typeof root !== 'undefined') root.DesignParser = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
 
-  /* Which bands one physical radio can carry. Loaded from the page in the
-     browser and required under node, so the tests can reach it too. If it is
-     missing the parser still runs and simply splits every radio per
-     technology, which over-orders rather than under-orders. */
-  const MAT = (typeof root !== 'undefined' && root.Materials)
+  /* Which bands one physical radio can carry. Loaded off the page in the
+     browser and required under node, so the tests reach it too.
+
+     Not `root`: that is the outer wrapper's parameter and is not in scope in
+     here, so it read as undefined, the browser fell through to the stub, and
+     the first call to a function the stub did not have threw on every upload.
+     Under node the require worked, so the tests passed and only the browser
+     was broken. globalThis is the thing that is actually in scope.
+
+     The stub is complete now for the same reason. A missing module should
+     cost accuracy - every radio split per technology, which over-orders - not
+     throw halfway through reading a workbook. */
+  const G = typeof globalThis !== 'undefined' ? globalThis : this;
+  const MAT = (G && G.Materials)
     || (typeof require === 'function' ? (function(){ try { return require('./materials.js'); } catch(e){ return null; } })() : null)
-    || { boxesFor: (m, techs) => (techs || []).map(t => [t]) };
+    || {
+      baseModel:   m => String(m == null ? '' : m).trim(),
+      bandLabel:   t => (t || []).join('+'),
+      variantName: (m, t) => String(m == null ? '' : m).trim() + ((t && t.length) ? ' (' + t.join('+') + ')' : ''),
+      boxesFor:    (m, t) => (t || []).map(x => [x]),
+      sameBox:     (m, t) => (t || []).length <= 1,
+      lookup:      () => null
+    };
 
   const TECHS = ['G900','G1800','L850','L900','L1800','L2100','L2600','L2300(HBB)','L2300(MBB)'];
   const BANKS = [['lteMbb','AP_LTE_MBB'], ['lteHbb','AP_LTE_HBB']];
