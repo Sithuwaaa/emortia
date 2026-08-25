@@ -251,7 +251,7 @@
         <div class="fld"><label class="f" for="artTitle">Song</label>
           <input id="artTitle" maxlength="60" placeholder="හරන හිත"></div>
         <div class="fld"><label class="f" for="artArtist">Underneath</label>
-          <input id="artArtist" maxlength="40" value="EMORTIA MUSIX"></div>
+          <input id="artArtist" maxlength="40" value="EMORTIA"></div>
         <div class="fld"><label class="f" for="artFace">Face</label>
           <select id="artFace">
             <option value="alakamanda">UN-Alakamanda</option>
@@ -1128,7 +1128,7 @@ function newProject(opt){
    letters read without dimming the picture everywhere else. */
 const A = {
   fmt:'cover', photo:'', focus:0.5,
-  title:'', artist:'EMORTIA MUSIX', face:'alakamanda', scale:1,
+  title:'', artist:'EMORTIA', face:'alakamanda', scale:1,
   cream:'#f3ece4', scrim:1
 };
 const A_KEY = 'artwork_v1';
@@ -1221,6 +1221,11 @@ function drawArt(){
 function saveArt(){ try { localStorage.setItem(A_KEY, JSON.stringify(A)); } catch(e){} }
 function loadArt(){
   try { const v = JSON.parse(localStorage.getItem(A_KEY) || 'null'); if (v) Object.assign(A, v); } catch(e){}
+  /* The mark is Emortia, not Emortia Musix. Changing the default only helps
+     somebody who has never opened this before; anyone who has already used it
+     has the old name saved in their browser and would keep seeing it. Only
+     the exact old default is corrected - a name set deliberately stays. */
+  if (A.artist === 'EMORTIA MUSIX') { A.artist = 'EMORTIA'; saveArt(); }
 }
 
 function setArtPhoto(src, label){
