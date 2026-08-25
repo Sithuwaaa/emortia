@@ -18,6 +18,7 @@
 <script src="../_lib/access.js"></script>
 <script>Access.protect();</script>
 <script src="materials.js"></script>
+<script src="sync.js"></script>
 <script src="parser.js"></script>
 <style>
   :root{
@@ -268,6 +269,77 @@ function mergeRegister(fromSheet){
 }
 const servesOf = model => (REG[model] && REG[model].serves) ? REG[model].serves.join(' + ') : '';
 
+/* ---------- the server ----------
+
+   The extract used to stop at this browser's IndexedDB, so a book read on the
+   laptop was not on the desktop. It goes up now, and only the sites that
+   actually differ go with it: a vendor resending the same book with one
+   azimuth moved writes one row, not two hundred and forty-five. Sites the
+   book never mentions are left alone entirely - a batch file covers its own
+   batch and must not wipe the ones around it. */
+let SCOPE = '', LAST_PLAN = null, PUBLISHING = false;
+
+async function publishBatch(fileName){
+  if (PUBLISHING || !SITES.length) return;
+  if (!window.DB || !DB.designPublish) return;
+  if (!(await DB.session())){ toast('Not signed in, so this stayed in the browser', 5000); return; }
+
+  PUBLISHING = true;
+  SCOPE = DesignSync.scopeOf(fileName || SRC, SITES);
+  try {
+    toast('Checking what changed…');
+    const have = await DB.designFingerprints(SCOPE);
+    const plan = DesignSync.plan(SITES, have);
+    LAST_PLAN = plan;
+
+    if (!plan.write.length){
+      toast(DesignSync.summarise(plan, SCOPE), 5000);
+      /* the look still goes in the log - "we checked and nothing moved" is
+         worth being able to see afterwards */
+      await DB.designPublish(SCOPE, plan, { file: fileName || SRC, who: whoAmI() });
+      renderSyncLine(plan);
+      return;
+    }
+    await DB.designPublish(SCOPE, plan, { file: fileName || SRC, who: whoAmI() },
+      (n, all) => toast('Saving ' + n + ' of ' + all + '…'));
+    toast('Saved · ' + DesignSync.summarise(plan, SCOPE), 6000);
+    renderSyncLine(plan);
+  } catch(e){
+    toast('Could not save to the server: ' + e.message, 7000);
+  } finally { PUBLISHING = false; }
+}
+
+function whoAmI(){
+  try { return (window.Access && Access.currentUser()) || ''; } catch(e){ return ''; }
+}
+
+/* A line under the header saying what the last upload did, and which sites
+   moved - the first question after a resend is always which ones. */
+function renderSyncLine(plan){
+  const el = document.getElementById('syncLine');
+  if (!el || !plan) return;
+  const c = plan.counts;
+  const ids = plan.changed.map(x => x.siteId);
+  el.innerHTML = '<b>' + esc(SCOPE) + '</b> · ' + esc(DesignSync.summarise(plan)) +
+    (ids.length ? '<br><span class="note">moved: ' + esc(ids.slice(0, 24).join(', ')) +
+      (ids.length > 24 ? ' and ' + (ids.length - 24) + ' more' : '') + '</span>' : '');
+  el.style.display = '';
+}
+
+/* On open, take whatever the server has for this scope if the browser has
+   nothing newer - which is what makes an upload on one machine show on the
+   next one. */
+async function loadFromServer(scope){
+  if (!window.DB || !DB.designLoad) return false;
+  if (!(await DB.session())) return false;
+  const { sites, error } = await DB.designLoad(scope);
+  if (error || !sites.length) return false;
+  SITES = sites; SRC = 'from the server · ' + scope;
+  SAVED = sites.reduce((a, s) => (s._updatedAt > a ? s._updatedAt : a), '');
+  SCOPE = scope;
+  return true;
+}
+
 /* ---------- reading a workbook ---------- */
 function readFile(file){
   const fr = new FileReader();
@@ -276,11 +348,18 @@ function readFile(file){
       const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const out = DesignParser.extract(wb, XLSX);
       CTX = out.ctx; SITES = out.sites; SRC = file.name; SAVED = new Date().toISOString();
+      /* Which project each site belongs to. This tool takes every design
+         book, not only the lamp pole one, so a site has to carry its own
+         project rather than it being assumed from whichever file was open -
+         the 2026 MBB book alone holds nineteen different batches. */
+      SITES.forEach(x => { x.project = DesignSync.projectOf(x, file.name, SITES); });
       PICK = null;
       const added = mergeRegister(DesignParser.buildRegister(SITES));
       await saveBatch();
       applyFilters(); buildTabs();
       toast(SITES.length + ' sites read' + (added ? ', ' + added + ' new radio' + (added === 1 ? '' : 's') + ' in the register' : ''));
+      /* and then to the server, so the next machine has it too */
+      publishBatch(file.name);
     } catch(err){
       render();
       $('view').insertAdjacentHTML('afterbegin',
@@ -295,7 +374,7 @@ function readFile(file){
 function applyFilters(){
   const q = F.q.trim().toLowerCase();
   VIEW = SITES.filter(s =>
-    (!F.batch  || s.batchName === F.batch) &&
+    (!F.batch  || (s.project || s.batchName) === F.batch) &&
     (!F.vendor || s.ftkVendor === F.vendor) &&
     (!F.type   || s.siteType === F.type) &&
     (!F.region || s.operationRegion === F.region) &&
@@ -377,7 +456,8 @@ function renderDrop(){
     '<b>' + (SRC ? esc(SRC) + ' · ' + SITES.length + ' sites' : 'Drop the design workbook here') + '</b>' +
     '<span>' + (SRC ? 'kept in this browser' + (SAVED ? ' since ' + SAVED.slice(0, 16).replace('T', ' ') : '') + ' · drop another to replace it'
                     : 'or click to choose one · .xlsx / .xlsm · read here, nothing is uploaded') + '</span>' +
-    '<input id="file" type="file" accept=".xlsx,.xlsm,.xls"></div>';
+    '<input id="file" type="file" accept=".xlsx,.xlsm,.xls"></div>' +
+    '<div id="syncLine" class="note" style="display:none;margin-top:10px;padding:11px 14px;border:1px solid var(--line);border-radius:11px;background:var(--card-2)"></div>';
 }
 
 function renderSites(){
@@ -387,7 +467,7 @@ function renderSites(){
   const sel = (id, label, key, vals) => '<select id="' + id + '"><option value="">' + label + '</option>' +
     vals.map(v => '<option' + (F[key] === v ? ' selected' : '') + '>' + esc(v) + '</option>').join('') + '</select>';
   h += '<div class="bar" style="margin-top:16px">' +
-    sel('fBatch','All batches','batch',distinct('batchName')) +
+    sel('fBatch','All projects','batch',distinct('project')) +
     sel('fVendor','Both vendors','vendor',distinct('ftkVendor')) +
     sel('fType','All site types','type',distinct('siteType')) +
     sel('fRegion','All regions','region',distinct('operationRegion')) +
@@ -438,7 +518,7 @@ function renderDetail(s){
       esc(s.siteId) + ' · ' + esc(s.siteName || '') +
       '<span class="tag">' + s.sectorCount + ' sectors · ' + s.rruCount + ' RRUs · ' + s.antennaCount + ' antennas</span></h2>' +
     '<div class="cols" style="margin-top:12px"><div>' + compass(s.sectors) +
-      kv([['Batch', String(s.batchName || '').replace(/^2026_MBB_/, '')], ['Region', s.operationRegion],
+      kv([['Project', s.project || s.batchName || '—'], ['Region', s.operationRegion],
           ['District', s.district], ['Vendor', s.ftkVendor], ['Supply', s.ftkOrInhouse],
           ['Site type', s.siteType], ['Height', s.siteHeight ? s.siteHeight + ' m' : null],
           ['TX', s.txMode], ['MW band', s.mwBand], ['Owner', s.siteOwner],
@@ -535,10 +615,10 @@ function toWorkbook(){
   const wb = XLSX.utils.book_new(), used = new Set();
   const add = (name, aoa) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), xlName(name, used));
 
-  add('Sites', [['Site ID','Site Name','Batch','Vendor','Site Height','Site Type','Region','District',
+  add('Sites', [['Site ID','Site Name','Project','Vendor','Site Height','Site Type','Region','District',
       'TX Mode','MW Band','Technologies','Sectors','RRUs','Antennas',
       'Radios','Antenna types','BBU','Control cards','Baseband cards','Flags']]
-    .concat(VIEW.map(s => [s.siteId, s.siteName, s.batchName, s.ftkVendor, s.siteHeight, s.siteType,
+    .concat(VIEW.map(s => [s.siteId, s.siteName, s.project || s.batchName, s.ftkVendor, s.siteHeight, s.siteType,
       s.operationRegion, s.district, s.txMode, s.mwBand, s.technologies.join(' '),
       s.sectorCount, s.rruCount, s.antennaCount,
       Object.entries(s.radios).map(([m, v]) => m + ' x' + v.count).join(' | '),

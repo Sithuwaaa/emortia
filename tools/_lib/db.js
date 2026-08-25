@@ -531,7 +531,103 @@
     if (error) throw new Error(error.message);
   }
 
+  /* ------------------------------------------------------- design sheets
+
+     A design book used to live in whichever browser it was dropped into.
+     These put it on the server, and - the part that matters - write only the
+     sites that actually differ from what is already there. A vendor resending
+     the same book with one azimuth moved should touch one row, not 245. */
+  const DSITES = 'design_sites', DBATCH = 'design_batches';
+
+  /* What the server already holds for a scope: {SITEID: fingerprint}. Asked
+     for on its own so the diff can be worked out before anything is written,
+     and so the whole payload does not have to come down to do it. */
+  async function designFingerprints(scope){
+    const c = await client(); if (!c) return {};
+    const out = {};
+    const PAGE = 1000;
+    for (let from = 0;; from += PAGE){
+      const { data, error } = await c.from(DSITES)
+        .select('site_id,fingerprint').eq('scope', scope).range(from, from + PAGE - 1);
+      if (error) throw new Error(error.message);
+      (data || []).forEach(r => { out[r.site_id] = r.fingerprint; });
+      if (!data || data.length < PAGE) break;
+    }
+    return out;
+  }
+
+  async function designLoad(scope){
+    const c = await client(); if (!c) return { sites: [], error: 'offline' };
+    const out = [];
+    const PAGE = 500;
+    for (let from = 0;; from += PAGE){
+      const { data, error } = await c.from(DSITES)
+        .select('site_id,data,fingerprint,project,batch,first_seen,updated_at')
+        .eq('scope', scope).order('site_id').range(from, from + PAGE - 1);
+      if (error) return { sites: [], error: error.message };
+      (data || []).forEach(r => out.push(Object.assign({}, r.data, {
+        siteId: r.site_id, _fingerprint: r.fingerprint, _project: r.project,
+        _batch: r.batch, _firstSeen: r.first_seen, _updatedAt: r.updated_at })));
+      if (!data || data.length < PAGE) break;
+    }
+    return { sites: out, error: null };
+  }
+
+  /* Writes the plan a caller worked out with DesignSync. Only plan.write is
+     sent; everything the book listed and did not change is left untouched,
+     and everything the book never mentioned is left alone entirely - a batch
+     file covers its own batch and must not wipe the ones around it. */
+  async function designPublish(scope, plan, meta, onProgress){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const s = await session();
+    if (!s) throw new Error('Sign in first - the write policies check auth.uid().');
+
+    const rows = (plan.write || []).map(w => ({
+      scope, site_id: w.siteId, data: w.site, fingerprint: w.fingerprint,
+      project: w.project || null,
+      batch: (meta && meta.file) || null,
+      updated_at: new Date().toISOString(), updated_by: s.user.id
+    }));
+
+    const CHUNK = 250;
+    for (let i = 0; i < rows.length; i += CHUNK){
+      const { error } = await c.from(DSITES)
+        .upsert(rows.slice(i, i + CHUNK), { onConflict: 'scope,site_id' });
+      if (error) throw new Error(error.message);
+      if (onProgress) onProgress(Math.min(i + CHUNK, rows.length), rows.length);
+    }
+
+    /* the line in the log, written even when nothing moved - "we looked and
+       nothing had changed" is worth being able to see later */
+    const cnt = plan.counts || {};
+    const { error: bErr } = await c.from(DBATCH).insert({
+      scope, file_name: (meta && meta.file) || null,
+      sites: cnt.total || 0, added: cnt.added || 0,
+      changed: cnt.changed || 0, unchanged: cnt.unchanged || 0,
+      changed_ids: (plan.changed || []).map(x => x.siteId).slice(0, 500),
+      uploaded_by: s.user.id, uploaded_name: (meta && meta.who) || null
+    });
+    if (bErr) throw new Error(bErr.message);
+    return rows.length;
+  }
+
+  async function designBatches(limit){
+    const c = await client(); if (!c) return { rows: [], error: 'offline' };
+    const { data, error } = await c.from(DBATCH).select('*')
+      .order('uploaded_at', { ascending: false }).limit(limit || 40);
+    if (error) return { rows: [], error: error.message };
+    return { rows: data || [], error: null };
+  }
+
+  async function designSubscribe(fn){
+    const c = await client(); if (!c) return;
+    c.channel('design_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: DSITES }, () => fn())
+      .subscribe();
+  }
+
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
+                designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
                 load, publish, subscribe,
