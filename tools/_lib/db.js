@@ -626,7 +626,43 @@
       .subscribe();
   }
 
+  /* ------------------------------------------------------- feature locks
+
+     Three tools and the journal belong to the owner, and now and then one has
+     to be opened for somebody else. Locked is the default everywhere: a
+     feature with no row is owner-only, and a read that fails leaves
+     everything shut rather than open. */
+  async function featureLocks(){
+    const c = await client(); if (!c) return {};
+    const { data, error } = await c.from('feature_locks').select('feature,unlocked,note,updated_at');
+    if (error) return {};
+    const out = {};
+    (data || []).forEach(r => { out[r.feature] = { unlocked: !!r.unlocked, note: r.note || '',
+                                                   at: r.updated_at }; });
+    return out;
+  }
+
+  async function setFeatureLock(feature, unlocked, note){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const { error } = await c.from('feature_locks').upsert(
+      { feature, unlocked: !!unlocked, note: note || null,
+        updated_at: new Date().toISOString(), updated_by: s.user.id },
+      { onConflict: 'feature' });
+    /* the policy is the real lock; if it refuses, say so plainly */
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only the owner can change these.' : error.message);
+  }
+
+  async function onFeatureLocks(fn){
+    const c = await client(); if (!c) return;
+    c.channel('locks_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feature_locks' }, () => fn())
+      .subscribe();
+  }
+
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
+                featureLocks, setFeatureLock, onFeatureLocks,
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,

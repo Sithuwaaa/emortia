@@ -1176,7 +1176,9 @@ class Component extends DCLogic {
       isOwner: !!(window.Access && window.Access.isOwner()),
       accErr:'', accOk:'', accBusy:false, accMode:'in', accShowPw:false,
       profOpen:false, profMsg:'', profOk:'', profBusy:false,
-      sortBy:pp.sortBy, sortDir:pp.sortDir, sortOpen:false, contact:{name:'',email:'',msg:''}, sent:false, audioMissing:false, syncTimes:[], fsOpen:false, wordsEdit:false, wordsText:'' };
+      sortBy:pp.sortBy, sortDir:pp.sortDir, sortOpen:false, contact:{name:'',email:'',msg:''}, sent:false, audioMissing:false, syncTimes:[], fsOpen:false, wordsEdit:false, wordsText:'',
+      /* which owner-only things have been opened to the team */
+      locks:{}, lockBusy:'', lockErr:'' };
     this.PLAYER_KEY='emortia_player_v1';
     this.moods=[
       {name:'Longing', color:'#d15873', rgb:'209,88,115', line:'#4a2632', glow:'rgba(209,88,115,.55)', wash:'linear-gradient(135deg,rgba(209,88,115,.12),transparent 70%)', track:0},
@@ -1373,6 +1375,14 @@ class Component extends DCLogic {
       this.setState({ page:p, drawer:'', menuOpen:false, sortOpen:false });
     };
     window.addEventListener('popstate', this._onPop);
+    /* Which owner-only things are open. Read once here and again whenever the
+       switch is thrown on another device, so the tabs match without a reload. */
+    this._readLocks = () => {
+      if(!window.DB || !window.DB.featureLocks) return;
+      window.DB.featureLocks().then(locks => this.setState({locks})).catch(()=>{});
+    };
+    this._readLocks();
+    try { window.DB.onFeatureLocks && window.DB.onFeatureLocks(this._readLocks); } catch(e){}
     // leaving browser fullscreen (Esc) should close the now-playing screen too
     this._onFsChange=()=>{
       const inFs=!!(document.fullscreenElement||document.webkitFullscreenElement);
@@ -2936,7 +2946,82 @@ class Component extends DCLogic {
         btn('Sign out', ()=>A.signOut())),
       card('The tools',
         'Everything on the Tools tab is open to you here, and to anyone else who has signed up. Owner mode only adds the editing.',
-        btn('Open Tools', this.go('tools'))));
+        btn('Open Tools', this.go('tools'))),
+      this.renderLockPanel());
+  }
+
+  /* ---- what the team can reach ----
+
+     Three tools and the journal are mine. Every so often one of them has to
+     be opened up - somebody else files the project update this week, or needs
+     the lyric tool for a release - and doing that by editing a file and
+     pushing it is the wrong shape of job. These are switches.
+
+     Locked is the default and stays the default. The switch says what it
+     does in words, because "unlocked" on its own does not say to whom. */
+  renderLockPanel(){
+    const s = this.state;
+    const LOCKABLE = [
+      ['journal',             'Journal',          'The poems. Reading only – writing stays mine.'],
+      ['tool:lyric-video',    'Video & Artwork',  'The lyric video and the cover art tool.'],
+      ['tool:whattodo',       'What To Do',       'The job list. Whoever can open it can tick things off.'],
+      ['tool:project-update', 'Project Update',   'The rollout figures.']
+    ];
+    const locks = s.locks || {};
+    const busy = s.lockBusy || '';
+
+    const row = ([key, name, what]) => {
+      const on = !!(locks[key] && locks[key].unlocked);
+      const working = busy === key;
+      return React.createElement('div',{key,
+        style:{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',
+          borderTop:'1px solid var(--line)'}},
+        React.createElement('div',{style:{flex:1,minWidth:0}},
+          React.createElement('div',{style:{fontSize:'14.5px',fontWeight:600}}, name),
+          React.createElement('div',{style:{color:'var(--dim)',fontSize:'12.5px',marginTop:'2px'}}, what),
+          React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10.5px',
+            letterSpacing:'.1em',textTransform:'uppercase',marginTop:'6px',
+            color: on ? 'var(--ok)' : 'var(--mute)'}},
+            on ? 'open to everyone signed in' : 'mine only')),
+        /* a real switch, not a checkbox - it says which way it is at a glance */
+        React.createElement('button',{
+          onClick: () => this.toggleLock(key, !on),
+          disabled: working,
+          'aria-pressed': on ? 'true' : 'false',
+          title: on ? 'Lock it back to me' : 'Open it to the team',
+          style:{width:'52px',height:'30px',borderRadius:'999px',flexShrink:0,cursor: working?'default':'pointer',
+            border:'1px solid ' + (on ? 'transparent' : 'var(--line3)'),
+            background: on ? 'var(--accent)' : 'var(--panel2)',
+            opacity: working ? 0.5 : 1, position:'relative',
+            transition:'background .18s ease'}},
+          React.createElement('span',{style:{position:'absolute',top:'3px',
+            left: on ? '25px' : '3px', width:'22px',height:'22px',borderRadius:'50%',
+            background: on ? '#fff' : 'var(--dim)', transition:'left .18s ease'}})));
+    };
+
+    return React.createElement('div',{key:'locks',
+      style:{background:'var(--panelS)',border:'1px solid var(--line2)',borderRadius:'14px',
+        padding:'18px 20px',gridColumn:'1 / -1'}},
+      React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:700,
+        fontSize:'17px',marginBottom:'6px'}}, 'What the team can reach'),
+      React.createElement('p',{style:{color:'var(--dim)',fontSize:'13.5px',lineHeight:1.6,margin:'0 0 4px'}},
+        'These four are mine by default. Open one and anyone signed in can use it; ' +
+        'close it and it is mine again. The switch applies everywhere at once, not just on this device.'),
+      s.lockErr ? React.createElement('p',{style:{color:'var(--accent)',fontSize:'13px',margin:'8px 0 0'}},
+        s.lockErr) : null,
+      LOCKABLE.map(row));
+  }
+
+  async toggleLock(key, want){
+    this.setState({ lockBusy: key, lockErr: '' });
+    try {
+      await window.DB.setFeatureLock(key, want);
+      const locks = await window.DB.featureLocks();
+      if (window.Access && Access.locks) Access.locks();   // the page's own copy follows
+      this.setState({ locks, lockBusy: '' });
+    } catch(e){
+      this.setState({ lockBusy: '', lockErr: e.message });
+    }
   }
 
   renderToolsGate(){
@@ -3235,14 +3320,17 @@ class Component extends DCLogic {
     /* The journal is the poems, and they are not published - so the tab is
        only there for the account that wrote them. Anyone typing #blog lands on
        the front page instead, because the tab being gone is not a lock. */
+    /* the owner sees everything; everyone else sees what has been opened */
+    const may = f => s.isOwner || !!(s.locks && s.locks[f] && s.locks[f].unlocked);
+
     const navDefs = [['home','Home'],['music','Music']]
-      .concat(s.isOwner ? [['blog','Journal']] : [])
+      .concat(may('journal') ? [['blog','Journal']] : [])
       .concat([['tools','Tools'],['about','About'],['contact','Contact']])
       .concat(s.isOwner ? [['owner','Owner']] : []);
-    const onBlog = s.page==='blog' && s.isOwner;
+    const onBlog = s.page==='blog' && may('journal');
 
     return {
-      isHome:s.page==='home' || (s.page==='blog' && !s.isOwner),
+      isHome:s.page==='home' || (s.page==='blog' && !may('journal')),
       isMusic:s.page==='music', isBlog:onBlog, isTools:s.page==='tools', isAbout:s.page==='about', isContact:s.page==='contact',
       isOwnerPage: s.page==='owner' && s.isOwner,
       ownerPanel: this.renderOwnerPage(),
@@ -3251,13 +3339,13 @@ class Component extends DCLogic {
          desc:'Reads the 765-column design workbook and keeps what a bill of materials needs. One radio written under three technologies is one box on the pole, not three – and the table that decides which radio carries what is yours to correct.'},
         {name:'BOM Builder', initial:'B', tag:'Dialog · lamp pole materials', href:'tools/bom/',
          desc:'Turns a design into something you can order. The radios, antennas and BBU cards come straight across from the Design Extractor; everything else follows the site – its sectors, its RRUs, the height of the pole, the vendor, how it is fed. Every rule was read off a hand-built BOM and every one of them is yours to change.'},
-        {name:'Video & Artwork', initial:'V', tag:'Emortia · music', href:'tools/lyric-video/', owner:true,
+        {name:'Video & Artwork', initial:'V', tag:'Emortia · music', href:'tools/lyric-video/', owner:'tool:lyric-video',
          desc:'Makes the two things a song needs to go out. The lyric video: cover art swaying behind a dark gradient, the words lighting one at a time on the beat they are sung, rendered to MP4 rather than filmed off the screen. The artwork: the photograph at full strength with the title on solid ink beneath it, square for the stores and 16:9 for YouTube. Both take the same picture and the same title, so neither is asked for twice.'},
         {name:'ESN Sharing', initial:'E', tag:'Dialog · ESN + serials', href:'tools/esn/',
          desc:'The team files an ESN from the field: type a site ID and the name arrives on its own, paste the print screens straight out of the clipboard, list the card types and their serials. Tick Run O&M Script and the O&M IP slot opens. Everything lands in one place and comes out as Excel.'},
-        {name:'What To Do', initial:'W', tag:'Jobs · reminders', href:'tools/whattodo/', owner:true,
+        {name:'What To Do', initial:'W', tag:'Jobs · reminders', href:'tools/whattodo/', owner:'tool:whattodo',
          desc:'The running list of what still needs doing, shared across every device. Add a job on one, tick it off on another, and it leaves both. Nudges every 15 minutes while the page is open.'},
-        {name:'Project Update', initial:'P', tag:'Dialog · lamp pole rollout', href:'tools/project-update/', owner:true,
+        {name:'Project Update', initial:'P', tag:'Dialog · lamp pole rollout', href:'tools/project-update/', owner:'tool:project-update',
          desc:'Live dashboard for the lamp-pole build – status, region, Tx plan, district and team breakdowns, with MOD-permission hubs flagged automatically from the Site Access list. Every sheet of the workbook is browsable and searchable.'},
         {name:'Site Access Lookup', initial:'S', tag:'Dialog · site list', href:'tools/site-access/',
          desc:'Search 5,934 Dialog sites by ID, name or district and get depot, contact, tower and access-permission details instantly. Works offline.'},
@@ -3267,7 +3355,7 @@ class Component extends DCLogic {
          desc:'Drop SAP Goods Issue Note PDFs and pull every material line into one clean Excel sheet. Runs entirely on your device, works offline, nothing is uploaded.'},
       /* the owner's own are not listed to anybody else; each of those pages
          checks again on its way in, because a hidden card is not a lock */
-      ].filter(t=>!t.owner || s.isOwner)
+      ].filter(t=>!t.owner || may(t.owner))
        .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access')})),
       page:s.page,
 
@@ -3372,14 +3460,17 @@ class Component extends DCLogic {
         };
       })(),
       /* the number on the front page counts what this visitor can open */
-      hmToolCount: 9 - (s.isOwner ? 0 : 3),
+      /* counted from what this person can actually open, rather than a
+         hardcoded nine minus three - unlocking one has to move the number */
+      hmToolCount: 9 - ['tool:lyric-video','tool:whattodo','tool:project-update']
+        .filter(f => !may(f)).length,
       hmTools: [{name:'What To Do', dot:'#d4547a'},{name:'Project Update', dot:'#1f97a8'},{name:'Site Access Lookup', dot:'#2f8fd4'}],
       hmSongCount: this.tracks.length,
       hmCatSummary: (()=>{ const tot=this.tracks.reduce((a,b)=>a+(b.dur||0),0); const m=Math.round(tot/60);
         return 'songs \u00b7 '+(m>0?m+' min of music':'a few minutes of music'); })(),
       hmTrackList: (()=>{ const dots=['#e87a94','#c25a74','#8d3d52'];
         return this.tracks.slice(0,3).map((x,i)=>({ name:x.t, dot:dots[i]||'#8d3d52' })); })(),
-      showJournal: !!s.isOwner,
+      showJournal: may('journal'),
       hmPoemCount: (s.poems||[]).length,
       hmPoemList: (()=>{ const ps=(s.poems||[]).slice(-3).reverse(); const dots=['#dfae63','#c9954a','#8d6b34'];
         return ps.map((p,i)=>({ title:p.title||'—', dot:dots[i]||'#8d6b34' })); })(),

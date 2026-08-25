@@ -583,14 +583,62 @@
      know, so a tool never flashes its contents on the way to asking who you
      are - and it is released again on any failure, because a gate that breaks
      must not take the page down with it. */
+  /* ---- what the owner has opened up ----
+
+     Three tools and the journal are the owner's, and any of them can be
+     unlocked for the team from the Owner page. The answer lives on the server
+     so a switch thrown on the phone applies on everybody's laptop.
+
+     Locked is the default in every direction: nothing cached, nothing read,
+     nothing understood - all of it means shut. An unlock has to be something
+     that was actually said, not something that was assumed. */
+  var LOCKS = null, locksAsked = null;
+  function locks() {
+    if (locksAsked) return locksAsked;
+    locksAsked = (function () {
+      if (!remote() || !window.DB || !window.DB.featureLocks) return Promise.resolve({});
+      return window.DB.featureLocks().then(function (l) { LOCKS = l; return l; })
+        .catch(function () { return {}; });
+    })();
+    return locksAsked;
+  }
+  function allowed(feature) {
+    if (isOwner()) return true;
+    if (!feature || !LOCKS) return false;
+    return !!(LOCKS[feature] && LOCKS[feature].unlocked);
+  }
+  /* the async form, for a page deciding whether to open at all */
+  function allow(feature) {
+    if (isOwner()) return Promise.resolve(true);
+    if (!feature) return Promise.resolve(false);
+    return locks().then(function (l) { return !!(l[feature] && l[feature].unlocked); });
+  }
+
   function protect(opts) {
     opts = opts || {};
     var root = document.documentElement;
+
+    /* An owner-only page that can be unlocked cannot answer synchronously -
+       the answer is on the server. So it stays hidden until it knows, rather
+       than showing itself and taking it back, which would leak the thing the
+       gate exists to hide. */
+    if (opts.owner && opts.feature && !isOwner() && signedIn()) {
+      root.style.visibility = 'hidden';
+      allow(opts.feature).then(function (ok) {
+        root.style.visibility = '';
+        if (ok) { showChip(); verifyRemote(); return; }
+        try { guard(opts); } catch (e) {}
+      });
+      setTimeout(function () { if (root.style.visibility === 'hidden') root.style.visibility = ''; }, 5000);
+      return;
+    }
+
     if (opts.owner ? isOwner() : signedIn()) {
       showChip();
       /* the page opens either way - this only tells them if the far end has
          since forgotten who they are, rather than letting it look empty */
       verifyRemote();
+      locks();                     // warmed, so allowed() can answer in place later
       return;
     }
     root.style.visibility = 'hidden';
@@ -619,6 +667,7 @@
     daysLeft: daysLeft, isOwner: isOwner,
     signIn: signIn, signUp: signUp, signOut: signOut, guard: guard, protect: protect,
     rename: rename, refresh: refresh, verifyRemote: verifyRemote,
+    allowed: allowed, allow: allow, locks: locks,
     canSignUp: remote, applyOwner: applyOwner, chip: showChip,
     makeUserLine: makeUserLine, CSS: CSS, gateMarkup: gateMarkup, wire: wire,
     days: DAYS, userCount: USERS.length
