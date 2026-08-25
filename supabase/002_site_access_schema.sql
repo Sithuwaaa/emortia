@@ -60,8 +60,8 @@ create policy "datasets_read" on datasets
 
 create policy "datasets_write" on datasets
   for all
-  using      (auth.uid() = '250a6710-43f8-41ba-a8b5-6c502260acc8'::uuid)
-  with check (auth.uid() = '250a6710-43f8-41ba-a8b5-6c502260acc8'::uuid);
+  using      (auth.uid() = '9ac28d61-aa17-43ce-85a1-f8cd2fe131f6'::uuid)
+  with check (auth.uid() = '9ac28d61-aa17-43ce-85a1-f8cd2fe131f6'::uuid);
 
 -- Realtime, so an open tab on another device refreshes itself.
 do $$

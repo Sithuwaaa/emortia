@@ -57,12 +57,12 @@ create policy "esn_insert" on esn_records
 -- your own until someone else needs to fix it: the filer or the owner
 create policy "esn_update" on esn_records
   for update
-  using      (auth.uid() = created_by or auth.uid() = '250a6710-43f8-41ba-a8b5-6c502260acc8'::uuid)
-  with check (auth.uid() = created_by or auth.uid() = '250a6710-43f8-41ba-a8b5-6c502260acc8'::uuid);
+  using      (auth.uid() = created_by or auth.uid() = '9ac28d61-aa17-43ce-85a1-f8cd2fe131f6'::uuid)
+  with check (auth.uid() = created_by or auth.uid() = '9ac28d61-aa17-43ce-85a1-f8cd2fe131f6'::uuid);
 
 -- deleting is the owner's alone
 create policy "esn_delete" on esn_records
-  for delete using (auth.uid() = '250a6710-43f8-41ba-a8b5-6c502260acc8'::uuid);
+  for delete using (auth.uid() = '9ac28d61-aa17-43ce-85a1-f8cd2fe131f6'::uuid);
 
 -- keep updated_at honest
 create or replace function esn_touch() returns trigger language plpgsql as $$
@@ -113,4 +113,4 @@ create policy "esn_obj_insert" on storage.objects
 create policy "esn_obj_delete" on storage.objects
   for delete using (
     bucket_id = 'esn'
-    and (owner = auth.uid() or auth.uid() = '250a6710-43f8-41ba-a8b5-6c502260acc8'::uuid));
+    and (owner = auth.uid() or auth.uid() = '9ac28d61-aa17-43ce-85a1-f8cd2fe131f6'::uuid));

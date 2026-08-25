@@ -28,8 +28,8 @@ create policy "books_read" on books
 
 create policy "books_write" on books
   for all
-  using      (auth.uid() = '250a6710-43f8-41ba-a8b5-6c502260acc8'::uuid)
-  with check (auth.uid() = '250a6710-43f8-41ba-a8b5-6c502260acc8'::uuid);
+  using      (auth.uid() = '9ac28d61-aa17-43ce-85a1-f8cd2fe131f6'::uuid)
+  with check (auth.uid() = '9ac28d61-aa17-43ce-85a1-f8cd2fe131f6'::uuid);
 
 do $$
 begin
