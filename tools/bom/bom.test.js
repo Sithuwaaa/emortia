@@ -28,7 +28,11 @@ function loadSheetJS(){
     flag > -1 ? process.argv[flag + 1] : null,
     process.env.SHEETJS,
     path.join(HERE, 'xlsx.js'),
-    'C:/Users/SITHUW~1/AppData/Local/Temp/claude/E--My-Jobs-Done-Sithuwaaa-Fresh-Start-My-WEB-Works/24e0a88a-2270-4499-8abc-3037c85d90df/scratchpad/xlsx.js'
+    /* .work is where the workbooks already live and it is gitignored, so a
+       copy of SheetJS beside them is the one place that survives. This used to
+       point at a temp folder belonging to one editing session; the folder was
+       cleared and the suite stopped running with no code having changed. */
+    path.join(REPO, '.work', 'xlsx.js')
   ].filter(Boolean);
   for (const g of guesses){
     if (!fs.existsSync(g)) continue;

@@ -105,6 +105,41 @@ console.log('\nfitting the photograph');
   is('nothing in, nothing out', T.coverBox(0,0,100,100), {x:0,y:0,w:100,h:100});
 }
 
+console.log('\nwhat kind of file comes out');
+{
+  is('three to choose from',        T.FILE_TYPES.length, 3);
+  /* JPEG first and JPEG by default: the frame is a photograph edge to edge,
+     and the same picture is 7.75MB as PNG against 0.52MB as JPEG */
+  is('JPEG is the default',         T.fileTypeById('nope').id, 'jpg');
+  is('every one has a mime and an extension',
+     T.FILE_TYPES.every(t => /^image\//.test(t.mime) && /^[a-z]{3,4}$/.test(t.ext)), true);
+  is('and says what it is for',
+     T.FILE_TYPES.every(t => typeof t.note === 'string' && t.note.length > 15), true);
+  is('PNG is the lossless one',     T.fileTypeById('png').lossy, false);
+  is('the other two are not',       [T.fileTypeById('jpg').lossy, T.fileTypeById('webp').lossy], [true, true]);
+
+  /* quality is meaningless for PNG and must not be passed as a number, or
+     some browsers take it as a hint and others ignore it inconsistently */
+  is('PNG gets no quality',         T.qualityFor('png'), undefined);
+  is('JPEG gets a sane default',    T.qualityFor('jpg'), 0.92);
+  is('and takes what it is given',  T.qualityFor('jpg', 0.6), 0.6);
+  is('too high is pulled back',     T.qualityFor('jpg', 4), 1);
+  is('too low is pulled up',        T.qualityFor('webp', 0), 0.4);
+  is('rubbish falls to the floor',  T.qualityFor('jpg', 'x'), 0.4);
+
+  /* the extension has to follow the type, or the file is named .webp and is
+     a PNG inside - which is what canvas does when it cannot encode a type */
+  is('the name follows the type',
+     T.FILE_TYPES.map(t => T.fileName('Thissema', 'cover', t.ext)),
+     ['Thissema-3000x3000.jpg','Thissema-3000x3000.png','Thissema-3000x3000.webp']);
+  is('and the thumbnail size too',
+     T.fileName('Thissema', 'thumb', 'webp'), 'Thissema-1280x720.webp');
+
+  /* canEncode has no canvas under node; it must say no rather than throw */
+  is('no canvas, no encoding',      T.canEncode(null, 'image/webp'), false);
+  is('and a thing that is not one', T.canEncode({}, 'image/webp'), false);
+}
+
 console.log('\nwhat the file is called');
 {
   is('named after the song and the size',

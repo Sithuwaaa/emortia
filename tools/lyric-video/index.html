@@ -233,6 +233,15 @@
       </div>
 
       <div class="panel">
+        <h2><span class="dot"></span>The file<span class="tag" id="artTypeTag"></span></h2>
+        <div class="chips" id="artTypes"></div>
+        <p class="note" id="artTypeNote" style="margin-top:9px"></p>
+        <div class="fld" id="artQualityWrap" style="margin-top:11px">
+          <label class="f" for="artQuality">Quality <span id="artQualityV">92%</span></label>
+          <input id="artQuality" type="range" min="0.4" max="1" step="0.01" value="0.92"></div>
+      </div>
+
+      <div class="panel">
         <h2><span class="dot"></span>The photograph</h2>
         <img id="artPhotoThumb" class="thumb" alt="" style="display:none">
         <div class="drop" id="artPhotoDrop"><b id="artPhotoName">drop the photograph</b>
@@ -1129,7 +1138,7 @@ function newProject(opt){
 const A = {
   fmt:'cover', photo:'', focus:0.5,
   title:'', artist:'EMORTIA', face:'alakamanda', scale:1,
-  cream:'#f3ece4', scrim:1
+  cream:'#f3ece4', scrim:1, ftype:'jpg', quality:0.92
 };
 const A_KEY = 'artwork_v1';
 let ART_IMG = null;
@@ -1247,9 +1256,23 @@ function paintArtFields(){
   $('artScaleV').textContent = Math.round(A.scale * 100) + '%';
   $('artScrimV').textContent = Math.round(A.scrim * 100) + '%';
   $('artFocusV').textContent = A.focus < 0.34 ? 'top' : A.focus > 0.66 ? 'bottom' : 'middle';
+  /* the file type, and the quality slider only when it means something */
+  const ft = T.fileTypeById(A.ftype);
   const f = T.formatById(A.fmt);
   $('artFmtTag').textContent = f.w + ' × ' + f.h;
-  $('artInfo').textContent = f.name + ' · ' + f.w + '×' + f.h + ' · png';
+  $('artInfo').textContent = f.name + ' · ' + f.w + '×' + f.h + ' · ' + ft.ext;
+  $('artTypeTag').textContent = ft.ext.toUpperCase();
+  $('artTypeNote').textContent = ft.note;
+  $('artQualityWrap').style.display = ft.lossy ? '' : 'none';
+  $('artQuality').value = A.quality;
+  $('artQualityV').textContent = Math.round(A.quality * 100) + '%';
+  $('artTypes').innerHTML = T.FILE_TYPES.map(x =>
+    '<button class="chip' + (x.id === A.ftype ? ' on' : '') + '" data-ft="' + x.id + '">' +
+    x.name + '</button>').join('');
+  [...$('artTypes').querySelectorAll('button')].forEach(b => b.onclick = () => {
+    A.ftype = b.dataset.ft; saveArt(); paintArtFields();
+  });
+
   $('artFormats').innerHTML = T.FORMATS.map(x =>
     '<button class="chip' + (x.id === A.fmt ? ' on' : '') + '" data-af="' + x.id + '">' +
     x.name + ' <em>' + x.ratio + '</em></button>').join('');
@@ -1817,6 +1840,7 @@ function boot(){
   artBind('artFace','face');   artBind('artCream','cream');
   artBind('artScale','scale', v => Math.round(v*100)+'%', 'artScaleV');
   artBind('artScrim','scrim', v => Math.round(v*100)+'%', 'artScrimV');
+  artBind('artQuality','quality', v => Math.round(v*100)+'%', 'artQualityV');
   artBind('artFocus','focus', v => v < 0.34 ? 'top' : v > 0.66 ? 'bottom' : 'middle', 'artFocusV');
 
   wireDrop('artPhotoDrop','artPhotoFile', f => {
@@ -1831,14 +1855,24 @@ function boot(){
   };
   $('artSave').onclick = () => {
     drawArt();
-    $('artStage').toBlob(b => {
+    const cv = $('artStage');
+    let type = T.fileTypeById(A.ftype);
+    /* Canvas answers a type it cannot encode by quietly handing back a PNG,
+       so the file would be named .webp and be a PNG inside. Ask first. */
+    if (!T.canEncode(cv, type.mime)){
+      toast('This browser will not write ' + type.name + ' - saving a JPEG instead', 5000);
+      type = T.fileTypeById('jpg');
+      A.ftype = 'jpg'; saveArt(); paintArtFields();
+    }
+    cv.toBlob(b => {
+      if (!b){ toast('That would not save', 5000); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(b);
-      a.download = T.fileName(A.title || S.title, A.fmt);
+      a.download = T.fileName(A.title || S.title, A.fmt, type.ext);
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
       toast('Saved ' + a.download + ' · ' + L.humanSize(b.size));
-    }, 'image/png');
+    }, type.mime, T.qualityFor(type.id, A.quality));
   };
   [...$('modes').querySelectorAll('.mode')].forEach(b =>
     b.onclick = () => setMode(b.dataset.mode));
