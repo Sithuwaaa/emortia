@@ -25,7 +25,12 @@ function loadSheetJS(){
     flag > -1 ? process.argv[flag + 1] : null,
     process.env.SHEETJS,
     path.join(HERE, 'xlsx.js'),
-    'C:/Users/SITHUW~1/AppData/Local/Temp/claude/E--My-Jobs-Done-Sithuwaaa-Fresh-Start-My-WEB-Works/24e0a88a-2270-4499-8abc-3037c85d90df/scratchpad/xlsx.js'
+    /* .work is where the workbook this suite reads already lives, and it is
+       gitignored, so a copy of SheetJS beside it is the one place that
+       survives. This used to point at a temp folder belonging to one editing
+       session; the folder was cleared and the suite stopped running with no
+       code having changed. */
+    path.join(HERE, '..', '..', '.work', 'xlsx.js')
   ].filter(Boolean);
   for (const g of guesses){
     if (!fs.existsSync(g)) continue;
@@ -92,7 +97,11 @@ console.log('MU5051 - the BOM says 3 sectors / 5 RRUs, RRU5909 Ã—3 and RRU5910 Ã
   if (s){
     is('sectors', s.sectorCount, 3);
     is('RRUs', s.rruCount, 5);
-    is('by model', s.rruByModel, { RRU5909: 3, RRU5910: 2 });
+    /* A radio is named with the band it is carrying here, because the same
+       model number is not the same orderable box: an RRU5909 doing L2100 is
+       not an RRU5909 doing GL900, and a bare "RRU5909: 3" left whoever was
+       ordering to guess which. The counts are what they always were. */
+    is('by model', s.rruByModel, { 'RRU5910 (GL900)': 2, 'RRU5909 (L2100)': 3 });
     is('antennas', s.antennaCount, 3);
     is('vendor', s.ftkVendor, 'Huawei');
     is('height', s.siteHeight, 20);
@@ -117,8 +126,15 @@ console.log('\nthe counting rule');
   const s = by('MU5051');
   const sec1 = s.sectors[0];
   is('sector 1: 3 cells become 2 radios', sec1.cells.length + ' -> ' + sec1.radios.length, '3 -> 2');
-  is('RRU5909 is recorded as carrying L2100', (s.radios['RRU5909'] || {}).techs, ['L2100']);
-  is('RRU5910 carries G900 and L900', (s.radios['RRU5910'] || {}).techs, ['G900', 'L900']);
+  /* keyed by the band-qualified name for the same reason as rruByModel above */
+  is('RRU5909 is recorded as carrying L2100',
+     (s.radios['RRU5909 (L2100)'] || {}).techs, ['L2100']);
+  is('RRU5910 carries G900 and L900',
+     (s.radios['RRU5910 (GL900)'] || {}).techs, ['G900', 'L900']);
+  /* the split names must not survive as radios of their own - "RRU5910/GL"
+     doing G900 alongside "RRU5910" doing L900 is one box counted twice */
+  is('and the /GL spelling is not a second radio',
+     Object.keys(s.radios).some(k => /\//.test(k)), false);
 
   is('no shared run counted as a box',
      sites.every(x => !Object.keys(x.rruByModel).some(m => /^shared?\b/i.test(m))), true);

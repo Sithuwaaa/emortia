@@ -368,8 +368,22 @@
     const reg = {};
     sites.forEach(s => s.sectors.forEach(sec => sec.cells.forEach(c => {
       if (c.shared || c.noise) return;
-      const r = reg[c.model] = reg[c.model] || { model: c.model, serves: [], seen: 0, vendors: [] };
+      /* Keyed on the base model, not on the name as written.
+
+         The sheet writes the same box two ways: "Radio 2271/GL" on the G900
+         row and "Radio 2271" on the L900 row. Keying on the string made those
+         two radios - a G900-only one and an L900-only one, 278 cells each -
+         when it is one radio carrying both, which is the single fact the
+         register exists to record. RRU5909/GL, RRU5910/GL, Radio 4415/GL,
+         DCS 12B3 and DCS RRU5501 were all split the same way.
+
+         This is the same mistake the counting path made and had fixed; the
+         register kept it because its tests had stopped running. */
+      const key = MAT.baseModel(c.model) || c.model;
+      const r = reg[key] = reg[key] || { model: key, serves: [], seen: 0, vendors: [], names: [] };
       r.seen++;
+      /* both spellings kept, so a name off the sheet can still be traced back */
+      if (!r.names.includes(c.model)) r.names.push(c.model);
       if (!r.serves.includes(c.tech)) r.serves.push(c.tech);
       if (s.ftkVendor && !r.vendors.includes(s.ftkVendor)) r.vendors.push(s.ftkVendor);
     })));
