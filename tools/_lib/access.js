@@ -603,25 +603,21 @@
      must not take the page down with it. */
   /* ---- what the team can reach ----
 
-     Every tool and the journal has a switch on the Owner page, and the answer
-     lives on the server so one thrown on the phone applies on everybody's
-     laptop.
+     Every tool and the journal has a switch on the Owner page. One meaning
+     throughout: thrown open, anyone signed in can use it; left shut, it is the
+     owner's. The answer lives on the server, so a switch thrown on the phone
+     applies on everybody's laptop.
 
-     What a switch means depends on where the thing starts, and the two are not
-     the same job:
+     `def` is not a second kind of switch. It is only what to assume for a
+     feature the server has no row for yet - which is every one of them until
+     migration 013 is run. The tools the team already works with every day are
+     true there so that deploying this does not take ESN away from them in the
+     window before it runs; once a row exists the switch is the only thing that
+     decides, and def never comes up again.
 
-       def:false  mine. Shut unless it has been opened - the journal, the music
-                  tools, the directory. Nobody has ever had these, so failing
-                  to find out has to mean shut.
-
-       def:true   the team's. Open unless it has been closed - ESN, the
-                  lookups, the extractors. These are what the team does its
-                  work with every day, and a slow network is not a reason to
-                  take them away. Failing to find out means leave it alone.
-
-     Both directions fail towards what was true a moment ago rather than
-     towards open, which is why the last answer is kept: a tool the owner shut
-     yesterday stays shut on the next load even before the server replies. */
+     After that, the fallbacks in order are: the server, then the last answer
+     it gave, then def. Keeping the last answer is what stops a tool shut
+     yesterday from flickering open on the next load. */
   var FEATURES = [
     { key:'journal', name:'Journal', def:false,
       what:'The poems. Reading only – writing stays mine.' },
@@ -633,6 +629,8 @@
       what:'The rollout figures.' },
     { key:'tool:team', name:'Team Directory', def:false,
       what:'Names, mobiles, NIC numbers and vehicles. Opening it lets the team read and copy; adding and removing stays mine.' },
+    { key:'tool:field-config', name:'Field Config', def:false,
+      what:'Vendor commands, logins and UMPT passwords. Opening it lets the team read and copy; editing stays mine.' },
     { key:'tool:esn', name:'ESN Sharing', def:true,
       what:'Filing an ESN from the field.' },
     { key:'tool:design-extractor', name:'Design Extractor', def:true,

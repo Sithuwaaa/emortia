@@ -784,7 +784,45 @@
     ch.subscribe();
   }
 
+  /* ------------------------------------------------- the field reference
+
+     Vendor commands, logins and the UMPT passwords. One row holding one JSON
+     document - see the note at the top of supabase/013_field_config.sql for
+     why none of it is a file in this repository. */
+  async function fieldConfigLoad(){
+    const c = await client(); if (!c) return { doc: null, error: 'offline' };
+    const { data, error } = await c.from('field_config').select('doc,updated_at')
+      .eq('id', 'main').maybeSingle();
+    if (error) return { doc: null, error:
+      /does not exist|schema cache|could not find the table/i.test(error.message)
+        ? 'The reference is not switched on yet. Sithara has one step left to do.'
+      : /jwt|not authenticated|row-level security|permission/i.test(error.message)
+        ? 'Your sign-in has run out. Reload the page and sign in again.'
+      : /fetch|network|failed to|timeout/i.test(error.message)
+        ? 'No connection just now. Try again in a moment.'
+      : error.message };
+    /* no row at all is not a failure - it is an empty reference waiting to be
+       seeded, and it should read as empty rather than as broken */
+    return { doc: data ? (data.doc || []) : [], at: data ? data.updated_at : null, error: null };
+  }
+
+  async function fieldConfigSave(doc){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('field_config')
+      .upsert({ id: 'main', doc }, { onConflict: 'id' });
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only Sithara can change the reference.' : error.message);
+  }
+
+  async function fieldConfigSubscribe(fn){
+    const c = await client(); if (!c) return;
+    c.channel('field_config_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'field_config' }, () => fn())
+      .subscribe();
+  }
+
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
+                fieldConfigLoad, fieldConfigSave, fieldConfigSubscribe,
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
                 teamSavePerson, teamDeletePerson, teamSaveVehicle, teamDeleteVehicle,
