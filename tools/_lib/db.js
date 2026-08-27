@@ -661,8 +661,134 @@
       .subscribe();
   }
 
+  /* ---------------------------------------------------- the team directory
+
+     Ninety-seven people with their mobiles and NIC numbers. It lives here and
+     nowhere else - see the note at the top of supabase/012_team.sql for why
+     it is not a file in the repository like the site lookups are.
+
+     Reading needs an account. Writing is the owner's, enforced by the policy
+     rather than by which buttons the page draws. */
+  const TGROUPS = 'team_groups', TPEOPLE = 'team_people', TVEHICLES = 'team_vehicles';
+
+  /* One shape out: teams in their order, each carrying its own people and
+     vehicles. Three queries rather than a join, because supabase's embedded
+     selects need a foreign-key hint and three round trips in parallel cost
+     less than getting that wrong. */
+  async function teamLoad(){
+    const c = await client(); if (!c) return { teams: [], error: 'offline' };
+    const [g, p, v] = await Promise.all([
+      c.from(TGROUPS).select('*').order('sort', { ascending: true }),
+      c.from(TPEOPLE).select('*').order('sort', { ascending: true }),
+      c.from(TVEHICLES).select('*').order('sort', { ascending: true })
+    ]);
+    /* Nothing on screen should name a table or a schema cache. Before the
+       migration is run this said "Could not find the table 'public.team_groups'
+       in the schema cache", which tells whoever is reading it nothing they can
+       act on - and tells everybody else the shape of the database. */
+    const bad = g.error || p.error || v.error;
+    if (bad) return { teams: [], error:
+      /does not exist|schema cache|could not find the table/i.test(bad.message)
+        ? 'The directory is not switched on yet. Sithara has one step left to do.'
+      : /jwt|not authenticated|row-level security|permission/i.test(bad.message)
+        ? 'Your sign-in has run out. Reload the page and sign in again.'
+      : /fetch|network|failed to|timeout/i.test(bad.message)
+        ? 'No connection just now. Try again in a moment.'
+      : bad.message };
+
+    const teams = (g.data || []).map(r => ({
+      id: r.id, team: r.team, source: r.source || 'other', sort: r.sort || 0,
+      people: [], vehicles: []
+    }));
+    const by = {};
+    teams.forEach(t => { by[t.id] = t; });
+    /* a row whose team has gone is dropped rather than thrown - the cascade
+       should have taken it, and a directory that will not load because of one
+       orphan is worse than a directory missing one line */
+    (p.data || []).forEach(r => { if (by[r.team_id]) by[r.team_id].people.push({
+      id: r.id, name: r.name || '', mobile: r.mobile || '', nic: r.nic || '',
+      company: r.company || '', role: r.role || '' }); });
+    (v.data || []).forEach(r => { if (by[r.team_id]) by[r.team_id].vehicles.push({
+      id: r.id, reg: r.reg || '', kind: r.kind || '', driver: r.driver || '' }); });
+    return { teams, error: null };
+  }
+
+  /* Nothing on screen should name a table or a policy. "Only the owner can
+     change these" is the whole of what somebody needs to know. */
+  function teamErr(e){
+    const m = String((e && e.message) || e || '');
+    if (/row-level security|permission|policy/i.test(m)) throw new Error('Only Sithara can change the directory.');
+    if (/duplicate|unique/i.test(m)) throw new Error('There is already a team with that name.');
+    if (/jwt|not authenticated/i.test(m)) throw new Error('Your sign-in has run out. Reload and sign in again.');
+    throw new Error(m || 'That did not save.');
+  }
+  async function tc(){ const c = await client(); if (!c) throw new Error('Not connected just now.'); return c; }
+
+  /* sort is "one past the last", so a new row lands at the bottom of the list
+     it was added to rather than in the middle of somebody else's ordering */
+  const nextSort = list => (list || []).length;
+
+  async function teamAddGroup(id, name, sort){
+    const c = await tc();
+    const { error } = await c.from(TGROUPS).insert(
+      { id, team: name, source: 'custom', sort: sort || 0 });
+    if (error) teamErr(error);
+  }
+  async function teamRenameGroup(id, name){
+    const c = await tc();
+    const { error } = await c.from(TGROUPS).update({ team: name }).eq('id', id);
+    if (error) teamErr(error);
+  }
+  /* the people and the vehicles go with it - that is the cascade in 012, not
+     three deletes from here that could half-finish */
+  async function teamDeleteGroup(id){
+    const c = await tc();
+    const { error } = await c.from(TGROUPS).delete().eq('id', id);
+    if (error) teamErr(error);
+  }
+
+  async function teamSavePerson(p){
+    const c = await tc();
+    const row = { team_id: p.teamId, name: p.name, mobile: p.mobile || null,
+                  nic: p.nic || null, company: p.company || null, role: p.role || null };
+    const { error } = p.id
+      ? await c.from(TPEOPLE).update(row).eq('id', p.id)
+      : await c.from(TPEOPLE).insert(Object.assign({ sort: p.sort || 0 }, row));
+    if (error) teamErr(error);
+  }
+  async function teamDeletePerson(id){
+    const c = await tc();
+    const { error } = await c.from(TPEOPLE).delete().eq('id', id);
+    if (error) teamErr(error);
+  }
+
+  async function teamSaveVehicle(v){
+    const c = await tc();
+    const row = { team_id: v.teamId, reg: v.reg, kind: v.kind || null, driver: v.driver || null };
+    const { error } = v.id
+      ? await c.from(TVEHICLES).update(row).eq('id', v.id)
+      : await c.from(TVEHICLES).insert(Object.assign({ sort: v.sort || 0 }, row));
+    if (error) teamErr(error);
+  }
+  async function teamDeleteVehicle(id){
+    const c = await tc();
+    const { error } = await c.from(TVEHICLES).delete().eq('id', id);
+    if (error) teamErr(error);
+  }
+
+  async function teamSubscribe(fn){
+    const c = await client(); if (!c) return;
+    const ch = c.channel('team_live');
+    [TGROUPS, TPEOPLE, TVEHICLES].forEach(t =>
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, () => fn()));
+    ch.subscribe();
+  }
+
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
                 featureLocks, setFeatureLock, onFeatureLocks,
+                teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
+                teamSavePerson, teamDeletePerson, teamSaveVehicle, teamDeleteVehicle,
+                teamSubscribe, teamNextSort: nextSort,
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,

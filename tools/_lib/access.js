@@ -430,7 +430,25 @@
      not asked to sign in again - they are told plainly that this one is not
      theirs, with the way back, because a sign-in form they cannot get past is
      a puzzle rather than an answer. */
-  function guard(opts) {
+  /* These scripts run in the head, so document.body is very often not there
+     yet when a gate wants to go up. Appending to it then throws, and every
+     caller wraps guard in a try/catch so the page must never be left showing
+     - which is precisely what happened: the gate failed silently and the tool
+     stayed open. It only ever worked because a real Supabase round trip took
+     long enough for the body to arrive first.
+
+     onMounted is called once the gate is genuinely in the document, so the
+     caller knows when it is safe to let the page be seen. */
+  function mount(el, onMounted) {
+    var put = function () {
+      document.body.appendChild(el);
+      if (onMounted) onMounted();
+    };
+    if (document.body) put();
+    else addEventListener('DOMContentLoaded', put, { once: true });
+  }
+
+  function guard(opts, onMounted) {
     opts = opts || {};
     if (opts.owner ? isOwner() : signedIn()) return true;
 
@@ -447,7 +465,7 @@
           'you are signed in as <b>' + esc(currentUser()) + '</b>.</p>' +
         '<a class="acc-go" href="../../" style="display:block;text-align:center;text-decoration:none">' +
           'Back to the tools</a></div>';
-      document.body.appendChild(g);
+      mount(g, onMounted);
       document.documentElement.style.overflow = 'hidden';
       return false;
     }
@@ -457,7 +475,7 @@
       : (USERS.length === 0
           ? 'No accounts exist yet, and Supabase is not configured to make them. Add <code>#adduser</code> to the end of this address to write the first one by hand.'
           : 'These tools are not public. Sign in to open them.')));
-    document.body.appendChild(g);
+    mount(g, onMounted);
     document.documentElement.style.overflow = 'hidden';
     wire(g, function () { location.reload(); });
     return false;
@@ -583,53 +601,140 @@
      know, so a tool never flashes its contents on the way to asking who you
      are - and it is released again on any failure, because a gate that breaks
      must not take the page down with it. */
-  /* ---- what the owner has opened up ----
+  /* ---- what the team can reach ----
 
-     Three tools and the journal are the owner's, and any of them can be
-     unlocked for the team from the Owner page. The answer lives on the server
-     so a switch thrown on the phone applies on everybody's laptop.
+     Every tool and the journal has a switch on the Owner page, and the answer
+     lives on the server so one thrown on the phone applies on everybody's
+     laptop.
 
-     Locked is the default in every direction: nothing cached, nothing read,
-     nothing understood - all of it means shut. An unlock has to be something
-     that was actually said, not something that was assumed. */
+     What a switch means depends on where the thing starts, and the two are not
+     the same job:
+
+       def:false  mine. Shut unless it has been opened - the journal, the music
+                  tools, the directory. Nobody has ever had these, so failing
+                  to find out has to mean shut.
+
+       def:true   the team's. Open unless it has been closed - ESN, the
+                  lookups, the extractors. These are what the team does its
+                  work with every day, and a slow network is not a reason to
+                  take them away. Failing to find out means leave it alone.
+
+     Both directions fail towards what was true a moment ago rather than
+     towards open, which is why the last answer is kept: a tool the owner shut
+     yesterday stays shut on the next load even before the server replies. */
+  var FEATURES = [
+    { key:'journal', name:'Journal', def:false,
+      what:'The poems. Reading only – writing stays mine.' },
+    { key:'tool:lyric-video', name:'Video & Artwork', def:false,
+      what:'The lyric video and the cover art tool.' },
+    { key:'tool:whattodo', name:'What To Do', def:false,
+      what:'The job list. Whoever can open it can tick things off.' },
+    { key:'tool:project-update', name:'Project Update', def:false,
+      what:'The rollout figures.' },
+    { key:'tool:team', name:'Team Directory', def:false,
+      what:'Names, mobiles, NIC numbers and vehicles. Opening it lets the team read and copy; adding and removing stays mine.' },
+    { key:'tool:esn', name:'ESN Sharing', def:true,
+      what:'Filing an ESN from the field.' },
+    { key:'tool:design-extractor', name:'Design Extractor', def:true,
+      what:'Reading the design workbooks.' },
+    { key:'tool:bom', name:'BOM Builder', def:true,
+      what:'Turning a design into an order.' },
+    { key:'tool:site-access', name:'Site Access Lookup', def:true,
+      what:'The site list – depot, contact, permissions.' },
+    { key:'tool:site-data', name:'Site Data Lookup', def:true,
+      what:'The technical profile for every site.' },
+    { key:'tool:gin-extractor', name:'GIN Extractor', def:true,
+      what:'Pulling material lines out of SAP notes.' }
+  ];
+  var BY_KEY = {};
+  FEATURES.forEach(function (f) { BY_KEY[f.key] = f; });
+  /* Something not in the table is not a mistake to be forgiven. A tool page
+     that asks about a key nobody declared gets the careful answer. */
+  function defaultOf(feature) { return !!(BY_KEY[feature] && BY_KEY[feature].def); }
+
+  /* The last answer, so a page can decide before the server has replied.
+     Only the booleans are kept; the note and the timestamp are the Owner
+     page's business and it is online when it reads them. */
+  var LKEY = 'emortia_locks_v1';
+  function cached() {
+    try {
+      var v = JSON.parse(localStorage.getItem(LKEY) || 'null');
+      return (v && typeof v === 'object') ? v : null;
+    } catch (e) { return null; }
+  }
+  function remember(l) {
+    var flat = {};
+    Object.keys(l || {}).forEach(function (k) { flat[k] = !!(l[k] && l[k].unlocked); });
+    try { localStorage.setItem(LKEY, JSON.stringify(flat)); } catch (e) {}
+  }
+
   var LOCKS = null, locksAsked = null;
   function locks() {
     if (locksAsked) return locksAsked;
     locksAsked = (function () {
       if (!remote() || !window.DB || !window.DB.featureLocks) return Promise.resolve({});
-      return window.DB.featureLocks().then(function (l) { LOCKS = l; return l; })
+      return window.DB.featureLocks().then(function (l) { LOCKS = l; remember(l); return l; })
         .catch(function () { return {}; });
     })();
     return locksAsked;
   }
+  /* server first, then what it last said, then where the thing starts */
+  function state(feature) {
+    if (LOCKS && LOCKS[feature]) return !!LOCKS[feature].unlocked;
+    var c = cached();
+    if (c && typeof c[feature] === 'boolean') return c[feature];
+    return defaultOf(feature);
+  }
   function allowed(feature) {
     if (isOwner()) return true;
-    if (!feature || !LOCKS) return false;
-    return !!(LOCKS[feature] && LOCKS[feature].unlocked);
+    if (!feature) return false;
+    return state(feature);
   }
   /* the async form, for a page deciding whether to open at all */
   function allow(feature) {
     if (isOwner()) return Promise.resolve(true);
     if (!feature) return Promise.resolve(false);
-    return locks().then(function (l) { return !!(l[feature] && l[feature].unlocked); });
+    return locks().then(function () { return state(feature); });
   }
 
   function protect(opts) {
     opts = opts || {};
     var root = document.documentElement;
 
-    /* An owner-only page that can be unlocked cannot answer synchronously -
-       the answer is on the server. So it stays hidden until it knows, rather
-       than showing itself and taking it back, which would leak the thing the
-       gate exists to hide. */
-    if (opts.owner && opts.feature && !isOwner() && signedIn()) {
-      root.style.visibility = 'hidden';
-      allow(opts.feature).then(function (ok) {
-        root.style.visibility = '';
-        if (ok) { showChip(); verifyRemote(); return; }
-        try { guard(opts); } catch (e) {}
-      });
-      setTimeout(function () { if (root.style.visibility === 'hidden') root.style.visibility = ''; }, 5000);
+    /* A page with a switch on it cannot answer out of its own head - the
+       answer is on the server. Which way it waits depends on what it is:
+
+       Something that is mine stays hidden until it knows. Showing it and
+       taking it back would leak the very thing the gate is for.
+
+       Something that is the team's paints straight away on the last answer -
+       these are opened dozens of times a day and a round trip in front of
+       every one of them is a tax on the common case. If it comes back shut it
+       is shut then, which is a moment of a tool the team had yesterday and
+       nothing they have not already seen. */
+    if (opts.feature && !isOwner() && signedIn()) {
+      var show = function () { root.style.visibility = ''; };
+      /* The page is shown again only once the refusal is actually on screen,
+         never merely because we decided to refuse. Revealing first and
+         mounting after is how the whole tool came up unguarded. */
+      var deny = function (reveal) { try { guard({ owner: true }, reveal); } catch (e) { if (reveal) reveal(); } };
+      if (!allowed(opts.feature)) {                       // shut as far as we know
+        var refused = false;
+        root.style.visibility = 'hidden';
+        allow(opts.feature).then(function (ok) {
+          if (ok) { show(); showChip(); verifyRemote(); return; }
+          refused = true;
+          deny(show);
+        });
+        /* The failsafe is for not knowing, not for having been refused. A
+           page still waiting for an answer is shown rather than left blank;
+           a page that has been refused waits for its gate however long the
+           body takes, because showing it is the leak. */
+        setTimeout(function () { if (!refused && root.style.visibility === 'hidden') show(); }, 5000);
+        return;
+      }
+      showChip(); verifyRemote();
+      allow(opts.feature).then(function (ok) { if (!ok) deny(); });
       return;
     }
 
@@ -668,6 +773,7 @@
     signIn: signIn, signUp: signUp, signOut: signOut, guard: guard, protect: protect,
     rename: rename, refresh: refresh, verifyRemote: verifyRemote,
     allowed: allowed, allow: allow, locks: locks,
+    FEATURES: FEATURES, defaultOf: defaultOf, rememberLocks: remember,
     canSignUp: remote, applyOwner: applyOwner, chip: showChip,
     makeUserLine: makeUserLine, CSS: CSS, gateMarkup: gateMarkup, wire: wire,
     days: DAYS, userCount: USERS.length

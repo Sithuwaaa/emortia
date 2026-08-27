@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#14170c">
+<title>Team Directory</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238fa83f'/%3E%3Cg fill='%2314170c'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M5 26c0-4 3.5-7 7-7s7 3 7 7z'/%3E%3Ccircle cx='23' cy='14' r='3'/%3E%3Cpath d='M18 26c0-3 2.2-5 5-5s5 2 5 5z'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="../_lib/owner-config.js"></script>
+<script src="../_lib/owner.js"></script>
+<script src="../_lib/supabase-config.js"></script>
+<script src="../_lib/db.js"></script>
+<script src="../_lib/access-config.js"></script>
+<script src="../_lib/access.js"></script>
+<script>Access.protect({ owner: true, feature: 'tool:team' });</script>
+<script src="team.js"></script>
+<style>
+  :root{
+    /* olive - the one band none of the other tools had taken */
+    --accent:#8fa83f;--accentB:#a9c257;--accentD:#6d8329;--accent-ink:#12160a;
+    --bg:#14170c;--card:#1e2213;--card-2:#191d0f;--line:#303620;--line3:#485231;
+    --text:#f2f3e8;--muted:#a3a98c;--zebra:rgba(255,255,255,.018);
+    --ok:#34c98b;--warn:#f2a33a;--bad:#e2607a;--info:#4f9bf0;
+    --glow:rgba(143,168,63,.5);--glowSoft:rgba(143,168,63,.26);
+  }
+  html[data-theme="light"]{
+    --accent:#6d8329;--accentB:#849c39;--accentD:#4f611b;--accent-ink:#ffffff;
+    --bg:#f8f9f3;--card:#ffffff;--card-2:#fcfdf8;--line:#e2e5d6;--line3:#c3c9ae;
+    --text:#1f2413;--muted:#5f6650;--zebra:rgba(0,0,0,.022);
+    --ok:#1f9a68;--warn:#b8721c;--bad:#c2405c;--info:#2f6fd0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+  ::selection{background:var(--glowSoft)}
+  .mono{font-family:'Space Mono',ui-monospace,monospace}
+
+  /* ---------------------------------------------------------- the header */
+  .hdr{display:flex;align-items:center;gap:12px;padding:13px 20px;
+    border-bottom:1px solid var(--line);background:var(--card-2);
+    position:sticky;top:0;z-index:20;flex-wrap:wrap}
+  .brand{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:16.5px;
+    letter-spacing:-.015em;margin-right:auto;display:flex;align-items:center;gap:9px}
+  .brand a{color:var(--muted);text-decoration:none}
+  .brand a:hover{color:var(--text)}
+  .brand em{font-style:normal;color:var(--accent)}
+  .tally{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--muted)}
+  .theme{background:none;border:1px solid var(--line3);border-radius:999px;color:var(--text);
+    cursor:pointer;font:600 11.5px/1 inherit;padding:6px 12px;opacity:.75}
+  .theme:hover{opacity:1;border-color:var(--accent)}
+
+  /* ------------------------------------------------------------- the frame */
+  .frame{display:grid;grid-template-columns:246px minmax(0,1fr);align-items:start}
+  .side{border-right:1px solid var(--line);padding:12px 0 50px;position:sticky;top:53px;
+    max-height:calc(100vh - 53px);overflow-y:auto}
+  .sideHead{padding:15px 16px 6px;font-family:'Space Mono',monospace;font-size:9.5px;
+    font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  .sideHead.new{color:var(--accent)}
+  .navRow{display:flex;align-items:stretch}
+  .nav{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+    font-family:inherit;font-size:13.8px;color:var(--text);background:none;border:0;
+    border-left:3px solid transparent;padding:8px 14px;transition:background .14s ease}
+  .nav:hover{background:var(--zebra)}
+  .nav.on{font-weight:700;border-left-color:var(--accent);background:var(--glowSoft)}
+  .nav b{flex:1;min-width:0;font-weight:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav i{font-style:normal;font-family:'Space Mono',monospace;font-size:11px;opacity:.62}
+  .navX{flex:none;background:none;border:0;color:var(--muted);cursor:pointer;padding:0 12px 0 4px}
+  .navX:hover{color:var(--bad)}
+  .sideAct{padding:16px 14px 0}
+
+  main{min-width:0;padding:20px 22px 90px}
+
+  /* ------------------------------------------------------------- headings */
+  .top{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+  .kick{font-family:'Space Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+  h1{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:800;
+    letter-spacing:-.02em;line-height:1.12;margin-right:auto}
+  h2{font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:800;
+    letter-spacing:-.015em;line-height:1.15}
+
+  input[type=search],input[type=text],select{width:100%;background:var(--card-2);color:var(--text);
+    border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit;font-size:14px;
+    outline:none;transition:border-color .15s ease}
+  input:focus,select:focus{border-color:var(--accent)}
+  .search{width:270px;flex:none}
+  @media(max-width:620px){.search{width:100%}}
+
+  .btn{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-family:inherit;
+    font-weight:600;font-size:12.5px;color:var(--text);background:none;
+    border:1px solid var(--line3);border-radius:9px;padding:9px 13px;white-space:nowrap;
+    transition:border-color .15s ease,background .15s ease}
+  .btn:hover{border-color:var(--accent);background:var(--zebra)}
+  .btn.go{background:var(--accent);border-color:transparent;color:var(--accent-ink);font-weight:700}
+  .btn.go:hover{background:var(--accentB)}
+  .btn.bad:hover{border-color:var(--bad);color:var(--bad)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn svg{flex:none}
+
+  /* -------------------------------------------------------------- the bar */
+  .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:13px;padding-top:10px;
+    border-top:1px solid var(--line);font-family:'Space Mono',monospace;font-size:10.5px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .chips{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+  .chip{cursor:pointer;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--muted);background:none;border:1px solid var(--line);
+    border-radius:999px;padding:5px 10px;transition:all .15s ease}
+  .chip:hover{color:var(--text);border-color:var(--line3)}
+  .chip.on{background:var(--accent);border-color:transparent;color:var(--accent-ink);font-weight:700}
+
+  /* ------------------------------------------------------------- the table */
+  .scroll{overflow-x:auto;margin-top:8px}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+  th{text-align:left;font-family:'Space Mono',monospace;font-size:9.5px;font-weight:700;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    padding:9px 8px;border-bottom:1px solid var(--line3);white-space:nowrap}
+  td{padding:0;border-bottom:1px solid var(--line)}
+  tbody tr:hover{background:var(--zebra)}
+  .num{padding:7px 8px;font-family:'Space Mono',monospace;font-size:11.5px;
+    color:var(--muted);width:38px}
+  .meta{padding:7px 8px;font-size:12.5px;color:var(--muted)}
+  .cell{display:flex;align-items:center;gap:8px;width:100%;text-align:left;cursor:pointer;
+    font:inherit;font-size:14px;color:var(--text);background:none;border:0;padding:7px 8px}
+  .cell:hover{background:var(--glowSoft)}
+  .cell span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .cell svg{flex:none;opacity:.22}
+  .cell:hover svg{opacity:.6}
+  .cell.n{font-family:'Space Mono',monospace;font-size:13px}
+  .acts{display:flex;align-items:center;gap:4px;padding:4px 8px 4px 0;white-space:nowrap}
+  .mini{cursor:pointer;font-family:'Space Mono',monospace;font-weight:700;font-size:10px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:none;
+    border:1px solid var(--line);border-radius:7px;padding:5px 8px}
+  .mini:hover{color:var(--text);border-color:var(--line3)}
+  .mini.bad:hover{color:var(--bad);border-color:var(--bad)}
+  /* an ID number that is not an ID number shape - marked, never refused */
+  .flag{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warn);
+    flex:none;margin-right:2px}
+  .none{padding:30px 4px;font-size:14px;color:var(--muted)}
+  .warnBox{margin-top:14px;border:1px solid var(--line3);border-left:3px solid var(--warn);
+    border-radius:9px;padding:11px 14px;font-size:13px;color:var(--muted);background:var(--card-2)}
+  .warnBox b{color:var(--text);font-weight:600}
+
+  section.veh{margin-top:44px}
+
+  /* ------------------------------------------------------------ the modal */
+  .veil{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;
+    background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}
+  .modal{width:min(520px,100%);max-height:calc(100vh - 40px);overflow-y:auto;
+    background:var(--card);border:1px solid var(--line3);border-radius:15px;padding:20px;
+    box-shadow:0 26px 70px rgba(0,0,0,.6)}
+  .modal .head{display:flex;align-items:baseline;gap:10px;padding-bottom:11px;
+    border-bottom:1px solid var(--line);margin-bottom:15px}
+  .modal .head h2{margin-right:auto}
+  .fields{display:grid;gap:11px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  @media(max-width:520px){.two{grid-template-columns:1fr}}
+  label span{display:block;font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .hint{font-size:12px;color:var(--muted);margin-top:5px}
+  .err{font-size:13px;color:var(--bad);min-height:1em}
+  .foot{display:flex;justify-content:flex-end;gap:8px;padding-top:14px;margin-top:15px;
+    border-top:1px solid var(--line)}
+  .foot .spacer{margin-right:auto}
+
+  /* ------------------------------------------------------------- the toast */
+  .toast{position:fixed;left:18px;bottom:18px;z-index:80;display:flex;align-items:center;gap:9px;
+    max-width:min(520px,calc(100vw - 36px));padding:11px 15px;border-radius:10px;
+    background:var(--text);color:var(--bg);font-size:13px;font-weight:600;
+    box-shadow:0 14px 40px rgba(0,0,0,.45);animation:up .16s ease-out}
+  .toast.bad{background:var(--bad);color:#fff}
+  .toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  @media(max-width:780px){
+    .frame{grid-template-columns:1fr}
+    .side{border-right:0;border-bottom:1px solid var(--line);position:static;max-height:none;
+      padding-bottom:14px}
+    main{padding:18px 15px 90px}
+    h1{font-size:25px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="brand"><a href="../../">EMORTIA</a> <em>/</em> <a href="../../#tools">TOOLS</a>
+    <em>·</em> <span>Team Directory</span></div>
+  <div class="tally" id="tally">loading…</div>
+  <button class="theme" id="themeBtn" type="button">Light</button>
+</header>
+
+<div class="frame">
+  <nav class="side" id="side"></nav>
+  <main>
+    <div class="top">
+      <div style="margin-right:auto;min-width:0">
+        <div class="kick" id="kick">Everyone</div>
+        <h1 id="title">Team Directory</h1>
+      </div>
+      <input type="search" class="search" id="q" placeholder="Name, mobile, ID, vehicle…"
+             autocomplete="off" spellcheck="false">
+      <button class="btn" id="addPerson" type="button" hidden>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add member</button>
+      <button class="btn go" id="copyAll" type="button">Copy all</button>
+    </div>
+
+    <div class="bar">
+      <span>Click any value to copy it</span>
+      <div class="chips" id="fmtChips"></div>
+    </div>
+    <div class="bar" style="border-top:0;padding-top:0;margin-top:6px">
+      <span id="fmtNote"></span>
+      <div class="chips">
+        <button class="chip" id="coChip" type="button">Company</button>
+        <button class="chip" id="intlChip" type="button">+94</button>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th class="num">#</th><th>Name</th><th style="width:150px">Mobile</th>
+          <th style="width:165px">ID No</th><th style="width:150px">Team / role</th>
+          <th style="width:120px">Row</th>
+        </tr></thead>
+        <tbody id="people"></tbody>
+      </table>
+    </div>
+    <div class="none" id="noPeople" hidden></div>
+    <div class="warnBox" id="warnBox" hidden></div>
+
+    <section class="veh">
+      <div class="top">
+        <div style="margin-right:auto">
+          <div class="kick">Vehicles</div>
+          <h2 id="vehTitle">All vehicles</h2>
+        </div>
+        <button class="btn" id="addVehicle" type="button" hidden>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Add vehicle</button>
+        <button class="btn" id="copyVeh" type="button">Copy all</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr>
+            <th class="num">#</th><th style="width:190px">Vehicle No</th>
+            <th style="width:190px">Type</th><th>Driver</th>
+            <th style="width:150px">Team</th><th style="width:120px">Row</th>
+          </tr></thead>
+          <tbody id="vehicles"></tbody>
+        </table>
+      </div>
+      <div class="none" id="noVeh" hidden></div>
+    </section>
+  </main>
+</div>
+
+<div id="modalHost"></div>
+<div id="toastHost"></div>
+
+<script>
+(function(){
+  'use strict';
+  var T = window.TeamCore, DB = window.DB, A = window.Access;
+
+  var S = {
+    teams: [], loaded: false, err: '',
+    active: 'ALL', q: '',
+    fmt: 'tab', company: false, intl: false,
+    modal: null, form: {}, formErr: '', busy: false
+  };
+
+  /* Owner mode decides the buttons; the policies in 012_team.sql decide
+     whether a write lands. The buttons are the courtesy, not the lock. */
+  var mine = function(){ return !!(A && A.isOwner()); };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; });
+  };
+  var COPY_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="9" y="9" width="12" height="12" rx="2"/>' +
+    '<path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
+
+  /* --------------------------------------------------------------- saying */
+
+  var toastT = null;
+  function say(msg, bad){
+    clearTimeout(toastT);
+    $('toastHost').innerHTML = '<div class="toast' + (bad ? ' bad' : '') + '">' +
+      '<span>' + esc(msg) + '</span></div>';
+    toastT = setTimeout(function(){ $('toastHost').innerHTML = ''; }, bad ? 4200 : 1900);
+  }
+
+  /* The clipboard API needs a secure context and a real gesture, and refuses
+     quietly when it has neither. The textarea is the way that still works,
+     and saying nothing at all would look like the copy had worked. */
+  function copy(text, label){
+    var done = function(){ say(label); };
+    var hard = function(){
+      var ta = document.createElement('textarea');
+      ta.value = text || ''; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch(e){}
+      document.body.removeChild(ta);
+      ok ? done() : say('This browser would not let the page copy. Select it by hand.', true);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(text || '').then(done, hard);
+    else hard();
+  }
+  var opts = function(){ return { format:S.fmt, company:S.company, intl:S.intl }; };
+
+  /* -------------------------------------------------------------- loading */
+
+  function load(){
+    if (!DB || !DB.configured()){
+      S.err = 'The directory lives on the server and this page cannot reach it.';
+      S.loaded = true; return paint();
+    }
+    return DB.teamLoad().then(function(r){
+      S.loaded = true;
+      S.err = r.error ? 'Could not read the directory. ' + r.error : '';
+      S.teams = r.teams || [];
+      if (S.active !== 'ALL' && !S.teams.some(function(t){ return t.id === S.active; }))
+        S.active = 'ALL';
+      paint();
+    });
+  }
+
+  /* --------------------------------------------------------------- drawing */
+
+  function paint(){
+    var c = T.counts(S.teams);
+    $('tally').textContent = S.loaded
+      ? c.people + ' members · ' + c.vehicles + ' vehicles · ' + c.teams + ' teams'
+      : 'loading…';
+    paintSide();
+    paintFormats();
+    paintPeople();
+    paintVehicles();
+    paintModal();
+    $('addPerson').hidden = !mine() || !S.teams.length;
+    $('addVehicle').hidden = !mine() || !S.teams.length;
+  }
+
+  function group(list, heading, klass){
+    if (!list.length) return '';
+    var out = '<div class="sideHead' + (klass || '') + '">' + heading + '</div>';
+    list.forEach(function(t){
+      var on = !S.q && t.id === S.active;
+      out += '<div class="navRow">' +
+        '<button class="nav' + (on ? ' on' : '') + '" data-team="' + esc(t.id) + '" type="button">' +
+          '<b>' + esc(t.team) + '</b><i>' + t.people.length + '</i></button>' +
+        (mine() && t.source === 'custom'
+          ? '<button class="navX" data-drop="' + esc(t.id) + '" type="button" title="Remove this team">' +
+            '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'
+          : '') +
+        '</div>';
+    });
+    return out;
+  }
+
+  function paintSide(){
+    var c = T.counts(S.teams);
+    var all = '<div class="navRow"><button class="nav' + (!S.q && S.active === 'ALL' ? ' on' : '') +
+      '" data-team="ALL" type="button"><b>All teams</b><i>' + c.people + '</i></button></div>';
+    var by = function(src){ return S.teams.filter(function(t){ return t.source === src; }); };
+    $('side').innerHTML = all +
+      group(by('sheet'), 'Sub teams') +
+      group(by('other'), 'Other teams') +
+      group(by('custom'), 'Added teams', ' new') +
+      (mine() ? '<div class="sideAct"><button class="btn" id="addTeam" type="button" ' +
+        'style="width:100%;justify-content:center">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>' +
+        'New team</button></div>' : '');
+  }
+
+  function paintFormats(){
+    $('fmtChips').innerHTML = T.FORMATS.map(function(f){
+      return '<button class="chip' + (f.id === S.fmt ? ' on' : '') + '" data-fmt="' + f.id +
+        '" type="button">' + esc(f.name) + '</button>';
+    }).join('');
+    $('fmtNote').textContent = T.formatById(S.fmt).note;
+    /* the company and the country code mean nothing to a bare list of numbers */
+    var plain = S.fmt === 'phone' || S.fmt === 'dash';
+    $('coChip').hidden = plain;
+    $('coChip').className = 'chip' + (S.company ? ' on' : '');
+    $('intlChip').className = 'chip' + (S.intl ? ' on' : '');
+  }
+
+  function shown(){ return T.view(S.teams, S.active, S.q); }
+
+  function paintPeople(){
+    var v = shown(), rows = v.people;
+    var team = S.teams.filter(function(t){ return t.id === S.active; })[0];
+    $('kick').textContent = v.scope === 'search' ? 'Search' : v.scope === 'team' ? 'Sub team' : 'Everyone';
+    $('title').textContent = v.scope === 'search' ? '“' + S.q.trim() + '”'
+      : team ? team.team + ' Team' : 'All team members';
+    $('copyAll').textContent = 'Copy all ' + rows.length;
+    $('copyAll').disabled = !rows.length;
+
+    /* the team column earns its place only when more than one team is on show */
+    var many = v.scope !== 'team';
+    $('people').innerHTML = rows.map(function(p, i){
+      var note = T.nicNote(p.nic);
+      var mob = T.phone(p.mobile, S.intl);
+      return '<tr data-p="' + esc(p.id) + '">' +
+        '<td class="num">' + (i + 1) + '</td>' +
+        '<td><button class="cell" data-copy="' + esc(p.name) + '" data-what="name" type="button">' +
+          '<span>' + esc(p.name) + '</span>' + COPY_ICON + '</button></td>' +
+        '<td><button class="cell n" data-copy="' + esc(mob) + '" data-what="mobile" type="button">' +
+          '<span>' + (mob ? esc(mob) : '—') + '</span>' + COPY_ICON + '</button></td>' +
+        '<td><button class="cell n" data-copy="' + esc(p.nic) + '" data-what="ID" type="button"' +
+          (note ? ' title="' + esc(note) + '"' : '') + '>' +
+          (note && p.nic ? '<i class="flag"></i>' : '') +
+          '<span>' + (p.nic ? esc(p.nic) : '—') + '</span>' + COPY_ICON + '</button></td>' +
+        '<td class="meta">' + esc(many ? p.team + (p.role ? ' · ' + p.role : '') : (p.role || '—')) + '</td>' +
+        '<td><div class="acts">' +
+          '<button class="mini" data-row="' + esc(p.id) + '" type="button">Copy</button>' +
+          (mine() ? '<button class="mini" data-edit="' + esc(p.id) + '" type="button">Edit</button>' +
+                    '<button class="mini bad" data-delp="' + esc(p.id) + '" type="button">×</button>' : '') +
+        '</div></td></tr>';
+    }).join('');
+
+    var empty = $('noPeople');
+    empty.hidden = !!rows.length;
+    if (!rows.length) empty.textContent = S.err ? S.err
+      : !S.loaded ? 'Reading the directory…'
+      : !S.teams.length ? 'The directory is empty. Nothing has been imported yet.'
+      : S.q ? 'Nobody matches that search.'
+      : 'Nobody is filed under this team yet.';
+
+    warnings();
+  }
+
+  /* What is worth knowing about the list as a whole, said once under it
+     rather than as a badge on every row. Only for whoever can fix it. */
+  function warnings(){
+    var box = $('warnBox');
+    if (!mine() || !S.teams.length){ box.hidden = true; return; }
+    var odd = [];
+    T.pools(S.teams).people.forEach(function(p){
+      if (p.nic && T.nicNote(p.nic)) odd.push(p);
+    });
+    var dup = T.duplicates(S.teams);
+    if (!odd.length && !dup.length){ box.hidden = true; return; }
+    /* one of these reads out loud most days, so it has to agree with itself:
+       "1 ID number do not look like an NIC" is how a machine talks */
+    var many = function(n, one, lots){ return '<b>' + n + '</b> ' + (n === 1 ? one : lots); };
+    var bits = [];
+    if (odd.length) bits.push(many(odd.length,
+        'ID number does not look like an NIC', 'ID numbers do not look like an NIC') + ' – ' +
+      odd.slice(0, 3).map(function(p){
+        return esc(p.name) + ' (' + esc(T.nicNote(p.nic).toLowerCase()) + ')'; }).join(', ') +
+      (odd.length > 3 ? ' and ' + (odd.length - 3) + ' more' : ''));
+    if (dup.length) bits.push(many(dup.length,
+        'ID number appears twice inside one team', 'ID numbers appear twice inside one team') + ' – ' +
+      dup.slice(0, 3).map(function(d){
+        return esc(d.name) + ' and ' + esc(d.first) + ' in ' + esc(d.team); }).join(', '));
+    box.innerHTML = bits.join('<br>') + '<br>Nothing is refused on account of this – the sheet is ' +
+      'the record. It is only worth knowing before somebody is turned away at a gate.';
+    box.hidden = false;
+  }
+
+  function paintVehicles(){
+    var v = shown(), rows = v.vehicles;
+    var team = S.teams.filter(function(t){ return t.id === S.active; })[0];
+    $('vehTitle').textContent = v.scope === 'search' ? 'Matching vehicles'
+      : team ? team.team + ' vehicles' : 'All vehicles';
+    $('copyVeh').textContent = 'Copy all ' + rows.length;
+    $('copyVeh').disabled = !rows.length;
+
+    $('vehicles').innerHTML = rows.map(function(x, i){
+      return '<tr>' +
+        '<td class="num">' + (i + 1) + '</td>' +
+        '<td><button class="cell n" data-copy="' + esc(x.reg) + '" data-what="vehicle" type="button">' +
+          '<span>' + esc(x.reg) + '</span>' + COPY_ICON + '</button></td>' +
+        '<td><button class="cell" data-copy="' + esc(x.kind) + '" data-what="type" type="button">' +
+          '<span>' + (x.kind ? esc(x.kind) : '—') + '</span>' + COPY_ICON + '</button></td>' +
+        '<td><button class="cell" data-copy="' + esc(x.driver) + '" data-what="driver" type="button">' +
+          '<span>' + (x.driver ? esc(x.driver) : '—') + '</span>' + COPY_ICON + '</button></td>' +
+        '<td class="meta">' + esc(x.team) + '</td>' +
+        '<td><div class="acts">' +
+          '<button class="mini" data-vrow="' + esc(x.id) + '" type="button">Copy</button>' +
+          (mine() ? '<button class="mini" data-vedit="' + esc(x.id) + '" type="button">Edit</button>' +
+                    '<button class="mini bad" data-delv="' + esc(x.id) + '" type="button">×</button>' : '') +
+        '</div></td></tr>';
+    }).join('');
+
+    var empty = $('noVeh');
+    empty.hidden = !!rows.length;
+    if (!rows.length) empty.textContent = S.q ? 'No vehicle matches that search.'
+      : 'No vehicle is recorded here.';
+  }
+
+  /* ---------------------------------------------------------- the modal */
+
+  function field(key, label, hint, attrs){
+    return '<label><span>' + esc(label) + '</span>' +
+      '<input type="text" data-f="' + key + '" value="' + esc(S.form[key] || '') + '"' +
+      (attrs || '') + '>' + (hint ? '<div class="hint">' + esc(hint) + '</div>' : '') + '</label>';
+  }
+  function teamPicker(){
+    return '<label><span>Team</span><select data-f="teamId">' + S.teams.map(function(t){
+      return '<option value="' + esc(t.id) + '"' + (t.id === S.form.teamId ? ' selected' : '') +
+        '>' + esc(t.team) + '</option>'; }).join('') + '</select></label>';
+  }
+
+  function paintModal(){
+    var host = $('modalHost');
+    if (!S.modal){ host.innerHTML = ''; return; }
+    var m = S.modal, body, title, cta;
+
+    if (m === 'team'){
+      title = S.form.id ? 'Rename team' : 'New team';
+      cta = S.form.id ? 'Save the name' : 'Create the team';
+      body = '<div class="fields">' + field('name', 'Team name', 'e.g. Kamal') + '</div>';
+    } else if (m === 'person'){
+      title = S.form.id ? 'Edit member' : 'Add member';
+      cta = S.form.id ? 'Save' : 'Add member';
+      body = '<div class="fields">' + teamPicker() +
+        field('name', 'Name', '', ' autocomplete="off"') +
+        '<div class="two">' + field('mobile', 'Mobile number', '', ' inputmode="tel"') +
+          field('nic', 'ID No', T.nicNote(S.form.nic) || 'Looks like an NIC.') + '</div>' +
+        '<div class="two">' + field('company', 'Company') + field('role', 'Role', 'TL, MEMBER, DRIVER…') +
+        '</div></div>';
+    } else {
+      title = S.form.id ? 'Edit vehicle' : 'Add vehicle';
+      cta = S.form.id ? 'Save' : 'Add vehicle';
+      body = '<div class="fields">' + teamPicker() +
+        field('reg', 'Vehicle No', 'e.g. LK-8679') +
+        '<div class="two">' + field('kind', 'Type', 'Crew Cab, Bolero, Van…') +
+          field('driver', 'Driver') + '</div></div>';
+    }
+
+    host.innerHTML = '<div class="veil" id="veil"><div class="modal" role="dialog" aria-modal="true">' +
+      '<div class="head"><h2>' + esc(title) + '</h2>' +
+        '<button class="mini" id="mClose" type="button">Close</button></div>' +
+      body +
+      '<p class="err">' + esc(S.formErr) + '</p>' +
+      '<div class="foot">' +
+        (S.form.id && m === 'team'
+          ? '<button class="btn bad spacer" id="mDrop" type="button">Delete team</button>' : '') +
+        '<button class="btn" id="mCancel" type="button">Cancel</button>' +
+        '<button class="btn go" id="mGo" type="button"' + (S.busy ? ' disabled' : '') + '>' +
+          esc(S.busy ? 'Saving…' : cta) + '</button>' +
+      '</div></div></div>';
+
+    var first = host.querySelector('input,select');
+    if (first) setTimeout(function(){ first.focus(); }, 40);
+  }
+
+  function open(mode, form){
+    var t = S.teams.filter(function(x){ return x.id === S.active; })[0] || S.teams[0];
+    S.modal = mode;
+    S.formErr = '';
+    S.form = form || { teamId: t ? t.id : '', company: 'Tooway Solutions (Pvt) Ltd' };
+    paint();
+  }
+  function shut(){ S.modal = null; S.form = {}; S.formErr = ''; paint(); }
+
+  function find(id){
+    var out = null;
+    T.pools(S.teams).people.forEach(function(p){ if (p.id === id) out = p; });
+    return out;
+  }
+  function findV(id){
+    var out = null;
+    T.pools(S.teams).vehicles.forEach(function(v){ if (v.id === id) out = v; });
+    return out;
+  }
+
+  /* ---------------------------------------------------------- the saving */
+
+  function work(fn, done){
+    S.busy = true; paint();
+    fn().then(function(){
+      S.busy = false;
+      return load().then(function(){ if (done) done(); });
+    }).catch(function(e){
+      S.busy = false; S.formErr = e.message; paint();
+      if (!S.modal) say(e.message, true);
+    });
+  }
+
+  function submit(){
+    var f = S.form, m = S.modal;
+    if (m === 'team'){
+      var err = f.id
+        ? (String(f.name || '').trim() ? '' : 'A team name, please.')
+        : T.checkTeam(f, S.teams);
+      if (err){ S.formErr = err; return paint(); }
+      var name = String(f.name).trim();
+      if (f.id) return work(function(){ return DB.teamRenameGroup(f.id, name); },
+        function(){ shut(); say('Renamed to ' + name); });
+      var id = T.slug(name, S.teams.map(function(t){ return t.id; }));
+      return work(function(){ return DB.teamAddGroup(id, name, S.teams.length); },
+        function(){ S.active = id; S.q = ''; $('q').value = ''; shut(); say('Team added – ' + name); });
+    }
+    if (m === 'person'){
+      var pe = T.checkPerson(f);
+      if (pe){ S.formErr = pe; return paint(); }
+      var team = S.teams.filter(function(t){ return t.id === f.teamId; })[0];
+      return work(function(){ return DB.teamSavePerson({
+        id: f.id, teamId: f.teamId, name: String(f.name).trim(),
+        mobile: String(f.mobile || '').trim(), nic: String(f.nic || '').trim(),
+        company: String(f.company || '').trim(), role: String(f.role || '').trim(),
+        sort: DB.teamNextSort(team && team.people) });
+      }, function(){ if (!f.id){ S.active = f.teamId; S.q = ''; $('q').value = ''; }
+        shut(); say((f.id ? 'Saved – ' : 'Added – ') + String(f.name).trim()); });
+    }
+    var ve = T.checkVehicle(f);
+    if (ve){ S.formErr = ve; return paint(); }
+    var vt = S.teams.filter(function(t){ return t.id === f.teamId; })[0];
+    return work(function(){ return DB.teamSaveVehicle({
+      id: f.id, teamId: f.teamId, reg: String(f.reg).trim(),
+      kind: String(f.kind || '').trim(), driver: String(f.driver || '').trim(),
+      sort: DB.teamNextSort(vt && vt.vehicles) });
+    }, function(){ if (!f.id){ S.active = f.teamId; S.q = ''; $('q').value = ''; }
+      shut(); say((f.id ? 'Saved – ' : 'Added – ') + String(f.reg).trim()); });
+  }
+
+  /* ----------------------------------------------------------- listening */
+
+  document.addEventListener('click', function(e){
+    var el = e.target.closest ? e.target.closest('[data-team],[data-drop],[data-fmt],[data-copy],' +
+      '[data-row],[data-vrow],[data-edit],[data-vedit],[data-delp],[data-delv],' +
+      '#addTeam,#addPerson,#addVehicle,#copyAll,#copyVeh,#coChip,#intlChip,' +
+      '#mClose,#mCancel,#mGo,#mDrop,#themeBtn') : null;
+    if (!el) return;
+    var d = el.dataset || {};
+
+    if (d.team){ S.active = d.team; S.q = ''; $('q').value = ''; return paint(); }
+    if (d.fmt){ S.fmt = d.fmt; return paint(); }
+    if (el.id === 'coChip'){ S.company = !S.company; return paint(); }
+    if (el.id === 'intlChip'){ S.intl = !S.intl; return paint(); }
+
+    if (d.copy != null){
+      var what = d.what || 'value';
+      if (!d.copy) return say('Nothing recorded for that ' + what + '.', true);
+      return copy(d.copy, 'Copied ' + what + ' – ' + d.copy);
+    }
+    if (d.row){ var p = find(d.row); return p && copy(T.rowText(p, opts()), 'Copied row – ' + p.name); }
+    if (d.vrow){ var v = findV(d.vrow); return v && copy(T.vehicleText(v, opts()), 'Copied row – ' + v.reg); }
+
+    if (el.id === 'copyAll'){
+      var rows = shown().people;
+      return copy(T.sheet(rows, T.rowText, opts()), 'Copied ' + rows.length + ' rows');
+    }
+    if (el.id === 'copyVeh'){
+      var vr = shown().vehicles;
+      return copy(T.sheet(vr, T.vehicleText, opts()), 'Copied ' + vr.length + ' vehicle rows');
+    }
+
+    if (el.id === 'addTeam')    return open('team', { name:'' });
+    if (el.id === 'addPerson')  return open('person');
+    if (el.id === 'addVehicle') return open('vehicle');
+
+    if (d.edit){
+      var ep = find(d.edit); if (!ep) return;
+      return open('person', { id:ep.id, teamId:ep.teamId, name:ep.name, mobile:ep.mobile,
+                              nic:ep.nic, company:ep.company, role:ep.role });
+    }
+    if (d.vedit){
+      var ev = findV(d.vedit); if (!ev) return;
+      return open('vehicle', { id:ev.id, teamId:ev.teamId, reg:ev.reg, kind:ev.kind, driver:ev.driver });
+    }
+    if (d.drop){
+      var dt = S.teams.filter(function(t){ return t.id === d.drop; })[0]; if (!dt) return;
+      return open('team', { id:dt.id, name:dt.team });
+    }
+
+    /* A person deleted is a person gone from every device at once, so it is
+       asked about by name rather than by a bare "are you sure". */
+    if (d.delp){
+      var dp = find(d.delp); if (!dp) return;
+      if (!confirm('Remove ' + dp.name + ' from ' + dp.team + '?\n\nThis takes them off everybody’s copy.')) return;
+      return work(function(){ return DB.teamDeletePerson(dp.id); },
+        function(){ say('Removed ' + dp.name); });
+    }
+    if (d.delv){
+      var dv = findV(d.delv); if (!dv) return;
+      if (!confirm('Remove vehicle ' + dv.reg + '?')) return;
+      return work(function(){ return DB.teamDeleteVehicle(dv.id); },
+        function(){ say('Removed ' + dv.reg); });
+    }
+
+    if (el.id === 'mClose' || el.id === 'mCancel') return shut();
+    if (el.id === 'mGo') return submit();
+    if (el.id === 'mDrop'){
+      var g = S.teams.filter(function(t){ return t.id === S.form.id; })[0]; if (!g) return;
+      if (!confirm('Delete the ' + g.team + ' team?\n\nIts ' + g.people.length + ' member' +
+        (g.people.length === 1 ? '' : 's') + ' and ' + g.vehicles.length + ' vehicle' +
+        (g.vehicles.length === 1 ? '' : 's') + ' go with it.')) return;
+      return work(function(){ return DB.teamDeleteGroup(g.id); },
+        function(){ S.active = 'ALL'; shut(); say('Removed the ' + g.team + ' team'); });
+    }
+    if (el.id === 'themeBtn') return flipTheme();
+  });
+
+  document.addEventListener('input', function(e){
+    var el = e.target;
+    if (el.id === 'q'){ S.q = el.value; return paintAfterQuery(); }
+    if (el.dataset && el.dataset.f){
+      S.form[el.dataset.f] = el.value;
+      S.formErr = '';
+      /* the NIC hint changes as it is typed, and repainting the whole modal
+         would take the caret with it - so only that one line is rewritten */
+      if (el.dataset.f === 'nic'){
+        var hint = el.parentNode.querySelector('.hint');
+        if (hint) hint.textContent = T.nicNote(el.value) || 'Looks like an NIC.';
+      }
+      var err = document.querySelector('.err');
+      if (err) err.textContent = '';
+    }
+  });
+  document.addEventListener('change', function(e){
+    if (e.target.dataset && e.target.dataset.f === 'teamId') S.form.teamId = e.target.value;
+  });
+
+  /* Repainting the tables on every keystroke is fine; repainting the search
+     box is not, so it is left alone and everything else is redrawn. */
+  function paintAfterQuery(){ paintSide(); paintPeople(); paintVehicles(); }
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && S.modal) return shut();
+    if (e.key === 'Enter' && S.modal && e.target.tagName !== 'TEXTAREA'){
+      e.preventDefault(); return submit();
+    }
+    /* the search is what this page is for; / puts the caret in it */
+    if (e.key === '/' && !S.modal && /^(BODY|DIV|BUTTON)$/.test(e.target.tagName)){
+      e.preventDefault(); $('q').focus(); $('q').select();
+    }
+  });
+
+  /* ------------------------------------------------------------- the theme */
+  var THEME = 'emortia_theme';
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    $('themeBtn').textContent = t === 'light' ? 'Dark' : 'Light';
+    var meta = document.querySelector('meta[name=theme-color]');
+    if (meta) meta.setAttribute('content', t === 'light' ? '#f8f9f3' : '#14170c');
+  }
+  function flipTheme(){
+    var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    try { localStorage.setItem(THEME, next); } catch(e){}
+    applyTheme(next);
+  }
+  var saved = 'dark';
+  try { saved = localStorage.getItem(THEME) || 'dark'; } catch(e){}
+  applyTheme(saved);
+
+  /* --------------------------------------------------------------- start */
+
+  paint();
+  load();
+  /* a member added on the phone shows up on the laptop without a reload */
+  if (DB && DB.teamSubscribe) DB.teamSubscribe(function(){ load(); });
+})();
+</script>
+</body>
+</html>

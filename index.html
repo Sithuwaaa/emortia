@@ -99,6 +99,7 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 .tool-lyric{--tc:#7c6bf0;--tcB:#9b8dff;--tcGrid:rgba(124,107,240,.10);--tcLine:#2a2444;--tcBg:#100d1c;--tcRGB:124,107,240;}
 .tool-esn{--tc:#d9663f;--tcB:#ef8a63;--tcGrid:rgba(217,102,63,.10);--tcLine:#40241a;--tcBg:#1a0f0a;--tcRGB:217,102,63;}
 .tool-gin{--tc:#2fa877;--tcB:#4cc294;--tcGrid:rgba(47,168,119,.10);--tcLine:#203029;--tcBg:#0e1712;--tcRGB:47,168,119;}
+.tool-team{--tc:#8fa83f;--tcB:#a9c257;--tcGrid:rgba(143,168,63,.10);--tcLine:#303620;--tcBg:#14170c;--tcRGB:143,168,63;}
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -2961,18 +2962,17 @@ class Component extends DCLogic {
      does in words, because "unlocked" on its own does not say to whom. */
   renderLockPanel(){
     const s = this.state;
-    const LOCKABLE = [
-      ['journal',             'Journal',          'The poems. Reading only – writing stays mine.'],
-      ['tool:lyric-video',    'Video & Artwork',  'The lyric video and the cover art tool.'],
-      ['tool:whattodo',       'What To Do',       'The job list. Whoever can open it can tick things off.'],
-      ['tool:project-update', 'Project Update',   'The rollout figures.']
-    ];
+    /* The list is Access.FEATURES so that this panel and the tool pages
+       cannot disagree about what exists - a switch here for something no page
+       reads, or a page reading a key with no switch, would both be silent. */
+    const LOCKABLE = (window.Access && Access.FEATURES) || [];
     const locks = s.locks || {};
     const busy = s.lockBusy || '';
 
-    const row = ([key, name, what]) => {
-      const on = !!(locks[key] && locks[key].unlocked);
+    const row = ({ key, name, what, def }) => {
+      const on = locks[key] ? !!locks[key].unlocked : def;
       const working = busy === key;
+      const moved = !!locks[key] && on !== def;
       return React.createElement('div',{key,
         style:{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',
           borderTop:'1px solid var(--line)'}},
@@ -2982,7 +2982,10 @@ class Component extends DCLogic {
           React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10.5px',
             letterSpacing:'.1em',textTransform:'uppercase',marginTop:'6px',
             color: on ? 'var(--ok)' : 'var(--mute)'}},
-            on ? 'open to everyone signed in' : 'mine only')),
+            (on ? 'open to everyone signed in' : 'mine only') +
+            /* saying it has been moved off its default is what stops a tool
+               quietly staying shut for a month after one afternoon's need */
+            (moved ? (on ? ' · opened by me' : ' · closed by me') : ''))),
         /* a real switch, not a checkbox - it says which way it is at a glance */
         React.createElement('button',{
           onClick: () => this.toggleLock(key, !on),
@@ -2999,17 +3002,31 @@ class Component extends DCLogic {
             background: on ? '#fff' : 'var(--dim)', transition:'left .18s ease'}})));
     };
 
+    const heading = (text, note) => React.createElement('div',{key:'h-'+text,
+        style:{marginTop:'18px'}},
+      React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10px',
+        letterSpacing:'.13em',textTransform:'uppercase',color:'var(--accent)'}}, text),
+      React.createElement('div',{style:{color:'var(--dim)',fontSize:'12.5px',marginTop:'3px'}}, note));
+
+    const mine  = LOCKABLE.filter(f => !f.def);
+    const teams = LOCKABLE.filter(f => f.def);
+
     return React.createElement('div',{key:'locks',
       style:{background:'var(--panelS)',border:'1px solid var(--line2)',borderRadius:'14px',
         padding:'18px 20px',gridColumn:'1 / -1'}},
       React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:700,
         fontSize:'17px',marginBottom:'6px'}}, 'What the team can reach'),
       React.createElement('p',{style:{color:'var(--dim)',fontSize:'13.5px',lineHeight:1.6,margin:'0 0 4px'}},
-        'These four are mine by default. Open one and anyone signed in can use it; ' +
-        'close it and it is mine again. The switch applies everywhere at once, not just on this device.'),
+        'Every switch applies everywhere at once, not just on this device. ' +
+        'Whichever way a tool is thrown, its own page checks again on the way in – ' +
+        'a card that is not drawn is a tidy list, not a lock.'),
       s.lockErr ? React.createElement('p',{style:{color:'var(--accent)',fontSize:'13px',margin:'8px 0 0'}},
         s.lockErr) : null,
-      LOCKABLE.map(row));
+      heading('Mine to start with', 'Shut until I open one. Nobody has ever had these.'),
+      mine.map(row),
+      heading('The team’s to start with',
+        'Open until I close one. These are what the team works with every day.'),
+      teams.map(row));
   }
 
   async toggleLock(key, want){
@@ -3017,7 +3034,11 @@ class Component extends DCLogic {
     try {
       await window.DB.setFeatureLock(key, want);
       const locks = await window.DB.featureLocks();
-      if (window.Access && Access.locks) Access.locks();   // the page's own copy follows
+      /* Access.locks() is memoised and would hand back the answer from before
+         the switch was thrown, so the new one is written straight into its
+         store instead. Without this a tool page opened from here in the next
+         breath would still be working off the old state. */
+      if (window.Access && Access.rememberLocks) Access.rememberLocks(locks);
       this.setState({ locks, lockBusy: '' });
     } catch(e){
       this.setState({ lockBusy: '', lockErr: e.message });
@@ -3320,8 +3341,14 @@ class Component extends DCLogic {
     /* The journal is the poems, and they are not published - so the tab is
        only there for the account that wrote them. Anyone typing #blog lands on
        the front page instead, because the tab being gone is not a lock. */
-    /* the owner sees everything; everyone else sees what has been opened */
-    const may = f => s.isOwner || !!(s.locks && s.locks[f] && s.locks[f].unlocked);
+    /* The owner sees everything. For everyone else the switch decides, and
+       what a switch means depends on where the thing started: the journal and
+       the music tools are mine and shut until opened, the working tools are
+       the team's and open until closed. Access.FEATURES holds which is which,
+       so this file and the tool pages cannot drift apart on it. */
+    const may = f => s.isOwner ||
+      (s.locks && s.locks[f] ? !!s.locks[f].unlocked
+        : !!(window.Access && Access.defaultOf && Access.defaultOf(f)));
 
     const navDefs = [['home','Home'],['music','Music']]
       .concat(may('journal') ? [['blog','Journal']] : [])
@@ -3335,28 +3362,31 @@ class Component extends DCLogic {
       isOwnerPage: s.page==='owner' && s.isOwner,
       ownerPanel: this.renderOwnerPage(),
       tools:[
-        {name:'Design Extractor', initial:'D', tag:'Dialog · MBB design sheet', href:'tools/design-extractor/',
+        {name:'Design Extractor', initial:'D', tag:'Dialog · MBB design sheet', href:'tools/design-extractor/', feature:'tool:design-extractor',
          desc:'Reads the 765-column design workbook and keeps what a bill of materials needs. One radio written under three technologies is one box on the pole, not three – and the table that decides which radio carries what is yours to correct.'},
-        {name:'BOM Builder', initial:'B', tag:'Dialog · lamp pole materials', href:'tools/bom/',
+        {name:'BOM Builder', initial:'B', tag:'Dialog · lamp pole materials', href:'tools/bom/', feature:'tool:bom',
          desc:'Turns a design into something you can order. The radios, antennas and BBU cards come straight across from the Design Extractor; everything else follows the site – its sectors, its RRUs, the height of the pole, the vendor, how it is fed. Every rule was read off a hand-built BOM and every one of them is yours to change.'},
-        {name:'Video & Artwork', initial:'V', tag:'Emortia · music', href:'tools/lyric-video/', owner:'tool:lyric-video',
+        {name:'Video & Artwork', initial:'V', tag:'Emortia · music', href:'tools/lyric-video/', feature:'tool:lyric-video',
          desc:'Makes the two things a song needs to go out. The lyric video: cover art swaying behind a dark gradient, the words lighting one at a time on the beat they are sung, rendered to MP4 rather than filmed off the screen. The artwork: the photograph at full strength with the title on solid ink beneath it, square for the stores and 16:9 for YouTube. Both take the same picture and the same title, so neither is asked for twice.'},
-        {name:'ESN Sharing', initial:'E', tag:'Dialog · ESN + serials', href:'tools/esn/',
+        {name:'ESN Sharing', initial:'E', tag:'Dialog · ESN + serials', href:'tools/esn/', feature:'tool:esn',
          desc:'The team files an ESN from the field: type a site ID and the name arrives on its own, paste the print screens straight out of the clipboard, list the card types and their serials. Tick Run O&M Script and the O&M IP slot opens. Everything lands in one place and comes out as Excel.'},
-        {name:'What To Do', initial:'W', tag:'Jobs · reminders', href:'tools/whattodo/', owner:'tool:whattodo',
+        {name:'What To Do', initial:'W', tag:'Jobs · reminders', href:'tools/whattodo/', feature:'tool:whattodo',
          desc:'The running list of what still needs doing, shared across every device. Add a job on one, tick it off on another, and it leaves both. Nudges every 15 minutes while the page is open.'},
-        {name:'Project Update', initial:'P', tag:'Dialog · lamp pole rollout', href:'tools/project-update/', owner:'tool:project-update',
+        {name:'Project Update', initial:'P', tag:'Dialog · lamp pole rollout', href:'tools/project-update/', feature:'tool:project-update',
          desc:'Live dashboard for the lamp-pole build – status, region, Tx plan, district and team breakdowns, with MOD-permission hubs flagged automatically from the Site Access list. Every sheet of the workbook is browsable and searchable.'},
-        {name:'Site Access Lookup', initial:'S', tag:'Dialog · site list', href:'tools/site-access/',
+        {name:'Site Access Lookup', initial:'S', tag:'Dialog · site list', href:'tools/site-access/', feature:'tool:site-access',
          desc:'Search 5,934 Dialog sites by ID, name or district and get depot, contact, tower and access-permission details instantly. Works offline.'},
-        {name:'Site Data Lookup', initial:'D', tag:'Dialog · technical', href:'tools/site-data/',
+        {name:'Site Data Lookup', initial:'D', tag:'Dialog · technical', href:'tools/site-data/', feature:'tool:site-data',
          desc:'Full technical profile for 13,000+ sites – TX technology, tower, power, generator, solar and equipment counts. Search and go.'},
-        {name:'GIN Extractor', initial:'G', tag:'Dialog Axiata · SAP', href:'tools/gin-extractor/',
+        {name:'GIN Extractor', initial:'G', tag:'Dialog Axiata · SAP', href:'tools/gin-extractor/', feature:'tool:gin-extractor',
          desc:'Drop SAP Goods Issue Note PDFs and pull every material line into one clean Excel sheet. Runs entirely on your device, works offline, nothing is uploaded.'},
-      /* the owner's own are not listed to anybody else; each of those pages
-         checks again on its way in, because a hidden card is not a lock */
-      ].filter(t=>!t.owner || may(t.owner))
-       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access')})),
+        {name:'Team Directory', initial:'T', tag:'Tooway · people + vehicles', href:'tools/team/', feature:'tool:team',
+         desc:'Ninety-seven people across sixteen teams – name, mobile, NIC and the vehicle they go out in. Click any value to copy it, or take a whole team as tab-separated rows for a spreadsheet, dashes for a message, or nothing but the numbers. Searching crosses every team, because the person you are looking for is usually filed under one you did not expect. The list is on the server and never in the repository.'},
+      /* Every card carries the key of its switch, and the switch decides
+         whether it is drawn. Each page checks again on its way in - a card
+         that is not drawn is not a lock, only a tidy list. */
+      ].filter(t=>!t.feature || may(t.feature))
+       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access')})),
       page:s.page,
 
       navItems: navDefs.map(([k,label])=>({ key:k, label, active:s.page===k, onClick:this.go(k) })),
@@ -3453,17 +3483,21 @@ class Component extends DCLogic {
           ].concat(s.isOwner ? [
             {label:'Read the journal', count:((s.poems||[]).length)+' poems \u2192', border:'#453518', bg:'rgba(223,174,99,0.07)', tone:'#dfae63', go:goPage('blog')},
           ] : []).concat([
-            {label:'Try the tools', count:'7 utilities \u2192', border:'#1c3a42', bg:'rgba(63,189,208,0.07)', tone:'#3fbdd0', go:goPage('tools')},
+            /* the same count as the tools tab actually shows this visitor,
+               rather than a seven that stopped being true three tools ago */
+            {label:'Try the tools', count:(((window.Access && Access.FEATURES) || [])
+                .filter(f => f.key.indexOf('tool:') === 0 && may(f.key)).length) + ' utilities \u2192',
+             border:'#1c3a42', bg:'rgba(63,189,208,0.07)', tone:'#3fbdd0', go:goPage('tools')},
           ]),
           hmMoods: this.moods.map(m=>{ const mt=this.tracks[m.track]; return { ...m,
             meta: mt?mt.t:'', go: ()=>{ this.loadTrack(m.track, true); this.setPage('music'); } }; }),
         };
       })(),
-      /* the number on the front page counts what this visitor can open */
-      /* counted from what this person can actually open, rather than a
-         hardcoded nine minus three - unlocking one has to move the number */
-      hmToolCount: 9 - ['tool:lyric-video','tool:whattodo','tool:project-update']
-        .filter(f => !may(f)).length,
+      /* The number on the front page counts what this visitor can open.
+         Counted off the same table the cards are filtered by, so adding a
+         tool or throwing a switch moves it without anyone remembering to. */
+      hmToolCount: ((window.Access && Access.FEATURES) || [])
+        .filter(f => f.key.indexOf('tool:') === 0 && may(f.key)).length,
       hmTools: [{name:'What To Do', dot:'#d4547a'},{name:'Project Update', dot:'#1f97a8'},{name:'Site Access Lookup', dot:'#2f8fd4'}],
       hmSongCount: this.tracks.length,
       hmCatSummary: (()=>{ const tot=this.tracks.reduce((a,b)=>a+(b.dur||0),0); const m=Math.round(tot/60);
