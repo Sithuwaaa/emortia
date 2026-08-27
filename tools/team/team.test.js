@@ -49,46 +49,32 @@ console.log('\nhow many of what');
      T.pools(TEAMS).people.map(p => p.team), ['Inhouse','Inhouse','Inhouse','Lucky','Manoj']);
 }
 
-console.log('\nthe number, and where it is going');
-{
-  is('at home it is left alone',       T.phone('0700000011'), '0700000011');
-  is('abroad the zero comes off',      T.phone('0700000011', true), '+94700000011');
-  /* keeping the 0 would give +940700000011, which dials nothing */
-  is('and is not merely prefixed',     T.phone('0700000011', true).indexOf('+940'), -1);
-  is('one already in full is left',    T.phone('+94700000011', true), '+94700000011');
-  is('nothing stays nothing',          T.phone('', true), '');
-  is('and so does no number at all',   T.phone(null, true), '');
-}
-
 console.log('\nwhat a copied row says');
 {
   const p = TEAMS[0].people[0];
-  is('tabs for a spreadsheet',
-     T.rowText(p, { format:'tab' }), 'Ayomi Ranasinghe\t0700000011\t700000011V');
-  is('the company too when asked',
-     T.rowText(p, { format:'tab', company:true }),
-     'Ayomi Ranasinghe\t0700000011\t700000011V\tTooway Solutions (Pvt) Ltd');
-  is('commas for a CSV',
-     T.rowText(p, { format:'comma' }), 'Ayomi Ranasinghe, 0700000011, 700000011V');
-  /* a tab pasted into WhatsApp collapses, so the message form uses dashes */
-  is('dashes for a message',
-     T.rowText(p, { format:'dash' }), 'Ayomi Ranasinghe – 0700000011 – 700000011V');
-  is('the number on its own',          T.rowText(p, { format:'phone' }), '0700000011');
-  is('and abroad, on its own',         T.rowText(p, { format:'phone', intl:true }), '+94700000011');
-  is('an unknown format falls to tabs',
-     T.rowText(p, { format:'nope' }).indexOf('\t') > -1, true);
-  /* a missing NIC must not leave a dangling separator on the end */
-  is('a gap does not leave a stray tab',
-     T.rowText({ name:'X', mobile:'077', nic:'' }, { format:'tab' }), 'X\t077');
+  is('the sheet\'s own columns, in its own order',
+     T.COLUMNS, ['Name','Mobile Number','ID No','Company Name','Role']);
+  is('a row is those five, tab separated',
+     T.rowText(p),
+     'Ayomi Ranasinghe\t0700000011\t700000011V\tTooway Solutions (Pvt) Ltd\tTL');
+  /* A gap must stay a gap. Dropping the empty NIC would slide the company
+     left into the ID column, and a paste back into the workbook would file
+     somebody's employer as their identity card. */
+  is('a missing value leaves its cell empty',
+     T.rowText({ name:'X', mobile:'077', nic:'', company:'Co', role:'' }), 'X\t077\t\tCo\t');
+  is('and every row has the same number of cells',
+     T.pools(TEAMS).people.every(x => T.rowText(x).split('\t').length === 5), true);
+  is('the heading line matches the columns',
+     T.headerText(), 'Name\tMobile Number\tID No\tCompany Name\tRole');
   is('a vehicle reads across the same way',
-     T.vehicleText(TEAMS[0].vehicles[0], { format:'comma' }), 'AA-1111, Crew Cab, Chandana');
-  is('an undriven one does not trail',
-     T.vehicleText(TEAMS[1].vehicles[0], { format:'comma' }), 'BB-2222, Crew Cab');
+     T.vehicleText(TEAMS[0].vehicles[0]), 'AA-1111\tCrew Cab\tChandana');
+  is('an undriven one still keeps its cell',
+     T.vehicleText(TEAMS[1].vehicles[0]), 'BB-2222\tCrew Cab\t');
   is('a whole list comes out one to a line',
-     T.sheet(TEAMS[0].people, T.rowText, { format:'phone' }).split('\n'),
-     ['0700000011','0700000012','0700000013']);
-  is('four ways out, each with a reason',
-     T.FORMATS.every(f => f.name && f.note && f.note.length > 12), true);
+     T.sheet(TEAMS[0].people, T.rowText).split('\n').map(l => l.split('\t')[0]),
+     ['Ayomi Ranasinghe','Buddhi Weeratunga','Chandana Ekanayake']);
+  is('the number is left exactly as filed', T.phone('0700000011'), '0700000011');
+  is('and nothing stays nothing',           T.phone(null), '');
 }
 
 console.log('\nfinding somebody');
@@ -180,6 +166,145 @@ console.log('\nwhat a form insists on');
   is('and must not already exist',
      T.checkTeam({ name:'lucky' }, TEAMS), 'There is already a team called lucky.');
   is('a new one is allowed',       T.checkTeam({ name:'Wasantha' }, TEAMS), '');
+}
+
+console.log('\nreading a workbook');
+{
+  /* One sheet per team, the tab named after the team - which is how the
+     office actually keeps it. Row 1 is the heading; column E carries the role
+     with no heading at all, exactly as on the real sheet. */
+  const H = ['Name','Mobile  Number','ID No','Company Name',''];
+  const BOOK = [
+    { name:'Inhouse', rows:[ H,
+      ['Ayomi Ranasinghe','0700000011','700000011V','Tooway Solutions (Pvt) Ltd','TL'],
+      ['Buddhi Weeratunga','0700000012','900000012V','Tooway Solutions (Pvt) Ltd','SE'] ]},
+    { name:'Lucky', rows:[ H,
+      ['Dilshan Wickrama','0700000024','200000000024','Tooway Solutions (Pvt) Ltd','MEMBER'] ]}
+  ];
+  const r = T.readWorkbook(BOOK);
+  is('a tab per team, named for the team',   r.teams.map(t => t.team), ['Inhouse','Lucky']);
+  is('and slugged the same way as the rest', r.teams.map(t => t.id), ['inhouse','lucky']);
+  is('everybody on their own tab',           r.teams.map(t => t.people.length), [2, 1]);
+  is('the columns land where they should',
+     r.teams[0].people[0],
+     { name:'Ayomi Ranasinghe', mobile:'0700000011', nic:'700000011V',
+       company:'Tooway Solutions (Pvt) Ltd', role:'TL' });
+  /* the double space in "Mobile  Number" is on the real sheet */
+  is('a heading with odd spacing still matches', r.teams[0].people[0].mobile, '0700000011');
+  /* sixteen team tabs share one layout, so this is said once and not
+     sixteen times */
+  is('the unlabelled column is read as the role, and said so once',
+     r.warnings.filter(w => /Column E/.test(w)).length, 1);
+
+  /* the headings are not always on row 1 */
+  const LATE = [{ name:'Amal', rows:[
+    ['All Team Details', '', ''], [], ['Name','Mobile Number','ID No'],
+    ['Chandana Ekanayake','0700000013','800000013V'] ]}];
+  is('a banner above the table does not fool it',
+     T.readWorkbook(LATE).teams[0].people.map(p => p.name), ['Chandana Ekanayake']);
+
+  /* a Team column, if the sheet happens to carry one, beats the tab name */
+  const MIXED = [{ name:'Sheet1', rows:[
+    ['Team','Name','Mobile Number'], ['Manoj','Someone','0700000099'] ]}];
+  is('a Team column wins over the tab name',
+     T.readWorkbook(MIXED).teams.map(t => t.team), ['Manoj']);
+
+  is('a sheet with no Name column is skipped and said so',
+     T.readWorkbook([{ name:'Notes', rows:[['just','some','text']] }]).warnings.length, 1);
+  is('and an empty workbook is simply empty',
+     T.readWorkbook([]).teams, []);
+  is('column letters read the way Excel writes them',
+     [0, 4, 25, 26].map(T.colName), ['A','E','Z','AA']);
+}
+
+console.log('\nwhat an upload would actually change');
+{
+  const sheetOf = people => [{ id:'inhouse', team:'Inhouse', people, vehicles:[] }];
+  const A = { name:'Ayomi Ranasinghe', mobile:'0700000011', nic:'700000011V',
+              company:'Tooway Solutions (Pvt) Ltd', role:'TL' };
+  const B = { name:'Buddhi Weeratunga', mobile:'0700000012', nic:'900000012V',
+              company:'Tooway Solutions (Pvt) Ltd', role:'SE' };
+  const HAVE = [{ id:'inhouse', team:'Inhouse',
+    people:[Object.assign({ id:'p1' }, A), Object.assign({ id:'p2' }, B)], vehicles:[] }];
+
+  /* the whole point: the same sheet a second time moves nothing */
+  const again = T.planImport(sheetOf([A, B]), HAVE);
+  is('the same sheet twice writes nothing', again.counts.writes, 0);
+  is('and says so plainly',  T.planSummary(again),
+     'Nothing has changed – all 2 rows already match.');
+
+  /* one number corrected: one row moves, the other does not */
+  const fixed = T.planImport(sheetOf([A, Object.assign({}, B, { mobile:'0700000099' })]), HAVE);
+  is('one corrected number is one write', fixed.counts, {
+    teams:0, add:0, update:1, same:1, addV:0, updateV:0, sameV:0, missing:0, writes:1 });
+  is('and it keeps the row it was',       fixed.update[0].id, 'p2');
+  is('and says what it is overwriting',
+     T.changesOn(fixed.update[0]), [{ field:'mobile', from:'0700000012', to:'0700000099' }]);
+
+  /* a person is recognised by NIC, so a name spelt differently on the second
+     sheet is an edit rather than a stranger */
+  const renamed = T.planImport(sheetOf([A, Object.assign({}, B, { name:'B. Weeratunga' })]), HAVE);
+  is('a respelt name is the same person', renamed.counts.add, 0);
+  is('and shows as a change of name',
+     T.changesOn(renamed.update[0]).map(c => c.field), ['name']);
+
+  const added = T.planImport(sheetOf([A, B, { name:'New Person', mobile:'0700000077',
+    nic:'770000077V', company:'Tooway Solutions (Pvt) Ltd', role:'MEMBER' }]), HAVE);
+  is('somebody new is one insert',        added.counts.add, 1);
+  is('a whole new team comes with them',
+     T.planImport([{ id:'kamal', team:'Kamal', people:[A], vehicles:[] }], HAVE).counts.teams, 1);
+
+  /* Nothing is ever deleted by an import. A sheet for one team must not be
+     able to empty the other fifteen, and even inside the team it covers, a
+     row it does not mention is reported rather than removed. */
+  const short = T.planImport(sheetOf([A]), HAVE);
+  is('a row the sheet omits is reported',  short.missing.map(m => m.name), ['Buddhi Weeratunga']);
+  is('and is not counted as a write',      short.counts.writes, 0);
+  const other = [{ id:'lucky', team:'Lucky', people:[Object.assign({ id:'p9' }, A)], vehicles:[] }];
+  is('a team the sheet never mentions is left entirely alone',
+     T.planImport(sheetOf([A, B]), HAVE.concat(other)).missing, []);
+
+  /* the same driver filed under two teams is two rows, not one */
+  is('identity is scoped to the team',
+     T.identity('inhouse', A) === T.identity('lucky', A), false);
+  /* and a fingerprint has to notice every field it covers */
+  is('a changed role is a changed row',
+     T.fingerprint(A) === T.fingerprint(Object.assign({}, A, { role:'PM' })), false);
+  is('a changed company too',
+     T.fingerprint(A) === T.fingerprint(Object.assign({}, A, { company:'Other' })), false);
+  is('but the id and sort order are not part of it',
+     T.fingerprint(A), T.fingerprint(Object.assign({ id:'zzz', sort:9 }, A)));
+
+  is('the summary reads as a sentence',
+     T.planSummary(added), '1 new member, and 2 already right.');
+
+  /* A team's id was minted at some point in the past and need not be what
+     slug() would produce today - the real directory carries "janaka-2-" where
+     this would now say "janaka-2". Matching on the id alone made that team,
+     and all three people in it, look brand new on every single upload. */
+  const OLD = [{ id:'janaka-2-', team:'Janaka (2)',
+                 people:[Object.assign({ id:'q1' }, A)], vehicles:[] }];
+  const bySlug = [{ id:T.slug('Janaka (2)', []), team:'Janaka (2)', people:[A], vehicles:[] }];
+  is('a team is matched by its name, not only its id',
+     T.planImport(bySlug, OLD).counts, { teams:0, add:0, update:0, same:1, addV:0,
+                                         updateV:0, sameV:0, missing:0, writes:0 });
+  is('and the id it already had is the one kept',
+     T.planImport([{ id:'janaka-2', team:'Janaka (2)',
+                     people:[A, { name:'Someone New', mobile:'0700000055', nic:'550000055V' }],
+                     vehicles:[] }], OLD).add[0].teamId, 'janaka-2-');
+
+  /* A workbook of people says nothing at all about vehicles. Reporting every
+     van in the directory as missing from a sheet that never had a vehicle
+     column is noise, and noise next to the word "missing" is worse than noise. */
+  const WITHVANS = [{ id:'inhouse', team:'Inhouse',
+    people:[Object.assign({ id:'p1' }, A)],
+    vehicles:[{ id:'v1', reg:'AA-1111', kind:'Crew Cab', driver:'' }] }];
+  is('a people-only sheet does not report the vans as missing',
+     T.planImport(sheetOf([A]), WITHVANS).missing, []);
+  is('but a sheet that does carry vehicles still reports one it drops',
+     T.planImport([{ id:'inhouse', team:'Inhouse', people:[A],
+                     vehicles:[{ reg:'ZZ-9999' }] }], WITHVANS)
+       .missing.map(m => m.name), ['AA-1111']);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');

@@ -18,6 +18,7 @@
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
 <script>Access.protect({ owner: true, feature: 'tool:team' });</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script src="team.js"></script>
 <style>
   /* Olive - the one band none of the other tools had taken. Only the accent
@@ -165,6 +166,10 @@
   .cell svg{flex:none;opacity:.22}
   .cell:hover svg{opacity:.6}
   .cell.n{font-family:'Space Mono',monospace;font-size:13px}
+  /* which tab somebody was on - not one of the sheet's columns, so it sits
+     under the name rather than taking a column of its own */
+  .inteam{display:block;font-style:normal;font-family:'Space Mono',monospace;font-size:10px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:2px}
   .acts{display:flex;align-items:center;gap:4px;padding:4px 8px 4px 0;white-space:nowrap}
   .mini{cursor:pointer;font-family:'Space Mono',monospace;font-weight:700;font-size:10px;
     letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:none;
@@ -195,7 +200,29 @@
   @media(max-width:520px){.two{grid-template-columns:1fr}}
   label span{display:block;font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.12em;
     text-transform:uppercase;color:var(--muted);margin-bottom:5px}
-  .hint{font-size:12px;color:var(--muted);margin-top:5px}
+  .hint{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.55}
+
+  /* ------------------------------------------------- what an upload does */
+  .ptallies{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:4px}
+  .ptally{flex:1;min-width:96px;border:1px solid var(--line3);border-radius:10px;
+    padding:9px 12px;background:var(--card-2)}
+  .ptally b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;
+    font-weight:800;line-height:1.1;color:var(--accent)}
+  .ptally span{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+  .ptally.quiet b{color:var(--muted)}
+  .plist{margin-top:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .plist.warn{border-left:3px solid var(--warn)}
+  .plisth{font-family:'Space Mono',monospace;font-size:9.5px;font-weight:700;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    padding:9px 12px;background:var(--card-2);border-bottom:1px solid var(--line)}
+  .prow{display:flex;gap:12px;align-items:baseline;padding:8px 12px;font-size:13px;
+    border-bottom:1px solid var(--line)}
+  .prow:last-child{border-bottom:0}
+  .prow b{flex:0 0 auto;max-width:44%;font-weight:600;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap}
+  .prow span{flex:1;min-width:0;color:var(--muted);font-size:12.5px}
+  .prow.quiet{color:var(--muted);display:block;line-height:1.55}
   .err{font-size:13px;color:var(--bad);min-height:1em}
   .foot{display:flex;justify-content:flex-end;gap:8px;padding-top:14px;margin-top:15px;
     border-top:1px solid var(--line)}
@@ -242,6 +269,9 @@
       </div>
       <input type="search" class="search" id="q" placeholder="Name, mobile, ID, vehicle…"
              autocomplete="off" spellcheck="false">
+      <button class="btn" id="importBtn" type="button" hidden>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 21h16"/></svg>
+        Excel</button>
       <button class="btn" id="addPerson" type="button" hidden>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Add member</button>
@@ -249,23 +279,17 @@
     </div>
 
     <div class="bar">
-      <span>Click any value to copy it</span>
-      <div class="chips" id="fmtChips"></div>
-    </div>
-    <div class="bar" style="border-top:0;padding-top:0;margin-top:6px">
-      <span id="fmtNote"></span>
-      <div class="chips">
-        <button class="chip" id="coChip" type="button">Company</button>
-        <button class="chip" id="intlChip" type="button">+94</button>
-      </div>
+      <span>Click any value to copy it · a row copies as the sheet's own five columns</span>
     </div>
 
+    <!-- the sheet's own columns, in the sheet's own order, so a row copied out
+         and pasted back lands where it came from -->
     <div class="scroll">
       <table>
         <thead><tr>
-          <th class="num">#</th><th>Name</th><th style="width:150px">Mobile</th>
-          <th style="width:165px">ID No</th><th style="width:150px">Team / role</th>
-          <th style="width:120px">Row</th>
+          <th class="num">#</th><th>Name</th><th style="width:140px">Mobile Number</th>
+          <th style="width:150px">ID No</th><th style="width:200px">Company Name</th>
+          <th style="width:130px">Role</th><th style="width:120px">Row</th>
         </tr></thead>
         <tbody id="people"></tbody>
       </table>
@@ -299,6 +323,7 @@
   </main>
 </div>
 
+<input type="file" id="file" accept=".xlsx,.xls,.xlsm" hidden>
 <div id="modalHost"></div>
 <div id="toastHost"></div>
 
@@ -310,8 +335,8 @@
   var S = {
     teams: [], loaded: false, err: '',
     active: 'ALL', q: '',
-    fmt: 'tab', company: false, intl: false,
-    modal: null, form: {}, formErr: '', busy: false
+    modal: null, form: {}, formErr: '', busy: false,
+    importing: null, pending: null
   };
 
   /* Owner mode decides the buttons; the policies in 012_team.sql decide
@@ -356,7 +381,6 @@
       navigator.clipboard.writeText(text || '').then(done, hard);
     else hard();
   }
-  var opts = function(){ return { format:S.fmt, company:S.company, intl:S.intl }; };
 
   /* -------------------------------------------------------------- loading */
 
@@ -385,10 +409,10 @@
         c.teams + '</b> teams'
       : 'loading…';
     paintSide();
-    paintFormats();
     paintPeople();
     paintVehicles();
     paintModal();
+    $('importBtn').hidden = !mine();
     $('addPerson').hidden = !mine() || !S.teams.length;
     $('addVehicle').hidden = !mine() || !S.teams.length;
   }
@@ -427,19 +451,6 @@
         'New team</button></div>' : '');
   }
 
-  function paintFormats(){
-    $('fmtChips').innerHTML = T.FORMATS.map(function(f){
-      return '<button class="chip' + (f.id === S.fmt ? ' on' : '') + '" data-fmt="' + f.id +
-        '" type="button">' + esc(f.name) + '</button>';
-    }).join('');
-    $('fmtNote').textContent = T.formatById(S.fmt).note;
-    /* the company and the country code mean nothing to a bare list of numbers */
-    var plain = S.fmt === 'phone' || S.fmt === 'dash';
-    $('coChip').hidden = plain;
-    $('coChip').className = 'chip' + (S.company ? ' on' : '');
-    $('intlChip').className = 'chip' + (S.intl ? ' on' : '');
-  }
-
   function shown(){ return T.view(S.teams, S.active, S.q); }
 
   function paintPeople(){
@@ -451,22 +462,30 @@
     $('copyAll').textContent = 'Copy all ' + rows.length;
     $('copyAll').disabled = !rows.length;
 
-    /* the team column earns its place only when more than one team is on show */
+    /* The five columns are the sheet's own, always, so a row copied out and
+       pasted back lands where it came from. Which team somebody is in is not
+       one of the sheet's columns - it is which tab they were on - so it goes
+       under the name, and only when more than one team is on show. */
     var many = v.scope !== 'team';
     $('people').innerHTML = rows.map(function(p, i){
       var note = T.nicNote(p.nic);
-      var mob = T.phone(p.mobile, S.intl);
+      var mob = T.phone(p.mobile);
       return '<tr data-p="' + esc(p.id) + '">' +
         '<td class="num">' + (i + 1) + '</td>' +
         '<td><button class="cell" data-copy="' + esc(p.name) + '" data-what="name" type="button">' +
-          '<span>' + esc(p.name) + '</span>' + COPY_ICON + '</button></td>' +
+          '<span>' + esc(p.name) +
+          (many ? '<em class="inteam">' + esc(p.team) + '</em>' : '') +
+          '</span>' + COPY_ICON + '</button></td>' +
         '<td><button class="cell n" data-copy="' + esc(mob) + '" data-what="mobile" type="button">' +
           '<span>' + (mob ? esc(mob) : '—') + '</span>' + COPY_ICON + '</button></td>' +
         '<td><button class="cell n" data-copy="' + esc(p.nic) + '" data-what="ID" type="button"' +
           (note ? ' title="' + esc(note) + '"' : '') + '>' +
           (note && p.nic ? '<i class="flag"></i>' : '') +
           '<span>' + (p.nic ? esc(p.nic) : '—') + '</span>' + COPY_ICON + '</button></td>' +
-        '<td class="meta">' + esc(many ? p.team + (p.role ? ' · ' + p.role : '') : (p.role || '—')) + '</td>' +
+        '<td><button class="cell" data-copy="' + esc(p.company) + '" data-what="company" type="button">' +
+          '<span>' + (p.company ? esc(p.company) : '—') + '</span>' + COPY_ICON + '</button></td>' +
+        '<td><button class="cell" data-copy="' + esc(p.role) + '" data-what="role" type="button">' +
+          '<span>' + (p.role ? esc(p.role) : '—') + '</span>' + COPY_ICON + '</button></td>' +
         '<td><div class="acts">' +
           '<button class="mini" data-row="' + esc(p.id) + '" type="button">Copy</button>' +
           (mine() ? '<button class="mini" data-edit="' + esc(p.id) + '" type="button">Edit</button>' +
@@ -545,6 +564,146 @@
       : 'No vehicle is recorded here.';
   }
 
+  /* ================================================================
+     Uploading a workbook
+     ================================================================
+
+     One sheet per team, the tab named after the team. Nothing is written
+     until the plan has been read: the point of this is that uploading the
+     same sheet twice is a no-op, and the only way to be sure of that is to
+     be shown what would move before it moves. */
+
+  function pickFile(){
+    if (typeof XLSX === 'undefined')
+      return say('The spreadsheet reader has not finished loading. A moment.', true);
+    $('file').value = '';
+    $('file').click();
+  }
+
+  function readFile(f){
+    if (!f) return;
+    S.importing = { name: f.name, reading: true };
+    paint();
+    var fr = new FileReader();
+    fr.onerror = function(){
+      S.importing = null; paint();
+      say('That file could not be read.', true);
+    };
+    fr.onload = function(){
+      var read;
+      try {
+        var wb = XLSX.read(new Uint8Array(fr.result), { type: 'array' });
+        /* raw:false so a mobile number stored as a number arrives as the text
+           it looks like on screen, rather than as 704465515 with the leading
+           zero quietly gone */
+        read = T.readWorkbook(wb.SheetNames.map(function(n){
+          return { name: n,
+                   rows: XLSX.utils.sheet_to_json(wb.Sheets[n],
+                           { header: 1, raw: false, defval: '' }) };
+        }));
+      } catch (e){
+        S.importing = null; paint();
+        return say('That does not look like a workbook this can read.', true);
+      }
+      if (!read.teams.length){
+        S.importing = null; paint();
+        return say('No sheet in that file had a Name column.', true);
+      }
+      S.importing = { name: f.name, plan: T.planImport(read.teams, S.teams),
+                      warnings: read.warnings, teams: read.teams };
+      S.modal = 'import';
+      paint();
+    };
+    fr.readAsArrayBuffer(f);
+  }
+
+  function applyImport(){
+    var imp = S.importing;
+    if (!imp || !imp.plan) return;
+    if (!imp.plan.counts.writes){ shut(); return say('Nothing to bring in.'); }
+    work(function(){ return DB.teamApplyImport(imp.plan); }, function(){
+      var c = imp.plan.counts;
+      S.importing = null;
+      shut();
+      say('Brought in ' + c.writes + ' row' + (c.writes === 1 ? '' : 's') +
+          (c.same + c.sameV ? ' – ' + (c.same + c.sameV) + ' were already right' : ''));
+    });
+  }
+
+  /* ================================================================
+     The password in front of deleting
+     ================================================================
+
+     Not a lock against other people - nobody else can write to the directory
+     at all. This is against my own hand: a row removed by a mis-click is gone
+     from every device at once and there is nothing behind it.
+
+     Typing it once opens deletion for five minutes, because being asked
+     nine times while tidying one team teaches you to type it without
+     reading, which is the opposite of the point. */
+  var UNLOCK_MS = 5 * 60 * 1000;
+  var gateUntil = 0, gateRec = null, gateAsked = null;
+
+  function gate(){
+    if (gateAsked) return gateAsked;
+    gateAsked = (DB && DB.gateGet ? DB.gateGet('team-delete') : Promise.resolve(null))
+      .then(function(r){ gateRec = r; return r; })
+      .catch(function(){ return null; });
+    return gateAsked;
+  }
+  var gateOpen = function(){ return Date.now() < gateUntil; };
+
+  /* what to do when something is about to be deleted */
+  function askDelete(what, run){
+    if (gateOpen()) return confirmDelete(what, run);
+    gate().then(function(rec){
+      if (!rec) { S.modal = 'setgate'; S.form = {}; S.formErr = '';
+                  S.pending = { what: what, run: run }; return paint(); }
+      S.modal = 'gate'; S.form = {}; S.formErr = '';
+      S.pending = { what: what, run: run };
+      paint();
+    });
+  }
+  function confirmDelete(what, run){
+    if (!confirm('Remove ' + what + '?\n\nThis takes it off everybody’s copy.')) return;
+    run();
+  }
+
+  async function tryGate(){
+    var pw = String(S.form.pw || '');
+    if (!pw){ S.formErr = 'The password, please.'; return paint(); }
+    S.busy = true; paint();
+    try {
+      var got = await A.derive(pw, gateRec.salt, gateRec.iter);
+      S.busy = false;
+      if (!A.sameSecret(got, gateRec.hash)){
+        S.formErr = 'That is not it.'; S.form.pw = ''; return paint();
+      }
+      gateUntil = Date.now() + UNLOCK_MS;
+      var p = S.pending; shut();
+      if (p) confirmDelete(p.what, p.run);
+    } catch (e){ S.busy = false; S.formErr = e.message; paint(); }
+  }
+
+  async function setGate(){
+    var a = String(S.form.pw || ''), b = String(S.form.pw2 || '');
+    if (a.length < 6){ S.formErr = 'Six characters at least.'; return paint(); }
+    if (a !== b){ S.formErr = 'The two do not match.'; return paint(); }
+    S.busy = true; paint();
+    try {
+      var salt = A.randomSalt(), iter = 210000;
+      var hash = await A.derive(a, salt, iter);
+      await DB.gateSet('team-delete', { salt: salt, hash: hash, iter: iter });
+      gateRec = { salt: salt, hash: hash, iter: iter };
+      gateAsked = Promise.resolve(gateRec);
+      gateUntil = Date.now() + UNLOCK_MS;
+      S.busy = false;
+      var p = S.pending; shut();
+      say('Delete password set.');
+      if (p) confirmDelete(p.what, p.run);
+    } catch (e){ S.busy = false; S.formErr = e.message; paint(); }
+  }
+
   /* ---------------------------------------------------------- the modal */
 
   function field(key, label, hint, attrs){
@@ -556,6 +715,65 @@
     return '<label><span>Team</span><select data-f="teamId">' + S.teams.map(function(t){
       return '<option value="' + esc(t.id) + '"' + (t.id === S.form.teamId ? ' selected' : '') +
         '>' + esc(t.team) + '</option>'; }).join('') + '</select></label>';
+  }
+
+  /* What the upload would do, before it does any of it. The unchanged count
+     is the important number: it is what says the sheet was read properly and
+     that nothing is being rewritten for the sake of it. */
+  function importBody(){
+    var imp = S.importing, p = imp.plan, c = p.counts;
+    var line = function(n, label, cls){
+      return '<div class="ptally' + (cls ? ' ' + cls : '') + '"><b>' + n + '</b>' +
+             '<span>' + esc(label) + '</span></div>';
+    };
+    var out = '<p class="hint" style="margin:0 0 12px">' + esc(imp.name) + ' – ' +
+      esc(T.planSummary(p)) + '</p>' +
+      '<div class="ptallies">' +
+        line(c.add + c.addV, 'to add') +
+        line(c.update + c.updateV, 'to change') +
+        line(c.same + c.sameV, 'already right', 'quiet') +
+        (c.teams ? line(c.teams, 'new team' + (c.teams === 1 ? '' : 's')) : '') +
+      '</div>';
+
+    if (c.update){
+      out += '<div class="plist"><div class="plisth">What changes</div>' +
+        p.update.slice(0, 12).map(function(u){
+          var ch = T.changesOn(u);
+          return '<div class="prow"><b>' + esc(u.name) + '</b><span>' +
+            ch.map(function(x){ return esc(x.field) + ': ' +
+              (x.from ? esc(x.from) : '—') + ' → ' + (x.to ? esc(x.to) : '—'); }).join(' · ') +
+            '</span></div>';
+        }).join('') +
+        (c.update > 12 ? '<div class="prow quiet">and ' + (c.update - 12) + ' more</div>' : '') +
+        '</div>';
+    }
+    if (c.add){
+      out += '<div class="plist"><div class="plisth">Who is new</div>' +
+        p.add.slice(0, 12).map(function(a){
+          return '<div class="prow"><b>' + esc(a.name) + '</b><span>' +
+            esc(a.teamName) + '</span></div>'; }).join('') +
+        (c.add > 12 ? '<div class="prow quiet">and ' + (c.add - 12) + ' more</div>' : '') +
+        '</div>';
+    }
+    /* An upload never removes anybody. A sheet for one team would otherwise
+       be able to empty the other fifteen, and even within a team a name left
+       off by accident should not be a deletion. */
+    if (c.missing){
+      out += '<div class="plist warn"><div class="plisth">In the directory, not in this file</div>' +
+        '<div class="prow quiet">Left exactly as they are. Nothing here is deleted by an ' +
+        'upload – remove them by hand if they have really gone.</div>' +
+        p.missing.slice(0, 8).map(function(m){
+          return '<div class="prow"><b>' + esc(m.name) + '</b><span>' +
+            esc(m.team) + ' · ' + esc(m.kind) + '</span></div>'; }).join('') +
+        (c.missing > 8 ? '<div class="prow quiet">and ' + (c.missing - 8) + ' more</div>' : '') +
+        '</div>';
+    }
+    if ((imp.warnings || []).length){
+      out += '<div class="plist warn"><div class="plisth">Worth knowing</div>' +
+        imp.warnings.map(function(w){
+          return '<div class="prow quiet">' + esc(w) + '</div>'; }).join('') + '</div>';
+    }
+    return out;
   }
 
   function paintModal(){
@@ -576,16 +794,43 @@
           field('nic', 'ID No', T.nicNote(S.form.nic) || 'Looks like an NIC.') + '</div>' +
         '<div class="two">' + field('company', 'Company') + field('role', 'Role', 'TL, MEMBER, DRIVER…') +
         '</div></div>';
-    } else {
+    } else if (m === 'vehicle'){
       title = S.form.id ? 'Edit vehicle' : 'Add vehicle';
       cta = S.form.id ? 'Save' : 'Add vehicle';
       body = '<div class="fields">' + teamPicker() +
         field('reg', 'Vehicle No', 'e.g. LK-8679') +
         '<div class="two">' + field('kind', 'Type', 'Crew Cab, Bolero, Van…') +
           field('driver', 'Driver') + '</div></div>';
+    } else if (m === 'import'){
+      title = 'From the workbook';
+      cta = S.importing && S.importing.plan.counts.writes ? 'Bring it in' : 'Nothing to do';
+      body = importBody();
+    } else if (m === 'gate'){
+      title = 'Password to delete';
+      cta = 'Unlock';
+      body = '<div class="fields"><p class="hint" style="margin:0">' +
+        'Deleting takes a row off every device at once and there is nothing behind it, ' +
+        'so it is asked for once and then open for five minutes.</p>' +
+        '<label><span>Delete password</span>' +
+        '<input type="password" data-f="pw" autocomplete="current-password" value=""></label></div>';
+    } else if (m === 'setgate'){
+      title = 'Set a delete password';
+      cta = 'Set it';
+      body = '<div class="fields"><p class="hint" style="margin:0">' +
+        'Nothing has been deleted yet because no password is set. This is not a lock ' +
+        'against anybody else – nobody else can change the directory at all. It is so a ' +
+        'mis-click cannot empty a team.</p>' +
+        '<label><span>Delete password</span>' +
+        '<input type="password" data-f="pw" autocomplete="new-password" value=""></label>' +
+        '<label><span>And again</span>' +
+        '<input type="password" data-f="pw2" autocomplete="new-password" value=""></label></div>';
+    } else {
+      title = ''; cta = ''; body = '';
     }
 
-    host.innerHTML = '<div class="veil" id="veil"><div class="modal" role="dialog" aria-modal="true">' +
+    var wide = m === 'import' ? ' style="width:min(720px,100%)"' : '';
+    host.innerHTML = '<div class="veil" id="veil"><div class="modal" role="dialog" aria-modal="true"' +
+      wide + '>' +
       '<div class="head"><h2>' + esc(title) + '</h2>' +
         '<button class="mini" id="mClose" type="button">Close</button></div>' +
       body +
@@ -594,8 +839,9 @@
         (S.form.id && m === 'team'
           ? '<button class="btn bad spacer" id="mDrop" type="button">Delete team</button>' : '') +
         '<button class="btn" id="mCancel" type="button">Cancel</button>' +
-        '<button class="btn go" id="mGo" type="button"' + (S.busy ? ' disabled' : '') + '>' +
-          esc(S.busy ? 'Saving…' : cta) + '</button>' +
+        '<button class="btn go" id="mGo" type="button"' +
+          (S.busy || (m === 'import' && !S.importing.plan.counts.writes) ? ' disabled' : '') + '>' +
+          esc(S.busy ? 'Working…' : cta) + '</button>' +
       '</div></div></div>';
 
     var first = host.querySelector('input,select');
@@ -675,38 +921,40 @@
   /* ----------------------------------------------------------- listening */
 
   document.addEventListener('click', function(e){
-    var el = e.target.closest ? e.target.closest('[data-team],[data-drop],[data-fmt],[data-copy],' +
+    var el = e.target.closest ? e.target.closest('[data-team],[data-drop],[data-copy],' +
       '[data-row],[data-vrow],[data-edit],[data-vedit],[data-delp],[data-delv],' +
-      '#addTeam,#addPerson,#addVehicle,#copyAll,#copyVeh,#coChip,#intlChip,' +
+      '#addTeam,#addPerson,#addVehicle,#importBtn,#copyAll,#copyVeh,' +
       '#mClose,#mCancel,#mGo,#mDrop,#themeBtn') : null;
     if (!el) return;
     var d = el.dataset || {};
 
     if (d.team){ S.active = d.team; S.q = ''; $('q').value = ''; return paint(); }
-    if (d.fmt){ S.fmt = d.fmt; return paint(); }
-    if (el.id === 'coChip'){ S.company = !S.company; return paint(); }
-    if (el.id === 'intlChip'){ S.intl = !S.intl; return paint(); }
 
     if (d.copy != null){
       var what = d.what || 'value';
       if (!d.copy) return say('Nothing recorded for that ' + what + '.', true);
       return copy(d.copy, 'Copied ' + what + ' – ' + d.copy);
     }
-    if (d.row){ var p = find(d.row); return p && copy(T.rowText(p, opts()), 'Copied row – ' + p.name); }
-    if (d.vrow){ var v = findV(d.vrow); return v && copy(T.vehicleText(v, opts()), 'Copied row – ' + v.reg); }
+    if (d.row){ var p = find(d.row); return p && copy(T.rowText(p), 'Copied row – ' + p.name); }
+    if (d.vrow){ var v = findV(d.vrow); return v && copy(T.vehicleText(v), 'Copied row – ' + v.reg); }
 
     if (el.id === 'copyAll'){
       var rows = shown().people;
-      return copy(T.sheet(rows, T.rowText, opts()), 'Copied ' + rows.length + ' rows');
+      /* the whole table copies with its heading line, so it lands in a fresh
+         sheet looking like the workbook it came from; a single row copies
+         bare, because that one is going into a sheet that already has them */
+      return copy(T.headerText() + '\n' + T.sheet(rows, T.rowText),
+                  'Copied ' + rows.length + ' rows with headings');
     }
     if (el.id === 'copyVeh'){
       var vr = shown().vehicles;
-      return copy(T.sheet(vr, T.vehicleText, opts()), 'Copied ' + vr.length + ' vehicle rows');
+      return copy(T.sheet(vr, T.vehicleText), 'Copied ' + vr.length + ' vehicle rows');
     }
 
     if (el.id === 'addTeam')    return open('team', { name:'' });
     if (el.id === 'addPerson')  return open('person');
     if (el.id === 'addVehicle') return open('vehicle');
+    if (el.id === 'importBtn')  return pickFile();
 
     if (d.edit){
       var ep = find(d.edit); if (!ep) return;
@@ -722,30 +970,43 @@
       return open('team', { id:dt.id, name:dt.team });
     }
 
-    /* A person deleted is a person gone from every device at once, so it is
-       asked about by name rather than by a bare "are you sure". */
+    /* Every removal goes through the password first, then a confirm naming
+       what is going. Nothing deletes on a single click. */
     if (d.delp){
       var dp = find(d.delp); if (!dp) return;
-      if (!confirm('Remove ' + dp.name + ' from ' + dp.team + '?\n\nThis takes them off everybody’s copy.')) return;
-      return work(function(){ return DB.teamDeletePerson(dp.id); },
-        function(){ say('Removed ' + dp.name); });
+      return askDelete(dp.name + ' from ' + dp.team, function(){
+        work(function(){ return DB.teamDeletePerson(dp.id); },
+             function(){ say('Removed ' + dp.name); });
+      });
     }
     if (d.delv){
       var dv = findV(d.delv); if (!dv) return;
-      if (!confirm('Remove vehicle ' + dv.reg + '?')) return;
-      return work(function(){ return DB.teamDeleteVehicle(dv.id); },
-        function(){ say('Removed ' + dv.reg); });
+      return askDelete('vehicle ' + dv.reg, function(){
+        work(function(){ return DB.teamDeleteVehicle(dv.id); },
+             function(){ say('Removed ' + dv.reg); });
+      });
     }
 
-    if (el.id === 'mClose' || el.id === 'mCancel') return shut();
-    if (el.id === 'mGo') return submit();
+    if (el.id === 'mClose' || el.id === 'mCancel'){
+      if (S.modal === 'import') S.importing = null;
+      S.pending = null;
+      return shut();
+    }
+    if (el.id === 'mGo'){
+      if (S.modal === 'import')  return applyImport();
+      if (S.modal === 'gate')    return tryGate();
+      if (S.modal === 'setgate') return setGate();
+      return submit();
+    }
     if (el.id === 'mDrop'){
       var g = S.teams.filter(function(t){ return t.id === S.form.id; })[0]; if (!g) return;
-      if (!confirm('Delete the ' + g.team + ' team?\n\nIts ' + g.people.length + ' member' +
+      var what = 'the ' + g.team + ' team, with its ' + g.people.length + ' member' +
         (g.people.length === 1 ? '' : 's') + ' and ' + g.vehicles.length + ' vehicle' +
-        (g.vehicles.length === 1 ? '' : 's') + ' go with it.')) return;
-      return work(function(){ return DB.teamDeleteGroup(g.id); },
-        function(){ S.active = 'ALL'; shut(); say('Removed the ' + g.team + ' team'); });
+        (g.vehicles.length === 1 ? '' : 's');
+      return askDelete(what, function(){
+        work(function(){ return DB.teamDeleteGroup(g.id); },
+             function(){ S.active = 'ALL'; shut(); say('Removed the ' + g.team + ' team'); });
+      });
     }
     if (el.id === 'themeBtn') return flipTheme();
   });
@@ -767,6 +1028,7 @@
     }
   });
   document.addEventListener('change', function(e){
+    if (e.target.id === 'file') return readFile(e.target.files && e.target.files[0]);
     if (e.target.dataset && e.target.dataset.f === 'teamId') S.form.teamId = e.target.value;
   });
 
@@ -775,9 +1037,16 @@
   function paintAfterQuery(){ paintSide(); paintPeople(); paintVehicles(); }
 
   document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape' && S.modal) return shut();
+    if (e.key === 'Escape' && S.modal){
+      if (S.modal === 'import') S.importing = null;
+      S.pending = null; return shut();
+    }
     if (e.key === 'Enter' && S.modal && e.target.tagName !== 'TEXTAREA'){
-      e.preventDefault(); return submit();
+      e.preventDefault();
+      if (S.modal === 'import')  return applyImport();
+      if (S.modal === 'gate')    return tryGate();
+      if (S.modal === 'setgate') return setGate();
+      return submit();
     }
     /* the search is what this page is for; / puts the caret in it */
     if (e.key === '/' && !S.modal && /^(BODY|DIV|BUTTON)$/.test(e.target.tagName)){

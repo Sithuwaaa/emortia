@@ -774,6 +774,9 @@
     FEATURES: FEATURES, defaultOf: defaultOf, rememberLocks: remember,
     canSignUp: remote, applyOwner: applyOwner, chip: showChip,
     makeUserLine: makeUserLine, CSS: CSS, gateMarkup: gateMarkup, wire: wire,
+    /* the PBKDF2 pair, so a tool can put a password in front of something
+       destructive without inventing its own crypto */
+    derive: derive, randomSalt: randomSalt, sameSecret: same,
     days: DAYS, userCount: USERS.length
   };
 

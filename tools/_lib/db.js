@@ -776,6 +776,74 @@
     if (error) teamErr(error);
   }
 
+  /* An upload writes only what the plan says moved. Inserts go in one call
+     each for people and vehicles; updates go one at a time because each
+     targets its own row. Nothing here deletes - the plan never asks it to. */
+  async function teamApplyImport(plan){
+    const c = await tc();
+    const done = { teams:0, add:0, update:0, addV:0, updateV:0 };
+
+    if ((plan.newTeams || []).length){
+      const { error } = await c.from(TGROUPS).insert(plan.newTeams.map((t, i) => ({
+        id: t.id, team: t.team, source: 'sheet', sort: 1000 + i })));
+      if (error) teamErr(error);
+      done.teams = plan.newTeams.length;
+    }
+    if ((plan.add || []).length){
+      const { error } = await c.from(TPEOPLE).insert(plan.add.map(p => ({
+        team_id: p.teamId, name: p.name, mobile: p.mobile || null, nic: p.nic || null,
+        company: p.company || null, role: p.role || null, sort: p.sort || 0 })));
+      if (error) teamErr(error);
+      done.add = plan.add.length;
+    }
+    for (const p of (plan.update || [])){
+      const { error } = await c.from(TPEOPLE).update({
+        name: p.name, mobile: p.mobile || null, nic: p.nic || null,
+        company: p.company || null, role: p.role || null }).eq('id', p.id);
+      if (error) teamErr(error);
+      done.update++;
+    }
+    if ((plan.addV || []).length){
+      const { error } = await c.from(TVEHICLES).insert(plan.addV.map(v => ({
+        team_id: v.teamId, reg: v.reg, kind: v.kind || null,
+        driver: v.driver || null, sort: v.sort || 0 })));
+      if (error) teamErr(error);
+      done.addV = plan.addV.length;
+    }
+    for (const v of (plan.updateV || [])){
+      const { error } = await c.from(TVEHICLES).update({
+        reg: v.reg, kind: v.kind || null, driver: v.driver || null }).eq('id', v.id);
+      if (error) teamErr(error);
+      done.updateV++;
+    }
+    return done;
+  }
+
+  /* ---------------------------------------------------- the delete gate
+
+     A salt and a PBKDF2 hash of the password that has to be typed before
+     anything is removed. See the note at the top of
+     supabase/014_team_delete_gate.sql: this guards the owner against their
+     own hand, not the directory against other people. */
+  async function gateGet(id){
+    const c = await client(); if (!c) return null;
+    const { data, error } = await c.from('owner_gate').select('salt,hash,iter')
+      .eq('id', id || 'team-delete').maybeSingle();
+    if (error) return null;                      // no table yet reads as "not set"
+    return data || null;
+  }
+  async function gateSet(id, rec){
+    const c = await tc();
+    const { error } = await c.from('owner_gate').upsert(
+      { id: id || 'team-delete', salt: rec.salt, hash: rec.hash, iter: rec.iter },
+      { onConflict: 'id' });
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only Sithara can set that.'
+      : /does not exist|schema cache/i.test(error.message)
+      ? 'The delete gate is not switched on yet - migration 014 has not been run.'
+      : error.message);
+  }
+
   async function teamSubscribe(fn){
     const c = await client(); if (!c) return;
     const ch = c.channel('team_live');
@@ -826,7 +894,8 @@
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
                 teamSavePerson, teamDeletePerson, teamSaveVehicle, teamDeleteVehicle,
-                teamSubscribe, teamNextSort: nextSort,
+                teamSubscribe, teamNextSort: nextSort, teamApplyImport,
+                gateGet, gateSet,
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
