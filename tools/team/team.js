@@ -51,6 +51,15 @@
      orphan the nine people filed under it. Two teams called the same thing
      are told apart by a suffix rather than one silently overwriting the
      other - which is what an unadorned slug would do. */
+  /* A tab is often already called "Lucky Team", so writing the heading as
+     name + " Team" gave "Lucky Team Team". The word is only added where it
+     is not already the end of the name. */
+  function titleOf(name) {
+    const n = str(name);
+    if (!n) return 'That team';
+    return /\bteams?$/i.test(n) ? n : n + ' Team';
+  }
+
   function slug(name, taken) {
     let base = str(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     if (!base) base = 'team';
@@ -484,7 +493,7 @@
   }
 
   return { COLUMNS, phone, rowText, vehicleText, headerText, sheet,
-           slug, pools, view, counts, hit, personHay, vehicleHay,
+           slug, titleOf, pools, view, counts, hit, personHay, vehicleHay,
            nicNote, nicKey, duplicates, checkPerson, checkVehicle, checkTeam,
            ALIASES, headerFor, findHeader, readWorkbook, colName,
            fingerprint, identity, planImport, planSummary, changesOn };

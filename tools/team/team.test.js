@@ -121,6 +121,17 @@ console.log('\nnaming a new team');
   is('and again after that',        T.slug('Lucky', taken.concat(['lucky-2'])), 'lucky-3');
   is('a name of pure punctuation still gets one', T.slug('///', taken), 'team');
   is('and nothing at all does too', T.slug('', taken), 'team');
+
+  /* The tabs of the real workbook are called "Lucky Team", so the heading
+     name + " Team" came out as "Lucky Team Team". */
+  is('a name that already says Team is left alone', T.titleOf('Lucky Team'), 'Lucky Team');
+  is('and one that does not gets the word',         T.titleOf('Inhouse'), 'Inhouse Team');
+  is('case does not matter to it',                  T.titleOf('lucky team'), 'lucky team');
+  is('plural counts as well',                       T.titleOf('Night Teams'), 'Night Teams');
+  /* "Teamsters" ends in neither "team" nor "teams" as a word */
+  is('but a word that merely starts that way does not',
+     T.titleOf('Teamsters'), 'Teamsters Team');
+  is('and nothing at all still reads',              T.titleOf(''), 'That team');
 }
 
 console.log('\nwhether an ID number looks like one');

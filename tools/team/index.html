@@ -93,9 +93,6 @@
   .side{--hdrH:58px;
     border-right:1px solid var(--line);padding:12px 0 50px;position:sticky;top:var(--hdrH);
     max-height:calc(100vh - var(--hdrH));overflow-y:auto}
-  .sideHead{padding:15px 16px 6px;font-family:'Space Mono',monospace;font-size:9.5px;
-    font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
-  .sideHead.new{color:var(--accent)}
   .navRow{display:flex;align-items:stretch}
   .nav{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
     font-family:inherit;font-size:13.8px;color:var(--text);background:none;border:0;
@@ -417,33 +414,38 @@
     $('addVehicle').hidden = !mine() || !S.teams.length;
   }
 
-  function group(list, heading, klass){
-    if (!list.length) return '';
-    var out = '<div class="sideHead' + (klass || '') + '">' + heading + '</div>';
-    list.forEach(function(t){
+  /* One list, every team the same.
+
+     They used to be sorted into "Sub teams", "Other teams" and "Added teams",
+     and only the last of those could be renamed or removed. The heading a
+     team sat under was decided by how it happened to arrive - by upload, off
+     the original sheet, or typed in by hand - which is a fact about this
+     tool's history and not about the team. It also meant fifteen of the
+     sixteen teams had no way to be corrected or removed at all.
+
+     A team is a team. The `source` column is still recorded; nothing reads
+     it. */
+  function paintSide(){
+    var c = T.counts(S.teams);
+    var out = '<div class="navRow"><button class="nav' +
+      (!S.q && S.active === 'ALL' ? ' on' : '') +
+      '" data-team="ALL" type="button"><b>All teams</b><i>' + c.people + '</i></button></div>';
+
+    S.teams.forEach(function(t){
       var on = !S.q && t.id === S.active;
       out += '<div class="navRow">' +
         '<button class="nav' + (on ? ' on' : '') + '" data-team="' + esc(t.id) + '" type="button">' +
           '<b>' + esc(t.team) + '</b><i>' + t.people.length + '</i></button>' +
-        (mine() && t.source === 'custom'
-          ? '<button class="navX" data-drop="' + esc(t.id) + '" type="button" title="Remove this team">' +
+        (mine()
+          ? '<button class="navX" data-drop="' + esc(t.id) + '" type="button" ' +
+            'title="Rename or remove ' + esc(t.team) + '">' +
             '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
             'stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'
           : '') +
         '</div>';
     });
-    return out;
-  }
 
-  function paintSide(){
-    var c = T.counts(S.teams);
-    var all = '<div class="navRow"><button class="nav' + (!S.q && S.active === 'ALL' ? ' on' : '') +
-      '" data-team="ALL" type="button"><b>All teams</b><i>' + c.people + '</i></button></div>';
-    var by = function(src){ return S.teams.filter(function(t){ return t.source === src; }); };
-    $('side').innerHTML = all +
-      group(by('sheet'), 'Sub teams') +
-      group(by('other'), 'Other teams') +
-      group(by('custom'), 'Added teams', ' new') +
+    $('side').innerHTML = out +
       (mine() ? '<div class="sideAct"><button class="btn" id="addTeam" type="button" ' +
         'style="width:100%;justify-content:center">' +
         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -452,13 +454,16 @@
   }
 
   function shown(){ return T.view(S.teams, S.active, S.q); }
+  var teamTitle = function(name){ return T.titleOf(name); };
 
   function paintPeople(){
     var v = shown(), rows = v.people;
     var team = S.teams.filter(function(t){ return t.id === S.active; })[0];
-    $('kick').textContent = v.scope === 'search' ? 'Search' : v.scope === 'team' ? 'Sub team' : 'Everyone';
+    $('kick').textContent = v.scope === 'search' ? 'Search' : v.scope === 'team' ? 'Team' : 'Everyone';
+    /* The tab is often already called "Lucky Team", and appending the word
+       again gave "Lucky Team Team". Only added where it is not there. */
     $('title').textContent = v.scope === 'search' ? '“' + S.q.trim() + '”'
-      : team ? team.team + ' Team' : 'All team members';
+      : team ? teamTitle(team.team) : 'All team members';
     $('copyAll').textContent = 'Copy all ' + rows.length;
     $('copyAll').disabled = !rows.length;
 
@@ -1000,12 +1005,12 @@
     }
     if (el.id === 'mDrop'){
       var g = S.teams.filter(function(t){ return t.id === S.form.id; })[0]; if (!g) return;
-      var what = 'the ' + g.team + ' team, with its ' + g.people.length + ' member' +
+      var what = T.titleOf(g.team) + ', with its ' + g.people.length + ' member' +
         (g.people.length === 1 ? '' : 's') + ' and ' + g.vehicles.length + ' vehicle' +
         (g.vehicles.length === 1 ? '' : 's');
       return askDelete(what, function(){
         work(function(){ return DB.teamDeleteGroup(g.id); },
-             function(){ S.active = 'ALL'; shut(); say('Removed the ' + g.team + ' team'); });
+             function(){ S.active = 'ALL'; shut(); say('Removed ' + T.titleOf(g.team)); });
       });
     }
     if (el.id === 'themeBtn') return flipTheme();
