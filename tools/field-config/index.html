@@ -25,10 +25,12 @@
      tool's own; everything else comes from theme.css. */
   :root,html[data-theme="dark"]{--accent:#d9922e;--accentB:#f0b155;--accentD:#a86c18;
     --accent-ink:#1c1204;--glow:rgba(217,146,46,.5);--glowSoft:rgba(217,146,46,.26);
-    --bad:#e2607a;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
+    --bad:#e2607a;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB);
+    --vsub:#93acb1}
   html[data-theme="light"]{--accent:#8a5606;--accentB:#a86c18;--accentD:#6b4104;
     --accent-ink:#ffffff;--glow:rgba(138,86,6,.4);--glowSoft:rgba(138,86,6,.18);
-    --bad:#c2405c;--zebra:rgba(0,0,0,.024);--goHover:#6b4104}
+    --bad:#c2405c;--zebra:rgba(0,0,0,.024);--goHover:#6b4104;
+    --vsub:#586f75}
 
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);
@@ -71,19 +73,34 @@
   /* --------------------------------------------------------- the choosing */
   .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 18px}
 
-  .vendors{display:flex;gap:0;flex-wrap:wrap;border-bottom:1px solid var(--line);
+  /* The vendor you are in is a solid block, not a tinted one. This is the
+     first thing read on the page and it has to answer "which vendor am I
+     looking at" from across a desk, with a laptop balanced on one arm. */
+  .vendors{display:flex;gap:0;flex-wrap:wrap;border-bottom:1px solid var(--line3);
     margin-top:0;background:var(--card-2)}
-  .vendor{cursor:pointer;font-family:inherit;background:none;border:0;
-    border-right:1px solid var(--line);border-bottom:3px solid transparent;
-    padding:13px 22px 11px;text-align:left;color:var(--muted);
-    display:flex;flex-direction:column;gap:1px;min-width:132px;
+  .vendor{cursor:pointer;font-family:inherit;background:none;
+    border:0;border-right:1px solid var(--line3);
+    padding:14px 24px 12px;text-align:left;color:var(--muted);
+    display:flex;flex-direction:column;gap:2px;min-width:150px;
     transition:background .14s ease,color .14s ease}
-  .vendor:hover{background:var(--zebra);color:var(--text)}
-  .vendor.on{color:var(--text);border-bottom-color:var(--accent);background:var(--glowSoft)}
-  .vendor b{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:15px;
-    letter-spacing:-.01em}
-  .vendor i{font-style:normal;font-family:'Space Mono',monospace;font-size:9.5px;
-    letter-spacing:.11em;text-transform:uppercase;opacity:.72}
+  .vendor:hover{background:var(--zebra)}
+  .vendor.on,.vendor.on:hover{background:var(--accent)}
+  /* The name of a vendor you are not in is still a name, not a whisper: full
+     strength, the way the design has it. Grey read 4.29 against the bar in
+     light, which is under the line for 16px. */
+  .vendor b{color:var(--text);
+    font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:16px;
+    letter-spacing:.02em;text-transform:uppercase}
+  /* the sub-label needs its own colour per theme; --muted is 4.29 on the bar
+     in light and 3.81 in dark, and this is 9.5px type */
+  .vendor i{color:var(--vsub);font-style:normal;font-family:'Space Mono',monospace;
+    font-size:9.5px;letter-spacing:.11em;text-transform:uppercase}
+  .vendor.on b,.vendor.on i{color:var(--accent-ink)}
+  .vendor.on i{opacity:.82}
+  /* a vendor with nothing filed under it yet still reads as a place to go */
+  .vendor.bare b{opacity:.72}
+  @media(max-width:620px){ .vendor{flex:1;min-width:0;padding:12px 14px 10px}
+    .vendor b{font-size:14px} .vendor i{display:none} }
 
   .groups{display:flex;gap:22px;flex-wrap:wrap;border-bottom:1px solid var(--line);
     padding:0 2px}
@@ -296,8 +313,8 @@
     var v = C.view(S.doc, S.vendor, S.group, S.q);
 
     $('vendors').innerHTML = v.vendors.map(function(x){
-      return '<button class="vendor' + (x.on ? ' on' : '') + '" data-v="' + esc(x.id) +
-        '" type="button"><b>' + esc(x.name) + '</b>' +
+      return '<button class="vendor' + (x.on ? ' on' : '') + (x.entries ? '' : ' bare') +
+        '" data-v="' + esc(x.id) + '" type="button"><b>' + esc(x.name) + '</b>' +
         (x.sub ? '<i>' + esc(x.sub) + '</i>' : '') + '</button>';
     }).join('');
 

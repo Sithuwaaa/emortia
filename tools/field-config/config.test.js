@@ -114,6 +114,22 @@ console.log('\nlooking something up');
      C.view(DOC, 'huawei', 'nope', '').groupName, 'BBU (UMPT)');
   is('an empty document says it is empty', C.view([], 'x', 'y', '').scope, 'empty');
 
+  /* ZTE has a tab before it has any content. An empty vendor has to be a
+     place you can stand rather than something that breaks on the way in. */
+  const WITHZTE = DOC.concat([{ id:'zte', name:'ZTE', sub:'nothing filed yet', groups:[] }]);
+  const z = C.view(WITHZTE, 'zte', '', '');
+  is('an empty vendor still opens',        z.vendorName, 'ZTE');
+  is('with no groups and no sections',     [z.groups.length, z.sections.length], [0, 0]);
+  is('and does not claim to be a group',   z.groupName, '');
+  is('it counts as a vendor and nothing else',
+     C.totals(WITHZTE), { vendors:3, groups:3, entries:15 });
+  is('its tab shows zero',
+     z.vendors.filter(x => x.id === 'zte')[0].entries, 0);
+  is('an empty vendor is not a broken document', C.check(WITHZTE), []);
+  /* and it must not swallow a search that has nothing to do with it */
+  is('searching from it still crosses the others',
+     C.view(WITHZTE, 'zte', '', 'moshell').sections.map(s => s.where), ['Ericsson · Baseband']);
+
   /* a section of nothing but notes is not a search hit - the notes describe
      the things around them and on their own answer nothing */
   is('notes alone do not make a hit',
