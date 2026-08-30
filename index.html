@@ -424,25 +424,59 @@ input,textarea,button{font-family:inherit;}
   font-size:clamp(8px,.92vw,11px);letter-spacing:.16em;color:#9c8c6c;}
 .bk-entry{transition:background .18s ease;}
 .bk-entry:hover{background:rgba(138,48,73,.10) !important;}
-/* ---- the shelf ----
-   Books need something to stand on. Each volume brings its own length of
-   board, and because the columns sit flush the lengths meet and read as one
-   shelf — so a row that wraps to the next line gets a shelf of its own
-   without anything having to count how many fit. */
-.bk-shelf{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,236px));
-  justify-content:center;row-gap:clamp(30px,5vw,52px);
+/* ---- the case ----
+   Books need something to stand in, not only on. The case is the carcass:
+   two uprights, a lit back panel, and a length of board under every row.
+   Each volume brings its own board, and because the columns sit flush the
+   lengths meet and read as one shelf — so a row that wraps to the next line
+   gets a shelf of its own without anything having to count how many fit. */
+.bk-case{position:relative;border-radius:5px;overflow:hidden;
+  padding:clamp(14px,2.6vw,30px) clamp(16px,3vw,34px) clamp(6px,1.4vw,16px);
+  background:
+    repeating-linear-gradient(90deg,rgba(122,80,34,.055) 0 1px,transparent 1px 4px),
+    repeating-linear-gradient(91deg,rgba(96,60,22,.05) 0 2px,transparent 2px 11px),
+    radial-gradient(38% 12% at 22% 34%,rgba(120,76,30,.16),transparent 70%),
+    radial-gradient(26% 9% at 71% 66%,rgba(126,82,34,.14),transparent 72%),
+    radial-gradient(120% 80% at 50% -10%,rgba(255,238,204,.3),transparent 62%),
+    linear-gradient(93deg,#c0904f,#d9b27b 18%,#cfa66f 46%,#dab586 72%,#c3934f);
+  box-shadow:inset 0 0 0 clamp(10px,1.6vw,18px) #d3a468,
+    inset 0 0 0 calc(clamp(10px,1.6vw,18px) + 1px) rgba(112,72,28,.28),
+    inset 0 26px 46px -20px rgba(70,42,12,.5),
+    inset 0 -30px 50px -26px rgba(70,42,12,.45),
+    0 34px 78px -30px rgba(0,0,0,.7);}
+/* the two uprights, catching light on their inner faces */
+.bk-case::before,.bk-case::after{content:'';position:absolute;top:0;bottom:0;width:clamp(10px,1.6vw,18px);
+  pointer-events:none;z-index:4;}
+.bk-case::before{left:0;background:
+  repeating-linear-gradient(179deg,rgba(120,78,32,.07) 0 1px,transparent 1px 5px),
+  linear-gradient(90deg,#a97733,#e6c48c 58%,rgba(116,74,28,.42));}
+.bk-case::after{right:0;background:
+  repeating-linear-gradient(179deg,rgba(120,78,32,.07) 0 1px,transparent 1px 5px),
+  linear-gradient(270deg,#a97733,#e6c48c 58%,rgba(116,74,28,.42));}
+/* Three to a shelf, two on a phone. Fixed rather than auto-fit, because a
+   case has a width and the empty slots have to line up under the full ones. */
+.bk-shelf{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  justify-content:center;row-gap:0;column-gap:clamp(8px,1.4vw,20px);
   padding:clamp(8px,2vw,22px) 0 clamp(4px,1vw,12px);}
+@media (max-width:640px){.bk-shelf{grid-template-columns:repeat(2,minmax(0,1fr));}}
 .bk-stand{position:relative;width:100%;display:flex;justify-content:center;
-  align-items:flex-end;padding:0 clamp(6px,1.4vw,20px) 15px;}
+  align-items:flex-end;padding:clamp(20px,3.4vw,42px) clamp(6px,1.4vw,20px) 15px;
+  margin-bottom:clamp(12px,2vw,26px);}
+/* an empty slot: the board is there, the book is not */
+.bk-pad{animation:none;}
+.bk-pad .bk-stand::before{display:none;}
 /* Overhanging both ends by the same amount makes neighbouring lengths overlap
    rather than gap, so the join stays invisible and only the two outer ends of
    a row actually stick out — which is what a shelf does. */
-.bk-stand::after{content:'';position:absolute;left:-11px;right:-11px;bottom:0;height:19px;
-  background:linear-gradient(180deg,#c08d4e 0 2px,#9c6631 2px 7px,#7a4b1d 7px 13px,#4a2c11 13px 17px,#2a1809 17px);
-  box-shadow:0 20px 34px -14px rgba(0,0,0,.92),inset 0 1px 0 rgba(255,220,164,.45);}
+.bk-stand::after{content:'';position:absolute;left:-11px;right:-11px;bottom:0;height:clamp(15px,2vw,22px);
+  background:
+    repeating-linear-gradient(90deg,rgba(120,78,32,.05) 0 3px,transparent 3px 14px),
+    linear-gradient(180deg,#f2dab2 0 2px,#e6c391 2px 7px,#d2a668 7px 58%,#b98c47 58% 80%,#8f6529 80%);
+  box-shadow:0 18px 32px -13px rgba(66,38,10,.72),inset 0 1px 0 rgba(255,246,226,.72),
+    inset 0 -2px 3px rgba(104,66,24,.42);}
 /* the book's own shadow, spilling past it onto the board */
 .bk-stand::before{content:'';position:absolute;left:3%;right:3%;bottom:11px;height:22px;z-index:1;
-  pointer-events:none;background:radial-gradient(ellipse at 50% 100%,rgba(0,0,0,.72),rgba(0,0,0,.24) 46%,transparent 76%);
+  pointer-events:none;background:radial-gradient(ellipse at 50% 100%,rgba(74,44,14,.6),rgba(74,44,14,.2) 46%,transparent 76%);
   filter:blur(3px);transition:opacity .34s ease,transform .34s ease;}
 .bk-vol:hover .bk-stand::before{opacity:.45;transform:translateY(2px) scaleX(1.06);}
 .bk-label{margin-top:14px;text-align:center;}
@@ -460,6 +494,10 @@ input,textarea,button{font-family:inherit;}
   justify-content:space-between;gap:18px;padding:clamp(12px,2vh,22px) clamp(14px,2.6vw,34px);
   pointer-events:none;opacity:.5;transition:opacity .3s ease;}
 .bk-reading:hover .bk-chrome{opacity:1;}
+/* Half opacity is right for chrome nobody is using. It is wrong for a drawer
+   you have just opened - and on a touch screen there is no hover to bring it
+   back, so the search would have stayed at half for as long as it was open. */
+.bk-chrome.on,.bk-chrome:focus-within{opacity:1;}
 .bk-chrome > *{pointer-events:auto;}
 .bk-chip{display:flex;align-items:center;gap:9px;font-family:'Space Mono',monospace;font-size:10.5px;
   letter-spacing:0.2em;text-transform:uppercase;color:#c8a878;}
@@ -468,7 +506,80 @@ input,textarea,button{font-family:inherit;}
   font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;
   color:#dfae63;transition:border-color .25s ease,background-color .25s ease,color .25s ease;}
 .bk-exit:hover{border-color:rgba(223,174,99,.66);background:rgba(40,23,8,.6);color:#f2cf95;}
-@media (prefers-reduced-motion:reduce){.bk-reading{animation:none;}}
+/* ---- reading tools: find, ribbon, save, quiet ----
+   Four small things a real book gives you for nothing — a finger in the page,
+   a way to look something up, a copy to keep, and the choice to be left alone
+   with it. They live in the chrome, at half opacity until you come near. */
+.bk-tools{display:flex;align-items:center;gap:9px;}
+.bk-tool{display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;
+  border:1px solid rgba(200,168,120,.24);border-radius:999px;min-width:34px;height:34px;padding:0 12px;
+  background:rgba(20,11,4,.42);backdrop-filter:blur(6px);font-family:'Space Mono',monospace;
+  font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#c8a878;
+  transition:border-color .25s ease,background-color .25s ease,color .25s ease;}
+.bk-tool:hover{border-color:rgba(223,174,99,.6);background:rgba(40,23,8,.6);color:#f2cf95;}
+.bk-tool.on{border-color:rgba(223,174,99,.8);color:#f2cf95;background:rgba(56,32,10,.72);}
+/* the find drawer hangs under the chrome, over the room, never over the page */
+.bk-find{position:absolute;top:calc(100% - 6px);right:clamp(14px,2.6vw,34px);width:min(320px,74vw);
+  z-index:99;border:1px solid rgba(200,168,120,.22);border-radius:12px;overflow:hidden;
+  background:rgba(16,9,3,.9);backdrop-filter:blur(10px);box-shadow:0 22px 54px rgba(0,0,0,.6);
+  animation:bkFindIn .22s cubic-bezier(.2,.8,.3,1) both;}
+@keyframes bkFindIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
+.bk-find input{width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;
+  padding:13px 15px;color:#f0dcb8;font-family:'EB Garamond',serif;font-size:16px;
+  border-bottom:1px solid rgba(200,168,120,.16);}
+.bk-find input::placeholder{color:rgba(200,168,120,.42);font-style:italic;}
+.bk-hits{max-height:min(46vh,340px);overflow:auto;}
+.bk-hit{display:flex;flex-direction:column;gap:3px;padding:10px 15px;cursor:pointer;
+  border-bottom:1px solid rgba(200,168,120,.08);transition:background .16s ease;}
+.bk-hit:hover{background:rgba(223,174,99,.1);}
+.bk-hit em{font-style:normal;color:#dfae63;}
+.bk-none{padding:14px 15px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.2em;
+  text-transform:uppercase;color:rgba(200,168,120,.45);}
+/* the silk marker, hanging in the room beside the book */
+.bk-ribbon{position:absolute;top:0;right:clamp(58px,11vw,150px);width:16px;z-index:95;cursor:pointer;
+  height:var(--rh,58px);background:linear-gradient(90deg,#6d1428,#a52240 42%,#8a1a32);
+  clip-path:polygon(0 0,100% 0,100% 100%,50% calc(100% - 11px),0 100%);
+  box-shadow:2px 0 10px rgba(0,0,0,.5);transition:height .34s cubic-bezier(.3,.9,.3,1),filter .25s ease;}
+.bk-ribbon:hover{filter:brightness(1.18);}
+.bk-ribbon.set{--rh:clamp(96px,17vh,168px);}
+/* Quiet: the running heads, the folios and the chrome step back, and only the
+   poem is left. Nothing is removed — come near and it all returns. */
+html.bk-quiet .bk-run,html.bk-quiet .bk-folio{opacity:0;transition:opacity .3s ease;}
+html.bk-quiet .bk-chrome{opacity:.1;}
+html.bk-quiet .bk-reading:hover .bk-chrome{opacity:1;}
+/* Tool layout, variant two: a rail down the outer edge instead of a top bar.
+   Fixed rather than absolute, because the chrome it lives in is only as tall
+   as one row of buttons - centring on that puts half the rail off the top of
+   the screen. Fixed centres it on the room, which is what a rail down the
+   edge means. */
+.bk-tools.rail{position:fixed;right:clamp(14px,2.4vw,30px);top:50%;transform:translateY(-50%);
+  flex-direction:column;gap:10px;}
+.bk-tools.rail .bk-tool{padding:0;width:34px;min-width:34px;}
+.bk-tools.rail .bk-tool.wide{width:auto;padding:0 10px;font-size:8.5px;letter-spacing:.14em;}
+/* shelf polish: a raised spine, cloth grain, and a shadow that sits on the board */
+.bk-vol{position:relative;}
+.bk-vol .bk-volcover{box-shadow:6px 12px 30px rgba(0,0,0,.5),inset -14px 0 22px -14px rgba(0,0,0,.35),inset 2px 0 0 rgba(255,244,220,.22);}
+.bk-vol .bk-volcover::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:repeating-linear-gradient(92deg,rgba(120,104,74,.05) 0 1px,transparent 1px 3px),
+    radial-gradient(120% 90% at 8% 4%,rgba(255,248,228,.2),transparent 58%);
+  mix-blend-mode:multiply;opacity:.75;}
+.bk-vol::after{content:'';position:absolute;left:6%;right:6%;bottom:-9px;height:12px;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 30%,rgba(0,0,0,.5),transparent 72%);
+  filter:blur(3px);pointer-events:none;}
+/* On a phone the chip and six buttons want 471px of a 375px screen, and the
+   reading layer clips - so Shelf and the layout toggle were off the edge and
+   past reach. The book's name goes (the page is standing in it), the buttons
+   tighten, and what is left fits with room to spare. */
+@media (max-width:560px){
+  .bk-chrome{padding:10px 12px;gap:10px;}
+  .bk-chip-vol,.bk-chip-sep{display:none;}
+  .bk-tools{gap:6px;}
+  .bk-tools:not(.rail) .bk-tool{min-width:30px;height:30px;padding:0 8px;}
+  .bk-tools:not(.rail) .bk-tool.wide{font-size:8.5px;letter-spacing:.1em;}
+  .bk-exit{padding:6px 10px;font-size:9px;letter-spacing:.12em;gap:6px;}
+}
+@media (max-width:430px){.bk-exit-word{display:none;}}
+@media (prefers-reduced-motion:reduce){.bk-reading{animation:none;}.bk-find{animation:none;}}
 html.bk-reading-on,html.bk-reading-on body{overflow:hidden;}
 /* The reading layer is fixed and asks for z-index 64, but it lives inside
    <main>, which carries z-index:1 and is therefore its own stacking context -
@@ -1255,6 +1366,12 @@ class Component extends DCLogic {
     // wrong for a visitor arriving at the door.
     this.state = { page:this.startPage(), theme:'burgundy', menuOpen:false, poems:[], poemsLoaded:false,
       bkOpen:false, bkIdx:0, bkSpread:false, bkDrag:null, bkInk:0, bkVol:0, bkShelf:true, bkPer:10,
+      /* The reading tools. Where the tools sit and where the marker is are the
+         two the reader chose deliberately, so those two are the ones that are
+         remembered - finding and quiet are for the sitting you are in. */
+      bkFindOn:false, bkFind:'', bkQuiet:false,
+      bkBar:(()=>{ try{ return localStorage.getItem('em-bk-bar')==='rail'?'rail':'bar'; }catch(e){ return 'bar'; } })(),
+      bkMark:(()=>{ try{ const v=localStorage.getItem('em-bk-mark'); return v==null?null:(parseInt(v,10)||0); }catch(e){ return null; } })(),
       bkSingle:(window.matchMedia && window.matchMedia('(max-width:700px)').matches), playing:false, idx:0, picked:false, progress:0, volume:pp.volume, muted:pp.muted, shuffle:pp.shuffle, repeat:pp.repeat,
       /* the queue and the words share one drawer, so one flag says which face
          of it is showing: '' shut, 'queue', or 'lyrics' */
@@ -1262,7 +1379,7 @@ class Component extends DCLogic {
       /* the tools are behind a sign-in; the owner is never shut out */
       toolsIn: !!(window.Access && window.Access.signedIn()),
       isOwner: !!(window.Access && window.Access.isOwner()) || Component.previewOwner(),
-      accErr:'', accOk:'', accBusy:false, accMode:'in', accShowPw:false,
+      accErr:'', accBusy:false, accShowPw:false,
       profOpen:false, profMsg:'', profOk:'', profBusy:false,
       sortBy:pp.sortBy, sortDir:pp.sortDir, sortOpen:false, contact:{name:'',email:'',msg:''}, sent:false, audioMissing:false, syncTimes:[], fsOpen:false, wordsEdit:false, wordsText:'',
       /* which owner-only things have been opened to the team */
@@ -1761,8 +1878,15 @@ class Component extends DCLogic {
      is still a list because it is built to hold more than one, and adding a
      second volume here is all it would take. */
   bkVolumes(){ return [
-    {id:'kaviya', title:'කවිය', sub:'poems, kept by hand',
-     cover:'linear-gradient(154deg,#e3c096,#cda772 40%,#b78f57 72%,#a67f49)', ink:'#5b3d1e',
+    {id:'kaviya', title:'කවිය',
+     /* Cream board with the botanical plate held to the right and the title
+        set into the space it leaves. The plate is a file rather than a
+        gradient, so if it is not there yet the cover falls back to the cream
+        and the soft green behind it - the composition still reads and nothing
+        looks broken; dropping the jpeg into media/ lights it up. */
+     cover:'url("media/journal-cover-botanical.jpeg") 100% 50%/contain no-repeat, ' +
+           'radial-gradient(58% 74% at 82% 50%,rgba(122,148,110,.17),transparent 72%), #f6f1e5',
+     ink:'#4a6a99',
      fold:'linear-gradient(225deg,#9c7442 42%,#e6c79f)'}
   ]; }
   bkVolIdx(){ const v=this.state.bkVol; return (v>=0 && v<this.bkVolumes().length) ? v : 0; }
@@ -2035,6 +2159,117 @@ class Component extends DCLogic {
     if(to<0 || to>last || to===st.bkIdx) return;
     this.setState(s=>({bkIdx:to, bkDrag:null, bkInk:s.bkInk+1}));
     lock(560);
+  }
+  /* ---- reading tools ------------------------------------------------------
+     Search, the silk marker, saving a poem as an image, and quiet mode. All
+     four end up asking for the same thing - take me to that spread - so they
+     share one jump rather than each doing its own arithmetic. */
+  bkPoemSpread(i){ return this.bkIndexSpreads() + i; }
+  bkJump(spread){
+    const last=this.bkCount()-1, to=Math.max(0,Math.min(spread,last));
+    /* From the shelf or a shut book there is a cover to get through first, so
+       the turn is done in two beats rather than landing on a closed book. */
+    if(!this.state.bkOpen){ this.setState({bkFindOn:false}); this.bkTurn('cover',1); setTimeout(()=>this.bkTurn('page',1,to),660); return; }
+    this.setState({bkFindOn:false});
+    this.bkTurn('page', to>this.state.bkIdx?1:-1, to);
+  }
+  /* Title and body both, because half of what you remember about a poem is a
+     line from the middle of it. The line the word is actually on comes back
+     with the hit - a title on its own is not enough to recognise it by. */
+  bkFindHits(){
+    const q=String(this.state.bkFind||'').trim().toLowerCase();
+    if(!q) return [];
+    return this.bkList().map((p,i)=>({p,i}))
+      .filter(({p})=>String(p.title||'').toLowerCase().indexOf(q)>=0 || String(p.body||'').toLowerCase().indexOf(q)>=0)
+      .slice(0,40)
+      .map(({p,i})=>{
+        const body=String(p.body||''), lo=body.toLowerCase(), at=lo.indexOf(q);
+        let line='';
+        if(at>=0){
+          const s=Math.max(0,body.lastIndexOf('\n',at)+1);
+          let e=body.indexOf('\n',at); if(e<0) e=body.length;
+          line=body.slice(s,e).trim();
+        } else {
+          line=body.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)[0]||'';
+        }
+        if(line.length>72) line=line.slice(0,70)+'…';
+        return {i, title:p.title||'—', date:p.date||'', line};
+      });
+  }
+  /* One marker, the way a book has one. Pressing it on the page it is already
+     in takes it out again; pressing it anywhere else moves it there. */
+  bkSetMark(){
+    const s=this.state;
+    if(!s.bkOpen) return;
+    const cur=s.bkIdx;
+    const next=(s.bkMark===cur)?null:cur;
+    this.setState({bkMark:next});
+    try{ next==null ? localStorage.removeItem('em-bk-mark') : localStorage.setItem('em-bk-mark',String(next)); }catch(e){}
+  }
+  bkQuietToggle(){
+    const on=!this.state.bkQuiet;
+    this.setState({bkQuiet:on});
+    if(document.documentElement) document.documentElement.classList.toggle('bk-quiet', on);
+  }
+  /* Save the open poem as a card: paper, title, rule, date, verse, imprint.
+     Drawn on a canvas rather than screengrabbed, so the type stays crisp at
+     any screen size and none of the book's furniture comes along with it. */
+  async bkSavePng(){
+    const s=this.state, L=this.bkList();
+    const p=L[s.bkIdx - this.bkIndexSpreads()];
+    if(!p) return;
+    /* The Sinhala faces are files. Drawing before they arrive silently falls
+       back to a serif that has none of the letters. */
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+    const W=1200, H=1600, c=document.createElement('canvas');
+    c.width=W; c.height=H;
+    const x=c.getContext('2d');
+    const g=x.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#fdfdfb'); g.addColorStop(1,'#f0eee7');
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+    x.strokeStyle='rgba(150,132,96,.34)'; x.lineWidth=2;
+    x.strokeRect(56,56,W-112,H-112);
+    const M=132;
+    x.textBaseline='alphabetic';
+    x.fillStyle='#1d1510'; x.font="58px 'UN-Agni', serif";
+    x.fillText(String(p.title||''), M, 268);
+    x.fillStyle='#8a3049'; x.fillRect(M,308,236,4);
+    if(p.date){
+      x.fillStyle='#7a6a4c'; x.font="22px 'Space Mono', monospace";
+      x.fillText(String(p.date).toUpperCase(), M, 366);
+    }
+    /* Step the size down until the whole poem fits rather than cropping it -
+       a poem cut off at the bottom is not a copy of the poem. */
+    const lines=String(p.body||'').split(/\r?\n/);
+    const maxW=W-M*2;
+    let fs=40, lh=1.85, fit=[];
+    for(; fs>=20; fs-=2){
+      x.font=fs+"px 'UN-Alakamanda', serif";
+      fit=[];
+      lines.forEach(raw=>{
+        const t=raw.trim();
+        if(!t){ fit.push(''); return; }
+        let cur='';
+        t.split(/\s+/).forEach(w=>{
+          const probe=cur?cur+' '+w:w;
+          if(x.measureText(probe).width>maxW && cur){ fit.push(cur); cur=w; } else cur=probe;
+        });
+        fit.push(cur);
+      });
+      if(440 + fit.length*fs*lh < H-260) break;
+    }
+    x.fillStyle='#1c140e'; x.font=fs+"px 'UN-Alakamanda', serif";
+    let y=452;
+    fit.forEach(l=>{ if(l) x.fillText(l, M, y); y+=fs*lh; });
+    x.fillStyle='rgba(122,106,76,.85)'; x.font="20px 'Space Mono', monospace";
+    x.fillText('E M O R T I A', M, H-116);
+    /* \p{M} as well as letters and numbers: every Sinhala vowel sign is a
+       combining mark, so stripping marks turns නපුරු හිත into නප-ර-හ-ත -
+       a filename with the poem's title taken out of it. */
+    const name=String(p.title||'poem').replace(/[^\p{L}\p{N}\p{M}]+/gu,'-').replace(/^-|-$/g,'')||'poem';
+    const a=document.createElement('a');
+    a.download=name+'.png'; a.href=c.toDataURL('image/png');
+    document.body.appendChild(a); a.click(); a.remove();
   }
   bkGoTo(i){
     return (e)=>{
@@ -2336,13 +2571,15 @@ class Component extends DCLogic {
       React.createElement('div',{className:'bk-curlsh', style:{'--cx':pos[1]==='l'?'0%':'100%','--cy':'100%'}}),
       React.createElement('div',{className:'bk-curl '+pos}));
   }
-  /* the shelf: one spine-on-the-left volume per book, waiting to be taken down */
+  /* the case: one spine-on-the-left volume per book, waiting to be taken down.
+     The cover carries its own title and imprint, so there is nothing printed
+     under it - a shelf of books does not caption them. */
   bkRenderShelf(){
     const vols=this.bkVolumes();
     this._bkSlots=this._bkSlots||[];
-    return React.createElement('div',{className:'bk-shelf'},
+    return React.createElement('div',{className:'bk-case'},
+      React.createElement('div',{className:'bk-shelf'},
       vols.map((v,i)=>{
-        const cnt=this.bkPoemsIn(i).length;
         return React.createElement('div',{key:v.id, className:'bk-vol', style:{animationDelay:(i*0.09).toFixed(2)+'s'},
           onClick:(e)=>{
             const slot=e.currentTarget.querySelector('.bk-volcover');
@@ -2351,26 +2588,30 @@ class Component extends DCLogic {
           React.createElement('div',{className:'bk-stand'},
           React.createElement('div',{className:'bk-volcover', ref:el=>{this._bkSlots[i]=el;},
             style:{background:v.cover}},
-            React.createElement('div',{style:{position:'absolute',inset:0,pointerEvents:'none',
-              background:'radial-gradient(ellipse at 28% 18%,rgba(255,238,206,.34),transparent 62%),radial-gradient(ellipse at 74% 82%,rgba(96,62,26,.18),transparent 58%)'}}),
-            React.createElement('div',{style:{position:'absolute',inset:'6% 7%',border:'1px solid rgba(122,84,40,.3)',borderRadius:'2px'}}),
+            /* the shadow the spine throws across the board */
+            React.createElement('div',{style:{position:'absolute',left:0,top:0,bottom:0,width:'12px',pointerEvents:'none',
+              background:'linear-gradient(90deg,rgba(120,110,96,.22),rgba(120,110,96,0))'}}),
             this.bkWire(true,true),
-            React.createElement('div',{style:{position:'relative',zIndex:9,display:'flex',flexDirection:'column',
-              alignItems:'center',justifyContent:'center',gap:'8%',height:'100%',padding:'12% 13% 12% 20%',textAlign:'center'}},
-              React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'clamp(7px,.8vw,9px)',
-                letterSpacing:'0.34em',textTransform:'uppercase',color:'rgba(88,58,24,.7)',
-                textShadow:'0 1px 0 rgba(255,240,210,.45)'}},'Emortia'),
+            /* Title top left, in the space the plate leaves. Absolute rather
+               than centred, so it sits where it does on the cover itself. */
+            React.createElement('div',{style:{position:'absolute',zIndex:9,left:'11%',right:'46%',top:'11%',display:'flex',flexDirection:'column',gap:'10%'}},
               React.createElement('div',{lang:'si',style:{fontFamily:"'UN-Agni',serif",fontSize:'clamp(17px,2.1vw,27px)',
-                lineHeight:1.16,color:v.ink,textShadow:'0 1px 0 rgba(255,240,210,.55)'}}, v.title),
-              React.createElement('div',{style:{width:'54%',height:'1px',
-                background:'linear-gradient(90deg,transparent,rgba(110,76,34,.6),transparent)'}})))),
-          React.createElement('div',{className:'bk-label'},
-            React.createElement('div',{style:{fontFamily:"'EB Garamond',serif",fontStyle:'italic',fontSize:'14px',
-              color:'rgba(214,170,104,.72)'}}, v.sub),
-            React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'9.5px',letterSpacing:'0.28em',
-              textTransform:'uppercase',color:cnt?'rgba(222,180,116,.5)':'rgba(222,180,116,.28)',marginTop:'6px'}},
-              cnt ? cnt+(cnt===1?' leaf':' leaves') : 'empty')));
-      }));
+                lineHeight:1.05,color:v.ink}}, v.title),
+              React.createElement('div',{style:{width:'30px',height:'1px',background:'rgba(96,124,86,.5)'}}),
+              React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'clamp(6px,.72vw,8px)',
+                letterSpacing:'0.42em',textTransform:'uppercase',color:'rgba(88,112,78,.9)'}},'Emortia')))));
+      }).concat((()=>{
+        /* Empty slots, so the rack always reads as a full case of shelves
+           rather than one book floating in a box. They take no clicks and
+           carry no book - only the board underneath them is real. */
+        const per=3, rows=Math.max(2,Math.ceil(vols.length/per));
+        const pad=[];
+        for(let k=vols.length;k<rows*per;k++)
+          pad.push(React.createElement('div',{key:'pad'+k, className:'bk-vol bk-pad', style:{cursor:'default',pointerEvents:'none'}},
+            React.createElement('div',{className:'bk-stand'},
+              React.createElement('div',{style:{width:'100%',maxWidth:'196px',aspectRatio:'430/548',opacity:0}}))));
+        return pad;
+      })())));
   }
   /* ---- About: what the two halves are made of ----
 
@@ -2481,10 +2722,10 @@ class Component extends DCLogic {
       background:'radial-gradient(ellipse at 50% 6%,#3b2413,#1e1108 52%,#0d0704 84%)',
       boxShadow:'inset 0 0 100px rgba(0,0,0,.66)',overflow:'hidden'};
     if(s.bkShelf){
+      /* The case is the whole of it now. The instruction that used to sit
+         underneath said what a bookcase already says. */
       return React.createElement('div',{style:shellStyle},
-        this.bkRenderShelf(),
-        React.createElement('div',{style:{textAlign:'center',marginTop:'clamp(18px,3vw,30px)',fontFamily:"'Space Mono',monospace",
-          fontSize:'11px',letterSpacing:'0.18em',textTransform:'uppercase',color:'#8c6f47'}},'take one down'));
+        this.bkRenderShelf());
     }
     const vol=this.bkVolumes()[this.bkVolIdx()];
     const L=this.bkList(), n=L.length;
@@ -2534,18 +2775,16 @@ class Component extends DCLogic {
     const coverFace = ()=>React.createElement('div',{className:'bk-face', style:{borderRadius:'3px 8px 8px 3px',
         background:vol.cover,
         boxShadow:'6px 10px 34px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,240,212,.34)',
-        display:'flex',alignItems:'center',justifyContent:'center',padding:'8%'}},
-      React.createElement('div',{style:{position:'absolute',inset:0,borderRadius:'3px 8px 8px 3px',pointerEvents:'none',
-        background:'radial-gradient(ellipse at 28% 18%,rgba(255,238,206,.34),transparent 62%),radial-gradient(ellipse at 74% 82%,rgba(96,62,26,.16),transparent 58%)'}}),
-      React.createElement('div',{style:{position:'absolute',inset:'5.5% 6%',border:'1px solid rgba(122,84,40,.28)',borderRadius:'2px'}}),
-      React.createElement('div',{style:{position:'relative',display:'flex',flexDirection:'column',alignItems:'center',gap:'5%',textAlign:'center'}},
-        React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'clamp(9px,1.1vw,11px)',letterSpacing:'0.42em',textTransform:'uppercase',color:'rgba(88,58,24,.72)',textShadow:'0 1px 0 rgba(255,240,210,.5)'}},'Emortia'),
-        React.createElement('div',{lang:'si',style:{fontFamily:"'UN-Agni',serif",fontSize:'clamp(26px,4.4vw,56px)',lineHeight:1.14,color:vol.ink,
-          textShadow:'0 1px 0 rgba(255,240,210,.6),0 -1px 1px rgba(80,50,16,.32)'}}, vol.title),
-        React.createElement('div',{style:{width:'clamp(60px,10vw,110px)',height:'1px',background:'linear-gradient(90deg,transparent,rgba(110,76,34,.6),transparent)'}}),
-        React.createElement('div',{style:{fontFamily:"'EB Garamond',serif",fontStyle:'italic',fontSize:'clamp(13px,1.6vw,18px)',color:'rgba(96,66,30,.8)'}}, vol.sub),
-        React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'clamp(8px,1vw,10px)',letterSpacing:'0.3em',textTransform:'uppercase',color:'rgba(96,66,30,.55)',marginTop:'6%'}},
-          n ? n+(n===1?' poem':' poems') : 'awaiting the first')));
+        display:'flex',alignItems:'flex-start',justifyContent:'flex-start'}},
+      /* the shadow the spine throws across the board */
+      React.createElement('div',{style:{position:'absolute',left:0,top:0,bottom:0,width:'14px',pointerEvents:'none',
+        background:'linear-gradient(90deg,rgba(120,110,96,.22),rgba(120,110,96,0))'}}),
+      /* The same block as on the shelf, at reading size: title, rule, imprint,
+         held to the left so the plate on the right is not written over. */
+      React.createElement('div',{style:{position:'absolute',left:'11%',right:'46%',top:'11%',display:'flex',flexDirection:'column',gap:'4%'}},
+        React.createElement('div',{lang:'si',style:{fontFamily:"'UN-Agni',serif",fontSize:'clamp(26px,4.4vw,56px)',lineHeight:1.05,color:vol.ink}}, vol.title),
+        React.createElement('div',{style:{width:'clamp(30px,4vw,44px)',height:'1px',background:'rgba(96,124,86,.5)',margin:'4% 0'}}),
+        React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'clamp(8px,1vw,10px)',letterSpacing:'0.42em',textTransform:'uppercase',color:'rgba(88,112,78,.95)'}},'Emortia')));
 
     const endpaper = (side)=>React.createElement('div',{className:'bk-face', style:{
       transform: side==='back' ? 'rotateY(180deg)' : undefined,
@@ -2618,10 +2857,10 @@ class Component extends DCLogic {
        instead of being squeezed under a page heading you have to scroll past —
        which is the whole difference between glancing at a book and reading one. */
     const free='(100vh - clamp(84px,13vh,132px))';
-    const chrome=React.createElement('div',{key:'chrome', className:'bk-chrome'},
+    const chrome=React.createElement('div',{key:'chrome', className:'bk-chrome'+(s.bkFindOn?' on':'')},
       React.createElement('div',{className:'bk-chip'},
-        React.createElement('span',{lang:'si',style:{fontFamily:"'UN-Agni',serif",fontSize:'17px',letterSpacing:0,color:'#e6d3b4'}}, vol.title),
-        React.createElement('span',{style:{opacity:.45}},'\u00b7'),
+        React.createElement('span',{className:'bk-chip-vol', lang:'si',style:{fontFamily:"'UN-Agni',serif",fontSize:'17px',letterSpacing:0,color:'#e6d3b4'}}, vol.title),
+        React.createElement('span',{className:'bk-chip-sep', style:{opacity:.45}},'\u00b7'),
         /* The chip counted spreads and called them pages, so it read "Page 03
            / 11" while the caption under the book read "2 / 11" - two counters
            on one screen disagreeing, because one of them was counting the
@@ -2632,9 +2871,53 @@ class Component extends DCLogic {
           : (idx < this.bkIndexSpreads() ? 'Index'
              : String(idx - this.bkIndexSpreads() + 1).padStart(2,'0') + ' / ' +
                String(n).padStart(2,'0')))),
-      React.createElement('div',{className:'bk-exit', title:'Back to the shelf',
-        onClick:(e)=>{ e.stopPropagation(); if(this._bkBusy || this._bk) return; this.bkToShelf(); }},
-        React.createElement('span',{style:{fontSize:'13px',lineHeight:1,letterSpacing:0}},'\u2190'),'Shelf'));
+      React.createElement('div',{className:'bk-tools'+(s.bkBar==='rail'?' rail':'')},
+        React.createElement('div',{className:'bk-tool'+(s.bkFindOn?' on':''), title:'Find a poem',
+          onClick:(e)=>{ e.stopPropagation(); this.setState(st=>({bkFindOn:!st.bkFindOn, bkFind:st.bkFindOn?'':st.bkFind})); }},
+          React.createElement('span',{style:{fontSize:'13px',lineHeight:1,letterSpacing:0}},'\u2315')),
+        /* One press does whichever of the two makes sense from where you are:
+           put the marker in, or go back to where you left it. */
+        React.createElement('div',{className:'bk-tool'+(s.bkMark!=null?' on':''),
+          title: s.bkMark!=null ? (s.bkMark===idx?'Take the marker out':'Go to the marker') : 'Mark this page',
+          onClick:(e)=>{ e.stopPropagation();
+            if(s.bkMark!=null && s.bkMark!==idx){ this.bkJump(s.bkMark); return; }
+            this.bkSetMark(); }},
+          React.createElement('span',{style:{fontSize:'12px',lineHeight:1,letterSpacing:0}},'\u2691')),
+        /* dimmed on the index and on the shut cover: there is no one poem to save */
+        React.createElement('div',{className:'bk-tool', title:'Save this poem as an image',
+          style:{opacity: (s.bkOpen && idx>=this.bkIndexSpreads())?1:.35,
+                 pointerEvents:(s.bkOpen && idx>=this.bkIndexSpreads())?'auto':'none'},
+          onClick:(e)=>{ e.stopPropagation(); this.bkSavePng(); }},
+          React.createElement('span',{style:{fontSize:'12px',lineHeight:1,letterSpacing:0}},'\u2913')),
+        React.createElement('div',{className:'bk-tool wide'+(s.bkQuiet?' on':''), title:'Quiet the margins',
+          onClick:(e)=>{ e.stopPropagation(); this.bkQuietToggle(); }},'Quiet'),
+        React.createElement('div',{className:'bk-tool', title:'Move the tools: top bar or side rail',
+          onClick:(e)=>{ e.stopPropagation(); const to=s.bkBar==='rail'?'bar':'rail';
+            this.setState({bkBar:to}); try{ localStorage.setItem('em-bk-bar',to); }catch(err){} }},
+          React.createElement('span',{style:{fontSize:'13px',lineHeight:1,letterSpacing:0}}, s.bkBar==='rail'?'\u2261':'\u22ee')),
+        React.createElement('div',{className:'bk-exit', title:'Back to the shelf',
+          onClick:(e)=>{ e.stopPropagation(); if(this._bkBusy || this._bk) return; this.bkToShelf(); }},
+          React.createElement('span',{style:{fontSize:'13px',lineHeight:1,letterSpacing:0}},'\u2190'),
+          s.bkBar==='rail'?null:React.createElement('span',{className:'bk-exit-word'},'Shelf'))),
+      s.bkMark!=null ? React.createElement('div',{key:'ribbon', className:'bk-ribbon set',
+        title:'The marker \u2013 click to go back to it',
+        onClick:(e)=>{ e.stopPropagation(); this.bkJump(s.bkMark); }}) : null,
+      s.bkFindOn ? React.createElement('div',{key:'find', className:'bk-find', onClick:(e)=>e.stopPropagation()},
+        React.createElement('input',{autoFocus:true, value:s.bkFind, placeholder:'Search the poems\u2026',
+          onChange:(e)=>this.setState({bkFind:e.target.value}),
+          onKeyDown:(e)=>{ if(e.key==='Escape') this.setState({bkFindOn:false, bkFind:''});
+            if(e.key==='Enter'){ const h=this.bkFindHits(); if(h.length) this.bkJump(this.bkPoemSpread(h[0].i)); } }}),
+        (()=>{ const hits=this.bkFindHits();
+          /* Nothing typed yet is not "no results" - say what is in the book. */
+          if(!String(s.bkFind||'').trim()) return React.createElement('div',{className:'bk-none'}, n+(n===1?' poem':' poems')+' in this book');
+          if(!hits.length) return React.createElement('div',{className:'bk-none'},'Nothing by that word');
+          return React.createElement('div',{className:'bk-hits'}, hits.map(h=>
+            React.createElement('div',{key:h.i, className:'bk-hit',
+              onClick:(e)=>{ e.stopPropagation(); this.bkJump(this.bkPoemSpread(h.i)); }},
+              React.createElement('div',{lang:'si',style:{fontFamily:"'UN-Agni',serif",fontSize:'17px',color:'#f0dcb8',lineHeight:1.25}}, h.title),
+              h.line?React.createElement('div',{lang:'si',style:{fontFamily:"'UN-Alakamanda',serif",fontSize:'13.5px',color:'rgba(200,168,120,.72)',lineHeight:1.4}}, h.line):null,
+              h.date?React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'9px',letterSpacing:'.2em',textTransform:'uppercase',color:'rgba(200,168,120,.4)'}}, h.date):null)));
+        })()) : null);
     return React.createElement('div',{className:'bk-reading'},
       chrome,
       React.createElement('div',{ref:el=>{this._bkFlyEl=el;}, style:{willChange:'transform'}},
@@ -3185,51 +3468,41 @@ class Component extends DCLogic {
         input, eye);
     };
 
-    const up = this.state.accMode === 'up';
+    /* Signing in is the only thing this card does. Nobody signs themselves up
+       any more - accounts are made by hand and the details handed over - so
+       there is no second tab, and no address to ask for: a form offering a
+       choice that always ends the same way is a worse answer than one door. */
     const submit = async (e)=>{
       e.preventDefault();
       const u=(document.getElementById('siteAccUser')||{}).value;
-      const m=(document.getElementById('siteAccMail')||{}).value;
       const p=(document.getElementById('siteAccPass')||{}).value;
-      this.setState({accErr:'', accOk:'', accBusy:true});
-      const r = up ? await A.signUp(u, m, p) : await A.signIn(u, p);
+      this.setState({accErr:'', accBusy:true});
+      const r = await A.signIn(u, p);
       if(r.ok){
         A.applyOwner();
-        this.setState({toolsIn:true, isOwner:A.isOwner(), accErr:'', accOk:'', accBusy:false});
+        this.setState({toolsIn:true, isOwner:A.isOwner(), accErr:'', accBusy:false});
         return;
       }
-      /* "confirm your email" came back as not-ok, but it is not a failure */
-      this.setState(r.pending ? {accOk:r.error, accErr:'', accBusy:false}
-                              : {accErr:r.error, accOk:'', accBusy:false});
+      this.setState({accErr:r.error, accBusy:false});
       const pf=document.getElementById('siteAccPass'); if(pf){ pf.value=''; pf.focus(); }
     };
-    const seg = (key, label) => React.createElement('button',{key, type:'button',
-      onClick:()=>this.setState({accMode:key, accErr:'', accOk:''}),
-      style:{flex:1,background:(up?key==='up':key==='in')?'var(--accent)':'none',
-        color:(up?key==='up':key==='in')?'#fff':'var(--dim)',border:'none',borderRadius:'8px',
-        padding:'8px 10px',fontFamily:'inherit',fontSize:'13px',fontWeight:600,cursor:'pointer'}}, label);
 
     return React.createElement('div',{style:{maxWidth:'380px',background:'var(--panelS)',
         backdropFilter:'blur(18px) saturate(1.25)', border:'1px solid var(--line2)',borderRadius:'16px',
         padding:'24px 22px 20px', marginBottom:'20px'}},
-      React.createElement('div',{style:{display:'flex',gap:'3px',background:'rgba(23,13,16,0.55)',
-        border:'1px solid var(--line2)',borderRadius:'11px',padding:'3px',marginBottom:'16px'}},
-        seg('in','Sign in'), seg('up','Sign up')),
       React.createElement('p',{style:{color:'var(--dim)',fontSize:'13.5px',lineHeight:1.55,margin:'0 0 18px'}},
-        up ? 'Pick a username to sign in with. The address is only for confirming the account and resetting a password.'
-           : 'These are work tools, not public ones. Sign in to open them.'),
+        'These are work tools, not public ones. Sign in to open them.'),
       React.createElement('form',{onSubmit:submit},
         field('siteAccUser','Username','text','username'),
-        /* asked once, on the way in; after that the username is enough */
-        up ? field('siteAccMail','Email','email','email') : null,
-        field('siteAccPass','Password','password', up?'new-password':'current-password'),
+        field('siteAccPass','Password','password','current-password'),
         err ? React.createElement('p',{style:{color:'var(--accentB)',fontSize:'13px',margin:'0 0 12px',lineHeight:1.5}}, err) : null,
-        this.state.accOk ? React.createElement('p',{style:{color:'#7fdc8a',fontSize:'13px',margin:'0 0 12px',lineHeight:1.5}}, this.state.accOk) : null,
         React.createElement('button',{type:'submit', disabled:!!this.state.accBusy,
           style:{width:'100%',background:'var(--accent)',color:'#fff',border:'none',borderRadius:'10px',
             padding:'12px',fontFamily:'inherit',fontSize:'14.5px',fontWeight:700,
             cursor:this.state.accBusy?'default':'pointer',opacity:this.state.accBusy?0.55:1}},
-          this.state.accBusy ? (up?'Making it…':'Checking…') : (up?'Create the account':'Sign in'))));
+          this.state.accBusy ? 'Checking…' : 'Sign in'),
+        React.createElement('p',{style:{color:'var(--mute)',fontSize:'12px',lineHeight:1.5,margin:'14px 0 0',textAlign:'center'}},
+          'No account? Ask Sithara – they are made by hand.')));
   }
 
   /* ---------------- the drawer ----------------

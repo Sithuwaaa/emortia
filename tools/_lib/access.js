@@ -87,6 +87,36 @@
     return list.indexOf(name) > -1 || (!!mail && list.indexOf(mail) > -1);
   }
 
+  /* ---------------------------------------------------------- who may in
+
+     Having an account and being allowed to use it are two different things.
+     ACCESS_ALLOW is the second one: a short list of the people this site is
+     for. It is checked after the password, so a name that is not on it takes
+     exactly as long to refuse as a wrong password and gives away nothing
+     about whether the account exists.
+
+     This is a lock on the site, not on the data. The data is protected by
+     row level security in Supabase, which is the only place a check cannot
+     be edited out by whoever is holding the page. */
+  function allowList() {
+    var l = window.ACCESS_ALLOW;
+    if (!Array.isArray(l)) return null;             // undefined: anyone with an account
+    return l.map(function (n) { return String(n).trim().toLowerCase(); });
+  }
+  function mayUse(name, email) {
+    var list = allowList();
+    if (!list) return true;
+    var n = String(name || '').trim().toLowerCase();
+    var m = String(email || '').trim().toLowerCase();
+    return list.some(function (a) {
+      if (a.charAt(0) === '@') return !!m && m.slice(-a.length) === a;
+      /* a bare name matches the name, the address, and the address that name
+         resolves to - so 'tooway' covers tooway@emortia.local either way */
+      return a === n || a === m || (a.indexOf('@') < 0 && asEmail(a) === m);
+    });
+  }
+  var NOT_ALLOWED = 'That account cannot open this site. Ask Sithara if you should have access.';
+
   function signedIn() { return !!session(); }
   function currentUser() { var s = session(); return s ? s.user : null; }
   /* only shown back to the person it belongs to, on their own profile */
@@ -129,6 +159,7 @@
     var probeSalt = rec ? rec.salt : '00000000000000000000000000000000';
     var got = await derive(password, probeSalt, rec ? rec.iter : 210000);
     if (!rec || !same(got, rec.hash)) return { ok: false, error: 'That username and password do not match.' };
+    if (!mayUse(rec.user, asEmail(rec.user))) return { ok: false, error: NOT_ALLOWED };
     keep(rec.user);
     return { ok: true, user: rec.user };
   }
@@ -190,6 +221,14 @@
           var p = await window.DB.myProfile();
           if (p && p.username) who = p.username;
         } catch (e2) {}
+        /* Checked here rather than before the password, so being off the list
+           and typing the wrong password look and take the same. Signed out
+           again on the way past: an account that may not be here should not
+           be left holding a Supabase session either. */
+        if (!mayUse(who, email)) {
+          try { if (window.DB && window.DB.signOut) await window.DB.signOut(); } catch (e3) {}
+          return { ok: false, error: NOT_ALLOWED };
+        }
         keep(who, email);
         return { ok: true, user: who };
       } catch (e) {
@@ -209,6 +248,15 @@
      a password. The username is carried on the account itself, and the server
      copies it into the table that turns names back into addresses. */
   async function signUp(username, email, password) {
+    /* Sign-ups are closed. Accounts are made by hand and the details handed
+       over, so there is no form for this any more and nothing on the site
+       calls it. It is left whole rather than deleted because opening it again
+       is one flag in access-config.js, and because the browser is not where
+       this is really decided: turn "Allow new users to sign up" off in the
+       Supabase dashboard as well, or the endpoint stays open whatever this
+       file says. */
+    if (window.ACCESS_SIGNUP_OPEN !== true)
+      return { ok: false, error: 'New accounts are made by Sithara. Ask for a username and a password.' };
     username = String(username || '').trim();
     email = String(email || '').trim();
     if (!username) return { ok: false, error: 'Pick a username - that is what you will sign in with.' };
@@ -369,12 +417,6 @@
     '.acc-go{width:100%;background:#b03a56;color:#fff;border:none;border-radius:10px;padding:12px;',
     '  font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;transition:background .16s ease;}',
     '.acc-go:hover{background:#d15873;} .acc-go:disabled{opacity:.55;cursor:default;}',
-    '.acc-seg{display:flex;gap:3px;background:rgba(23,13,16,.55);border:1px solid #412730;',
-    '  border-radius:11px;padding:3px;margin-bottom:16px;}',
-    '.acc-seg-b{flex:1;background:none;border:none;border-radius:8px;color:#c19da8;cursor:pointer;',
-    '  padding:8px 10px;font:600 13px/1 inherit;font-family:inherit;transition:background .15s ease,color .15s ease;}',
-    '.acc-seg-b:hover{color:#f7edf0;}',
-    '.acc-seg-b.on{background:#b03a56;color:#fff;}',
     '.acc-pw{position:relative;}',
     '.acc-pw input{padding-right:46px;}',
     '.acc-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);margin-top:-6px;',
@@ -402,16 +444,13 @@
   function gateMarkup(title, note) {
     return '<div class="acc-card" role="dialog" aria-label="Sign in">' +
       '<div class="acc-logo"><i style="height:8px"></i><i style="height:14px"></i><i style="height:10px"></i><i style="height:15px"></i></div>' +
-      '<div class="acc-seg"><button type="button" class="acc-seg-b on" data-mode="in">Sign in</button>' +
-        '<button type="button" class="acc-seg-b" data-mode="up">Sign up</button></div>' +
+      /* One way in and no choice to make. There is no sign-up: a segmented
+         control with one segment is a decoration, and a second tab that only
+         ever refuses is worse than no tab. */
       '<p id="accNote">' + note + '</p>' +
       '<form id="accForm" autocomplete="on">' +
         '<label for="accUser">Username</label>' +
         '<input id="accUser" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>' +
-        '<div id="accMailWrap" style="display:none">' +
-          '<label for="accMail">Email</label>' +
-          '<input id="accMail" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false">' +
-        '</div>' +
         '<label for="accPass">Password</label>' +
         '<div class="acc-pw">' +
           '<input id="accPass" name="password" type="password" autocomplete="current-password" required>' +
@@ -471,7 +510,7 @@
     }
 
     g.innerHTML = gateMarkup(opts.title || 'Sign in', opts.note || (remote()
-      ? 'These tools are not public. Sign in, or make an account if you have not got one.'
+      ? 'These tools are not public. Sign in to open them.<br>No account? Ask Sithara – they are made by hand.'
       : (USERS.length === 0
           ? 'No accounts exist yet, and Supabase is not configured to make them. Add <code>#adduser</code> to the end of this address to write the first one by hand.'
           : 'These tools are not public. Sign in to open them.')));
@@ -490,28 +529,7 @@
         err  = root.querySelector('#accErr'),
         go   = root.querySelector('#accGo'),
         pass = root.querySelector('#accPass'),
-        note = root.querySelector('#accNote'),
-        segs = [].slice.call(root.querySelectorAll('.acc-seg-b'));
-    var mode = 'in';
-    var firstNote = note ? note.innerHTML : '';
-
-    var mailWrap = root.querySelector('#accMailWrap');
-    var mail = root.querySelector('#accMail');
-
-    function setMode(m) {
-      mode = m;
-      segs.forEach(function (b) { b.classList.toggle('on', b.dataset.mode === m); });
-      go.textContent = m === 'in' ? 'Sign in' : 'Create the account';
-      pass.setAttribute('autocomplete', m === 'in' ? 'current-password' : 'new-password');
-      err.textContent = ''; err.className = 'acc-err';
-      /* the address is only asked for once; after that the username is enough */
-      if (mailWrap) mailWrap.style.display = m === 'up' ? '' : 'none';
-      if (mail) mail.required = m === 'up';
-      if (!note) return;
-      note.innerHTML = m === 'in' ? firstNote
-        : 'Pick a username to sign in with. The address is only for confirming the account and resetting a password.';
-    }
-    segs.forEach(function (b) { b.onclick = function () { setMode(b.dataset.mode); }; });
+        note = root.querySelector('#accNote');
 
     /* Show the password. Worth having on a phone, where a mistyped character
        is invisible and the only clue is being refused. */
@@ -532,15 +550,12 @@
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       err.textContent = ''; err.className = 'acc-err';
-      go.disabled = true; go.textContent = mode === 'in' ? 'Checking…' : 'Making it…';
+      go.disabled = true; go.textContent = 'Checking…';
       var id = root.querySelector('#accUser').value;
-      var r = mode === 'in' ? await signIn(id, pass.value)
-                            : await signUp(id, mail ? mail.value : '', pass.value);
+      var r = await signIn(id, pass.value);
       if (r.ok) { onDone(); return; }
-      go.disabled = false; go.textContent = mode === 'in' ? 'Sign in' : 'Create the account';
+      go.disabled = false; go.textContent = 'Sign in';
       err.textContent = r.error;
-      /* "confirm your email" is not a failure, so it should not read as one */
-      if (r.pending) err.className = 'acc-err ok';
       pass.value = '';
       pass.focus();
     });

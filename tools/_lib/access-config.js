@@ -27,16 +27,38 @@ window.ACCESS_USERS = [
    on the site and in every tool. */
 window.ACCESS_OWNERS = ['sithuwaaa', 'sithuwaaathepage@gmail.com'];
 
-/* Who may sign themselves up. Leave it undefined and anyone can; give it a
-   list to narrow it - a bare address matches itself, one starting with @
-   matches a whole domain:
+/* ── Who may sign in ──────────────────────────────────────────────────────
+   Nobody signs themselves up any more. There is no sign-up form: accounts
+   are made by hand and the details handed over. This is the list of who may
+   then use them.
+
+   An entry matches a username, a whole address, or - starting with @ - a
+   whole domain. A name is matched both as typed and as the address it
+   resolves to, so 'tooway' also covers tooway@emortia.local.
+
+   To let a new account in, add its username here and commit. To lock one
+   out, delete the line - and bump ACCESS_EPOCH below if you want the session
+   they already have to end now rather than when its seven days run down.
+
+   Leave this undefined and anyone with an account may sign in. */
+window.ACCESS_ALLOW = [
+  'sithuwaaa',                    // owner
+  'sithuwaaathepage@gmail.com',   // owner, by address
+  'tooway'                        // Tooway Solutions - the team's shared profile
+];
+
+/* Signing up from the site is off. The list below is what signUp() checked
+   back when there was a form; it is left here because turning sign-ups back
+   on is a matter of one flag and this is where the answer to "who?" lives.
 
      window.ACCESS_SIGNUP = ['sithuwaaathepage@gmail.com', '@dialog.lk'];
 
-   Accounts live in Supabase, so this list is a convenience rather than a
-   wall - the real switch is "Allow new users to sign up" in the Supabase
-   dashboard, under Authentication → Providers → Email. */
+   Accounts live in Supabase, so neither list is a wall on its own - the real
+   switch is "Allow new users to sign up" in the Supabase dashboard, under
+   Authentication → Providers → Email. Turn that off too. */
 // window.ACCESS_SIGNUP = [];
+/* Set this to true to bring the sign-up form back. */
+window.ACCESS_SIGNUP_OPEN = false;
 
 /* A bare username with no @ is given this domain so it can be an account.
    Signing up with a real address is better: it is the only way to get a
