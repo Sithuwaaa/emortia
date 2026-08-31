@@ -1134,8 +1134,15 @@ html.bk-reading-on main{z-index:70 !important;}
       <h2 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(40px,6vw,68px);letter-spacing:-0.03em;margin:6px 0 6px;">Tools</h2>
       <p style="color:var(--dim);font-size:15px;line-height:1.6;max-width:560px;margin:0 0 34px;">Small web utilities I made for real work. Each one runs entirely in your browser – nothing is uploaded anywhere – and opens in its own tab.</p>
       <div>{{ toolsGate }}</div>
-      <div class="{{ toolsGridClass }}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
-        <sc-for list="{{ tools }}" as="tool" hint-placeholder-count="1">
+      <div class="{{ toolsGridClass }}">
+      <sc-for list="{{ toolGroups }}" as="grp" hint-placeholder-count="1">
+      <div style="margin-bottom:34px;">
+        <div style="display:flex;align-items:baseline;gap:10px;margin:0 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line);">
+          <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;">{{ grp.name }}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);">{{ grp.count }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+        <sc-for list="{{ grp.tools }}" as="tool" hint-placeholder-count="1">
           <a href="{{ tool.href }}" target="_blank" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:block;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
             <div style="position:absolute;inset:-24px 0;pointer-events:none;opacity:.4;background-image:linear-gradient(var(--tcGrid) 1px,transparent 1px),linear-gradient(90deg,var(--tcGrid) 1px,transparent 1px);background-size:24px 24px;animation:termGrid 2.8s linear infinite;"></div>
             <div style="position:relative;display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panelS);">
@@ -1150,6 +1157,9 @@ html.bk-reading-on main{z-index:70 !important;}
             </div>
           </a>
         </sc-for>
+        </div>
+      </div>
+      </sc-for>
       </div>
     </section>
     </sc-if>
@@ -3370,7 +3380,12 @@ class Component extends DCLogic {
     /* The list is Access.FEATURES so that this panel and the tool pages
        cannot disagree about what exists - a switch here for something no page
        reads, or a page reading a key with no switch, would both be silent. */
-    const LOCKABLE = (window.Access && Access.FEATURES) || [];
+    const A = window.Access;
+    const LOCKABLE = (A && A.FEATURES) || [];
+    /* Grouped and alphabetical, off the same helper the Tools page uses, so
+       the two lists can never fall into different orders. The journal is in
+       here with the rest - it is a switch like any other. */
+    const GROUPS = (A && A.grouped) ? A.grouped() : [{ group:'', items:LOCKABLE }];
     const locks = s.locks || {};
     const busy = s.lockBusy || '';
 
@@ -3417,7 +3432,13 @@ class Component extends DCLogic {
         'page checks again on the way in, so a card that is not drawn is a tidy list, not a lock.'),
       s.lockErr ? React.createElement('p',{style:{color:'var(--accent)',fontSize:'13px',margin:'8px 0 0'}},
         s.lockErr) : null,
-      LOCKABLE.map(row));
+      /* The heading carries no rule of its own - the first row's top border
+         sits directly under it and does the same work. */
+      GROUPS.map(g => React.createElement(React.Fragment,{key:g.group},
+        React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10.5px',
+          letterSpacing:'.2em',textTransform:'uppercase',color:'var(--accent)',
+          padding:'20px 0 2px'}}, g.group),
+        g.items.map(row))));
   }
 
   async toggleLock(key, want){
@@ -3742,7 +3763,13 @@ class Component extends DCLogic {
       isMusic:s.page==='music', isBlog:onBlog, isTools:s.page==='tools', isAbout:s.page==='about', isContact:s.page==='contact',
       isOwnerPage: s.page==='owner' && s.isOwner,
       ownerPanel: this.renderOwnerPage(),
-      tools:[
+      /* The cards are written in the order they were built; what comes out is
+         grouped and alphabetical. Both come off Access.FEATURES, which is
+         also what the Owner switches read, so a tool added there arrives in
+         its place on both pages without either list being reordered by hand. */
+      toolGroups: (()=>{
+      const A = window.Access;
+      const cards = [
         {name:'Design Extractor', initial:'D', tag:'Dialog · MBB design sheet', href:'tools/design-extractor/', feature:'tool:design-extractor',
          desc:'Reads the 765-column design workbook and keeps what a bill of materials needs. One radio written under three technologies is one box on the pole, not three – and the table that decides which radio carries what is yours to correct.'},
         {name:'BOM Builder', initial:'B', tag:'Dialog · lamp pole materials', href:'tools/bom/', feature:'tool:bom',
@@ -3769,7 +3796,14 @@ class Component extends DCLogic {
          whether it is drawn. Each page checks again on its way in - a card
          that is not drawn is not a lock, only a tidy list. */
       ].filter(t=>!t.feature || may(t.feature))
-       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access')})),
+       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
+                  group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}));
+      const gs = (A && A.grouped) ? A.grouped(cards) : [{ group:'', items:cards }];
+      /* A group with nothing left in it is a heading over empty space — which
+         is what a shut switch would otherwise leave behind. */
+      return gs.filter(g=>g.items.length).map(g=>({ name:g.group, tools:g.items,
+        count: g.items.length + (g.items.length===1 ? ' tool' : ' tools') }));
+      })(),
       page:s.page,
 
       navItems: navDefs.map(([k,label])=>({ key:k, label, active:s.page===k, onClick:this.go(k) })),

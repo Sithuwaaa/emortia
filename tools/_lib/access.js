@@ -633,34 +633,70 @@
      After that, the fallbacks in order are: the server, then the last answer
      it gave, then def. Keeping the last answer is what stops a tool shut
      yesterday from flickering open on the next load. */
+  /* Every switch carries the group it belongs to. Nothing else decides where
+     a tool appears: the Tools page and the Owner switches both read this
+     table and both sort it the same way, so adding a line here is the whole
+     job of adding a tool - it lands in its group, in its place, in both. */
   var FEATURES = [
-    { key:'journal', name:'Journal', def:false,
+    { key:'journal', name:'Journal', def:false, group:'Emortia',
       what:'The poems. Reading only – writing stays mine.' },
-    { key:'tool:lyric-video', name:'Video & Artwork', def:false,
+    { key:'tool:lyric-video', name:'Video & Artwork', def:false, group:'Emortia',
       what:'The lyric video and the cover art tool.' },
-    { key:'tool:whattodo', name:'What To Do', def:false,
+    { key:'tool:whattodo', name:'What To Do', def:false, group:'Field & team',
       what:'The job list. Whoever can open it can tick things off.' },
-    { key:'tool:project-update', name:'Project Update', def:false,
+    { key:'tool:project-update', name:'Project Update', def:false, group:'Field & team',
       what:'The rollout figures.' },
-    { key:'tool:team', name:'Team Directory', def:false,
+    { key:'tool:team', name:'Team Directory', def:false, group:'Field & team',
       what:'Names, mobiles, NIC numbers and vehicles. Opening it lets the team read and copy; adding and removing stays mine.' },
-    { key:'tool:field-config', name:'Field Config', def:false,
+    { key:'tool:field-config', name:'Field Config', def:false, group:'Site reference',
       what:'Vendor commands, logins and UMPT passwords. Opening it lets the team read and copy; editing stays mine.' },
-    { key:'tool:esn', name:'ESN Sharing', def:true,
+    { key:'tool:esn', name:'ESN Sharing', def:true, group:'Field & team',
       what:'Filing an ESN from the field.' },
-    { key:'tool:design-extractor', name:'Design Extractor', def:true,
+    { key:'tool:design-extractor', name:'Design Extractor', def:true, group:'Design & materials',
       what:'Reading the design workbooks.' },
-    { key:'tool:bom', name:'BOM Builder', def:true,
+    { key:'tool:bom', name:'BOM Builder', def:true, group:'Design & materials',
       what:'Turning a design into an order.' },
-    { key:'tool:site-access', name:'Site Access Lookup', def:true,
+    { key:'tool:site-access', name:'Site Access Lookup', def:true, group:'Site reference',
       what:'The site list – depot, contact, permissions.' },
-    { key:'tool:site-data', name:'Site Data Lookup', def:true,
+    { key:'tool:site-data', name:'Site Data Lookup', def:true, group:'Site reference',
       what:'The technical profile for every site.' },
-    { key:'tool:gin-extractor', name:'GIN Extractor', def:true,
+    { key:'tool:gin-extractor', name:'GIN Extractor', def:true, group:'Design & materials',
       what:'Pulling material lines out of SAP notes.' }
   ];
   var BY_KEY = {};
   FEATURES.forEach(function (f) { BY_KEY[f.key] = f; });
+
+  /* ------------------------------------------------------- order and group
+
+     A to Z, groups included, and nothing positioned by hand. The table above
+     is in the order it grew in; a list on screen that keeps that order is
+     asking whoever reads it to remember when each tool was written.
+
+     localeCompare rather than < so that case and accents do not decide it,
+     and numeric so a hypothetical "Tool 10" sorts after "Tool 9". */
+  function byName(a, b) {
+    return String(a && a.name || '').localeCompare(String(b && b.name || ''),
+      undefined, { sensitivity: 'base', numeric: true });
+  }
+  function groupOf(key) { return (BY_KEY[key] && BY_KEY[key].group) || 'Other'; }
+
+  /* Takes anything carrying a name and a group - the features themselves, or
+     the Tools page's cards once they have been given one - and hands back
+     [{ group, items }] with both levels sorted. */
+  function grouped(items) {
+    var list = Array.isArray(items) ? items : FEATURES;
+    var seen = {}, out = [];
+    list.forEach(function (f) {
+      var g = (f && f.group) || 'Other';
+      if (!seen[g]) { seen[g] = { group: g, items: [] }; out.push(seen[g]); }
+      seen[g].items.push(f);
+    });
+    out.forEach(function (g) { g.items.sort(byName); });
+    return out.sort(function (a, b) {
+      return String(a.group).localeCompare(String(b.group), undefined,
+        { sensitivity: 'base', numeric: true });
+    });
+  }
   /* Something not in the table is not a mistake to be forgiven. A tool page
      that asks about a key nobody declared gets the careful answer. */
   function defaultOf(feature) { return !!(BY_KEY[feature] && BY_KEY[feature].def); }
@@ -787,6 +823,7 @@
     rename: rename, refresh: refresh, verifyRemote: verifyRemote,
     allowed: allowed, allow: allow, locks: locks,
     FEATURES: FEATURES, defaultOf: defaultOf, rememberLocks: remember,
+    grouped: grouped, groupOf: groupOf, byName: byName,
     canSignUp: remote, applyOwner: applyOwner, chip: showChip,
     makeUserLine: makeUserLine, CSS: CSS, gateMarkup: gateMarkup, wire: wire,
     /* the PBKDF2 pair, so a tool can put a password in front of something
