@@ -649,6 +649,122 @@ html.bk-reading-on main{z-index:70 !important;}
   background:radial-gradient(130% 100% at 18% -12%,var(--bg2),var(--bg) 66%);
   min-height:clamp(420px,62vh,620px);display:flex;align-items:flex-end;
   padding:clamp(26px,4vw,46px);margin-top:16px;}
+/* ---- Poetry: one poem, and the artwork it became ----
+
+   A second way into the same poems. The book is a book — you take it down and
+   turn its pages. This is the other thing a poem wants: the whole screen, the
+   art of the song it turned into, and nothing else to look at. Arrow keys, or
+   the wheel once the poem has been read to the end.
+
+   Two art layers rather than one, crossfading, because swapping a single
+   background-image flashes the empty div between the old paint and the new. */
+.pp-stage{position:relative;display:flex;overflow:hidden;border-radius:16px;
+  height:calc(100vh - clamp(168px,24vh,258px));min-height:430px;
+  background:#170d10;border:1px solid var(--line2);
+  font-family:'Space Mono',monospace;}
+.pp-art{position:absolute;inset:-6%;background-position:50% 40%;background-size:cover;
+  background-repeat:no-repeat;animation:ppDrift 30s ease-in-out infinite;
+  transition:opacity .9s ease;}
+.pp-scrim{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(96deg,rgba(9,5,7,.86) 0%,rgba(11,6,8,.58) 26%,rgba(20,9,13,.2) 62%,rgba(28,12,17,.06) 100%);}
+.pp-glow{position:absolute;left:14%;top:32%;width:48%;height:44%;border-radius:50%;
+  filter:blur(90px);pointer-events:none;
+  background:radial-gradient(ellipse,rgba(176,58,86,.22),transparent 70%);
+  animation:ppGlow 12s ease-in-out infinite;}
+/* the spine: the date going up it, a tick per poem, and the imprint */
+.pp-rail{position:relative;z-index:3;width:66px;flex:none;box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px 0 18px;
+  border-right:1px solid rgba(247,237,240,.09);background:rgba(8,5,6,.78);
+  backdrop-filter:blur(10px);animation:ppRail .7s cubic-bezier(.2,.8,.3,1) both;}
+.pp-rule{width:16px;height:1px;background:rgba(247,237,240,.18);flex:none;}
+.pp-when{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.pp-vert{writing-mode:vertical-rl;display:flex;align-items:center;gap:18px;
+  animation-duration:.6s;animation-fill-mode:both;animation-timing-function:cubic-bezier(.2,.8,.3,1);}
+.pp-ticks{display:flex;flex-direction:column;align-items:center;gap:7px;flex:none;}
+.pp-tick{cursor:pointer;border-radius:2px;height:2px;transition:width .3s ease,background .3s ease;}
+.pp-no{writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;letter-spacing:.22em;color:#c9788d;flex:none;}
+.pp-mark{writing-mode:vertical-rl;transform:rotate(180deg);font-size:7px;letter-spacing:.3em;
+  color:rgba(141,106,117,.9);flex:none;}
+/* the poem itself, held left against the art */
+.pp-read{position:relative;z-index:2;flex:1;min-width:0;min-height:0;box-sizing:border-box;
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+  padding:clamp(28px,5vh,52px) clamp(28px,8vw,120px) clamp(28px,5vh,52px) clamp(22px,5vw,76px);}
+.pp-hold{position:relative;z-index:1;max-width:40ch;flex:none;margin:auto auto auto 0;}
+/* a pane of frosted glass under the words, faded at its edges so it is a
+   softening of the picture rather than a card sitting on top of it */
+.pp-frost{position:absolute;left:-34px;right:-38px;top:-30px;bottom:-30px;border-radius:22px;
+  backdrop-filter:blur(15px) saturate(.95);background:rgba(10,6,8,.46);pointer-events:none;
+  -webkit-mask-image:radial-gradient(ellipse 76% 80% at 40% 50%,#000 46%,rgba(0,0,0,.5) 74%,transparent 100%);
+  mask-image:radial-gradient(ellipse 76% 80% at 40% 50%,#000 46%,rgba(0,0,0,.5) 74%,transparent 100%);}
+.pp-title{position:relative;margin:0;font-family:'UN-Agni',serif;font-weight:400;line-height:1.14;
+  font-size:clamp(34px,5.4vw,62px);color:#fff;text-shadow:0 2px 40px rgba(0,0,0,.75);
+  animation-duration:.8s;animation-fill-mode:both;animation-timing-function:cubic-bezier(.2,.8,.3,1);}
+.pp-bar{position:relative;width:86px;height:3px;margin-top:20px;background:#b03a56;}
+.pp-verse{position:relative;margin-top:28px;font-family:'UN-Alakamanda',serif;line-height:2.15;
+  color:#f6efec;font-size:clamp(18px,2.1vw,24px);text-shadow:0 2px 24px rgba(0,0,0,.72);}
+.pp-line{min-height:.6em;animation-duration:.75s;animation-fill-mode:both;
+  animation-timing-function:cubic-bezier(.2,.8,.3,1);}
+.pp-sign{position:relative;margin-top:34px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  animation:ppIn .7s .5s ease both;}
+/* the year, enormous and almost invisible, the way a plate number is */
+.pp-year{position:absolute;right:44px;bottom:88px;z-index:0;pointer-events:none;text-align:right;
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:clamp(56px,11vw,124px);
+  line-height:.78;letter-spacing:-.05em;color:rgba(247,237,240,.06);
+  animation-duration:1s;animation-fill-mode:both;animation-timing-function:cubic-bezier(.2,.8,.3,1);}
+.pp-prog{position:absolute;right:34px;top:96px;bottom:96px;z-index:4;width:3px;border-radius:3px;
+  background:rgba(247,237,240,.14);pointer-events:none;}
+.pp-prog i{position:absolute;left:0;right:0;top:0;border-radius:3px;background:#b03a56;
+  box-shadow:0 0 12px rgba(176,58,86,.7);transition:height .5s cubic-bezier(.2,.8,.3,1);}
+.pp-prog b{position:absolute;left:50%;width:9px;height:9px;border-radius:50%;background:#f7edf0;
+  box-shadow:0 0 10px rgba(176,58,86,.85);transform:translate(-50%,-50%);
+  transition:top .5s cubic-bezier(.2,.8,.3,1);}
+.pp-steps{position:absolute;bottom:26px;right:60px;z-index:5;display:flex;align-items:center;gap:10px;}
+.pp-hintx{font-size:8px;letter-spacing:.28em;text-transform:uppercase;color:rgba(238,228,208,.45);}
+.pp-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;
+  border:1px solid rgba(247,237,240,.22);background:rgba(11,6,8,.5);backdrop-filter:blur(8px);
+  font-size:12px;cursor:pointer;transition:border-color .2s ease,background .2s ease;}
+.pp-btn:hover{border-color:rgba(242,195,206,.5);background:rgba(30,14,20,.66);}
+/* only on a poem that became a song - the pill is a fact about the poem */
+.pp-hear{position:absolute;top:20px;right:26px;z-index:5;display:flex;align-items:center;gap:8px;
+  height:32px;padding:0 14px;border-radius:999px;border:1px solid rgba(176,58,86,.7);
+  background:rgba(11,6,8,.55);backdrop-filter:blur(8px);font-size:9px;letter-spacing:.18em;
+  text-transform:uppercase;color:#f2c3ce;cursor:pointer;
+  transition:border-color .2s ease,background .2s ease,color .2s ease;}
+.pp-hear:hover{border-color:#d15873;background:rgba(40,16,24,.7);color:#fff;}
+@keyframes ppDrift{0%,100%{transform:scale(1.03) translate(0,0);}50%{transform:scale(1.1) translate(-1.8%,-1.4%);}}
+@keyframes ppGlow{0%,100%{opacity:.35;transform:scale(1);}50%{opacity:.7;transform:scale(1.09);}}
+@keyframes ppRail{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:none;}}
+@keyframes ppIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+/* Paired A/B keyframes, alternating on every turn. One set would not restart
+   when the same animation is re-applied to the same element, so the second
+   poem would arrive with no movement at all. */
+@keyframes ppHeadA{from{opacity:0;transform:translateY(26px);filter:blur(8px);}to{opacity:1;transform:none;filter:blur(0);}}
+@keyframes ppHeadB{from{opacity:0;transform:translateY(26px);filter:blur(8px);}to{opacity:1;transform:none;filter:blur(0);}}
+@keyframes ppLineA{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:none;}}
+@keyframes ppLineB{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:none;}}
+@keyframes ppUpA{from{opacity:0;transform:translateY(-22px);}to{opacity:1;transform:none;}}
+@keyframes ppUpB{from{opacity:0;transform:translateY(-22px);}to{opacity:1;transform:none;}}
+@keyframes ppYearA{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:none;}}
+@keyframes ppYearB{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:none;}}
+/* Narrow: the spine lies down across the top and the poem takes the width. */
+@media (max-width:760px){
+  .pp-stage{flex-direction:column;height:calc(100vh - clamp(150px,20vh,210px));}
+  .pp-rail{width:auto;flex-direction:row;border-right:0;
+    border-bottom:1px solid rgba(247,237,240,.09);padding:10px 14px;gap:12px;}
+  .pp-rule,.pp-mark{display:none;}
+  .pp-when{flex:1;}
+  .pp-vert,.pp-no{writing-mode:horizontal-tb;transform:none;}
+  .pp-ticks{flex-direction:row;}
+  .pp-year{right:18px;bottom:66px;}
+  .pp-prog{display:none;}
+  .pp-steps{right:18px;bottom:16px;}
+  .pp-hintx{display:none;}
+  .pp-frost{left:-18px;right:-18px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .pp-art,.pp-glow{animation:none;}
+  .pp-title,.pp-line,.pp-year,.pp-vert,.pp-rail,.pp-sign{animation:none !important;}
+}
 /* the covers, dimmed and faded out towards the bottom so the name has
    somewhere quiet to sit */
 .hero-wall{position:absolute;inset:0;display:grid;
@@ -1117,6 +1233,16 @@ html.bk-reading-on main{z-index:70 !important;}
     </section>
     </sc-if>
 
+    <!-- ============ POETRY ============ -->
+    <!-- No page heading above it on purpose: the poem's own title is the
+         heading, and anything sitting over the artwork would be a second one
+         competing with it. -->
+    <sc-if value="{{ isPoetry }}" hint-placeholder-val="{{ false }}">
+    <section style="animation:fadeUp 0.5s ease;padding:22px 0 30px;">
+      {{ poetryContent }}
+    </section>
+    </sc-if>
+
     <!-- ============ JOURNAL / BLOG ============ -->
     <sc-if value="{{ isBlog }}" hint-placeholder-val="{{ false }}">
     <section style="animation:fadeUp 0.5s ease;padding:40px 0 60px;">
@@ -1379,6 +1505,9 @@ class Component extends DCLogic {
       /* The reading tools. Where the tools sit and where the marker is are the
          two the reader chose deliberately, so those two are the ones that are
          remembered - finding and quiet are for the sitting you are in. */
+      /* Poetry: which poem, which way it was turned, and a counter that
+         alternates the A/B animations so a turn always moves. */
+      ppIdx:0, ppDir:1, ppTick:0,
       bkFindOn:false, bkFind:'', bkQuiet:false,
       bkBar:(()=>{ try{ return localStorage.getItem('em-bk-bar')==='rail'?'rail':'bar'; }catch(e){ return 'bar'; } })(),
       bkMark:(()=>{ try{ const v=localStorage.getItem('em-bk-mark'); return v==null?null:(parseInt(v,10)||0); }catch(e){ return null; } })(),
@@ -1719,6 +1848,7 @@ class Component extends DCLogic {
       ['home',    '/'],
       ['music',   '/music'],
       ['blog',    '/journal'],
+      ['poetry',  '/poetry'],
       ['tools',   '/tools/'],
       ['about',   '/about'],
       ['contact', '/contact'],
@@ -2581,6 +2711,177 @@ class Component extends DCLogic {
       React.createElement('div',{className:'bk-curlsh', style:{'--cx':pos[1]==='l'?'0%':'100%','--cy':'100%'}}),
       React.createElement('div',{className:'bk-curl '+pos}));
   }
+  /* ---- Poetry -----------------------------------------------------------
+
+     The same poems as the book, read the other way: one at a time, full
+     bleed, with the artwork of the song it became behind it. The book is for
+     leafing; this is for reading one thing properly.
+
+     Every picture comes from the record sleeves - a poem that turned into a
+     song wears its own cover, and one that has not yet is given a sleeve from
+     the catalogue so the wall is never empty. */
+  ppList(){ return this.state.poems || []; }
+  ppIdx(){
+    const n = this.ppList().length;
+    if(!n) return 0;
+    return Math.max(0, Math.min(this.state.ppIdx || 0, n - 1));
+  }
+  /* Its own song's art first. Failing that, a sleeve from the catalogue,
+     picked by position so the same poem always gets the same one. */
+  ppArt(i){
+    const L = this.ppList(), p = L[i];
+    if(!p) return '';
+    const tk = this.findTrack(p.track);
+    if(tk && tk.img) return tk.img;
+    const withArt = this.tracks.filter(t => t.img);
+    if(!withArt.length) return '';
+    return withArt[i % withArt.length].img;
+  }
+  /* The date is written by hand in Sinhala - "අගෝස්තු 30, 2026" - so it is
+     taken apart loosely: the four digits are the year, the one or two that
+     are left are the day, and whatever words remain are the month. */
+  ppWhen(p){
+    const s = String((p && p.date) || '').trim();
+    const ym = s.match(/(\d{4})/);
+    const year = ym ? ym[1] : '';
+    const rest = ym ? s.replace(ym[1], '') : s;
+    const dm = rest.match(/(\d{1,2})/);
+    const day = dm ? String(dm[1]).padStart(2, '0') : '';
+    const month = rest.replace(/[\d,]/g, '').replace(/\s+/g, ' ').trim();
+    return { day, month, year };
+  }
+  ppGo(i){
+    this.setState(st => (i === st.ppIdx ? null
+      : { ppIdx:i, ppDir: i > st.ppIdx ? 1 : -1, ppTick: st.ppTick + 1 }));
+  }
+  ppStep(d){
+    this.setState(st => {
+      const n = (this.state.poems || []).length;
+      const i = Math.min(n - 1, Math.max(0, st.ppIdx + d));
+      if(i === st.ppIdx) return null;
+      if(this._ppRead) this._ppRead.scrollTop = 0;
+      return { ppIdx:i, ppDir:d, ppTick: st.ppTick + 1 };
+    });
+  }
+  /* A poem longer than the screen has to be readable before the wheel is
+     allowed to take it away, so a turn only happens once the reader is at the
+     end of what is there. The cooldown is what stops one flick of a trackpad
+     throwing three poems past. */
+  ppAtEnd(d){
+    const a = this._ppRead;
+    if(!a) return true;
+    return d > 0 ? a.scrollTop + a.clientHeight >= a.scrollHeight - 2 : a.scrollTop <= 2;
+  }
+  ppBind(){
+    if(this._ppBound) return;
+    this._ppBound = true;
+    this._ppCool = 0;
+    this._ppKey = (e) => {
+      if(this.state.page !== 'poetry') return;
+      const t = e.target;
+      if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if(e.key === 'ArrowRight' || e.key === 'PageDown'){ e.preventDefault(); this.ppStep(1); }
+      else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ e.preventDefault(); this.ppStep(-1); }
+      else if(e.key === 'ArrowDown' && this.ppAtEnd(1)){ e.preventDefault(); this.ppStep(1); }
+      else if(e.key === 'ArrowUp' && this.ppAtEnd(-1)){ e.preventDefault(); this.ppStep(-1); }
+    };
+    this._ppWheel = (e) => {
+      if(this.state.page !== 'poetry') return;
+      if(!this._ppStage || !e.target || !this._ppStage.contains(e.target)) return;
+      if(e.target.closest && e.target.closest('.pp-rail')) return;
+      const now = Date.now();
+      const d = e.deltaY > 0 ? 1 : -1;
+      if(Math.abs(e.deltaY) < 12 || now - this._ppCool < 620) return;
+      if(!this.ppAtEnd(d)){ this._ppCool = now - 420; return; }
+      this._ppCool = now;
+      this.ppStep(d);
+    };
+    window.addEventListener('keydown', this._ppKey);
+    window.addEventListener('wheel', this._ppWheel, { passive: true });
+  }
+  renderPoetry(){
+    const s = this.state;
+    if(!s.poemsLoaded) return this.waveLoader('Poetry · loading poems');
+    const L = this.ppList(), n = L.length;
+    if(!n){
+      return React.createElement('div',{className:'jr-card jr-empty'},
+        React.createElement('div',{className:'jr-empty-h'},'No poems published yet'),
+        React.createElement('div',null,'Add your first poem to poems/poems.txt and it will show up here.'));
+    }
+    this.ppBind();
+
+    const i = this.ppIdx(), p = L[i];
+    const even = (s.ppTick % 2) === 0;
+    const A = even ? 'A' : 'B';
+    const dir = s.ppDir >= 0 ? 1 : -1;
+    const when = this.ppWhen(p);
+    const tk = this.findTrack(p.track);
+    /* the picture being left behind, so the crossfade has two real ends */
+    const prevArt = this.ppArt(Math.max(0, Math.min(n - 1, i - dir)));
+    const artHere = this.ppArt(i);
+    const pct = n > 1 ? (i / (n - 1)) * 100 : 0;
+
+    const layer = (url, on, key) => React.createElement('div',{key, className:'pp-art',
+      style:{ backgroundImage: url ? 'url(' + url + ')' : 'none', opacity: on ? 0.95 : 0 }});
+
+    const rail = React.createElement('aside',{key:'rail', className:'pp-rail'},
+      React.createElement('div',{lang:'si', style:{fontFamily:"'UN-Agni',serif",fontSize:'17px',lineHeight:1,color:'#f7edf0',flex:'none'}},'කවිය'),
+      React.createElement('div',{className:'pp-rule'}),
+      React.createElement('div',{className:'pp-when'},
+        React.createElement('div',{className:'pp-vert', style:{animationName:(dir >= 0 ? 'ppLine' : 'ppUp') + A}},
+          React.createElement('span',{lang:'si', style:{fontFamily:"'UN-Agni',serif",fontSize:'21px',letterSpacing:'.02em',color:'#f2c3ce'}},
+            (when.month + ' ' + when.day).trim()),
+          React.createElement('span',{style:{fontSize:'11px',letterSpacing:'.36em',color:'#8d6a75'}}, when.year))),
+      React.createElement('div',{className:'pp-ticks'},
+        L.map((q,k)=>React.createElement('span',{key:k, className:'pp-tick',
+          title: q.title, onClick: ()=>this.ppGo(k),
+          style:{ width: k === i ? '20px' : '10px',
+                  background: k === i ? '#f2c3ce' : 'rgba(227,203,210,.3)' }}))),
+      React.createElement('div',{className:'pp-no'}, '№ ' + (i + 1) + '/' + n),
+      React.createElement('div',{className:'pp-rule'}),
+      React.createElement('div',{className:'pp-mark'},'E M O R T I A'));
+
+    const verse = String(p.body || '').split(/\r?\n/).map((t,k)=>
+      React.createElement('div',{key:k, className:'pp-line',
+        style:{ animationName:(dir >= 0 ? 'ppLine' : 'ppUp') + A,
+                animationDelay:(0.22 + k * 0.07).toFixed(2) + 's' }}, t));
+
+    const read = React.createElement('div',{key:'read', className:'pp-read', ref:el=>{this._ppRead = el;}},
+      React.createElement('div',{className:'pp-hold'},
+        React.createElement('div',{className:'pp-frost'}),
+        React.createElement('h2',{lang:'si', className:'pp-title', style:{animationName:'ppHead' + A}}, p.title),
+        React.createElement('div',{className:'pp-bar'}),
+        React.createElement('div',{lang:'si', className:'pp-verse'}, verse),
+        React.createElement('div',{className:'pp-sign'},
+          React.createElement('span',{style:{fontSize:'10px',letterSpacing:'.34em',color:'rgba(196,166,176,.95)',textShadow:'0 2px 14px rgba(0,0,0,.85)'}},'E M O R T I A'),
+          React.createElement('i',{style:{fontFamily:"'EB Garamond',serif",fontStyle:'normal',fontSize:'15px',letterSpacing:'.03em',color:'rgba(228,206,213,.95)',textShadow:'0 2px 14px rgba(0,0,0,.85)'}},'Sithara Perera'))));
+
+    return React.createElement('div',{className:'pp-stage', ref:el=>{this._ppStage = el;}},
+      layer(even ? artHere : prevArt, even, 'a'),
+      layer(even ? prevArt : artHere, !even, 'b'),
+      React.createElement('div',{key:'scrim', className:'pp-scrim'}),
+      React.createElement('div',{key:'glow', className:'pp-glow'}),
+      rail,
+      read,
+      React.createElement('div',{key:'year', className:'pp-year', style:{animationName:'ppYear' + A}}, when.year),
+      tk ? React.createElement('div',{key:'hear', className:'pp-hear', title:'Play the song this poem became',
+        onClick:()=>this.loadTrack(tk.i, true)},
+        React.createElement('svg',{width:8,height:8,viewBox:'0 0 24 24'},
+          React.createElement('polygon',{points:'7,4 20,12 7,20',fill:'currentColor'})),
+        React.createElement('span',null,'Hear ' + tk.t)) : null,
+      React.createElement('div',{key:'prog', className:'pp-prog'},
+        React.createElement('i',{style:{height:pct.toFixed(1) + '%'}}),
+        React.createElement('b',{style:{top:pct.toFixed(1) + '%'}})),
+      React.createElement('div',{key:'steps', className:'pp-steps'},
+        React.createElement('span',{className:'pp-hintx'},'Scroll or ← →'),
+        React.createElement('span',{className:'pp-btn', title:'Previous poem',
+          onClick:()=>this.ppStep(-1),
+          style:{color: i > 0 ? '#f2c3ce' : 'rgba(242,195,206,.25)'}},'←'),
+        React.createElement('span',{className:'pp-btn', title:'Next poem',
+          onClick:()=>this.ppStep(1),
+          style:{color: i < n - 1 ? '#f2c3ce' : 'rgba(242,195,206,.25)'}},'→')));
+  }
+
   /* the case: one spine-on-the-left volume per book, waiting to be taken down.
      The cover carries its own title and imprint, so there is nothing printed
      under it - a shelf of books does not caption them. */
@@ -3814,14 +4115,18 @@ class Component extends DCLogic {
         count: g.items.length + (g.items.length===1 ? ' tool' : ' tools') }));
       })();
 
+    /* Poetry and the Journal are the same poems in two hands, so they answer
+       to one switch. Poetry comes first: it is the one made for reading. */
     const navDefs = [['home','Home'],['music','Music']]
-      .concat(may('journal') ? [['blog','Journal']] : [])
+      .concat(may('journal') ? [['poetry','Poetry'],['blog','Journal']] : [])
       .concat([['tools','Tools'],['about','About'],['contact','Contact']])
       .concat(s.isOwner ? [['owner','Owner']] : []);
     const onBlog = s.page==='blog' && may('journal');
 
     return {
-      isHome:s.page==='home' || (s.page==='blog' && !may('journal')),
+      isHome:s.page==='home' || ((s.page==='blog' || s.page==='poetry') && !may('journal')),
+      isPoetry: s.page==='poetry' && may('journal'),
+      poetryContent: this.renderPoetry(),
       isMusic:s.page==='music', isBlog:onBlog, isTools:s.page==='tools', isAbout:s.page==='about', isContact:s.page==='contact',
       isOwnerPage: s.page==='owner' && s.isOwner,
       ownerPanel: this.renderOwnerPage(),
