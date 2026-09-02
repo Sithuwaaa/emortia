@@ -91,7 +91,7 @@
 <input type="file" id="file" accept=".xlsx,.xls">
 <script>
 window.LOOKUP_CONFIG = {
-  dataUrl:'data.json', idbName:'site_access_db', idbStore:'ds', sheetName:'Sheet1',
+  sheetName:'Sheet1',
   syncKey:'site_access',          // shared through Supabase; see tools/_lib/db.js
   unit:'sites', unitSingular:'site', source:'DNS Operational Site list · Sheet1',
   homeIcon:'📡', homeText:n=>'Search '+n.toLocaleString()+' Dialog sites by ID, name, district or address.<br>The same data on every device.',

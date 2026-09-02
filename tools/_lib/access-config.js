@@ -85,19 +85,27 @@ window.ACCESS_EPOCH = 1;
 window.ACCESS_DAYS = 7;
 
 /* ── What this actually protects ──────────────────────────────────────────
-   It keeps the tools out of the hands of someone browsing the site. It does
-   not keep anything out of the hands of someone who knows a URL: every file
-   in this repository is served publicly by GitHub Pages, so
+   This file is a gate on the door. It is worth having - it stops the tools
+   being stumbled into - and on its own it has never been a boundary, because
+   every file in this repository is served publicly by GitHub Pages and no
+   code running in a browser can change that.
 
-       emortia.com/tools/site-access/data.json
-       emortia.com/tools/site-data/data.json
+   What used to make that fatal:
 
-   can be fetched by anyone, signed in or not, and no code running in a
-   browser can change that. A lock drawn by the thing being locked is a
-   curtain.
+       emortia.com/tools/site-access/data.json    5,934 sites, contacts,
+                                                  access permissions
+       emortia.com/tools/site-data/data.json      13,000+ technical profiles
 
-   To make it a real boundary the data has to stop being a file in the repo:
-   move both into Supabase behind row level security, where the server checks
-   who is asking. The tools already read Supabase for everything else, so this
-   is a migration rather than a rewrite. Ask and I will do it.
+   Both were fetchable by anyone, signed in or not. Both are deleted, purged
+   from the git history, and replaced by tables behind row level security -
+   migrations 015 and 016 - so the server decides who is asking. The tools
+   read the database and nothing else now.
+
+   Assume the contents of those two files were seen. They were public for as
+   long as they were committed, and a history rewrite recalls nothing that was
+   already fetched, forked or cached.
+
+   What is left in the repository and still public: the tool pages themselves,
+   which hold no data, and the Project Update workbook fallback. Everything
+   with names, numbers or credentials in it is in Supabase.
    ───────────────────────────────────────────────────────────────────────── */

@@ -10,11 +10,18 @@
    and the translation happens here.
 
    Order of truth:
-     server  - what everyone sees
+     server  - what everyone sees, and the only source there is
      cache   - IndexedDB, so the page opens offline and paints before the
-               network answers
-     bundled - data.json in the repository, the floor if there is no session,
-               no key, and no cache
+               network answers. Only ever a copy of what the server already
+               handed this browser, and emptied on the way out.
+
+   There was a third: a data.json committed beside each lookup tool, read when
+   the server had nothing. It is gone. Every file in this repository is served
+   by GitHub Pages, so those two files put 5,934 sites with their contacts and
+   access permissions, and 13,000 technical profiles, at a guessable URL that
+   wanted no account and no session - underneath row level policies that were
+   guarding the same rows in the database. Deleted, purged from the history,
+   and the fetch that read them is gone with them.
 
    Load returns the cached copy first if there is one, then quietly replaces it
    when the server answers. */
@@ -116,15 +123,31 @@
     }
     return data;
   }
-  async function signOut(){ const c = await client(); if (c) await c.auth.signOut(); }
+  /* Signing out takes the cached datasets with it. The cache is only ever a
+     copy of what the server already handed this browser, but leaving it there
+     means a laptop that has been signed out still has the site list on it, and
+     an account whose role was taken away yesterday still opens the tool today
+     from cache. Cheap to refill from the server; not worth leaving behind. */
+  async function cacheClear(){
+    try { const db = await idb();
+      return await new Promise(res => {
+        const t = db.transaction(CACHE_STORE, 'readwrite').objectStore(CACHE_STORE).clear();
+        t.onsuccess = () => res(1); t.onerror = () => res(0); });
+    } catch(e){ return 0; }
+  }
+  async function signOut(){
+    const c = await client();
+    if (c) await c.auth.signOut();
+    await cacheClear();
+  }
   async function onAuth(fn){
     const c = await client(); if (!c) return;
     c.auth.onAuthStateChange((_e, s) => fn(s));
   }
 
   /* ------------------------------------------------------------- reading */
-  const TABLE = { site_access: 'sites' };
-  const KEYCOL = { site_access: 'site_id' };
+  const TABLE  = { site_access: 'sites',   site_data: 'site_data' };
+  const KEYCOL = { site_access: 'site_id', site_data: 'site_id' };
 
   async function fetchRemote(key){
     const c = await client(); if (!c) return null;
@@ -149,15 +172,28 @@
   }
 
   /* Hand back the fastest thing available, then upgrade in place.
-     onUpdate is called again if the server turns out to have something newer. */
-  async function load(key, bundledUrl, onUpdate){
+     onUpdate is called again if the server turns out to have something newer.
+
+     There used to be a third answer here: a data.json committed beside the
+     tool, fetched when the server had nothing. It was the reason the tier on
+     these tables meant nothing - GitHub Pages serves every file in this
+     repository, so the same rows the policy was guarding sat at a guessable
+     URL with no account and no session. The files are gone and so is the
+     fetch. The server or nothing: a tool that says it is empty is telling the
+     truth, and a tool quietly serving a public copy of what it claims to be
+     protecting is not.
+
+     The per-device cache stays. It only ever holds what the server already
+     handed this browser, it is cleared on the way out, and it is what makes
+     the tool work in a lift. */
+  async function load(key, onUpdate){
     const cached = await cacheGet(key);
     const refresh = (async () => {
       if (!configured()) return null;
       try {
         const remote = await fetchRemote(key);
         if (remote){ await cacheSet(key, remote); return remote; }
-      } catch(e){ console.warn('Supabase read failed, staying on the local copy:', e.message); }
+      } catch(e){ console.warn('Supabase read failed, staying on the cached copy:', e.message); }
       return null;
     })();
 
@@ -167,10 +203,9 @@
     }
     const remote = await refresh;
     if (remote) return remote;
-
-    const res = await fetch(bundledUrl);
-    const ds = await res.json();
-    return { cols: ds.cols, rows: ds.rows, savedAt: '', source: 'bundled' };
+    /* Nothing here and nothing there. Said as an empty dataset rather than an
+       exception, so the tool can put its own sentence on screen. */
+    return { cols: [], rows: [], savedAt: '', source: 'empty' };
   }
 
   /* ------------------------------------------------------------- writing */
@@ -264,7 +299,10 @@
 
   /* Server, then cache, then whatever the caller can bundle. onUpdate fires if
      the server turns out to be newer than the cache that was handed back. */
-  async function loadBook(key, bundled, onUpdate){
+  /* No bundled workbook either. The two .xlsm files that used to stand in
+     were committed, and therefore served by GitHub Pages to anyone who asked -
+     the same hole the lookup datasets had, in a different directory. */
+  async function loadBook(key, onUpdate){
     const cached = await cacheGet(BOOK_CACHE(key));
     const refresh = (async () => {
       if (!configured()) return null;
@@ -280,8 +318,7 @@
       return cached;
     }
     const remote = await refresh;
-    if (remote) return remote;
-    return bundled ? await bundled() : null;
+    return remote || null;
   }
 
   async function subscribeBook(key, fn){

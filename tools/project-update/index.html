@@ -250,21 +250,19 @@
    mode a new workbook can be uploaded, which replaces the whole
    stored database (kept in IndexedDB, same pattern as Site Access).
    ============================================================ */
-/* Two datasets, switched from the bar at the top of the page.
-   Each keeps its own stored copy, so uploading one never touches the other.
-   `files` lists the workbook names to try in this folder - the first that
-   loads wins, so a committed file keeps working if it gets renamed. */
+/* Two datasets, switched from the bar at the top of the page. Each is a row
+   in `books`, and that is the only place either of them lives now: the two
+   .xlsm files that used to sit in this folder as a fallback were served
+   publicly by GitHub Pages, which put the whole lamp-pole rollout at a
+   guessable URL. Deleted, purged, and the fetch that read them with them. */
 const DATASETS = [
-  { key:'ongoing', label:'Ongoing', hint:'current batch in progress',
-    files:['Ongoing Lamp Pole Update.xlsm','Lamp Pole Update NEW.xlsm'] },
-  { key:'master',  label:'Master',  hint:'everything completed to date',
-    files:['Master Lamp Pole Update.xlsm','Master Lamp Pole Update NEW.xlsm'] }
+  { key:'ongoing', label:'Ongoing', hint:'current batch in progress' },
+  { key:'master',  label:'Master',  hint:'everything completed to date' }
 ];
 const DS_KEY = 'project_update_dataset';
 let DSK = (() => { try { return localStorage.getItem(DS_KEY) || 'ongoing'; } catch(e){ return 'ongoing'; } })();
 const ds = () => DATASETS.find(d => d.key === DSK) || DATASETS[0];
 const bookKey = () => 'book:' + DSK;
-let SOURCE = ds().files[0];          // updated to whichever file actually loaded
 const DB = 'project_update_db', STORE = 'ds';
 /* sheets we don't surface */
 const HIDDEN = ['Dashboard', 'Temp Sheet', 'New Site Locations'];
@@ -324,30 +322,15 @@ function parseWorkbook(buf){
 }
 
 /* ---------- load ---------- */
+/* The MOD and SLA permission flags are read off the Site Access list, which
+   now lives only in the database - the snapshot committed beside that tool was
+   served publicly by GitHub Pages and has been deleted and purged. Its own
+   IndexedDB store went with it, so there is one way in and it is DB.load. */
 async function loadSiteAccess(){
-  // prefer whatever the Site Access tool currently holds, else its bundled snapshot
-  const stored = await idbGet('site_access_db', 'ds', 'dataset');
-  if (stored && stored.cols) { SITEACCESS = stored; return; }
-  try { SITEACCESS = await (await fetch('../site-access/data.json')).json(); } catch(e){ SITEACCESS = null; }
-}
-/* The shared database holds the parsed workbook. The .xlsm committed beside
-   this page is only a fallback for a first visit with nothing published yet —
-   the file is never the source of truth, so there is no waiting for a deploy
-   and no local copy standing in while one happens. */
-async function bundled(){
-  for (const name of ds().files){            // first candidate that loads wins
-    try {
-      const res = await fetch(name + '?v=' + Date.now());
-      if (!res.ok) continue;
-      const buf = await res.arrayBuffer(); SOURCE = name;
-      const lm = res.headers.get('last-modified');
-      let stamp = '';
-      if (lm){ const d = new Date(lm); if (!isNaN(d)) stamp = d.toISOString().slice(0, 10); }
-      const p = parseWorkbook(buf);
-      return { sheets: p.sheets, order: p.order, savedAt: stamp, bytes: buf.byteLength, source: 'bundled' };
-    } catch(e){ /* try the next name */ }
-  }
-  return null;
+  try {
+    const ds = await window.DB.load('site_access');
+    SITEACCESS = (ds && ds.cols && ds.cols.length) ? ds : null;
+  } catch(e){ SITEACCESS = null; }
 }
 function applyBook(b){
   BOOK = b.sheets; ORDER = b.order || []; SAVED = b.savedAt || ''; ORIGIN = b.source || '';
@@ -355,16 +338,16 @@ function applyBook(b){
 async function load(){
   BOOK = null; ORDER = []; SAVED = ''; ORIGIN = '';
   buildSwitcher();
-  const b = await window.DB.loadBook(bookKey(), bundled, fresh => {
+  const b = await window.DB.loadBook(bookKey(), fresh => {
     applyBook(fresh); refreshPill(); buildTabs(); render();
     toast('Updated from another device', 3600);
   });
   if (!b){
     $('view').innerHTML = '<div class="err"><b>No “' + esc(ds().label) + '” workbook yet.</b><br>' +
-      'Nothing published, and no ' + ds().files.map(f => '<code>' + esc(f) + '</code>').join(' or ') +
-      ' in <code>tools/project-update/</code>.<br>' +
+      'This page reads the database and nothing else — there is no copy of the ' +
+      'workbook in the site any more.<br>' +
       (window.IS_OWNER ? 'Upload one with the link at the bottom of this page.'
-                       : 'Ask the owner to add it.') + '</div>';
+                       : 'Ask Sithara to upload it.') + '</div>';
     $('pill').innerHTML = '<b>—</b> no workbook';
     buildTabs(); renderFooter(); return;
   }
@@ -372,7 +355,7 @@ async function load(){
   await loadSiteAccess();
   refreshPill(); buildTabs(); render();
   window.DB.subscribeBook(bookKey(), async () => {
-    const fresh = await window.DB.loadBook(bookKey(), bundled);
+    const fresh = await window.DB.loadBook(bookKey());
     if (fresh){ applyBook(fresh); refreshPill(); buildTabs(); render();
       toast('Updated from another device', 3600); }
   });
@@ -890,9 +873,7 @@ $('file').addEventListener('change', async e => {
 });
 
 function renderFooter(){
-  const where = ORIGIN === 'server' ? 'shared across every device'
-              : ORIGIN === 'bundled' ? 'nothing published yet - showing <b>' + esc(SOURCE) + '</b> from this folder'
-              : 'offline copy';
+  const where = ORIGIN === 'server' ? 'shared across every device' : 'offline copy';
   const lead = window.DB.configured() ? where : 'not syncing yet - anon key missing';
   const bits = ['<b>' + esc(ds().label) + '</b> · ' + lead];
   if (window.IS_OWNER){

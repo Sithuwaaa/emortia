@@ -14,10 +14,9 @@ $('themeBtn').onclick=()=>applyTheme(document.documentElement.dataset.theme==='d
 /* toast */
 let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),ms||1800)}
 
-/* IndexedDB */
-function idb(){return new Promise((res,rej)=>{const r=indexedDB.open(C.idbName,1);r.onupgradeneeded=()=>r.result.createObjectStore(C.idbStore);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-async function idbGet(k){try{const db=await idb();return await new Promise((res)=>{const t=db.transaction(C.idbStore).objectStore(C.idbStore).get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>res(null)})}catch(e){return null}}
-async function idbSet(k,v){try{const db=await idb();return await new Promise((res)=>{const t=db.transaction(C.idbStore,'readwrite').objectStore(C.idbStore).put(v,k);t.onsuccess=()=>res(1);t.onerror=()=>res(0)})}catch(e){return 0}}
+/* The tool's own IndexedDB store is gone with the bundled copy it existed to
+   hold. What caching there is now lives in _lib/db.js, holds only what the
+   server handed this browser, and is emptied on sign-out. */
 
 /* helpers */
 const ci=name=>COLS.indexOf(name);
@@ -33,36 +32,44 @@ function buildIndex(){
   const idc=ci(C.idCol);
   ROWS.forEach(r=>{if(r[idc])IDX.byId[String(r[idc]).toLowerCase()]=r});
 }
-/* A tool opts into the shared database by naming a dataset key in its config.
-   Without one - Site Data, for now - nothing here changes and the old
-   device-local path runs exactly as before. */
+/* Both tools name a dataset key and read the database through it. There was a
+   second path here once - a data.json committed beside the tool, fetched when
+   the server had nothing - and it is what made the row level policies on these
+   tables ornamental: GitHub Pages serves every file in this repository, so the
+   rows the policy guarded were also sitting at a guessable URL that wanted no
+   account and no session. Both files are deleted, both are purged from the
+   history, and this is the server or nothing. */
 const SYNCED = !!(C.syncKey && window.DB);
 function applyDataset(ds){
-  COLS=ds.cols; ROWS=ds.rows.map(r=>r.slice()); savedAt=ds.savedAt||'';
+  COLS=ds.cols||[]; ROWS=(ds.rows||[]).map(r=>r.slice()); savedAt=ds.savedAt||'';
   buildIndex();
-  const where = SYNCED
-    ? (ds.source==='server' ? ' · synced' : ds.source==='bundled' ? ' · offline copy' : '')
-    : '';
+  /* An empty tool has to say why it is empty, or it reads as broken. There is
+     no local copy to fall back on any more, so "nothing here yet" is the
+     literal truth and the way out of it is an upload. */
+  if(!ROWS.length){
+    pill.innerHTML='<b>0</b> '+C.unit+' · nothing published yet';
+    const v=$('view');
+    if(v) v.innerHTML='<div class="empty"><div class="big">☁</div><h2>Nothing published yet</h2><p>'+
+      'This tool reads the database and nothing else - there is no copy of the '+
+      'list in the site any more. Sithara needs to open it signed in and upload '+
+      'the workbook once.</p></div>';
+    return;
+  }
+  const where = ds.source==='server' ? ' · synced' : '';
   pill.innerHTML='<b>'+ROWS.length.toLocaleString()+'</b> '+C.unit+(savedAt?' · updated '+savedAt:'')+where;
   route();
 }
 async function loadData(){
-  if(SYNCED){
-    // paints from cache first, then swaps itself if the server is ahead
-    const ds=await window.DB.load(C.syncKey, C.dataUrl, fresh=>{
-      applyDataset(fresh); toast('Updated from another device');
-    });
-    applyDataset(ds);
-    window.DB.subscribe(C.syncKey, async ()=>{
-      const fresh=await window.DB.load(C.syncKey, C.dataUrl);
-      applyDataset(fresh); toast('Updated from another device');
-    });
-    return;
-  }
-  const stored=await idbGet('dataset');
-  let ds=stored;
-  if(!ds){ds=await (await fetch(C.dataUrl)).json();ds.savedAt=''}
+  if(!SYNCED){ applyDataset({cols:[],rows:[]}); return; }
+  // paints from the per-device cache first, then swaps itself if the server is ahead
+  const ds=await window.DB.load(C.syncKey, fresh=>{
+    applyDataset(fresh); toast('Updated from another device');
+  });
   applyDataset(ds);
+  window.DB.subscribe(C.syncKey, async ()=>{
+    const fresh=await window.DB.load(C.syncKey);
+    applyDataset(fresh); toast('Updated from another device');
+  });
 }
 function search(term){
   term=term.trim().toLowerCase(); if(!term) return [];
@@ -222,20 +229,12 @@ $('file').addEventListener('change', async e=>{
         if(!r.some(v=>v&&v!=='Unknown'&&v!=='0'&&v!=='Undefined'&&v!=='Deny')) continue;
         rows.push(r);
       }
-      if(SYNCED){ await publishDataset(cols,rows,'Replaced'); }
-      else{
-        await idbSet('dataset',{cols,rows,savedAt:new Date().toISOString().slice(0,10)});
-        toast('Replaced · '+rows.length.toLocaleString()+' '+C.unit);
-      }
+      await publishDataset(cols,rows,'Replaced');
     }else{
       const res=mergeUpload(arr);
       ROWS.forEach(r=>{delete r.__blob});
       const merged=ROWS.map(r=>r.slice(0,COLS.length));
-      if(SYNCED){ await publishDataset(COLS,merged,'Merged · '+res.updated+' updated · '+res.added+' added'); }
-      else{
-        await idbSet('dataset',{cols:COLS,rows:merged,savedAt:new Date().toISOString().slice(0,10)});
-        toast('Merged · '+res.updated+' updated · '+res.added+' added (of '+res.seen+' rows)');
-      }
+      await publishDataset(COLS,merged,'Merged · '+res.updated+' updated · '+res.added+' added');
     }
     await loadData();
   }catch(err){console.error(err);toast('Could not read that file: '+err.message)}
@@ -262,17 +261,17 @@ addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==q){e.pre
 /* footer - the data-editing links show only in owner mode (see _lib/owner.js) */
 const editLinks = window.IS_OWNER
   ? '<br><a href="#" id="refresh">Update data from Excel…</a>' +
-    (SYNCED ? ' · <a href="#" id="acct" style="color:var(--muted)">…</a>'
-            : ' · <a href="#" id="reset" style="color:var(--muted)">reset to bundled</a>')
+    ' · <a href="#" id="acct" style="color:var(--muted)">…</a>'
   : '';
-const lead = SYNCED
-  ? (window.DB.configured() ? 'Shared across every device · ' : 'Not syncing yet - anon key missing · ')
-  : 'Runs entirely on your device · ';
+/* There is no "reset to bundled" any more, because there is nothing bundled
+   to reset to. */
+const lead = window.DB && window.DB.configured()
+  ? 'Read from the database · '
+  : 'Not connected - the anon key is missing · ';
 document.querySelector('main').insertAdjacentHTML('beforeend',
   '<footer>'+lead+C.source+editLinks+'</footer>');
 if(window.IS_OWNER){
   $('refresh').onclick=e=>{e.preventDefault();$('file').click()};
-  const rs=$('reset'); if(rs) rs.onclick=async e=>{e.preventDefault();await idbSet('dataset',null);location.reload()};
   const ac=$('acct');
   if(ac){
     const paint=s=>{ac.textContent=s?('signed in as '+s.user.email+' · sign out'):'sign in to publish'};

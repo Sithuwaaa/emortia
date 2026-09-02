@@ -90,7 +90,8 @@
 <input type="file" id="file" accept=".xlsx,.xls">
 <script>
 window.LOOKUP_CONFIG = {
-  dataUrl:'data.json', idbName:'site_data_db', idbStore:'ds', sheetName:'Site Data',
+  syncKey:'site_data',            // shared through Supabase; see tools/_lib/db.js
+  sheetName:'Site Data',
   unit:'sites', unitSingular:'site', source:'DNS Operational Site list · Site Data sheet',
   homeIcon:'🗼', homeText:n=>'Search '+n.toLocaleString()+' sites for full technical data - TX, tower, power, equipment.<br>All data stays on your device.',
   idCol:'Site_Id', nameCol:'Site_Name', metaCol:'District',

@@ -343,7 +343,11 @@ function newDraft(){ const d = E.blank(); d.files = {}; d.uid = mintUid(); retur
 /* ---------- the site list ---------- */
 async function loadSites(){
   try {
-    const ds = await window.DB.load('site_access', '../site-access/data.json');
+    /* The database and nothing else. The second argument used to be a
+       data.json committed beside the Site Access tool; it is deleted and
+       purged, because a file in this repository is a file emortia.com serves
+       to anyone who asks. */
+    const ds = await window.DB.load('site_access');
     INDEX = E.buildIndex(ds);
     SITES_READY = Object.keys(INDEX).length > 0;
   } catch(e){ LOAD_ERR = e.message; }

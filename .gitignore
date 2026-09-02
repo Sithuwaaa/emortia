@@ -22,3 +22,13 @@ samples/
 # A design workbook dropped in for the parser tests. Everything here is served,
 # so keeping one in the repo would publish a Dialog design sheet.
 .work/
+
+# The two lookup datasets — 5,934 sites with contacts and access permissions,
+# and 13,000+ technical profiles. They were committed once, and every file in
+# this repository is served by GitHub Pages, so for as long as they were here
+# they sat at a guessable URL wanting no account and no session. Both are
+# deleted, both are purged from the history, and both tools read Supabase and
+# nothing else. This line is so that nothing puts them back by accident.
+tools/site-access/data.json
+tools/site-data/data.json
+tools/project-update/*.xlsm

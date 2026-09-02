@@ -3,11 +3,12 @@
    A username and a password, checked against the salted hashes in
    access-config.js, and a session that lasts seven days.
 
-   Nothing here is a substitute for a server. See the note at the bottom of
-   access-config.js: the tool pages and their data.json files are served
-   publicly, so this is a gate on the door of a room with open windows. It is
-   worth having - it stops the tools being stumbled into - and it is worth
-   knowing what it is.
+   Nothing here is a substitute for a server, and nothing here is what
+   actually refuses. The policies do - migration 015 for the three tiers, 016
+   for the last two datasets that were still files. This decides what to draw;
+   the database decides what may be read. When they disagree the database
+   wins, which is the way round it has to be, because everything in this file
+   is running on somebody else's machine.
 
    Load access-config.js before this file. owner.js, if present, is honoured:
    the owner is never locked out of their own tools. */

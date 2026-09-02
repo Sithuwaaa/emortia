@@ -82,3 +82,9 @@ html[data-theme="dark"] .rrow mark{background:rgba(255,176,32,.28)}
 footer{color:var(--muted);font-size:12px;text-align:center;padding:22px 0 8px;line-height:1.7}
 footer a{color:var(--accent);text-decoration:none}
 #file{display:none}
+
+/* Nothing published yet. Not an error and not a search that missed - the
+   database is simply empty, and the only way out of it is an upload, so the
+   panel says which and by whom rather than leaving a blank page. */
+.empty h2{font-size:19px;color:var(--text);margin:0 0 8px}
+.empty p{max-width:44ch;margin:0 auto;line-height:1.6}
