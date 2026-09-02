@@ -81,10 +81,38 @@
   function isOwner() {
     var s = session();
     if (!s) return false;
+    if (s.role === 'owner') return true;
     var list = owners();
     var name = String(s.user || '').trim().toLowerCase();
     var mail = String(s.email || '').trim().toLowerCase();
     return list.indexOf(name) > -1 || (!!mail && list.indexOf(mail) > -1);
+  }
+
+  /* ------------------------------------------------------------- the role
+
+     profiles.role is 'owner', 'staff' or null, and null reaches nothing above
+     the public tier. The browser learns it from my_profile() on the way in -
+     it is not in the session token, and nothing here could be trusted with it
+     if it were. The policies in migration 015 are what enforce it; this only
+     decides what to draw.
+
+     roleKnown is the difference between "the server said null" and "the
+     server has not been asked yet". They are not the same thing: a session
+     made before migration 015 has no role in it at all, and treating that as
+     null would lock the team out of tools the database is still perfectly
+     willing to serve them. Unknown falls back to the old rule - signed in is
+     staff - and the moment the server does answer, its answer wins. */
+  function isStaff() {
+    var s = session();
+    if (!s) return false;
+    if (isOwner()) return true;
+    if (!s.roleKnown) return true;              // pre-015 session, old rule
+    return s.role === 'staff';
+  }
+  function myRole() {
+    var s = session();
+    if (!s) return null;
+    return isOwner() ? 'owner' : (s.role || null);
   }
 
   /* ---------------------------------------------------------- who may in
@@ -146,8 +174,12 @@
   }
   var nameOf = function (email) { return String(email || '').split('@')[0]; };
 
-  function keep(user, email) {
-    write({ user: user, email: email || '', epoch: EPOCH, since: Date.now(), until: Date.now() + MS });
+  /* role may be undefined - that is "not asked", not "none". See isStaff(). */
+  function keep(user, email, role) {
+    var rec = { user: user, email: email || '', epoch: EPOCH,
+                since: Date.now(), until: Date.now() + MS };
+    if (role !== undefined) { rec.role = role || null; rec.roleKnown = true; }
+    write(rec);
   }
 
   async function localSignIn(user, password) {
@@ -217,9 +249,14 @@
            themselves Sithuwaaa should be Sithuwaaa everywhere, including on
            the sign-in where they typed the address. */
         var who = id.indexOf('@') < 0 ? id : uname;
+        /* undefined until the server says otherwise: a profile call that
+           fails, or one answering from before migration 015, must not read as
+           "this account has no role" */
+        var role;
         try {
           var p = await window.DB.myProfile();
           if (p && p.username) who = p.username;
+          if (p && 'role' in p) role = p.role || null;
         } catch (e2) {}
         /* Checked here rather than before the password, so being off the list
            and typing the wrong password look and take the same. Signed out
@@ -229,7 +266,7 @@
           try { if (window.DB && window.DB.signOut) await window.DB.signOut(); } catch (e3) {}
           return { ok: false, error: NOT_ALLOWED };
         }
-        keep(who, email);
+        keep(who, email, role);
         return { ok: true, user: who };
       } catch (e) {
         /* a name only in the local list still works when the server says no */
@@ -300,24 +337,35 @@
     if (String(s.user) === name) return { ok: true, user: name, unchanged: true };
     try {
       await window.DB.setUsername(name);
-      write({ user: name, email: s.email || '', epoch: EPOCH, since: s.since, until: s.until });
+      /* the role travels with the session, so a rename must not drop it */
+      write({ user: name, email: s.email || '', epoch: EPOCH, since: s.since, until: s.until,
+              role: s.role, roleKnown: s.roleKnown });
       applyOwner();
       return { ok: true, user: name };
     } catch (e) { return { ok: false, error: tidy(e.message) }; }
   }
 
-  /* Pull the name from the server, for a session made before the profile was
-     renamed on another device. */
+  /* Pull the name and the role from the server, for a session made before the
+     profile was renamed on another device - or before the owner granted it a
+     role. The role especially: being made staff should reach the person on
+     their next page load, not seven days later when their session runs out. */
   async function refresh() {
     var s = session();
     if (!s || !remote()) return null;
     try {
       var p = await window.DB.myProfile();
-      if (p && p.username && p.username !== s.user) {
-        write({ user: p.username, email: p.email || s.email || '', epoch: EPOCH, since: s.since, until: s.until });
-        applyOwner();
-        return p.username;
-      }
+      if (!p) return null;
+      var role = ('role' in p) ? (p.role || null) : undefined;
+      var newName = !!(p.username && p.username !== s.user);
+      var newRole = role !== undefined && (!s.roleKnown || s.role !== role);
+      if (!newName && !newRole) return null;
+      var rec = { user: p.username || s.user, email: p.email || s.email || '',
+                  epoch: EPOCH, since: s.since, until: s.until };
+      if (role !== undefined)   { rec.role = role;   rec.roleKnown = true; }
+      else if (s.roleKnown)     { rec.role = s.role; rec.roleKnown = true; }
+      write(rec);
+      applyOwner();
+      return newName ? p.username : null;
     } catch (e) {}
     return null;
   }
@@ -638,29 +686,29 @@
      table and both sort it the same way, so adding a line here is the whole
      job of adding a tool - it lands in its group, in its place, in both. */
   var FEATURES = [
-    { key:'journal', name:'Journal', def:false, group:'Emortia',
+    { key:'journal', name:'Journal', tier:'public', group:'Emortia',
       what:'The poems. Reading only – writing stays mine.' },
-    { key:'tool:lyric-video', name:'Video & Artwork', def:false, group:'Emortia',
+    { key:'tool:lyric-video', name:'Video & Artwork', tier:'mine', group:'Emortia',
       what:'The lyric video and the cover art tool.' },
-    { key:'tool:whattodo', name:'What To Do', def:false, group:'Field & team',
+    { key:'tool:whattodo', name:'What To Do', tier:'mine', group:'Field & team',
       what:'The job list. Whoever can open it can tick things off.' },
-    { key:'tool:project-update', name:'Project Update', def:false, group:'Field & team',
+    { key:'tool:project-update', name:'Project Update', tier:'tooway', group:'Field & team',
       what:'The rollout figures.' },
-    { key:'tool:team', name:'Team Directory', def:false, group:'Field & team',
+    { key:'tool:team', name:'Team Directory', tier:'tooway', group:'Field & team',
       what:'Names, mobiles, NIC numbers and vehicles. Opening it lets the team read and copy; adding and removing stays mine.' },
-    { key:'tool:field-config', name:'Field Config', def:false, group:'Site reference',
+    { key:'tool:field-config', name:'Field Config', tier:'tooway', group:'Site reference',
       what:'Vendor commands, logins and UMPT passwords. Opening it lets the team read and copy; editing stays mine.' },
-    { key:'tool:esn', name:'ESN Sharing', def:true, group:'Field & team',
+    { key:'tool:esn', name:'ESN Sharing', tier:'tooway', group:'Field & team',
       what:'Filing an ESN from the field.' },
-    { key:'tool:design-extractor', name:'Design Extractor', def:true, group:'Design & materials',
+    { key:'tool:design-extractor', name:'Design Extractor', tier:'tooway', group:'Design & materials',
       what:'Reading the design workbooks.' },
-    { key:'tool:bom', name:'BOM Builder', def:true, group:'Design & materials',
+    { key:'tool:bom', name:'BOM Builder', tier:'tooway', group:'Design & materials',
       what:'Turning a design into an order.' },
-    { key:'tool:site-access', name:'Site Access Lookup', def:true, group:'Site reference',
+    { key:'tool:site-access', name:'Site Access Lookup', tier:'tooway', group:'Site reference',
       what:'The site list – depot, contact, permissions.' },
-    { key:'tool:site-data', name:'Site Data Lookup', def:true, group:'Site reference',
+    { key:'tool:site-data', name:'Site Data Lookup', tier:'tooway', group:'Site reference',
       what:'The technical profile for every site.' },
-    { key:'tool:gin-extractor', name:'GIN Extractor', def:true, group:'Design & materials',
+    { key:'tool:gin-extractor', name:'GIN Extractor', tier:'tooway', group:'Design & materials',
       what:'Pulling material lines out of SAP notes.' }
   ];
   var BY_KEY = {};
@@ -697,14 +745,34 @@
         { sensitivity: 'base', numeric: true });
     });
   }
+  /* ------------------------------------------------------------ the tiers
+
+     Three, and every one of them answers a different question:
+
+       public   anyone at all, signed in or not
+       tooway   an account carrying the staff role, and the owner
+       mine     the owner alone
+
+     The same three words are the tier column in feature_locks, so what the
+     switch on the Owner page says and what the database enforces are the
+     same string in both places rather than a boolean here translated into a
+     policy there. This is the copy of the answer, not the answer: the
+     policies in migration 015 are what actually refuse. */
+  var TIERS = ['public', 'tooway', 'mine'];
+  function okTier(t) { return TIERS.indexOf(String(t)) > -1 ? String(t) : null; }
+
   /* Something not in the table is not a mistake to be forgiven. A tool page
      that asks about a key nobody declared gets the careful answer. */
-  function defaultOf(feature) { return !!(BY_KEY[feature] && BY_KEY[feature].def); }
+  function defaultTier(feature) {
+    return (BY_KEY[feature] && okTier(BY_KEY[feature].tier)) || 'mine';
+  }
+  /* the old boolean, for anything still asking it: "starts open to the team" */
+  function defaultOf(feature) { return defaultTier(feature) !== 'mine'; }
 
   /* The last answer, so a page can decide before the server has replied.
-     Only the booleans are kept; the note and the timestamp are the Owner
-     page's business and it is online when it reads them. */
-  var LKEY = 'emortia_locks_v1';
+     Only the tiers are kept; the note and the timestamp are the Owner page's
+     business and it is online when it reads them. */
+  var LKEY = 'emortia_locks_v2';
   function cached() {
     try {
       var v = JSON.parse(localStorage.getItem(LKEY) || 'null');
@@ -713,7 +781,11 @@
   }
   function remember(l) {
     var flat = {};
-    Object.keys(l || {}).forEach(function (k) { flat[k] = !!(l[k] && l[k].unlocked); });
+    Object.keys(l || {}).forEach(function (k) {
+      var r = l[k] || {};
+      /* a row from before 015 has only the boolean */
+      flat[k] = okTier(r.tier) || (r.unlocked ? 'tooway' : 'mine');
+    });
     try { localStorage.setItem(LKEY, JSON.stringify(flat)); } catch (e) {}
   }
 
@@ -728,22 +800,35 @@
     return locksAsked;
   }
   /* server first, then what it last said, then where the thing starts */
-  function state(feature) {
-    if (LOCKS && LOCKS[feature]) return !!LOCKS[feature].unlocked;
+  function tierOf(feature) {
+    if (LOCKS && LOCKS[feature]) {
+      var r = LOCKS[feature];
+      return okTier(r.tier) || (r.unlocked ? 'tooway' : 'mine');
+    }
     var c = cached();
-    if (c && typeof c[feature] === 'boolean') return c[feature];
-    return defaultOf(feature);
+    if (c && okTier(c[feature])) return c[feature];
+    return defaultTier(feature);
+  }
+  /* kept as the boolean it always was, for anything still asking */
+  function state(feature) { return tierOf(feature) !== 'mine'; }
+
+  /* Whether the person holding this page may reach the thing. Public is the
+     only answer that does not need a session at all - which is the whole
+     point of having a public tier, and why this is asked before isOwner(). */
+  function mayReach(tier) {
+    if (tier === 'public') return true;
+    if (tier === 'tooway') return isStaff();
+    return isOwner();
   }
   function allowed(feature) {
-    if (isOwner()) return true;
     if (!feature) return false;
-    return state(feature);
+    return mayReach(tierOf(feature));
   }
   /* the async form, for a page deciding whether to open at all */
   function allow(feature) {
-    if (isOwner()) return Promise.resolve(true);
     if (!feature) return Promise.resolve(false);
-    return locks().then(function () { return state(feature); });
+    if (isOwner()) return Promise.resolve(true);
+    return locks().then(function () { return allowed(feature); });
   }
 
   function protect(opts) {
@@ -761,6 +846,20 @@
        every one of them is a tax on the common case. If it comes back shut it
        is shut then, which is a moment of a tool the team had yesterday and
        nothing they have not already seen. */
+    /* Public needs no session at all - that is what the word means - so it is
+       asked before anything else. Otherwise a page at the public tier would
+       still put a sign-in form in front of somebody who is entitled to walk
+       straight in. It paints at once and only takes itself back if the server
+       says the tier has since moved. */
+    if (opts.feature && !isOwner() && tierOf(opts.feature) === 'public') {
+      if (signedIn()) { showChip(); verifyRemote(); }
+      allow(opts.feature).then(function (ok) {
+        if (ok) return;
+        try { guard({ owner: signedIn() }); } catch (e) {}
+      });
+      return;
+    }
+
     if (opts.feature && !isOwner() && signedIn()) {
       var show = function () { root.style.visibility = ''; };
       /* The page is shown again only once the refusal is actually on screen,
@@ -822,6 +921,9 @@
     signIn: signIn, signUp: signUp, signOut: signOut, guard: guard, protect: protect,
     rename: rename, refresh: refresh, verifyRemote: verifyRemote,
     allowed: allowed, allow: allow, locks: locks,
+    /* the three tiers, and who the person holding the page is under them */
+    TIERS: TIERS, tierOf: tierOf, defaultTier: defaultTier, mayReach: mayReach,
+    isStaff: isStaff, myRole: myRole,
     FEATURES: FEATURES, defaultOf: defaultOf, rememberLocks: remember,
     grouped: grouped, groupOf: groupOf, byName: byName,
     canSignUp: remote, applyOwner: applyOwner, chip: showChip,

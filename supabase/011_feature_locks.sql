@@ -1,3 +1,15 @@
+-- ⚠ SUPERSEDED IN PART BY MIGRATION 015.
+--
+-- The policies below still say auth.role() = 'authenticated', which asks only
+-- whether an account exists. 015 replaced every one of them with the three
+-- tiers - public / tooway / mine, read off profiles.role and feature_locks.tier
+-- - and dropped these by name on the way through.
+--
+-- The table and column statements here are still current and still safe to
+-- re-run. The policy statements are not: running this file again would put the
+-- weaker rule back alongside the newer one, and policies are OR-ed, so the
+-- weaker one would win. If you do re-run it, run 015 afterwards.
+
 -- Emortia · migration 011 — unlocking owner-only things for the team
 -- Run in Supabase → SQL Editor → New query. Safe to run more than once.
 --

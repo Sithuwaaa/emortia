@@ -3389,33 +3389,47 @@ class Component extends DCLogic {
     const locks = s.locks || {};
     const busy = s.lockBusy || '';
 
-    const row = ({ key, name, what, def }) => {
-      const on = locks[key] ? !!locks[key].unlocked : def;
+    /* Three tiers, so three segments rather than a switch. A toggle can only
+       ever say one thing about two states; naming all three and lighting the
+       one that is on says which it is and what the other two would mean, in
+       the same glance. */
+    const TIERS = [
+      ['public', 'Public', 'anyone at all, signed out included'],
+      ['tooway', 'Tooway', 'the team, and me'],
+      ['mine',   'Mine',   'me alone']
+    ];
+    const row = ({ key, name, what, tier }) => {
+      const at = (locks[key] && locks[key].tier) || tier || 'mine';
       const working = busy === key;
+      const said = (TIERS.find(t => t[0] === at) || TIERS[2]);
       return React.createElement('div',{key,
         style:{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',
-          borderTop:'1px solid var(--line)'}},
-        React.createElement('div',{style:{flex:1,minWidth:0}},
+          borderTop:'1px solid var(--line)',flexWrap:'wrap'}},
+        React.createElement('div',{style:{flex:'1 1 240px',minWidth:0}},
           React.createElement('div',{style:{fontSize:'14.5px',fontWeight:600}}, name),
           React.createElement('div',{style:{color:'var(--dim)',fontSize:'12.5px',marginTop:'2px'}}, what),
           React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10.5px',
             letterSpacing:'.1em',textTransform:'uppercase',marginTop:'6px',
-            color: on ? 'var(--ok)' : 'var(--mute)'}},
-            on ? 'open to everyone signed in' : 'mine only')),
-        /* a real switch, not a checkbox - it says which way it is at a glance */
-        React.createElement('button',{
-          onClick: () => this.toggleLock(key, !on),
-          disabled: working,
-          'aria-pressed': on ? 'true' : 'false',
-          title: on ? 'Lock it back to me' : 'Open it to the team',
-          style:{width:'52px',height:'30px',borderRadius:'999px',flexShrink:0,cursor: working?'default':'pointer',
-            border:'1px solid ' + (on ? 'transparent' : 'var(--line3)'),
-            background: on ? 'var(--accent)' : 'var(--panel2)',
-            opacity: working ? 0.5 : 1, position:'relative',
-            transition:'background .18s ease'}},
-          React.createElement('span',{style:{position:'absolute',top:'3px',
-            left: on ? '25px' : '3px', width:'22px',height:'22px',borderRadius:'50%',
-            background: on ? '#fff' : 'var(--dim)', transition:'left .18s ease'}})));
+            color: at==='public' ? 'var(--accentB)' : at==='tooway' ? 'var(--ok)' : 'var(--mute)'}},
+            said[2])),
+        React.createElement('div',{role:'radiogroup','aria-label':name+' – who can reach it',
+          style:{display:'flex',gap:'2px',flexShrink:0,padding:'3px',borderRadius:'10px',
+            background:'var(--panel2)',border:'1px solid var(--line3)',
+            opacity: working ? 0.5 : 1}},
+          TIERS.map(([id,label,means]) => {
+            const on = at === id;
+            return React.createElement('button',{key:id, type:'button', role:'radio',
+              'aria-checked': on ? 'true' : 'false',
+              disabled: working || on,
+              title: on ? name + ' is ' + means : 'Give it to ' + means,
+              onClick: () => this.setTier(key, id),
+              style:{border:'none',borderRadius:'7px',padding:'6px 11px',fontFamily:'inherit',
+                fontSize:'12px',fontWeight:600,whiteSpace:'nowrap',
+                cursor: (working||on) ? 'default' : 'pointer',
+                background: on ? 'var(--accent)' : 'transparent',
+                color: on ? '#fff' : 'var(--dim)',
+                transition:'background .16s ease,color .16s ease'}}, label);
+          })));
     };
 
     /* One list, one meaning: thrown open, anyone signed in can use it; left
@@ -3427,9 +3441,12 @@ class Component extends DCLogic {
       React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:700,
         fontSize:'17px',marginBottom:'6px'}}, 'What the team can reach'),
       React.createElement('p',{style:{color:'var(--dim)',fontSize:'13.5px',lineHeight:1.6,margin:'0 0 4px'}},
-        'Open one and anyone signed in can use it; close it and it is mine again. ' +
-        'Every switch applies everywhere at once, not just on this device – and each ' +
-        'page checks again on the way in, so a card that is not drawn is a tidy list, not a lock.'),
+        'Three tiers. Public is readable with no account at all. Tooway is anyone ' +
+        'carrying the staff role, and me. Mine is me alone. Writing stays mine at ' +
+        'every tier – opening something lets people read and copy it, never rewrite it. ' +
+        'Each one applies everywhere at once, and it is the database that refuses, ' +
+        'not the page: a card that is not drawn is a tidy list, but the row behind ' +
+        'it is genuinely out of reach.'),
       s.lockErr ? React.createElement('p',{style:{color:'var(--accent)',fontSize:'13px',margin:'8px 0 0'}},
         s.lockErr) : null,
       /* The heading carries no rule of its own - the first row's top border
@@ -3441,10 +3458,12 @@ class Component extends DCLogic {
         g.items.map(row))));
   }
 
-  async toggleLock(key, want){
+  /* One call for all three tiers. It was toggleLock(key, true|false) when
+     there were two; the name would now be a lie about what it does. */
+  async setTier(key, tier){
     this.setState({ lockBusy: key, lockErr: '' });
     try {
-      await window.DB.setFeatureLock(key, want);
+      await window.DB.setFeatureLock(key, tier);
       const locks = await window.DB.featureLocks();
       /* Access.locks() is memoised and would hand back the answer from before
          the switch was thrown, so the new one is written straight into its
@@ -3740,34 +3759,24 @@ class Component extends DCLogic {
     const pct = Math.min(100, (s.progress/dur)*100);
     /* Owner is a real page now, not a passphrase after a hash. It only exists
        for the account that owns the place, so it is added rather than hidden. */
-    /* The journal is the poems, and they are not published - so the tab is
-       only there for the account that wrote them. Anyone typing #blog lands on
-       the front page instead, because the tab being gone is not a lock. */
-    /* The owner sees everything. For everyone else the switch decides, and
-       what a switch means depends on where the thing started: the journal and
-       the music tools are mine and shut until opened, the working tools are
-       the team's and open until closed. Access.FEATURES holds which is which,
-       so this file and the tool pages cannot drift apart on it. */
-    const may = f => s.isOwner ||
-      (s.locks && s.locks[f] ? !!s.locks[f].unlocked
-        : !!(window.Access && Access.defaultOf && Access.defaultOf(f)));
+    /* Three tiers, and each feature sits at one of them:
 
-    const navDefs = [['home','Home'],['music','Music']]
-      .concat(may('journal') ? [['blog','Journal']] : [])
-      .concat([['tools','Tools'],['about','About'],['contact','Contact']])
-      .concat(s.isOwner ? [['owner','Owner']] : []);
-    const onBlog = s.page==='blog' && may('journal');
+         public   anyone, signed out included
+         tooway   an account carrying the staff role, and me
+         mine     me alone
 
-    return {
-      isHome:s.page==='home' || (s.page==='blog' && !may('journal')),
-      isMusic:s.page==='music', isBlog:onBlog, isTools:s.page==='tools', isAbout:s.page==='about', isContact:s.page==='contact',
-      isOwnerPage: s.page==='owner' && s.isOwner,
-      ownerPanel: this.renderOwnerPage(),
-      /* The cards are written in the order they were built; what comes out is
-         grouped and alphabetical. Both come off Access.FEATURES, which is
-         also what the Owner switches read, so a tool added there arrives in
-         its place on both pages without either list being reordered by hand. */
-      toolGroups: (()=>{
+       The tier is the same word here, in Access.FEATURES and in the database,
+       so this file and the tool pages and the policies cannot drift apart on
+       it. And it is the policies that refuse - a tab not drawn is a tidy nav,
+       not a lock; the row behind it is out of reach either way. */
+    const A0 = window.Access;
+    const staff = s.isOwner || !!(A0 && A0.isStaff && A0.isStaff());
+    const tierOf = f => (s.locks && s.locks[f] && s.locks[f].tier)
+      || (A0 && A0.defaultTier ? A0.defaultTier(f) : 'mine');
+    const may = f => { const t = tierOf(f);
+      return t === 'public' ? true : t === 'tooway' ? staff : !!s.isOwner; };
+
+    const TOOLGROUPS = (()=>{
       const A = window.Access;
       const cards = [
         {name:'Design Extractor', initial:'D', tag:'Dialog · MBB design sheet', href:'tools/design-extractor/', feature:'tool:design-extractor',
@@ -3803,7 +3812,24 @@ class Component extends DCLogic {
          is what a shut switch would otherwise leave behind. */
       return gs.filter(g=>g.items.length).map(g=>({ name:g.group, tools:g.items,
         count: g.items.length + (g.items.length===1 ? ' tool' : ' tools') }));
-      })(),
+      })();
+
+    const navDefs = [['home','Home'],['music','Music']]
+      .concat(may('journal') ? [['blog','Journal']] : [])
+      .concat([['tools','Tools'],['about','About'],['contact','Contact']])
+      .concat(s.isOwner ? [['owner','Owner']] : []);
+    const onBlog = s.page==='blog' && may('journal');
+
+    return {
+      isHome:s.page==='home' || (s.page==='blog' && !may('journal')),
+      isMusic:s.page==='music', isBlog:onBlog, isTools:s.page==='tools', isAbout:s.page==='about', isContact:s.page==='contact',
+      isOwnerPage: s.page==='owner' && s.isOwner,
+      ownerPanel: this.renderOwnerPage(),
+      /* The cards are written in the order they were built; what comes out is
+         grouped and alphabetical. Both come off Access.FEATURES, which is
+         also what the Owner switches read, so a tool added there arrives in
+         its place on both pages without either list being reordered by hand. */
+      toolGroups: TOOLGROUPS,
       page:s.page,
 
       navItems: navDefs.map(([k,label])=>({ key:k, label, active:s.page===k, onClick:this.go(k) })),
@@ -3865,7 +3891,11 @@ class Component extends DCLogic {
         this.loadTrack(this.playOrder()[0], true);
       },
       toolsGate: this.renderToolsGate(),
-      toolsGridClass: s.toolsIn ? '' : 'hidden',
+      /* Signed out, may() has already dropped every card above the public
+         tier, so whatever is left is public and hiding it would be hiding
+         something anyone may have. Nothing is public today; the grid is empty
+         and stays hidden of its own accord. */
+      toolsGridClass: (s.toolsIn || TOOLGROUPS.length) ? '' : 'hidden',
       lyricsOverlay: this.renderDrawer(),
       toggleLyrics: ()=>this.openDrawer('lyrics'),
       toggleFullscreen: ()=>this.toggleFullscreen(),

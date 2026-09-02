@@ -27,7 +27,19 @@ window.ACCESS_USERS = [
    on the site and in every tool. */
 window.ACCESS_OWNERS = ['sithuwaaa', 'sithuwaaathepage@gmail.com'];
 
-/* ── Who may sign in ──────────────────────────────────────────────────────
+/* ── Two different questions ──────────────────────────────────────────────
+   ACCESS_ALLOW below says who may sign in at all. It does not say what they
+   reach once they are in - that is profiles.role in the database, which is
+   'owner', 'staff' or null, and null reaches nothing above the public tier.
+   Being on this list and having no role means an account that works and
+   opens nothing, which is the safe way round for an account made today and
+   named tomorrow.
+
+   To make somebody staff, in Supabase → SQL Editor:
+       update profiles set role = 'staff' where lower(username) = 'thename';
+   To take it away, set it to null. Migration 015 has the rest.
+
+   ── Who may sign in ──────────────────────────────────────────────────────
    Nobody signs themselves up any more. There is no sign-up form: accounts
    are made by hand and the details handed over. This is the list of who may
    then use them.

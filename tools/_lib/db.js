@@ -628,30 +628,54 @@
 
   /* ------------------------------------------------------- feature locks
 
-     Three tools and the journal belong to the owner, and now and then one has
-     to be opened for somebody else. Locked is the default everywhere: a
-     feature with no row is owner-only, and a read that fails leaves
-     everything shut rather than open. */
+     One row per feature, holding the tier it is at: 'public', 'tooway' or
+     'mine'. Mine is the default everywhere - a feature with no row is the
+     owner's, and a read that fails leaves everything shut rather than open.
+
+     The table is readable without a session, which it has to be: a page can
+     only know that something is public by asking, and asking is the one thing
+     somebody with no session cannot do if the answer needs a session. What it
+     gives away is the list of switches and where they are set, which is what
+     the Owner page puts on screen anyway. */
+  const TIERS = ['public', 'tooway', 'mine'];
+  const asTier = (t, unlocked) =>
+    TIERS.indexOf(String(t)) > -1 ? String(t) : (unlocked ? 'tooway' : 'mine');
+
   async function featureLocks(){
     const c = await client(); if (!c) return {};
-    const { data, error } = await c.from('feature_locks').select('feature,unlocked,note,updated_at');
+    let { data, error } = await c.from('feature_locks').select('feature,tier,unlocked,note,updated_at');
+    /* Migration 015 adds the column. Until it is run the select above fails on
+       the whole query rather than the one column, so fall back to the boolean
+       and translate - otherwise every switch reads as shut for as long as the
+       migration is outstanding. */
+    if (error && /tier/i.test(error.message || '')) {
+      ({ data, error } = await c.from('feature_locks').select('feature,unlocked,note,updated_at'));
+    }
     if (error) return {};
     const out = {};
-    (data || []).forEach(r => { out[r.feature] = { unlocked: !!r.unlocked, note: r.note || '',
-                                                   at: r.updated_at }; });
+    (data || []).forEach(r => {
+      out[r.feature] = { tier: asTier(r.tier, r.unlocked), unlocked: !!r.unlocked,
+                         note: r.note || '', at: r.updated_at };
+    });
     return out;
   }
 
-  async function setFeatureLock(feature, unlocked, note){
+  /* `unlocked` is a generated column after 015 - a shadow of the tier, not a
+     second answer - so only the tier is ever written. */
+  async function setFeatureLock(feature, tier, note){
     const c = await client(); if (!c) throw new Error('Not connected.');
     const s = await session(); if (!s) throw new Error('Sign in first.');
+    const t = TIERS.indexOf(String(tier)) > -1 ? String(tier) : 'mine';
     const { error } = await c.from('feature_locks').upsert(
-      { feature, unlocked: !!unlocked, note: note || null,
+      { feature, tier: t, note: note || null,
         updated_at: new Date().toISOString(), updated_by: s.user.id },
       { onConflict: 'feature' });
     /* the policy is the real lock; if it refuses, say so plainly */
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
-      ? 'Only the owner can change these.' : error.message);
+      ? 'Only the owner can change these.'
+      : /tier/i.test(error.message || '')
+        ? 'The three tiers are not set up yet – run migration 015 in Supabase.'
+        : error.message);
   }
 
   async function onFeatureLocks(fn){
