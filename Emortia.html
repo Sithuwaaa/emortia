@@ -1784,9 +1784,15 @@ class Component extends DCLogic {
     if(!s.poemsLoaded) return this.waveLoader('Poetry · loading poems');
     const L = this.ppList(), n = L.length;
     if(!n){
-      return React.createElement('div',{className:'jr-card jr-empty'},
-        React.createElement('div',{className:'jr-empty-h'},'No poems published yet'),
-        React.createElement('div',null,'Add your first poem to poems/poems.txt and it will show up here.'));
+      /* Styled here rather than by class: the two classes this used to borrow
+         belonged to the journal, and they went with it. */
+      return React.createElement('div',{className:'pp-stage',
+          style:{alignItems:'center',justifyContent:'center',textAlign:'center',padding:'0 24px'}},
+        React.createElement('div',{style:{maxWidth:'42ch'}},
+          React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:700,
+            fontSize:'21px',color:'#f7edf0',marginBottom:'10px'}},'No poems published yet'),
+          React.createElement('div',{style:{color:'rgba(238,228,208,.6)',fontSize:'14px',lineHeight:1.7}},
+            'Add your first poem to poems/poems.txt and it will show up here.')));
     }
     this.ppBind();
 
