@@ -100,7 +100,12 @@
   }
   wave.innerHTML = html;
 
-  var KNOWN = ['/music', '/journal', '/tools', '/about', '/contact', '/owner'];
+  /* Every address the app answers to. It has to be kept in step with ROUTES in
+     index.html by hand - GitHub Pages has no routes, so a name missing from
+     this list is a real 404 for anyone who types it, refreshes on it, or comes
+     back to a bookmark. /journal was here after the journal itself was gone,
+     and /poetry was not, which is exactly what that costs. */
+  var KNOWN = ['/music', '/poetry', '/tools', '/about', '/contact', '/owner'];
   var path = location.pathname.replace(/\/+$/, '') || '/';
   var ok = KNOWN.indexOf(path) >= 0;
 

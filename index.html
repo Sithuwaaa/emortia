@@ -390,9 +390,15 @@ input,textarea,button{font-family:inherit;}
   z-index:30;display:flex;overflow:hidden;border-radius:0;
   background:#170d10;border:0;border-top:1px solid var(--line2);
   font-family:'Space Mono',monospace;}
-html.pp-on,html.pp-on body{overflow:hidden;}
+html.pp-on,html.pp-on body{overflow:hidden;height:100%;}
 /* main is only holding the slot open now; its padding would inset nothing */
 html.pp-on main{padding:0 !important;max-width:none !important;}
+/* The page wrapper is min-height:100vh with 132px of padding under it, to keep
+   the player from sitting on the last line of a scrolling page. With the poem
+   fixed over the top of it there is no scrolling page - and that height and
+   that padding were the whole of what the scrollbar was measuring. Inline
+   styles, so it takes !important to answer them. */
+html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .pp-art{position:absolute;inset:-6%;background-position:50% 40%;background-size:cover;
   background-repeat:no-repeat;animation:ppDrift 30s ease-in-out infinite;
   transition:opacity .9s ease;}
@@ -409,11 +415,14 @@ html.pp-on main{padding:0 !important;max-width:none !important;}
   backdrop-filter:blur(10px);animation:ppRail .7s cubic-bezier(.2,.8,.3,1) both;}
 .pp-rule{width:16px;height:1px;background:rgba(247,237,240,.18);flex:none;}
 .pp-when{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-/* Turned the other way up. vertical-rl on its own lays the date down so you
-   read it bottom to top, head tilted left; the half-turn stands it the way
-   the ticks and the numeral beside it already read. */
-.pp-vert{writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;gap:18px;
+.pp-vert{writing-mode:vertical-rl;display:flex;align-items:center;gap:18px;
   animation-duration:.6s;animation-fill-mode:both;animation-timing-function:cubic-bezier(.2,.8,.3,1);}
+/* Turned the other way up, and on the children rather than on .pp-vert itself.
+   .pp-vert is animated, its keyframes end on `transform:none`, and fill-mode
+   both makes that final frame permanent - so a rotate written here was
+   overwritten on the first paint and the date never moved. The spans carry no
+   animation, so the turn sticks. */
+.pp-vert > *{transform:rotate(180deg);}
 .pp-ticks{display:flex;flex-direction:column;align-items:center;gap:7px;flex:none;}
 .pp-tick{cursor:pointer;border-radius:2px;height:2px;transition:width .3s ease,background .3s ease;}
 .pp-no{writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;letter-spacing:.22em;color:#c9788d;flex:none;}
@@ -1223,6 +1232,9 @@ class Component extends DCLogic {
     // The site opens on whatever the address says, and on the front page
     // when it says nothing.
     this.state = { page:this.startPage(), theme:'burgundy', menuOpen:false, poems:[], poemsLoaded:false,
+      /* Poetry: which poem, which way it was turned, and a counter that
+         alternates the A/B animations so a turn always moves. */
+      ppIdx:0, ppDir:1, ppTick:0,
       playing:false, idx:0, picked:false, progress:0, volume:pp.volume, muted:pp.muted, shuffle:pp.shuffle, repeat:pp.repeat,
       /* the queue and the words share one drawer, so one flag says which face
          of it is showing: '' shut, 'queue', or 'lyrics' */
@@ -1740,8 +1752,23 @@ class Component extends DCLogic {
       const i = Math.min(n - 1, Math.max(0, st.ppIdx + d));
       if(i === st.ppIdx) return null;
       if(this._ppRead) this._ppRead.scrollTop = 0;
+      this.ppPrefetch(i + d);          // the one after this one, while this one is read
       return { ppIdx:i, ppDir:d, ppTick: st.ppTick + 1 };
     });
+  }
+  /* Four megabytes fetched and decoded while somebody is still on the poem
+     before it costs them nothing and saves the wait when they turn. Only the
+     next one in the direction of travel - prefetching the whole set would be
+     forty megabytes for a page most people read two of. */
+  ppPrefetch(i){
+    const n = this.ppList().length;
+    if(i < 0 || i >= n) return;
+    const url = this.ppArt(i);
+    if(!url) return;
+    this._ppSeen = this._ppSeen || {};
+    if(this._ppSeen[url]) return;
+    this._ppSeen[url] = true;
+    const im = new Image(); im.decoding = 'async'; im.src = url;
   }
   /* A poem longer than the screen has to be readable before the wheel is
      allowed to take it away, so a turn only happens once the reader is at the
@@ -1843,6 +1870,14 @@ class Component extends DCLogic {
           React.createElement('i',{style:{fontFamily:"'EB Garamond',serif",fontStyle:'normal',fontSize:'15px',letterSpacing:'.03em',color:'rgba(228,206,213,.95)',textShadow:'0 2px 14px rgba(0,0,0,.85)'}},'Sithara Perera'))));
 
     return React.createElement('div',{className:'pp-stage', ref:el=>{this._ppStage = el;}},
+      /* The webp of the same cover, underneath, at 40KB against the png's four
+         megabytes. It is on screen in a blink and the sharp one paints over it
+         a second or two later, so the poem never opens onto a black rectangle
+         waiting for a photograph. Nobody sees the swap: it is the same picture
+         at two resolutions, in the same place. */
+      React.createElement('div',{key:'lo', className:'pp-art',
+        style:{ backgroundImage: artHere ? 'url(' + artHere.replace(/\.png$/i,'.webp') + ')' : 'none',
+                opacity: 0.95 }}),
       layer(even ? artHere : prevArt, even, 'a'),
       layer(even ? prevArt : artHere, !even, 'b'),
       React.createElement('div',{key:'scrim', className:'pp-scrim'}),
