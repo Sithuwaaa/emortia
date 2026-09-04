@@ -101,6 +101,7 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 .tool-gin{--tc:#2fa877;--tcB:#4cc294;--tcGrid:rgba(47,168,119,.10);--tcLine:#203029;--tcBg:#0e1712;--tcRGB:47,168,119;}
 .tool-team{--tc:#8fa83f;--tcB:#a9c257;--tcGrid:rgba(143,168,63,.10);--tcLine:#303620;--tcBg:#14170c;--tcRGB:143,168,63;}
 .tool-field{--tc:#d9922e;--tcB:#f0b155;--tcGrid:rgba(217,146,46,.10);--tcLine:#3d2f14;--tcBg:#1c1408;--tcRGB:217,146,46;}
+.tool-mat{--tc:#3f9e6b;--tcB:#5fc189;--tcGrid:rgba(63,158,107,.10);--tcLine:#1b3b2a;--tcBg:#08170f;--tcRGB:63,158,107;}
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -2832,6 +2833,8 @@ class Component extends DCLogic {
       const cards = [
         {name:'Design Extractor', initial:'D', tag:'Dialog · MBB design sheet', href:'tools/design-extractor/', feature:'tool:design-extractor',
          desc:'Reads the 765-column design workbook and keeps what a bill of materials needs. One radio written under three technologies is one box on the pole, not three – and the table that decides which radio carries what is yours to correct.'},
+        {name:'Material Codes', initial:'M', tag:'Dialog · SAP material master', href:'tools/materials/', feature:'tool:materials',
+         desc:'Every material code and what it actually is, the two lists merged into one. Search a code, a description, a model or a band; filter by what it is - antennas, radios, fibres, jumpers - and then by vendor. One click puts the code on the clipboard on its own, because it is going into SAP and anything attached to it is something to delete. Upload either sheet again and only what changed is written.'},
         {name:'BOM Builder', initial:'B', tag:'Dialog · lamp pole materials', href:'tools/bom/', feature:'tool:bom',
          desc:'Turns a design into something you can order. The radios, antennas and BBU cards come straight across from the Design Extractor; everything else follows the site – its sectors, its RRUs, the height of the pole, the vendor, how it is fed. Every rule was read off a hand-built BOM and every one of them is yours to change.'},
         {name:'Video & Artwork', initial:'V', tag:'Emortia · music', href:'tools/lyric-video/', feature:'tool:lyric-video',
@@ -2856,7 +2859,7 @@ class Component extends DCLogic {
          whether it is drawn. Each page checks again on its way in - a card
          that is not drawn is not a lock, only a tidy list. */
       ].filter(t=>!t.feature || may(t.feature))
-       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
+       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
                   group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}));
       const gs = (A && A.grouped) ? A.grouped(cards) : [{ group:'', items:cards }];
       /* A group with nothing left in it is a heading over empty space — which

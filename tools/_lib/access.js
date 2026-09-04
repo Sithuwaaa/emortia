@@ -703,6 +703,8 @@
       what:'Filing an ESN from the field.' },
     { key:'tool:design-extractor', name:'Design Extractor', tier:'tooway', group:'Design & materials',
       what:'Reading the design workbooks.' },
+    { key:'tool:materials', name:'Material Codes', tier:'tooway', group:'Design & materials',
+      what:'Every material code and what it is. Reading and copying only; uploading stays mine.' },
     { key:'tool:bom', name:'BOM Builder', tier:'tooway', group:'Design & materials',
       what:'Turning a design into an order.' },
     { key:'tool:site-access', name:'Site Access Lookup', tier:'tooway', group:'Site reference',

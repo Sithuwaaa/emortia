@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c1619">
+<title>Material Codes</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_lib/theme.css">
+<script src="../_lib/theme.js" defer></script>
+<script src="../_lib/owner-config.js"></script>
+<script src="../_lib/owner.js"></script>
+<script src="../_lib/supabase-config.js"></script>
+<script src="../_lib/db.js"></script>
+<script src="../_lib/access-config.js"></script>
+<script src="../_lib/access.js"></script>
+<script>Access.protect({ feature: 'tool:materials' });</script>
+<script src="materials.js"></script>
+<style>
+  /* Green - the stores colour, and the one accent the other tools had not
+     taken: the lookups are teal, the field reference amber, the directory
+     olive. Only the accent is this tool's own; the rest is theme.css. */
+  :root,html[data-theme="dark"]{--accent:#3f9e6b;--accentB:#5fc189;--accentD:#2c7a50;
+    --accent-ink:#04150c;--glow:rgba(63,158,107,.5);--glowSoft:rgba(63,158,107,.26);
+    --bad:#e2607a;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
+  html[data-theme="light"]{--accent:#256b45;--accentB:#2c7a50;--accentD:#18492f;
+    --accent-ink:#ffffff;--glow:rgba(37,107,69,.4);--glowSoft:rgba(37,107,69,.18);
+    --bad:#c2405c;--zebra:rgba(0,0,0,.024);--goHover:#18492f}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+  ::selection{background:var(--glowSoft)}
+
+  /* ---------------------------------------------------------- the header */
+  .hdr{display:flex;align-items:center;gap:10px;color:#fff;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    background:var(--navy);position:sticky;top:0;z-index:20}
+  .hdr .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;
+    flex-shrink:0;transition:opacity .18s ease}
+  .hdr .brand:hover{opacity:.86}
+  .hdr .brand:focus-visible{outline:2px solid #f7edf0;outline-offset:4px;border-radius:10px}
+  .hdr .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;
+    background:linear-gradient(150deg,#d15873,#87213c) !important;
+    display:flex;align-items:center;justify-content:center;gap:2.4px;
+    box-shadow:0 0 16px rgba(176,58,86,.45) !important;font-size:0;padding:0;border:none}
+  .hdr .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
+  .hdr .logo i:nth-child(1){height:7px}
+  .hdr .logo i:nth-child(2){height:12px}
+  .hdr .logo i:nth-child(3){height:9px}
+  .hdr .logo i:nth-child(4){height:13px}
+  .hdr .brand:hover .logo{transform:scale(1.06)}
+  .hdr .bname{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;
+    letter-spacing:-.02em;color:#fff;white-space:nowrap}
+  .hdr .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0;margin:0 1px}
+  .hdr h1{font-size:18px;font-weight:700;margin-right:auto;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
+  .pill{font-size:11.5px;background:var(--navy-2);border:1px solid rgba(255,255,255,.15);
+    color:#cfd6e6;border-radius:999px;padding:4px 11px;white-space:nowrap;
+    flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .pill b{color:var(--accent);font-weight:600}
+  .theme{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;
+    width:34px;height:34px;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0}
+  @media (max-width:820px){ .hdr .bname,.hdr .hsep{display:none} }
+
+  main{max-width:1180px;margin:0 auto;padding:18px 16px 90px}
+
+  /* ---------------------------------------------------------- the search */
+  .searchwrap{position:relative;display:flex;align-items:center;margin-bottom:14px}
+  .searchwrap .ic{position:absolute;left:14px;font-size:17px;color:var(--muted);pointer-events:none}
+  #q{width:100%;padding:13px 40px 13px 40px;font:inherit;font-size:16px;color:var(--text);
+    background:var(--card);border:1px solid var(--line);border-radius:12px;outline:none;
+    transition:border-color .16s ease,box-shadow .16s ease}
+  #q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glowSoft)}
+  .clr{position:absolute;right:8px;display:none;background:none;border:none;cursor:pointer;
+    color:var(--muted);font-size:20px;line-height:1;padding:6px 10px;border-radius:8px}
+  .clr:hover{color:var(--text)}
+
+  /* ----------------------------------------------------------- the chips
+
+     Type first, because that is how somebody asks - they want the antennas,
+     or the RRU power cables. Vendor second, because the next question is
+     which Huawei one. Both counted from the data, so a type that turns up in
+     a future upload turns up here on its own. */
+  .facets{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+  .frow{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .flabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);flex:none;width:58px}
+  .chip{border:1px solid var(--line);background:var(--card);color:var(--dim);
+    border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;cursor:pointer;
+    white-space:nowrap;transition:border-color .16s ease,background .16s ease,color .16s ease}
+  .chip:hover{border-color:var(--accent);color:var(--text)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  .chip b{font-weight:400;opacity:.6;margin-left:5px;font-size:11px}
+  .chip.on b{opacity:.8}
+
+  /* ---------------------------------------------------------- the results */
+  .hint{font-size:12.5px;color:var(--muted);margin-bottom:10px;min-height:1.2em}
+  .rows{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+  .row{display:grid;grid-template-columns:11ch 1fr auto;gap:12px;align-items:baseline;
+    padding:11px 14px;cursor:pointer;border-top:1px solid var(--line);
+    transition:background .13s ease}
+  .row:first-child{border-top:none}
+  .row:nth-child(even){background:var(--zebra)}
+  .row:hover{background:var(--glowSoft)}
+  .row .c{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--accent)}
+  .row .d{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+  .row .t{font-size:11.5px;color:var(--muted);white-space:nowrap}
+  mark{background:var(--glowSoft);color:inherit;border-radius:3px;padding:0 1px}
+
+  /* ----------------------------------------------------------- the detail */
+  .detail{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+  .dhead{padding:16px 18px;border-bottom:1px solid var(--line);background:var(--card2)}
+  .dcode{font-family:'Space Mono',monospace;font-size:19px;color:var(--accent);font-weight:700}
+  .ddesc{font-size:15.5px;margin-top:5px;word-break:break-word}
+  .dtags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+  .tag{font-size:11px;border:1px solid var(--line2);border-radius:999px;padding:3px 10px;color:var(--dim)}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+  .act{border:1px solid var(--line2);background:none;color:var(--text);border-radius:9px;
+    padding:8px 13px;font:inherit;font-size:13px;cursor:pointer}
+  .act:hover{border-color:var(--accent);color:var(--accent)}
+  .act.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  .act.primary:hover{background:var(--goHover);color:var(--accent-ink)}
+  .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:0}
+  .f{padding:11px 18px;border-top:1px solid var(--line)}
+  .f .k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--muted)}
+  .f .v{font-size:14px;margin-top:3px;word-break:break-word}
+  .back{background:none;border:none;color:var(--accent);font:inherit;font-size:13.5px;
+    cursor:pointer;padding:0;margin-bottom:12px}
+
+  .empty{padding:52px 20px;text-align:center;color:var(--muted)}
+  .empty .big{font-size:42px;margin-bottom:10px}
+  .empty h2{font-size:19px;color:var(--text);margin-bottom:8px}
+  .empty p{max-width:46ch;margin:0 auto;line-height:1.65}
+
+  footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center;line-height:1.7}
+  footer a{color:var(--accent)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(14px);
+    background:var(--navy);color:#fff;border-radius:10px;padding:11px 18px;font-size:13.5px;
+    opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:60;
+    max-width:calc(100vw - 32px);text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media (max-width:560px){
+    .row{grid-template-columns:10ch 1fr;gap:8px}
+    .row .t{display:none}
+    .flabel{width:100%}
+  }
+</style>
+</head>
+<body>
+<header class="hdr">
+  <a class="brand" href="../../" title="Emortia">
+    <span class="logo"><i></i><i></i><i></i><i></i></span>
+    <span class="bname">Emortia</span>
+  </a>
+  <span class="hsep"></span>
+  <h1>Material Codes</h1>
+  <span class="pill" id="pill">loading…</span>
+  <button class="theme" id="themeBtn" title="Light / dark">☾</button>
+</header>
+
+<main>
+  <div class="searchwrap">
+    <span class="ic">⌕</span>
+    <input id="q" type="search" autocomplete="off" spellcheck="false"
+      placeholder="Search a code, a description, a model, a band…" aria-label="Search materials">
+    <button class="clr" id="clr" aria-label="Clear">×</button>
+  </div>
+  <div class="facets" id="facets"></div>
+  <div class="hint" id="hint"></div>
+  <div id="view"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="file" accept=".xlsx,.xls,.csv" style="display:none" multiple>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+(function(){
+const $ = id => document.getElementById(id);
+const M = window.MAT;
+let ALL = [], TYPE = '', VENDOR = '', Q = '', PICKED = null;
+
+let tt; function toast(m, ms){ const t=$('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'), ms||2000); }
+
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function hl(s, term){
+  s = esc(s);
+  const parts = String(term||'').trim().split(/\s+/).filter(Boolean);
+  for (const p of parts){
+    const re = new RegExp('('+p.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+    s = s.replace(re,'<mark>$1</mark>');
+  }
+  return s;
+}
+
+/* ---------------------------------------------------------------- loading */
+async function load(){
+  if (!window.DB || !window.DB.materialsLoad){ shell('Not connected', 'The database library did not load.'); return; }
+  const r = await window.DB.materialsLoad();
+  if (r.error && !r.rows.length){ shell('Nothing to show', r.error); return; }
+  ALL = r.rows;
+  paint();
+  window.DB.materialsSubscribe(async () => {
+    const f = await window.DB.materialsLoad();
+    if (!f.error){ ALL = f.rows; paint(); toast('Updated from another device'); }
+  });
+}
+function shell(head, body){
+  $('pill').textContent = '—';
+  $('view').innerHTML = '<div class="empty"><div class="big">☁</div><h2>'+esc(head)+'</h2><p>'+esc(body)+'</p></div>';
+  renderFooter();
+}
+
+/* ---------------------------------------------------------------- painting */
+function paint(){
+  $('pill').innerHTML = '<b>'+ALL.length.toLocaleString()+'</b> materials';
+  renderFacets();
+  route();
+  renderFooter();
+}
+
+function renderFacets(){
+  const f = M.facets(ALL);
+  const row = (label, items, current, kind) =>
+    '<div class="frow"><span class="flabel">'+label+'</span>' +
+    '<button class="chip'+(current?'':' on')+'" data-k="'+kind+'" data-v="">All</button>' +
+    items.map(i => '<button class="chip'+(current===i.name?' on':'')+'" data-k="'+kind+'" data-v="'+esc(i.name)+'">'+
+      esc(i.name)+'<b>'+i.count+'</b></button>').join('') + '</div>';
+  $('facets').innerHTML = row('Type', f.types, TYPE, 'type') +
+                          (f.vendors.length ? row('Vendor', f.vendors, VENDOR, 'vendor') : '');
+  [...$('facets').querySelectorAll('.chip')].forEach(b => b.onclick = () => {
+    if (b.dataset.k === 'type') TYPE = b.dataset.v; else VENDOR = b.dataset.v;
+    PICKED = null; renderFacets(); route();
+  });
+}
+
+function route(){
+  const res = M.view(ALL, { type:TYPE, vendor:VENDOR, q:Q });
+  $('clr').style.display = Q ? 'block' : 'none';
+  if (PICKED){ renderDetail(PICKED); return; }
+  $('hint').textContent = ALL.length
+    ? res.length + (res.length === 1 ? ' material' : ' materials') +
+      (res.length > 400 ? ' · showing the first 400' : '')
+    : '';
+  if (!res.length){
+    $('view').innerHTML = '<div class="empty"><div class="big">🔍</div>Nothing matches that.</div>';
+    return;
+  }
+  const show = res.slice(0, 400);
+  $('view').innerHTML = '<div class="rows">' + show.map((r,i) =>
+    '<div class="row" data-i="'+i+'"><span class="c">'+hl(r.code,Q)+'</span>' +
+    '<span class="d">'+hl(r.desc,Q)+'</span><span class="t">'+esc(r.type)+'</span></div>').join('') + '</div>';
+  [...$('view').querySelectorAll('.row')].forEach(el =>
+    el.onclick = () => { PICKED = show[+el.dataset.i]; route(); });
+}
+
+function renderDetail(r){
+  $('hint').textContent = '';
+  const d = M.details(r);
+  $('view').innerHTML =
+    '<button class="back" id="back">← back to the list</button>' +
+    '<div class="detail"><div class="dhead">' +
+      '<div class="dcode">'+esc(r.code)+'</div>' +
+      '<div class="ddesc">'+esc(r.desc)+'</div>' +
+      '<div class="dtags">' +
+        (r.type ? '<span class="tag">'+esc(r.type)+'</span>' : '') +
+        (r.vendor ? '<span class="tag">'+esc(r.vendor)+'</span>' : '') + '</div>' +
+      '<div class="acts">' +
+        '<button class="act primary" id="cpCode">⧉ Copy code</button>' +
+        '<button class="act" id="cpDesc">⧉ Copy description</button>' +
+        '<button class="act" id="cpRow">⧉ Copy row</button>' +
+      '</div>' +
+    '</div>' +
+    (d.length ? '<div class="fields">' + d.map(x =>
+      '<div class="f"><div class="k">'+esc(x.k)+'</div><div class="v">'+esc(x.v)+'</div></div>').join('') + '</div>' : '') +
+    '</div>';
+  $('back').onclick = () => { PICKED = null; route(); };
+  const copy = (what, said) => () => {
+    const text = M.copyText(r, what);
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+      .then(() => toast(said)).catch(() => toast('Could not reach the clipboard'));
+  };
+  $('cpCode').onclick = copy('code', 'Code copied');
+  $('cpDesc').onclick = copy('desc', 'Description copied');
+  $('cpRow').onclick  = copy('row',  'Row copied');
+}
+
+/* ------------------------------------------------------------- the upload
+
+   Either file, or both at once. Each is read for whatever material masters it
+   holds and merged into what is already there: a material the upload does not
+   mention is left alone, because the two files each cover part of the list
+   and neither is the whole of it. Only what actually changed is written. */
+$('file').addEventListener('change', async e => {
+  const files = [...(e.target.files || [])];
+  e.target.value = '';
+  if (!files.length) return;
+  try {
+    let incoming = [];
+    for (const f of files){
+      toast('Reading ' + f.name + '…', 20000);
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type:'array' });
+      const sheets = {};
+      wb.SheetNames.forEach(n => {
+        sheets[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'', raw:false });
+      });
+      /* a csv arrives as one nameless sheet; it is the export, so say so */
+      if (wb.SheetNames.length === 1 && /\.csv$/i.test(f.name)){
+        sheets['table-export'] = sheets[wb.SheetNames[0]];
+      }
+      incoming = incoming.concat(M.readWorkbook(sheets));
+    }
+    if (!incoming.length){ toast('No material sheets in that file', 4000); return; }
+
+    const plan = M.planUpload(incoming, ALL);
+    if (!plan.write.length){
+      toast(plan.unchanged.toLocaleString() + ' materials, all already right', 5000);
+      return;
+    }
+    toast('Saving ' + plan.write.length.toLocaleString() + ' of ' + plan.total.toLocaleString() + '…', 60000);
+    await window.DB.materialsSave(plan.write, (done, total) => {
+      if (done < total) toast('Saving… ' + done.toLocaleString() + ' of ' + total.toLocaleString(), 60000);
+    });
+    const r = await window.DB.materialsLoad();
+    if (!r.error) ALL = r.rows;
+    PICKED = null; paint();
+    toast(plan.added.toLocaleString() + ' added · ' + plan.changed.toLocaleString() + ' corrected · ' +
+          plan.unchanged.toLocaleString() + ' already right', 7000);
+  } catch (err){
+    console.error(err);
+    toast('Could not read that: ' + err.message, 7000);
+  }
+});
+
+function renderFooter(){
+  const own = window.IS_OWNER
+    ? '<br><a href="#" id="up">Update from the workbook or the export…</a>'
+    : '';
+  const old = document.querySelector('main footer');
+  if (old) old.remove();
+  document.querySelector('main').insertAdjacentHTML('beforeend',
+    '<footer>Read from the database · Dialog material master' + own + '</footer>');
+  if (window.IS_OWNER) $('up').onclick = e => { e.preventDefault(); $('file').click(); };
+}
+
+/* ------------------------------------------------------------------ events */
+$('q').addEventListener('input', () => { Q = $('q').value; PICKED = null; route(); });
+$('clr').onclick = () => { $('q').value = ''; Q = ''; PICKED = null; route(); $('q').focus(); };
+addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== $('q')){ e.preventDefault(); $('q').focus(); }
+  if (e.key === 'Escape' && PICKED){ PICKED = null; route(); }
+});
+
+load();
+})();
+</script>
+</body>
+</html>

@@ -913,6 +913,64 @@
     ch.subscribe();
   }
 
+  /* ---------------------------------------------------- the material list
+
+     One row per material code. Paged on the way in, because PostgREST caps a
+     response and two and a half thousand rows is past the cap; upserted in
+     chunks on the way out, because a few thousand rows of JSON in one request
+     is megabytes and it will refuse that too. */
+  async function materialsLoad(){
+    const c = await client(); if (!c) return { rows: [], error: 'offline' };
+    const PAGE = 1000; let from = 0, out = [];
+    for(;;){
+      const { data, error } = await c.from('materials')
+        .select('code,descr,type,vendor,attrs,updated_at')
+        .order('code').range(from, from + PAGE - 1);
+      if (error) return { rows: [], error:
+        /does not exist|schema cache|could not find the table/i.test(error.message)
+          ? 'The material list is not switched on yet – run migration 017.'
+        : /jwt|not authenticated|row-level security|permission/i.test(error.message)
+          ? 'Your sign-in has run out. Reload the page and sign in again.'
+        : /fetch|network|failed to|timeout/i.test(error.message)
+          ? 'No connection just now. Try again in a moment.'
+        : error.message };
+      out = out.concat(data || []);
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
+    /* descr on the wire, desc in the page: `desc` is a reserved word in
+       PostgREST's ordering syntax and naming a column after it is a trap. */
+    return { rows: out.map(r => ({ code: r.code, desc: r.descr || '', type: r.type || '',
+                                   vendor: r.vendor || '', attrs: r.attrs || {} })),
+             at: out.length ? out[0].updated_at : null, error: null };
+  }
+
+  /* Only what changed. The page works out which rows those are; this writes
+     them and nothing else, so re-uploading the same workbook is zero writes
+     rather than two and a half thousand. */
+  async function materialsSave(rows, onProgress){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const recs = (rows || []).map(r => ({ code: String(r.code), descr: r.desc || '',
+                                          type: r.type || '', vendor: r.vendor || '',
+                                          attrs: r.attrs || {} }));
+    const CHUNK = 400;
+    for (let i = 0; i < recs.length; i += CHUNK){
+      const { error } = await c.from('materials')
+        .upsert(recs.slice(i, i + CHUNK), { onConflict: 'code' });
+      if (error) throw new Error(/row-level security|permission/i.test(error.message)
+        ? 'Only Sithara can upload the material list.' : error.message);
+      if (onProgress) onProgress(Math.min(i + CHUNK, recs.length), recs.length);
+    }
+    return recs.length;
+  }
+
+  async function materialsSubscribe(fn){
+    const c = await client(); if (!c) return;
+    c.channel('materials_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, () => fn())
+      .subscribe();
+  }
+
   /* ------------------------------------------------- the field reference
 
      Vendor commands, logins and the UMPT passwords. One row holding one JSON
@@ -952,6 +1010,7 @@
 
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
                 fieldConfigLoad, fieldConfigSave, fieldConfigSubscribe,
+                materialsLoad, materialsSave, materialsSubscribe,
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
                 teamSavePerson, teamDeletePerson, teamSaveVehicle, teamDeleteVehicle,
