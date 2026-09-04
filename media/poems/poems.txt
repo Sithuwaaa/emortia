@@ -6,6 +6,7 @@ To publish a new poem, copy a block below and change the words:
 
     @title: Your poem title
     @date: ජනවාරි 28, 2026
+    @art: your-picture.jpeg
     First line of the poem.
     Second line.
 
@@ -13,13 +14,23 @@ To publish a new poem, copy a block below and change the words:
 
 Rules:
   - "@title:" starts a new poem (this is required).
+  - "@art:" is the picture the poem is read against. Put the file in
+    media/poems/art/ and name it here – a bare name is looked for in that
+    folder, and anything with a slash in it is used as written. Leave it out
+    and the poem falls back to the sleeve of its song, or to one of the
+    sleeves in turn if it never became one.
   - "@track:" is optional – name a song and the page gets a play button.
-  - "@date:" sets the order. The book reads oldest first, so where a poem sits
+  - "@date:" sets the order. Poetry reads oldest first, so where a poem sits
     in this file does not matter – put new ones anywhere. Sinhala or English
     month names both work, and so does a plain 2026/08/16. Undated poems go last.
-  - Save the file, commit, and it appears on the Journal page automatically.
+  - Save the file, commit, and it appears on the Poetry page automatically.
 
-There is one book, කවිය, and every poem here goes in it.
+A note on the picture. It fills a whole screen behind the words, so it wants
+to be large – but it is also the first thing the page waits for, so it wants
+to be small. Somewhere under two megabytes is the honest middle. The song
+sleeves are the exception: those exist twice, and the page paints the little
+one first and the sharp one over it, which is why they can be as big as they
+are.
 
 These poems came from මගේ කවි පොත.docx, which sits beside this file.
 That document is the source; this one is what the site reads.
@@ -27,6 +38,7 @@ That document is the source; this one is what the site reads.
 
 @title: පෙම් මල
 @date: ඔක්තෝම්බර් 08, 2025
+@art: pem-mala.jpeg
 උඩම අත්තක පිපුන නුඹ දෙස
 බලා සිටියෙමි හුඟක් කල් සිට
 කඩන යුරු දැක පහල මල් ටික
@@ -35,24 +47,19 @@ That document is the source; this one is what the site reads.
 ටිකෙන් ටික ලන් උනා උඩටම
 අල්ල ගත්තා නටුව අතකට
 තලා නොම ගෙන සෙමින් අරගෙන
-තියා ගත්තා මගේ පෙම් මල....
+තියා ගත්තා මගේ පෙම් මල...
 
 @title: මං ලඟ
 @date: ඔක්තෝම්බර් 26, 2025
+@art: man-langa.jpeg
 බොහෝ දේ නුඹ හිතේ ඇති බව දන්නවා මට දැනෙනවා
 දරා ගෙන නුඹ ඔහේ හිටියම දුරස් වේවිද හැඟෙනවා
 මගේ පපුවට තියන් නුඹ හිස තුරුල් කරගෙන ඉන්නවා
-මගේ පෙම් මල හදේ පිපුනම සුවඳ මං ලඟ තියෙනවා
-
-@title: පුංචි ඇස්
-@date: ඔක්තෝම්බර් 27, 2025
-පුංචි ඇස් නුඹ කරන් අඩවන්
-දාන ඉඟි බිඟි කරයි මා මත්
-කොච්චි වන් ඒ දෙතොල අල්ලන්
-සැර විඳින්නට දෙන්න දැන්වත්...
+මගේ පෙම් මල හදේ පිපුනම සුවඳ මං ලඟ තියෙනවා...
 
 @title: හාරනා හිත
 @date: නොවැම්බර් 01, 2025
+@art: harana-hitha.png
 @track: Harana Hitha
 හාරනා හිත පාරනා වග දැනෙන මුත් මම අහනවා
 කාරණා ගතු වාරණා වන තෙක්ම හිස්තැන් සොයනවා
@@ -61,22 +68,26 @@ That document is the source; this one is what the site reads.
 
 @title: නපුරු හිත
 @date: නොවැම්බර් 21, 2025
+@art: napuru-hitha.png
 @track: Napuru Hitha
 හිටියා නුඹ මේ නපුරු හිත ලඟ
 ආදරෙන් පපුවට තුරුළු කර
 නැතිවා දෝ මට බය වුනේ නුඹ
-මෙල්ල නැති වග දැන දැනම මම
+මෙල්ල නැති වග දැන දැනම මම...
 
 @title: සුවඳ විතරයි
 @date: නොවැම්බර් 29, 2025
+@art: suwanda-vitharayi.png
 @track: Suwanda Vitharayi
 තිගැස්සී මගෙ දෑස ඇරුනා හිස් කමින් පිරි ඝනදුරේ
 මතක් වී මට ඉන්න හිතුනා ඔයාගේ ඔය පපුතුරේ
 හිතද්දී අපෙ ආලේ හරියට ඔයා දුන් මේ මල් වගේ
-පිපෙද්දී පෙති දවස ගානෙම සුවඳ විතරයි මං වටේ
+පිපෙද්දී පෙති දවස ගානෙම සුවඳ විතරයි මං වටේ...
 
 @title: පුංචි කෙල්ල
 @date: නොවැම්බර් 29, 2025
+@art: punchi-kella.png
+@track: Punchi Kella
 ගියත් වයසින් මුහුකුරා ගත
 නොයන් දෙන්නට ගති ලමා
 පියෙක් නූවත් නුඹට පණ දුන්
@@ -84,6 +95,8 @@ That document is the source; this one is what the site reads.
 
 @title: පරිස්සම්
 @date: ජනවාරි 04, 2026
+@art: parissam.png
+@track: Parissam
 පරිස්සම් කර ගන්න හැදුවත්
 නොරිස්සුම් බව දන්නවා මං
 හේතු නෑ මට ඉන්න ලඟනම්
@@ -91,13 +104,16 @@ That document is the source; this one is what the site reads.
 
 @title: හැඩැති මල
 @date: ජනවාරි 28, 2026
+@art: hadathi-mala.png
+@track: Hadathi Mala
 හැඩැති මල වුව නෑ සුවඳ ලඟ
 පෙරැති වී මම නෙළුවෙ උඩ පැන
 දැනුනි වැරදුන බව ටිකෙන් ටික
-දැමුවෙ අහකට දැනුන මොහොතෙම
+දැමුවෙ අහකට දැනුන මොහොතෙම...
 
 @title: තිස්සෙම
-@date: 2026/08/16
+@date: අගෝස්තු 16, 2026
+@art: thisema.jpeg
 @track: Thissema
 තිස්සෙම වගේ දිස්සුන ලස්සන කෙල්ල
 හිත්තග මගේ ගත්තනෙ නෙත්තග බැල්ම
@@ -105,6 +121,8 @@ That document is the source; this one is what the site reads.
 පස්සට කලේ ඇස්සිඟි කල පව නැල්ල
 
 @title: මයෙ මෝඩ හිත
+@date: නොවැම්බර් 17, 2020
+@art: maye-moda-hitha.jpeg
 සිහිලැල් සුළං මුව තවරන විට දැවටී
 කඳුලැල් ගලන් යයි කම්මුල් වල ගෑවී
 ගිණිඳැල් අරන් එයි පෙර හුන් හැටි සිහිවී
@@ -118,4 +136,4 @@ That document is the source; this one is what the site reads.
 කරුමය මෙයද මොකක්ද මම කරපු පව
 උරුමය දුකද වැටිලා අඩියටම මම
 අරුමය කොහෙද ඉල්ලූ දෙවියන් අයැද
-නුඹ අය ඒවි කියනවා මයෙ මෝඩ හිත
+නුඹ අය ඒවි කියනවා මයෙ මෝඩ හිත...
