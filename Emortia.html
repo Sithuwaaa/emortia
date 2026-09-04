@@ -1684,9 +1684,16 @@ class Component extends DCLogic {
     const MON=[['ජනවාරි','jan'],['පෙබරවාරි','feb'],['මාර්තු','mar'],['අප්‍රේල්','apr'],['මැයි','may'],
                ['ජූනි','jun'],['ජූලි','jul'],['අගෝස්තු','aug'],['සැප්තැම්බර්','sep'],['ඔක්තෝ','oct'],
                ['නොවැම්බර්','nov'],['දෙසැම්බර්','dec']];
-    const low=s.toLowerCase();
+    /* Zero-width joiners are dropped from both sides before matching. අප්‍රේල්
+       is spelt with a joiner between ප් and ර by one keyboard and without it by
+       another, and the two are the same word to a reader and different strings
+       to indexOf. A month that fails to match is not an error - it silently
+       becomes January, so අප්‍රේල් 2020 would have sorted three months early
+       and nobody would have known why the order looked wrong. */
+    const bare=t=>String(t).replace(/[‌‍]/g,'');
+    const plain=bare(s), low=plain.toLowerCase();
     let mo=-1;
-    for(let i=0;i<12;i++){ if(s.indexOf(MON[i][0])>=0 || low.indexOf(MON[i][1])>=0){ mo=i; break; } }
+    for(let i=0;i<12;i++){ if(plain.indexOf(bare(MON[i][0]))>=0 || low.indexOf(MON[i][1])>=0){ mo=i; break; } }
     const ym=s.match(/(\d{4})/);
     if(!ym) return Infinity;
     const dm=s.replace(ym[1],'').match(/(\d{1,2})/);
