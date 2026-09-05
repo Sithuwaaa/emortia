@@ -11,7 +11,8 @@ The fix is not a sync feature. It is moving storage off the device.
 Done, in Supabase (project `yhneindurtquzjpmwsjh`, Tokyo):
 
 - tables `sites`, `project_updates`, `imports`
-- RLS on all three: anyone reads, only owner `250a6710-…` writes
+- RLS on all three: anyone reads, only the owner writes – `9ac28d61-aa17-43ce-85a1-f8cd2fe131f6`,
+  and from 011 on it is `is_owner()` rather than an id written out in each policy
 - private `imports` storage bucket with an owner-only policy
 - realtime on `sites` and `project_updates`
 

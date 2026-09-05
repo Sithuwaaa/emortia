@@ -212,12 +212,19 @@ function mergeUpload(arr){
 $('file').addEventListener('change', async e=>{
   const f=e.target.files[0]; e.target.value=''; if(!f) return;
   toast('Reading '+f.name+'…');
+  /* Reading the workbook and publishing it are two different jobs that fail in
+     two different ways, and one catch around both told us the file could not be
+     read when what had actually happened was that the page was missing a
+     script. Whatever goes wrong now says which half it went wrong in. */
+  let arr;
   try{
     const buf=await f.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array'});
     const ws=wb.Sheets[C.sheetName]||wb.Sheets[wb.SheetNames[0]];
     if(!ws) throw new Error('sheet not found');
-    const arr=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+    arr=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  }catch(err){console.error(err);toast('Could not read that file: '+err.message,5000);return}
+  try{
     // full-format sheet? (row 0 matches the bundled columns) -> replace everything
     const hdr0=(arr[0]||[]).map(c=>String(c).trim());
     const overlap=hdr0.filter(h=>COLS.includes(h)).length;
@@ -229,6 +236,19 @@ $('file').addEventListener('change', async e=>{
         if(!r.some(v=>v&&v!=='Unknown'&&v!=='0'&&v!=='Undefined'&&v!=='Deny')) continue;
         rows.push(r);
       }
+      /* This branch replaces everything, so what it is handed has to be worth
+         replacing everything with. A file picked by mistake parses into a sheet
+         like any other - a text file becomes one cell - and without these two
+         questions it would publish nothing over thousands of live rows, which
+         is not an upload failing, it is an upload succeeding at deleting. */
+      if(cols.indexOf(C.idCol)<0){
+        toast('That sheet has no '+C.idCol+' column - is it the right file? Nothing was published',7000);
+        return;
+      }
+      if(!rows.length){
+        toast('That sheet has a heading and no rows. Nothing was published',6000);
+        return;
+      }
       await publishDataset(cols,rows,'Replaced');
     }else{
       const res=mergeUpload(arr);
@@ -237,13 +257,17 @@ $('file').addEventListener('change', async e=>{
       await publishDataset(COLS,merged,'Merged · '+res.updated+' updated · '+res.added+' added');
     }
     await loadData();
-  }catch(err){console.error(err);toast('Could not read that file: '+err.message)}
+  }catch(err){console.error(err);toast('Read the file, but could not publish it: '+err.message,6000)}
 });
 
 /* Push a whole dataset to the shared database. Writes are refused without a
    session, so ask for one first rather than letting the upload fail deep in a
    chunk loop with a policy error. */
 async function publishDataset(cols,rows,what){
+  /* Said plainly rather than left to throw a TypeError two frames down, so the
+     next tool that adopts this engine and forgets the tag is told what it is
+     missing instead of being sent to look at the spreadsheet library. */
+  if(!window.AuthGate){ toast('This page cannot sign in - authgate.js is not loaded on it',7000); return; }
   const s=await window.AuthGate.require();
   if(!s){ toast('Cancelled - nothing was published'); return; }
   toast('Publishing '+rows.length.toLocaleString()+' '+C.unit+'…',60000);
