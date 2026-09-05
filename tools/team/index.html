@@ -336,9 +336,16 @@
     importing: null, pending: null
   };
 
-  /* Owner mode decides the buttons; the policies in 012_team.sql decide
-     whether a write lands. The buttons are the courtesy, not the lock. */
-  var mine = function(){ return !!(A && A.isOwner()); };
+  /* Who may change the directory decides the buttons; the policies decide
+     whether a write lands. The buttons are the courtesy, not the lock.
+
+     From migration 020 that is the owner or an office admin, not the owner
+     alone - keeping this current is the admin team's daily job. mayEdit falls
+     back to isOwner on an older access.js, which is the safe way round. */
+  var mine = function(){
+    if (!A) return false;
+    return A.mayEdit ? A.mayEdit('tool:team') : A.isOwner();
+  };
 
   var $ = function(id){ return document.getElementById(id); };
   var esc = function(s){

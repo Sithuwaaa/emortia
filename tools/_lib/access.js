@@ -108,12 +108,35 @@
     if (!s) return false;
     if (isOwner()) return true;
     if (!s.roleKnown) return true;              // pre-015 session, old rule
-    return s.role === 'staff';
+    return s.role === 'staff' || s.role === 'admin';
   }
   function myRole() {
     var s = session();
     if (!s) return null;
     return isOwner() ? 'owner' : (s.role || null);
+  }
+
+  /* ------------------------------------------------------- the office admin
+
+     A fourth role, added in migration 020. It reads exactly what staff read -
+     the new role opens nothing up - and it writes on the two tools that are
+     somebody's daily clerical job rather than the owner's record of something:
+     naming faces on the attendance sheet, keeping the directory current.
+
+     EDITABLE is the whole of it, and it is a list rather than a rule because
+     the next tool added should have to be put on it deliberately. Device links
+     are not here and are not a tool: a link is a standing permission to file
+     attendance from a phone, and those stay with the owner.
+
+     As everywhere else in this file, this decides what to draw. The policies
+     in 020 decide what the database will actually accept. */
+  var EDITABLE = ['tool:attendance', 'tool:team'];
+  function isAdmin() {
+    return myRole() === 'admin';
+  }
+  function mayEdit(feature) {
+    if (isOwner()) return true;
+    return isAdmin() && EDITABLE.indexOf(feature) > -1;
   }
 
   /* ---------------------------------------------------------- who may in
@@ -839,6 +862,11 @@
   function protect(opts) {
     opts = opts || {};
     var root = document.documentElement;
+    /* Which tool this page is, remembered for applyOwner - the role arrives
+       later, from the server, and the calls that re-apply it when it does are
+       nowhere near this one. */
+    PAGE_FEATURE = opts.feature || PAGE_FEATURE;
+    applyOwner();
 
     /* A page with a switch on it cannot answer out of its own head - the
        answer is on the server. Which way it waits depends on what it is:
@@ -912,10 +940,20 @@
   /* Everything that used to key off the passphrase keys off the account now.
      Set before anything else reads it: this file loads ahead of every page's
      own script, and window.IS_OWNER is read all over the tools. */
-  function applyOwner() {
+  var PAGE_FEATURE = '';
+  function applyOwner(feature) {
+    feature = feature || PAGE_FEATURE;
     var on = isOwner();
     window.IS_OWNER = on;
-    var run = function () { document.documentElement.classList.toggle('owner', on); };
+    /* Who may change what is on this page. The same thing as IS_OWNER on every
+       tool but the two an office admin keeps, which is why it is a second flag
+       rather than a looser IS_OWNER: nothing that reads IS_OWNER today starts
+       letting somebody else through because this exists. */
+    window.CAN_EDIT = feature ? mayEdit(feature) : on;
+    var run = function () {
+      document.documentElement.classList.toggle('owner', on);
+      document.documentElement.classList.toggle('editor', window.CAN_EDIT);
+    };
     if (document.documentElement) run(); else addEventListener('DOMContentLoaded', run);
     return on;
   }
@@ -928,7 +966,8 @@
     allowed: allowed, allow: allow, locks: locks,
     /* the three tiers, and who the person holding the page is under them */
     TIERS: TIERS, tierOf: tierOf, defaultTier: defaultTier, mayReach: mayReach,
-    isStaff: isStaff, myRole: myRole,
+    isStaff: isStaff, myRole: myRole, isAdmin: isAdmin, mayEdit: mayEdit,
+    EDITABLE: EDITABLE,
     FEATURES: FEATURES, defaultOf: defaultOf, rememberLocks: remember,
     grouped: grouped, groupOf: groupOf, byName: byName,
     canSignUp: remote, applyOwner: applyOwner, chip: showChip,

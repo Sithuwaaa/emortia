@@ -425,7 +425,7 @@ function viewDay(sheet, day, st, late){
            still adds up, or the whole record goes because it should never
            have been filed. Owner only, and the delete is owner-only in the
            database too - a shared phone cannot erase what it filed. */
-        (window.IS_OWNER ? '<div class="del">' +
+        (window.CAN_EDIT ? '<div class="del">' +
           (u.photo ? '<button class="link" data-delpic="'+esc(u.id)+'">Delete the picture</button>' : '') +
           '<button class="link" data-delrec="'+esc(u.id)+'" style="color:var(--bad)">Delete the record</button>' +
         '</div>' : '') +
@@ -524,7 +524,7 @@ function viewTeam(){
   let h = '<div class="obar"><div><div class="kicker">Team members</div>' +
     '<h2>Everyone the sheet is measured against.</h2></div></div>';
   h += '<div class="sec">The roster – ' + PEOPLE.length + '</div>';
-  if (window.IS_OWNER){
+  if (window.CAN_EDIT){
     h += '<div class="ctl" style="margin-bottom:12px">' +
       '<input type="text" id="pn" placeholder="Name" style="min-width:180px">' +
       '<input type="text" id="pr" placeholder="Role (optional)" style="min-width:150px">' +
@@ -533,10 +533,10 @@ function viewTeam(){
   h += '<div class="chips">' + (PEOPLE.length ? PEOPLE.map(p =>
       '<span class="chip" style="cursor:default">' + esc(p.name) +
       (p.role ? ' <span style="opacity:.6">· '+esc(p.role)+'</span>' : '') +
-      (window.IS_OWNER ? ' <button class="link" data-rm="'+esc(p.id)+'" title="Take off the roster" style="color:inherit;opacity:.5">×</button>' : '') +
+      (window.CAN_EDIT ? ' <button class="link" data-rm="'+esc(p.id)+'" title="Take off the roster" style="color:inherit;opacity:.5">×</button>' : '') +
       '</span>').join('')
     : '<span class="empty" style="padding:0">Nobody yet. ' +
-      (window.IS_OWNER ? 'Add the first name above.' : 'Ask Sithara to add the team.') + '</span>') + '</div>';
+      (window.CAN_EDIT ? 'Add the first name above.' : 'Ask Sithara to add the team.') + '</span>') + '</div>';
   h += '<div class="foot"><span>Taking somebody off marks them away rather than deleting them – ' +
     'a name removed outright would take every past absence of that person with it.</span></div>';
   return h;
