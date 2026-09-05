@@ -913,6 +913,93 @@
     ch.subscribe();
   }
 
+  /* ------------------------------------------------------ daily attendance
+
+     A roster, one row per photograph, and the photographs in a private bucket.
+     The face and the coordinates are the most personal thing this site holds,
+     so nothing here is ever handed out unsigned - the grid asks for a link
+     when it needs to show one, and those expire. */
+  const ABUCKET = 'attend';
+
+  async function attendPeople(){
+    const c = await client(); if (!c) return { people: [], error: 'offline' };
+    const { data, error } = await c.from('attend_people')
+      .select('id,name,role,sort,active').order('sort').order('name');
+    if (error) return { people: [], error: tidyAttend(error.message) };
+    return { people: (data || []).filter(p => p.active !== false), error: null };
+  }
+  async function attendAddPerson(p){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('attend_people').upsert(
+      { id: p.id, name: p.name, role: p.role || '', sort: p.sort || 0, active: true },
+      { onConflict: 'id' });
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only Sithara can change the roster.' : error.message);
+  }
+  async function attendRemovePerson(id){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    /* Marked away rather than deleted: a name removed outright would take
+       every past absence of that person with it. */
+    const { error } = await c.from('attend_people').update({ active: false }).eq('id', id);
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only Sithara can change the roster.' : error.message);
+  }
+
+  async function attendDay(day){
+    const c = await client(); if (!c) return { records: [], error: 'offline' };
+    const { data, error } = await c.from('attend_records')
+      .select('id,day,kind,taken_at,geo,photo,members,ref')
+      .eq('day', day).order('taken_at', { ascending: false });
+    if (error) return { records: [], error: tidyAttend(error.message) };
+    return { records: (data || []).map(r => ({
+      id: r.id, date: r.day, kind: r.kind, ts: new Date(r.taken_at).getTime(),
+      geo: r.geo || '', photo: r.photo || '', members: r.members || [], ref: r.ref || ''
+    })), error: null };
+  }
+  async function attendFile(rec, blob){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    let path = '';
+    if (blob){
+      const stamp = new Date(rec.ts).toISOString().replace(/[:.]/g, '-');
+      path = rec.date + '/' + stamp + '-' + rec.kind + '.jpg';
+      const up = await c.storage.from(ABUCKET).upload(path, blob,
+        { contentType: 'image/jpeg', upsert: false });
+      if (up.error) throw new Error(up.error.message);
+    }
+    const { error } = await c.from('attend_records').insert({
+      id: rec.id, day: rec.date, kind: rec.kind,
+      taken_at: new Date(rec.ts).toISOString(),
+      geo: rec.geo || '', photo: path, members: [], ref: rec.ref || ''
+    });
+    if (error) throw new Error(tidyAttend(error.message));
+    return path;
+  }
+  async function attendName(id, members){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('attend_records').update({ members }).eq('id', id);
+    if (error) throw new Error(tidyAttend(error.message));
+  }
+  async function attendPhoto(path, seconds){
+    const c = await client(); if (!c || !path) return null;
+    const { data, error } = await c.storage.from(ABUCKET).createSignedUrl(path, seconds || 3600);
+    return error ? null : (data ? data.signedUrl : null);
+  }
+  async function attendSubscribe(fn){
+    const c = await client(); if (!c) return;
+    c.channel('attend_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attend_records' }, () => fn())
+      .subscribe();
+  }
+  function tidyAttend(m){
+    return /does not exist|schema cache|could not find the table/i.test(m)
+        ? 'Attendance is not switched on yet – run migration 018.'
+      : /jwt|not authenticated|row-level security|permission/i.test(m)
+        ? 'Your sign-in has run out. Reload the page and sign in again.'
+      : /fetch|network|failed to|timeout/i.test(m)
+        ? 'No connection just now. Try again in a moment.'
+      : m;
+  }
+
   /* ---------------------------------------------------- the material list
 
      One row per material code. Paged on the way in, because PostgREST caps a
@@ -1011,6 +1098,8 @@
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
                 fieldConfigLoad, fieldConfigSave, fieldConfigSubscribe,
                 materialsLoad, materialsSave, materialsSubscribe,
+                attendPeople, attendAddPerson, attendRemovePerson, attendDay,
+                attendFile, attendName, attendPhoto, attendSubscribe,
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
                 teamSavePerson, teamDeletePerson, teamSaveVehicle, teamDeleteVehicle,

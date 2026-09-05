@@ -699,6 +699,8 @@
       what:'Names, mobiles, NIC numbers and vehicles. Opening it lets the team read and copy; adding and removing stays mine.' },
     { key:'tool:field-config', name:'Field Config', tier:'tooway', group:'Site reference',
       what:'Vendor commands, logins and UMPT passwords. Opening it lets the team read and copy; editing stays mine.' },
+    { key:'tool:attendance', name:'Daily Attendance', tier:'tooway', group:'Field & team',
+      what:'Who was on site, from a photo at each end of the shift. Anyone who can open it can clock in and name faces; the roster is mine.' },
     { key:'tool:esn', name:'ESN Sharing', tier:'tooway', group:'Field & team',
       what:'Filing an ESN from the field.' },
     { key:'tool:design-extractor', name:'Design Extractor', tier:'tooway', group:'Design & materials',

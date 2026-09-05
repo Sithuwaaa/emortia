@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c1619">
+<title>Daily Attendance</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_lib/theme.css">
+<script src="../_lib/theme.js" defer></script>
+<script src="../_lib/owner-config.js"></script>
+<script src="../_lib/owner.js"></script>
+<script src="../_lib/supabase-config.js"></script>
+<script src="../_lib/db.js"></script>
+<script src="../_lib/access-config.js"></script>
+<script src="../_lib/access.js"></script>
+<script>Access.protect({ feature: 'tool:attendance' });</script>
+<script src="attendance.js"></script>
+<style>
+  /* Indigo. The one accent left unspoken for: the lookups are teal, the field
+     reference amber, the material list green. Only the accent is this tool's
+     own; the rest is theme.css, like every other tool. */
+  :root,html[data-theme="dark"]{--accent:#6b7fd7;--accentB:#8b9cf0;--accentD:#4a5cae;
+    --accent-ink:#0b0e1c;--glow:rgba(107,127,215,.5);--glowSoft:rgba(107,127,215,.24);
+    --bad:#e2607a;--ok:#5fc189;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
+  html[data-theme="light"]{--accent:#414f9c;--accentB:#4a5cae;--accentD:#2c3670;
+    --accent-ink:#ffffff;--glow:rgba(65,79,156,.4);--glowSoft:rgba(65,79,156,.16);
+    --bad:#c2405c;--ok:#217a4a;--zebra:rgba(0,0,0,.024);--goHover:#2c3670}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+  ::selection{background:var(--glowSoft)}
+
+  .hdr{display:flex;align-items:center;gap:10px;color:#fff;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    background:var(--navy);position:sticky;top:0;z-index:20}
+  .hdr .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;
+    flex-shrink:0;transition:opacity .18s ease}
+  .hdr .brand:hover{opacity:.86}
+  .hdr .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;
+    background:linear-gradient(150deg,#d15873,#87213c) !important;
+    display:flex;align-items:center;justify-content:center;gap:2.4px;
+    box-shadow:0 0 16px rgba(176,58,86,.45) !important;font-size:0;padding:0;border:none}
+  .hdr .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
+  .hdr .logo i:nth-child(1){height:7px} .hdr .logo i:nth-child(2){height:12px}
+  .hdr .logo i:nth-child(3){height:9px} .hdr .logo i:nth-child(4){height:13px}
+  .hdr .bname{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;
+    letter-spacing:-.02em;color:#fff;white-space:nowrap}
+  .hdr .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0;margin:0 1px}
+  .hdr h1{font-size:18px;font-weight:700;margin-right:auto;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
+  .theme{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;
+    width:34px;height:34px;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0}
+  .seg{display:flex;border:1px solid rgba(255,255,255,.22);border-radius:9px;overflow:hidden;flex-shrink:0}
+  .seg button{font:inherit;font-size:12.5px;padding:6px 13px;border:0;cursor:pointer;
+    background:transparent;color:#cfd6e6}
+  .seg button + button{border-left:1px solid rgba(255,255,255,.22)}
+  .seg button.on{background:#fff;color:var(--navy);font-weight:600}
+  @media (max-width:820px){ .hdr .bname,.hdr .hsep{display:none} }
+
+  main{max-width:1180px;margin:0 auto;padding:18px 16px 90px}
+
+  /* --------------------------------------------------- the device screen
+
+     One column, one job, and no way out of it. This is a shared phone left on
+     a table: whoever picks it up is clocking in, not browsing a website. */
+  .dev{max-width:390px;margin:0 auto;padding:26px 4px 40px}
+  .devhead{border-bottom:2px solid var(--line2);padding-bottom:14px}
+  .kicker{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--accent)}
+  .clock{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:56px;
+    line-height:.95;letter-spacing:-.03em;margin-top:4px;font-variant-numeric:tabular-nums}
+  .datelong{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .stamps{border-bottom:1px solid var(--line);display:flex}
+  .stamp{flex:1;padding:14px 0}
+  .stamp + .stamp{padding-left:16px;border-left:1px solid var(--line)}
+  .stamp .k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--muted)}
+  .stamp .v{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:26px;
+    margin-top:4px;font-variant-numeric:tabular-nums;color:var(--dim)}
+  .stamp .v.set{color:var(--accent)}
+
+  .shot{width:100%;aspect-ratio:4/3;border:2px solid var(--line3);border-radius:10px;
+    background:var(--card2) center/cover no-repeat;display:block}
+  .meta{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6}
+  .go{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    min-height:66px;border:none;border-radius:12px;background:var(--accent);
+    color:var(--accent-ink);font:inherit;font-size:16px;font-weight:700;cursor:pointer;
+    position:relative;transition:background .16s ease}
+  .go:hover{background:var(--goHover)}
+  .go input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .row2{display:flex;gap:10px;margin-top:14px}
+  .btn{border:1px solid var(--line3);background:none;color:var(--text);border-radius:11px;
+    padding:12px 16px;font:inherit;font-size:14.5px;cursor:pointer;min-height:54px}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);
+    font-weight:700;flex:1}
+  .btn.pri:hover{background:var(--goHover);color:var(--accent-ink)}
+  .done{margin-top:22px;background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:20px}
+  .done .h{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:34px;
+    line-height:1;letter-spacing:-.03em;margin-top:8px}
+  .fine{border-top:2px solid var(--line2);margin-top:26px;padding-top:14px;
+    font-size:12px;line-height:1.75;color:var(--muted)}
+
+  /* --------------------------------------------------------- the office */
+  .obar{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
+    flex-wrap:wrap;margin-bottom:16px}
+  .obar h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:27px;
+    letter-spacing:-.02em;margin-top:6px}
+  .ctl{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  select,input[type=text]{font:inherit;font-size:14px;color:var(--text);background:var(--card);
+    border:1px solid var(--line);border-radius:10px;padding:9px 11px;outline:none}
+  select:focus,input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glowSoft)}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;background:var(--card);margin-bottom:22px}
+  .tile{padding:15px 18px}
+  .tile + .tile{border-left:1px solid var(--line)}
+  .tile .k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--muted)}
+  .tile .v{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:32px;
+    line-height:1.05;letter-spacing:-.03em;margin-top:5px}
+
+  .sec{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);margin:26px 0 12px}
+  .up{display:grid;grid-template-columns:250px 1fr;gap:22px;padding:18px 0;
+    border-top:1px solid var(--line)}
+  .up .when{display:flex;align-items:center;gap:8px;margin-top:9px}
+  .tag{font-size:10.5px;font-family:'Space Mono',monospace;letter-spacing:.1em;
+    text-transform:uppercase;border-radius:999px;padding:3px 9px;border:1px solid var(--line2);color:var(--dim)}
+  .tag-in{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .tag-ok{color:var(--ok);border-color:var(--ok)}
+  .tag-late{background:var(--bad);border-color:var(--bad);color:#fff}
+  .tag-out{color:var(--muted)}
+  .up .t{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:20px;
+    font-variant-numeric:tabular-nums}
+  .up .fine2{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.6}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:flex;align-items:center;gap:6px;font:inherit;font-size:13px;padding:7px 11px;
+    cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--dim);
+    border-radius:999px;transition:border-color .15s ease,background .15s ease,color .15s ease}
+  .chip:hover{border-color:var(--accent);color:var(--text)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--muted);text-align:left;padding:9px 10px;border-bottom:2px solid var(--line2);white-space:nowrap}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody tr:nth-child(even){background:var(--zebra)}
+  .num{font-variant-numeric:tabular-nums}
+  .who .n{font-weight:600}
+  .who .r{font-size:11.5px;color:var(--muted)}
+  .geo{font-size:12px;color:var(--muted)}
+
+  .empty{padding:34px 4px;color:var(--muted);font-size:13.5px;line-height:1.75}
+  .foot{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
+  .link{background:none;border:none;color:var(--accent);font:inherit;font-size:12px;cursor:pointer;padding:0}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(14px);
+    background:var(--navy);color:#fff;border-radius:10px;padding:11px 18px;font-size:13.5px;
+    opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:60;
+    max-width:calc(100vw - 32px);text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media (max-width:760px){
+    .tiles{grid-template-columns:repeat(2,1fr)}
+    .tile:nth-child(3){border-left:none}
+    .tile:nth-child(n+3){border-top:1px solid var(--line)}
+    .up{grid-template-columns:1fr}
+    .wrap-x{overflow-x:auto}
+  }
+</style>
+</head>
+<body>
+<header class="hdr" id="hdr"></header>
+<main id="main"></main>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+const A = window.ATT, $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* The device remembers only its own day, and only for a day. Nothing on a
+   shared phone should outlive the shift it belongs to. */
+const DEVKEY = 'emortia_attend_device_v1';
+const SHIFT = '08:30', GRACE = 15;
+
+let VIEW  = (location.hash === '#office') ? 'office' : 'device';
+let NOW   = Date.now();
+let COORDS = null;
+let PENDING = null;                 // { kind, dataUrl, blob }
+let DEVICE = load();
+let PEOPLE = [], RECS = [], DAY = A.dstr(new Date()), LINKS = {}, BUSY = false, ERR = '';
+
+function load(){ try { const d = JSON.parse(localStorage.getItem(DEVKEY)||'null');
+  return (d && d.expires > Date.now()) ? d : null; } catch(e){ return null; } }
+function keep(d){ DEVICE = d; try { localStorage.setItem(DEVKEY, JSON.stringify(d)); } catch(e){} }
+
+let tt; function toast(m, ms){ const t=$('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'), ms||2400); }
+
+/* ---------------------------------------------------------------- chrome */
+function renderHead(){
+  const office = VIEW === 'office';
+  /* The device screen carries no way off itself – no brand link, no tabs.
+     A shared phone on a site table is not a door into the rest of the site,
+     and the person clocking in has one thing to do. The office view keeps
+     the ordinary header, because it is opened on a laptop by somebody who
+     came from the Tools page. */
+  $('hdr').innerHTML = office
+    ? '<a class="brand" href="../../" title="Emortia"><span class="logo"><i></i><i></i><i></i><i></i></span>' +
+      '<span class="bname">Emortia</span></a><span class="hsep"></span>' +
+      '<h1>Daily Attendance</h1>' +
+      '<div class="seg"><button id="toDev">Device</button><button class="on">Office</button></div>' +
+      '<button class="theme" id="themeBtn" title="Light / dark">☾</button>'
+    : '<span class="logo"><i></i><i></i><i></i><i></i></span>' +
+      '<h1>Daily Attendance</h1>' +
+      (window.IS_OWNER ? '<div class="seg"><button class="on">Device</button><button id="toOffice">Office</button></div>' : '') +
+      '<button class="theme" id="themeBtn" title="Light / dark">☾</button>';
+
+  const t = $('themeBtn');
+  if (t){ t.textContent = document.documentElement.dataset.theme === 'dark' ? '☀' : '☾';
+    t.onclick = () => { const to = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = to;
+      try { localStorage.setItem('office_tool_theme', to); } catch(e){}
+      t.textContent = to === 'dark' ? '☀' : '☾'; }; }
+  const a = $('toOffice'), b = $('toDev');
+  if (a) a.onclick = () => { VIEW='office'; location.hash='office'; refresh(); };
+  if (b) b.onclick = () => { VIEW='device'; location.hash=''; paint(); };
+}
+
+/* ------------------------------------------------------------ the device */
+function renderDevice(){
+  const now = new Date(NOW);
+  const d = A.deviceState(DEVICE, NOW);
+  const geo = COORDS || 'unavailable – allow location on this device';
+
+  let h = '<div class="dev"><div class="devhead">' +
+    '<div class="kicker">' + esc(now.toLocaleDateString(undefined,{weekday:'long'})) + '</div>' +
+    '<div class="clock">' + A.pad(now.getHours()) + ':' + A.pad(now.getMinutes()) + '</div>' +
+    '<div class="datelong">' + esc(now.toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'})) + '</div>' +
+    '</div><div class="stamps">' +
+      '<div class="stamp"><div class="k">Clock in</div><div class="v' + (d.in?' set':'') + '">' + A.fmt(d.in) + '</div></div>' +
+      '<div class="stamp"><div class="k">Clock out</div><div class="v' + (d.out?' set':'') + '">' + A.fmt(d.out) + '</div></div>' +
+    '</div>';
+
+  if (PENDING){
+    h += '<div style="margin-top:20px">' +
+      '<div class="shot" style="background-image:url(' + PENDING.dataUrl + ')" role="img" aria-label="Photo to submit"></div>' +
+      '<div class="meta">' + (PENDING.kind==='in'?'Clock in':'Clock out') + ' · ' +
+        A.pad(now.getHours()) + ':' + A.pad(now.getMinutes()) + ':' + A.pad(now.getSeconds()) + ' · ' + esc(geo) + '</div>' +
+      '<div class="row2"><button class="btn pri" id="send">' + (BUSY ? 'Sending…' : (PENDING.kind==='in'?'Clock in':'Clock out')) + '</button>' +
+      '<button class="btn" id="drop">Discard</button></div></div>';
+  } else if (!d.done){
+    h += '<div style="margin-top:22px"><label class="go">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+      '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/>' +
+      '<circle cx="12" cy="13" r="3.5"/></svg><span>' +
+      (d.next==='in' ? 'Take photo – clock in' : 'Take photo – clock out') + '</span>' +
+      '<input type="file" accept="image/*" capture="user" id="cam"></label>' +
+      '<div class="meta">' + (d.next==='in'
+        ? 'One photo of everyone starting the shift. The office names each face afterwards.'
+        : 'One photo of everyone leaving. This closes the day on this device.') + '</div></div>';
+  } else {
+    h += '<div class="done"><div class="kicker" style="color:inherit;opacity:.85">Day complete</div>' +
+      '<div class="h">' + A.hoursBetween(d.in, d.out) + ' hours</div>' +
+      '<div style="font-size:13px;margin-top:6px;opacity:.9">Both photos are with the office. Nothing else to do today.</div></div>';
+  }
+
+  h += '<div class="fine"><div>Location ' + esc(geo) + '</div>' +
+    '<div>The time and the location are sent the moment you submit.</div>' +
+    '<div>This device remembers today only, and forgets it after a day.</div></div></div>';
+  $('main').innerHTML = h;
+
+  const cam = $('cam');
+  if (cam) cam.onchange = async e => {
+    const f = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { PENDING = Object.assign({ kind: d.next }, await shrink(f)); paint(); }
+    catch (err){ toast('Could not read that photo'); }
+  };
+  const send = $('send'); if (send) send.onclick = submit;
+  const drop = $('drop'); if (drop) drop.onclick = () => { PENDING = null; paint(); };
+}
+
+/* 560px wide, JPEG. Big enough to recognise a face, small enough to leave a
+   phone on a site connection – and the shrink happens before anything is
+   sent, so the full-size original never leaves the device. */
+async function shrink(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image();
+      i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const w = 560, h = Math.round(w * 0.75);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    const r = Math.max(w / img.width, h / img.height);
+    const dw = img.width * r, dh = img.height * r;
+    g.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    const dataUrl = c.toDataURL('image/jpeg', 0.62);
+    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.62));
+    return { dataUrl, blob };
+  } finally { URL.revokeObjectURL(url); }
+}
+
+async function submit(){
+  if (!PENDING || BUSY) return;
+  BUSY = true; paint();
+  const ts = Date.now(), day = A.dstr(new Date(ts));
+  try {
+    await window.DB.attendFile({
+      id: 'A' + ts + Math.random().toString(36).slice(2,5),
+      date: day, kind: PENDING.kind, ts,
+      geo: COORDS || '', ref: A.refFor(day, ts)
+    }, PENDING.blob);
+    const dev = PENDING.kind === 'in'
+      ? { in: ts, out: null, expires: ts + 86400000 }
+      : Object.assign({}, DEVICE || {}, { out: ts });
+    keep(dev);
+    PENDING = null;
+    toast(dev.out ? 'Clocked out. That is the day done.' : 'Clocked in. Have a good shift.', 4000);
+  } catch (e){ toast(e.message, 6000); }
+  BUSY = false; paint();
+}
+
+/* ------------------------------------------------------------ the office */
+function renderOffice(){
+  const late = A.lateAfter(SHIFT, GRACE);
+  const sheet = A.buildSheet(PEOPLE, RECS, DAY, late);
+  const day = A.ofDay(RECS, DAY);
+  const st = A.stats(sheet, day);
+  const opts = A.dateOpts(A.dstr(new Date()), 10);
+
+  let h = '<div class="obar"><div><div class="kicker">The office</div>' +
+    '<h2>Name the faces, and the sheet fills itself in.</h2></div>' +
+    '<div class="ctl"><select id="day">' +
+      opts.map(o => '<option value="'+o.value+'"'+(o.value===DAY?' selected':'')+'>'+esc(o.label)+'</option>').join('') +
+    '</select><button class="btn" id="xls" style="min-height:0;padding:9px 14px">' +
+      (BUSY ? 'Building…' : 'Export Excel') + '</button></div></div>';
+
+  if (ERR) h += '<div class="empty">' + esc(ERR) + '</div>';
+
+  h += '<div class="tiles">' +
+    tile('Photos', st.photos) + tile('Names ticked', st.named) +
+    tile('Present', st.present + '/' + st.roster) +
+    tile('Late', st.late, st.late ? 'var(--bad)' : '') + '</div>';
+
+  h += '<div class="sec">Photos – ' + st.photos + '</div>';
+  if (!day.length){
+    h += '<div class="empty" style="border-top:1px solid var(--line)">No photos for this date. ' +
+      'Open the device screen on the shared phone, submit a clock-in photo, and it appears here to be named.</div>';
+  } else {
+    h += day.map(u => {
+      const on = u.members || [];
+      return '<div class="up"><div>' +
+        '<div class="shot" style="background-image:url(' + (LINKS[u.id] || '') + ')" role="img" aria-label="Attendance photo"></div>' +
+        '<div class="when"><span class="tag ' + (u.kind==='in'?'tag-in':'') + '">' +
+          (u.kind==='in'?'Clock in':'Clock out') + '</span><span class="t">' + A.fmt(u.ts) + '</span></div>' +
+        '<div class="fine2">' + esc(u.geo || 'location unavailable') + '<br>' + esc(u.ref) + '</div></div>' +
+        '<div><div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px">' +
+          '<div class="kicker" style="color:var(--muted)">Who is in this photo – ' + on.length + ' ticked</div>' +
+          (on.length ? '<button class="link" data-clear="'+esc(u.id)+'">Clear</button>' : '') +
+        '</div><div class="chips">' +
+          (PEOPLE.length ? PEOPLE.map(p =>
+            '<button class="chip' + (on.indexOf(p.id)>-1?' on':'') + '" data-u="'+esc(u.id)+'" data-p="'+esc(p.id)+'">' +
+            (on.indexOf(p.id)>-1 ? '✓ ' : '') + esc(p.name) + '</button>').join('')
+            : '<span class="empty" style="padding:0">No names on the roster yet. Add one below.</span>') +
+        '</div></div></div>';
+    }).join('');
+  }
+
+  h += '<div class="sec">Attendance sheet – ' +
+    esc(new Date(DAY+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})) + '</div>';
+  h += '<div class="wrap-x"><table><thead><tr><th>Staff</th><th>Clock in</th><th>In location</th>' +
+    '<th>Clock out</th><th>Out location</th><th>Hours</th><th style="text-align:right">Status</th></tr></thead><tbody>' +
+    (sheet.length ? sheet.map(r =>
+      '<tr><td class="who"><div class="n">'+esc(r.name)+'</div><div class="r">'+esc(r.role)+'</div></td>' +
+      '<td class="num">'+r.in+'</td><td class="geo">'+esc(r.inGeo)+'</td>' +
+      '<td class="num">'+r.out+'</td><td class="geo">'+esc(r.outGeo)+'</td>' +
+      '<td class="num">'+r.hours+'</td>' +
+      '<td style="text-align:right"><span class="tag '+r.tagClass+'">'+esc(r.status)+'</span></td></tr>').join('')
+      : '<tr><td colspan="7" class="empty">No names on the roster yet.</td></tr>') +
+    '</tbody></table></div>';
+  h += '<div class="foot"><span>A row fills in only from a photo somebody has named. ' +
+    'Late is any clock-in after ' + A.hm(late) + '.</span></div>';
+
+  /* the roster, at the bottom, where it is edited rarely and read never */
+  h += '<div class="sec">The roster – ' + PEOPLE.length + '</div>';
+  if (window.IS_OWNER){
+    h += '<div class="ctl" style="margin-bottom:12px">' +
+      '<input type="text" id="pn" placeholder="Name" style="min-width:180px">' +
+      '<input type="text" id="pr" placeholder="Role (optional)" style="min-width:150px">' +
+      '<button class="btn" id="padd" style="min-height:0;padding:9px 14px">Add to the roster</button></div>';
+  }
+  h += '<div class="chips">' + (PEOPLE.length ? PEOPLE.map(p =>
+      '<span class="chip" style="cursor:default">' + esc(p.name) +
+      (p.role ? ' <span style="opacity:.6">· '+esc(p.role)+'</span>' : '') +
+      (window.IS_OWNER ? ' <button class="link" data-rm="'+esc(p.id)+'" title="Take off the roster" style="color:inherit;opacity:.5">×</button>' : '') +
+      '</span>').join('')
+    : '<span class="empty" style="padding:0">Nobody yet. ' +
+      (window.IS_OWNER ? 'Add the first name above.' : 'Ask Sithara to add the team.') + '</span>') + '</div>';
+
+  $('main').innerHTML = h;
+  wireOffice(sheet, late);
+}
+function tile(k, v, colour){
+  return '<div class="tile"><div class="k">'+esc(k)+'</div>' +
+    '<div class="v"' + (colour ? ' style="color:'+colour+'"' : '') + '>'+esc(v)+'</div></div>';
+}
+
+function wireOffice(sheet, late){
+  const sel = $('day'); if (sel) sel.onchange = () => { DAY = sel.value; refresh(); };
+  const x = $('xls'); if (x) x.onclick = () => exportXlsx(sheet, late);
+
+  document.querySelectorAll('.chip[data-u]').forEach(b => b.onclick = async () => {
+    const rec = RECS.find(r => r.id === b.dataset.u); if (!rec) return;
+    const next = A.toggleMember(rec, b.dataset.p);
+    RECS = RECS.map(r => r.id === rec.id ? next : r);
+    paint();
+    try { await window.DB.attendName(rec.id, next.members); }
+    catch (e){ RECS = RECS.map(r => r.id === rec.id ? rec : r); paint(); toast(e.message, 5000); }
+  });
+  document.querySelectorAll('[data-clear]').forEach(b => b.onclick = async () => {
+    const rec = RECS.find(r => r.id === b.dataset.clear); if (!rec) return;
+    const next = Object.assign({}, rec, { members: [] });
+    RECS = RECS.map(r => r.id === rec.id ? next : r); paint();
+    try { await window.DB.attendName(rec.id, []); }
+    catch (e){ RECS = RECS.map(r => r.id === rec.id ? rec : r); paint(); toast(e.message, 5000); }
+  });
+  const add = $('padd');
+  if (add) add.onclick = async () => {
+    const p = A.cleanPerson({ name: $('pn').value, role: $('pr').value, sort: PEOPLE.length + 1 });
+    if (!p){ toast('A name, at least'); return; }
+    try { await window.DB.attendAddPerson(p); $('pn').value=''; $('pr').value='';
+      await refresh(); toast(p.name + ' is on the roster'); }
+    catch (e){ toast(e.message, 5000); }
+  };
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
+    try { await window.DB.attendRemovePerson(b.dataset.rm); await refresh(); toast('Taken off the roster'); }
+    catch (e){ toast(e.message, 5000); }
+  });
+}
+
+function exportXlsx(sheet, late){
+  if (!window.XLSX){ toast('The spreadsheet library is still loading'); return; }
+  const x = A.exportRows(sheet, DAY, late);
+  const aoa = [[x.title], [x.note], [], x.head].concat(x.rows);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:22},{wch:16},{wch:11},{wch:22},{wch:11},{wch:22},{wch:8},{wch:14}];
+  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:7}},{s:{r:1,c:0},e:{r:1,c:7}}];
+  ws['!freeze'] = { ySplit: 4 };
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+  XLSX.writeFile(wb, 'Attendance ' + DAY + '.xlsx');
+}
+
+/* ------------------------------------------------------------------ wiring */
+function paint(){ renderHead(); (VIEW === 'office' ? renderOffice : renderDevice)(); }
+
+async function refresh(){
+  if (VIEW !== 'office'){ paint(); return; }
+  const [p, r] = await Promise.all([window.DB.attendPeople(), window.DB.attendDay(DAY)]);
+  ERR = p.error || r.error || '';
+  PEOPLE = A.sortPeople(p.people || []);
+  RECS = r.records || [];
+  paint();
+  /* signed links, asked for one at a time and only for the day on screen */
+  for (const u of RECS){
+    if (!u.photo || LINKS[u.id]) continue;
+    const url = await window.DB.attendPhoto(u.photo, 3600);
+    if (url){ LINKS[u.id] = url; paint(); }
+  }
+}
+
+setInterval(() => { NOW = Date.now(); if (VIEW === 'device' && !PENDING) paint(); }, 1000);
+if (navigator.geolocation) navigator.geolocation.getCurrentPosition(
+  p => { COORDS = p.coords.latitude.toFixed(4) + ', ' + p.coords.longitude.toFixed(4); paint(); },
+  () => {}, { enableHighAccuracy: true, timeout: 8000 });
+
+paint();
+if (VIEW === 'office') refresh();
+window.DB.attendSubscribe(() => { if (VIEW === 'office') refresh(); });
+})();
+</script>
+</body>
+</html>
