@@ -63,7 +63,31 @@
   .seg button.on{background:#fff;color:var(--navy);font-weight:600}
   @media (max-width:820px){ .hdr .bname,.hdr .hsep{display:none} }
 
+  /* The bell sits in the header rather than in the tabs, because a photograph
+     arriving is news wherever you happen to be looking. */
+  .bell{position:relative;background:none;border:1px solid rgba(255,255,255,.25);color:#fff;
+    border-radius:8px;width:34px;height:34px;font-size:15px;cursor:pointer;line-height:1;flex-shrink:0}
+  .bell.on{background:#fff;color:var(--navy)}
+  .bell .badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;
+    border-radius:9px;background:var(--bad);color:#fff;font-size:11px;font-weight:700;line-height:18px;
+    font-family:'Space Mono',monospace}
+
   main{max-width:1180px;margin:0 auto;padding:18px 16px 90px}
+
+  /* One tab per thing the office does, because the day is read every morning
+     and the other three are touched once a month between them. */
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .tab{font:inherit;font-size:13.5px;padding:10px 15px;border:0;background:none;cursor:pointer;
+    color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;
+    transition:color .15s ease,border-color .15s ease}
+  .tab:hover{color:var(--text)}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  .tab .n{font-family:'Space Mono',monospace;font-size:11px;opacity:.7;margin-left:5px}
+  .panel{border:1px solid var(--accent);border-radius:12px;background:var(--glowSoft);
+    padding:15px 17px;margin-bottom:18px}
+  .panel .row{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13.5px}
+  .panel .row + .row{border-top:1px solid var(--line)}
+  .sw{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);cursor:pointer}
 
   /* --------------------------------------------------------- the office */
   .obar{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
@@ -71,7 +95,7 @@
   .obar h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:27px;
     letter-spacing:-.02em;margin-top:6px}
   .ctl{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-  select,input[type=text],input[type=month]{font:inherit;font-size:14px;color:var(--text);
+  select,input[type=text],input[type=month],input[type=date]{font:inherit;font-size:14px;color:var(--text);
     background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;outline:none}
   select:focus,input[type=text]:focus,input[type=month]:focus{border-color:var(--accent);
     box-shadow:0 0 0 3px var(--glowSoft)}
@@ -166,13 +190,66 @@ let DEVICES = [], MADE = null, LEAVE = [];      // MADE: a link just created, sh
    thing this page shows and pretending otherwise would mean loading one. */
 let XSCOPE = 'day', XMONTH = DAY.slice(0, 7), XWHO = '';
 let OLD = 90;                                   // how old a picture has to be to be swept
+let TAB = 'day';                                // day | leave | team | links
+let AHEAD = [];                                 // leave marked for the days to come
+let BELL = false, SEEN = null;                  // SEEN: the ids already known, so an arrival is an arrival
+let LV_WHO = '', LV_FROM = '', LV_TO = '', LV_NOTE = '';
+const pref = (k, d) => { try { const v = localStorage.getItem('attend_'+k);
+  return v === null ? d : v === '1'; } catch(e){ return d; } };
+const setPref = (k, v) => { try { localStorage.setItem('attend_'+k, v ? '1' : '0'); } catch(e){} };
+let SOUND = pref('sound', true), DESKTOP = pref('desktop', false);
 
 let tt; function toast(m, ms){ const t=$('toast'); t.textContent=m; t.classList.add('show');
   clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'), ms||2400); }
 
+/* -------------------------------------------------------------- an arrival
+
+   A photograph turning up is the one thing here that happens without anybody
+   in the office doing anything, so it is the one thing that has to announce
+   itself. Two short notes rather than a file: a sound file is a request, a
+   cache entry and a binary in the repository, and this is a beep.
+
+   Browsers will not make a sound until the page has been clicked once. That is
+   not worked around, it is said out loud in the panel. */
+let AC = null;
+function chime(){
+  if (!SOUND) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const t0 = AC.currentTime;
+    [[784, 0], [1175, .14]].forEach(pair => {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = 'sine'; o.frequency.value = pair[0];
+      g.gain.setValueAtTime(.0001, t0 + pair[1]);
+      g.gain.exponentialRampToValueAtTime(.2, t0 + pair[1] + .02);
+      g.gain.exponentialRampToValueAtTime(.0001, t0 + pair[1] + .3);
+      o.connect(g); g.connect(AC.destination);
+      o.start(t0 + pair[1]); o.stop(t0 + pair[1] + .32);
+    });
+  } catch (e){}
+}
+function desktopNote(text){
+  if (!DESKTOP || !('Notification' in window) || Notification.permission !== 'granted') return;
+  /* one tag, so ten photographs in a morning are one notification that keeps
+     being replaced rather than ten stacked up */
+  try { new Notification('Daily Attendance', { body: text, tag: 'attend' }); } catch (e){}
+}
+function arrived(n, day){
+  const what = n > 1 ? n + ' photos have arrived' : 'A photo has arrived';
+  const when = day === A.dstr(new Date()) ? '' : ' for ' + day;
+  chime(); desktopNote(what + when + ' – name the faces on it.');
+  toast(what + when, 4200);
+}
+/* What the bell counts: photographs on the day being read with nobody ticked
+   on them yet. A count that survives a reload, because it is a fact about the
+   day rather than about this browser tab. */
+function waiting(day){ return (day || []).filter(u => !(u.members || []).length); }
+
 /* ---------------------------------------------------------------- chrome */
 function renderHead(){
-  /* One view, so no switch. The crews' screen is /attendance/ - a page with no
+  const n = waiting(A.ofDay(RECS, DAY)).length;
+  /* The crews' screen is /attendance/ - a page with no
      sign-in, opened from a link on the shared phone - and there is deliberately
      nothing here that navigates to it: it is not a thing to be browsed into,
      and a link from an office laptop would be a link to a credential. */
@@ -180,7 +257,10 @@ function renderHead(){
     '<a class="brand" href="../../" title="Emortia"><span class="logo"><i></i><i></i><i></i><i></i></span>' +
     '<span class="bname">Emortia</span></a><span class="hsep"></span>' +
     '<h1>Daily Attendance</h1>' +
+    '<button class="bell' + (BELL ? ' on' : '') + '" id="bell" title="Photos waiting to be named">🔔' +
+      (n ? '<span class="badge">' + n + '</span>' : '') + '</button>' +
     '<button class="theme" id="themeBtn" title="Light / dark">☾</button>';
+  const b = $('bell'); if (b) b.onclick = () => { BELL = !BELL; paint(); };
   const t = $('themeBtn');
   if (t){ t.textContent = document.documentElement.dataset.theme === 'dark' ? '☀' : '☾';
     t.onclick = () => { const to = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -189,12 +269,61 @@ function renderHead(){
       t.textContent = to === 'dark' ? '☀' : '☾'; }; }
 }
 
-/* ------------------------------------------------------------ the office */
+/* ------------------------------------------------------------ the office
+
+   Four tabs. The day is read every morning; the other three are touched
+   between them about once a month, and having them all on one page meant
+   scrolling past the roster and a credential to reach the sheet. */
 function renderOffice(){
   const late = A.lateAfter(SHIFT, GRACE);
   const sheet = A.buildSheet(PEOPLE, RECS, DAY, late, LEAVE);
   const day = A.ofDay(RECS, DAY);
   const st = A.stats(sheet, day);
+
+  const tabs = [['day','The day', day.length], ['leave','Leave', AHEAD.length],
+                ['team','Team members', PEOPLE.length]];
+  if (window.IS_OWNER) tabs.push(['links','Device links', DEVICES.length]);
+
+  let h = '<div class="tabs">' + tabs.map(t =>
+    '<button class="tab' + (TAB===t[0]?' on':'') + '" data-tab="'+t[0]+'">' + esc(t[1]) +
+    (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>').join('') + '</div>';
+
+  if (BELL) h += bellPanel(day);
+  if (ERR) h += '<div class="empty">' + esc(ERR) + '</div>';
+
+  h += TAB === 'leave' ? viewLeave()
+     : TAB === 'team'  ? viewTeam()
+     : TAB === 'links' ? viewLinks()
+     : viewDay(sheet, day, st, late);
+
+  $('main').innerHTML = h;
+  wireOffice(sheet, late);
+}
+
+/* What is waiting, and what happens when the next one lands. */
+function bellPanel(day){
+  const w = waiting(day);
+  let h = '<div class="panel"><div class="kicker" style="color:var(--accent)">' +
+    (w.length ? w.length + (w.length>1 ? ' photos are' : ' photo is') + ' waiting to be named'
+              : 'Every photo on this day has a name on it') + '</div>';
+  h += w.map(u => '<div class="row"><span class="tag ' + (u.kind==='in'?'tag-in':'') + '">' +
+      (u.kind==='in'?'Clock in':'Clock out') + '</span>' +
+      '<b>' + A.fmt(u.ts) + '</b><span class="geo">' + esc(deviceOf(u)) + '</span>' +
+      '<button class="link" data-goto="'+esc(u.id)+'" style="margin-left:auto">Name it</button></div>').join('');
+  h += '<div class="row" style="gap:18px;flex-wrap:wrap">' +
+    '<label class="sw"><input type="checkbox" id="swSound"' + (SOUND?' checked':'') + '> Sound when one arrives</label>' +
+    '<label class="sw"><input type="checkbox" id="swDesk"' + (DESKTOP?' checked':'') + '> Desktop notification</label>' +
+    '</div>';
+  h += '<div class="fine2" style="font-size:11.5px;color:var(--dim);margin-top:6px">' +
+    'A browser will not play a sound until the page has been clicked once, so the first photo of the ' +
+    'morning may arrive quietly if the tab has only been left open.' +
+    (DESKTOP && 'Notification' in window && Notification.permission !== 'granted'
+      ? ' Desktop notifications are switched on here but the browser has not been given permission – tick it again to ask.' : '') +
+    '</div></div>';
+  return h;
+}
+
+function viewDay(sheet, day, st, late){
   const opts = A.dateOpts(A.dstr(new Date()), 10);
 
   let h = '<div class="obar"><div><div class="kicker">The office</div>' +
@@ -277,8 +406,65 @@ function renderOffice(){
   h += '<div class="foot"><span>A row fills in only from a photo somebody has named. ' +
     'Late is any clock-in after ' + A.hm(late) + '. ' +
     (st.leave ? st.leave + ' on leave, ' : '') + st.absent + ' unaccounted for.</span></div>';
+  return h;
+}
 
-  /* the roster, at the bottom, where it is edited rarely and read never */
+/* ---------------------------------------------------------------- leave
+
+   The sheet marks leave for the day being read, after the fact. This is the
+   other half: somebody says on Friday that they are away next week, and it
+   gets written down on Friday. Same rows, same table - just reachable before
+   the day arrives rather than only on it. */
+function viewLeave(){
+  const today = A.dstr(new Date());
+  const from = LV_FROM || today, to = LV_TO || from;
+  const days = A.dayRange(from, to);
+  const nameOf = id => { const p = PEOPLE.find(x => x.id === id); return p ? p.name : id; };
+  const pretty = d => new Date(d + 'T12:00:00')
+    .toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short' });
+
+  let h = '<div class="obar"><div><div class="kicker">Leave</div>' +
+    '<h2>Write it down before the day, not after it.</h2></div></div>';
+
+  if (!PEOPLE.length){
+    return h + '<div class="empty">Nobody on the roster yet. Add the team first, ' +
+      'and leave can be marked against them.</div>';
+  }
+
+  h += '<div class="ctl" style="margin-bottom:10px">' +
+    '<select id="lvWho">' + PEOPLE.map(p =>
+      '<option value="'+esc(p.id)+'"'+(LV_WHO===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('') +
+    '</select>' +
+    '<input type="date" id="lvFrom" value="'+esc(from)+'" title="From">' +
+    '<input type="date" id="lvTo" value="'+esc(to)+'" title="To">' +
+    '<input type="text" id="lvNote" placeholder="A note (optional)" value="'+esc(LV_NOTE)+'" style="min-width:200px">' +
+    '<button class="btn" id="lvAdd" style="min-height:0;padding:9px 14px">Mark leave</button></div>';
+  h += '<div class="foot" style="margin-top:0"><span>' +
+    (days.length > 1 ? days.length + ' days – ' + pretty(days[0]) + ' to ' + pretty(days[days.length-1])
+                     : 'One day – ' + pretty(from)) +
+    '. A photograph always outranks this: if they are marked away and turn up, the sheet says they were here.' +
+    '</span></div>';
+
+  const runs = A.groupLeave(AHEAD);
+  h += '<div class="sec">Marked from today on – ' + AHEAD.length +
+    (AHEAD.length === 1 ? ' day' : ' days') + '</div>';
+  h += '<div class="chips">' + (runs.length ? runs.map(r =>
+      '<span class="chip" style="cursor:default">' + esc(nameOf(r.person)) +
+      ' <span style="opacity:.65">· ' + esc(pretty(r.from)) +
+      (r.to !== r.from ? ' to ' + esc(pretty(r.to)) : '') + '</span>' +
+      (r.note ? ' <span style="opacity:.5">· ' + esc(r.note) + '</span>' : '') +
+      ' <button class="link" data-lvdrop="' + esc(r.person + '|' + r.days.join(',')) +
+      '" title="Take this leave off" style="color:inherit;opacity:.5">×</button>' +
+      '</span>').join('')
+    : '<span class="empty" style="padding:0">Nothing marked. Anybody absent without a mark here ' +
+      'shows on the sheet as unaccounted for.</span>') + '</div>';
+  return h;
+}
+
+/* -------------------------------------------------------- the team members */
+function viewTeam(){
+  let h = '<div class="obar"><div><div class="kicker">Team members</div>' +
+    '<h2>Everyone the sheet is measured against.</h2></div></div>';
   h += '<div class="sec">The roster – ' + PEOPLE.length + '</div>';
   if (window.IS_OWNER){
     h += '<div class="ctl" style="margin-bottom:12px">' +
@@ -293,13 +479,24 @@ function renderOffice(){
       '</span>').join('')
     : '<span class="empty" style="padding:0">Nobody yet. ' +
       (window.IS_OWNER ? 'Add the first name above.' : 'Ask Sithara to add the team.') + '</span>') + '</div>';
+  h += '<div class="foot"><span>Taking somebody off marks them away rather than deleting them – ' +
+    'a name removed outright would take every past absence of that person with it.</span></div>';
+  return h;
+}
 
-  /* The device links. A crew phone opens /attendance/ with its token in the
-     address and files a photograph; it cannot read a record, a name or another
-     device. The token is shown in full when it is made and abbreviated after,
-     because it is a credential and a screen in an office is not private. */
-  if (window.IS_OWNER){
-    h += '<div class="sec">Device links – ' + DEVICES.length + '</div>';
+/* The device links. A crew phone opens /attendance/ with its token in the
+   address and files a photograph; it cannot read a record, a name or another
+   device. The token is shown in full when it is made and abbreviated after,
+   because it is a credential and a screen in an office is not private.
+
+   Its own tab, and the housekeeping with it: making a credential and deleting
+   photographs are both things to arrive at deliberately, not to scroll past
+   on the way to the morning's sheet. */
+function viewLinks(){
+  let h = '<div class="obar"><div><div class="kicker">Device links</div>' +
+    '<h2>One link per phone. It files photos and reads nothing.</h2></div></div>';
+  {
+    h += '<div class="sec">The links – ' + DEVICES.length + '</div>';
     h += '<div class="ctl" style="margin-bottom:12px">' +
       '<input type="text" id="dl" placeholder="Which phone (e.g. Janaka crew)" style="min-width:220px">' +
       '<button class="btn" id="dadd" style="min-height:0;padding:9px 14px">Make a link</button></div>';
@@ -337,9 +534,7 @@ function renderOffice(){
     h += '<div class="foot"><span>Only the photograph goes. The time, the place, the device and the ' +
       'names ticked on it stay, so a month that has already been read still exports the same figures.</span></div>';
   }
-
-  $('main').innerHTML = h;
-  wireOffice(sheet, late);
+  return h;
 }
 /* The crews do not sign in, so what ties a photograph to a phone is the
    device link the office issued: every record filed through it carries the
@@ -358,6 +553,57 @@ function tile(k, v, colour){
 }
 
 function wireOffice(sheet, late){
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
+    TAB = b.dataset.tab; BELL = false; paint();
+  });
+  /* jumping from the bell to the photograph it is about */
+  document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => {
+    const id = b.dataset.goto;
+    BELL = false; TAB = 'day'; paint();
+    const card = document.querySelector('[data-u="' + CSS.escape(id) + '"]');
+    if (card) card.closest('.up').scrollIntoView({ behavior:'smooth', block:'center' });
+  });
+  const sw1 = $('swSound');
+  if (sw1) sw1.onchange = () => { SOUND = sw1.checked; setPref('sound', SOUND);
+    if (SOUND) chime(); toast(SOUND ? 'Sound on' : 'Sound off'); };
+  const sw2 = $('swDesk');
+  if (sw2) sw2.onchange = async () => {
+    if (!sw2.checked){ DESKTOP = false; setPref('desktop', false); toast('Desktop notifications off'); return; }
+    if (!('Notification' in window)){ sw2.checked = false; toast('This browser has no desktop notifications', 4000); return; }
+    /* asked from inside the click, because that is the only place a browser
+       will entertain the question */
+    let ok = Notification.permission;
+    if (ok !== 'granted') { try { ok = await Notification.requestPermission(); } catch(e){ ok = 'denied'; } }
+    DESKTOP = ok === 'granted'; setPref('desktop', DESKTOP); sw2.checked = DESKTOP;
+    toast(DESKTOP ? 'Desktop notifications on' :
+      'The browser refused – allow notifications for this site in its address bar', 6000);
+  };
+
+  const lw = $('lvWho'); if (lw) lw.onchange = () => { LV_WHO = lw.value; };
+  const lf = $('lvFrom'); if (lf) lf.onchange = () => {
+    LV_FROM = lf.value; if (!LV_TO || LV_TO < LV_FROM) LV_TO = LV_FROM; paint(); };
+  const lt = $('lvTo'); if (lt) lt.onchange = () => { LV_TO = lt.value; paint(); };
+  const ln = $('lvNote'); if (ln) ln.oninput = () => { LV_NOTE = ln.value; };
+  const la = $('lvAdd');
+  if (la) la.onclick = async () => {
+    const who = (lw && lw.value) || (PEOPLE[0] && PEOPLE[0].id);
+    if (!who){ toast('Nobody on the roster yet'); return; }
+    const days = A.dayRange(lf ? lf.value : LV_FROM, lt ? lt.value : LV_TO);
+    if (!days.length){ toast('Pick a date'); return; }
+    const name = (PEOPLE.find(p => p.id === who) || {}).name || 'They';
+    try {
+      await window.DB.attendSetLeaveRange(days, who, ln ? ln.value : LV_NOTE);
+      LV_NOTE = ''; await refresh();
+      toast(name + ' is marked off for ' + days.length + (days.length>1 ? ' days' : ' day'));
+    } catch (e){ toast(e.message, 5000); }
+  };
+  document.querySelectorAll('[data-lvdrop]').forEach(b => b.onclick = async () => {
+    const parts = b.dataset.lvdrop.split('|');
+    try { await window.DB.attendClearLeaveRange(parts[1].split(','), parts[0]);
+      await refresh(); toast('Leave taken off'); }
+    catch (e){ toast(e.message, 5000); }
+  });
+
   const sel = $('day'); if (sel) sel.onchange = () => { DAY = sel.value; refresh(); };
   const sc = $('xscope'); if (sc) sc.onchange = () => {
     XSCOPE = sc.value;
@@ -478,7 +724,11 @@ async function exportXlsx(sheet, late){
   /* A month is not on screen, so it is fetched - without the photographs,
      which the spreadsheet has no use for and which would be tens of
      megabytes of them. */
-  const ym = XMONTH, from = ym + '-01', to = ym + '-31';
+  /* Both ends counted, never assumed. A range that ends on the 31st of a
+     30-day month is not a range with a late row in it - Postgres throws the
+     whole query out as a date out of range, and the export simply fails. */
+  const ym = XMONTH, from = A.monthStart(ym), to = A.monthEnd(ym);
+  if (!from || !to){ toast('Pick a month'); return; }
   BUSY = true; paint();
   let r, l;
   try { [r, l] = await Promise.all([window.DB.attendRange(from, to), window.DB.attendLeaveRange(from, to)]); }
@@ -507,21 +757,45 @@ async function exportXlsx(sheet, late){
 function paint(){ renderHead(); renderOffice(); }
 
 async function refresh(){
-  const [p, r, d, l] = await Promise.all([
+  const today = A.dstr(new Date());
+  /* leave for the days to come, which is a different question from leave on
+     the day being read: sixty days is far enough ahead to plan and near enough
+     that the list stays a list */
+  const ahead = A.dstr(new Date(Date.now() + 60 * 86400000));
+  const [p, r, d, l, a] = await Promise.all([
     window.DB.attendPeople(), window.DB.attendDay(DAY), window.DB.attendDevices(),
-    window.DB.attendLeave(DAY)
+    window.DB.attendLeave(DAY), window.DB.attendLeaveRange(today, ahead)
   ]);
   ERR = p.error || r.error || '';
   PEOPLE = A.sortPeople(p.people || []);
   RECS = r.records || [];
   DEVICES = d.devices || [];
   LEAVE = l.leave || [];
+  AHEAD = a.leave || [];
+
+  /* An arrival is an id that was not here a moment ago. SEEN is null on the
+     first load, so opening the page is not itself news. */
+  const ids = RECS.map(x => x.id);
+  if (SEEN){
+    const fresh = ids.filter(id => SEEN.indexOf(id) < 0);
+    if (fresh.length) arrived(fresh.length, DAY);
+  }
+  SEEN = ids;
   paint();
 }
 
 paint();
 refresh();
-window.DB.attendSubscribe(() => refresh());
+/* Realtime tells us the moment a photograph lands. The diff above catches it
+   when it is on the day being read; this catches the other case - a photo
+   filed today while somebody is looking back at last Tuesday - which no
+   refresh of the current day would ever show. */
+window.DB.attendSubscribe(p => {
+  const isNew = p && p.eventType === 'INSERT';
+  const day = p && p.new && p.new.day;
+  if (isNew && day && day !== DAY) arrived(1, day);
+  refresh();
+});
 })();
 </script>
 </body>

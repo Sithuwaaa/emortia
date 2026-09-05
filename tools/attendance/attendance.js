@@ -194,6 +194,22 @@
      Days that have not happened yet are left out rather than counted absent:
      an export taken on the 5th should not say a person missed the rest of the
      month. */
+  /* The last day of a month, counted rather than assumed. Day 0 of the month
+     after is the last day of this one, which is the only way to get this right
+     without a table of month lengths and a leap-year rule of one's own.
+     Anything that asks the database for "the month" has to go through here:
+     a range that ends on the 31st of September is not a late row, it is an
+     error the whole query dies of. */
+  function monthEnd(ym) {
+    var p = s(ym).split('-');
+    var y = parseInt(p[0], 10), m = parseInt(p[1], 10);
+    if (!y || !m || m < 1 || m > 12) return '';
+    return y + '-' + pad(m) + '-' + pad(new Date(y, m, 0).getDate());
+  }
+  function monthStart(ym) {
+    var e = monthEnd(ym);
+    return e ? e.slice(0, 8) + '01' : '';
+  }
   function monthDays(ym, today) {
     var p = s(ym).split('-');
     var y = parseInt(p[0], 10), m = parseInt(p[1], 10);
@@ -300,6 +316,55 @@
     };
   }
 
+  /* ------------------------------------------------------- leave, in advance
+
+     Leave marked from the sheet is leave noticed after the fact. Somebody who
+     says on Friday that they will be away on Wednesday should be able to be
+     written down on Friday, which means a person, a date, and usually a date
+     to as well. The days are spelled out one by one rather than kept as a
+     range, because every other thing here is answered a day at a time. */
+  function nextDay(date) {
+    var d = new Date(s(date) + 'T12:00:00');
+    if (isNaN(d.getTime())) return '';
+    d.setDate(d.getDate() + 1);
+    return dstr(d);
+  }
+  function dayRange(from, to) {
+    var a = s(from), b = s(to) || a;
+    if (!a) return [];
+    if (b < a) { var t = a; a = b; b = t; }
+    var out = [], d = a, guard = 0;
+    while (d && d <= b && guard++ < 400) { out.push(d); d = nextDay(d); }
+    return out;
+  }
+
+  /* Six chips saying Nimal is off on six consecutive days is a worse way of
+     saying one thing. Consecutive days for one person become one run. */
+  function groupLeave(marks) {
+    var by = {};
+    (marks || []).forEach(function (m) {
+      if (!m || !m.person || !m.day) return;
+      (by[m.person] = by[m.person] || []).push(m);
+    });
+    var out = [];
+    Object.keys(by).forEach(function (pid) {
+      var ds = by[pid].slice().sort(function (a, b) {
+        return a.day < b.day ? -1 : a.day > b.day ? 1 : 0;
+      });
+      var run = null;
+      ds.forEach(function (m) {
+        if (run && nextDay(run.to) === m.day) { run.to = m.day; run.days.push(m.day); }
+        else {
+          run = { person: pid, from: m.day, to: m.day, note: m.note || '', days: [m.day] };
+          out.push(run);
+        }
+      });
+    });
+    return out.sort(function (a, b) {
+      return a.from < b.from ? -1 : a.from > b.from ? 1 : String(a.person).localeCompare(String(b.person));
+    });
+  }
+
   /* A person's name is what everything else hangs off, so it has to be there;
      a role is a convenience and may be blank. */
   function cleanPerson(p) {
@@ -320,7 +385,9 @@
     buildSheet: buildSheet, stats: stats, dateOpts: dateOpts,
     deviceState: deviceState, hoursBetween: hoursBetween,
     toggleMember: toggleMember, exportRows: exportRows,
-    monthDays: monthDays, monthLabel: monthLabel, weekdayOf: weekdayOf,
+    monthDays: monthDays, monthEnd: monthEnd, monthStart: monthStart,
+    monthLabel: monthLabel, weekdayOf: weekdayOf,
+    nextDay: nextDay, dayRange: dayRange, groupLeave: groupLeave,
     dayCode: dayCode, monthSheets: monthSheets,
     monthTeamRows: monthTeamRows, monthPersonRows: monthPersonRows,
     cleanPerson: cleanPerson, sortPeople: sortPeople

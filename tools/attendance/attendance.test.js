@@ -245,5 +245,57 @@ console.log('\none person, a month down');
   is('and his role',                /^Rigger · /.test(x.note), true);
 }
 
+console.log('\nwhere a month ends');
+{
+  /* The bug this replaces: the export asked the database for the 1st to the
+     "31st" of whatever month it was, and September has no 31st - Postgres
+     threw the whole query out with "date/time field value out of range". Every
+     30-day month was broken and February was doubly wrong. */
+  is('a 31-day month',            A.monthEnd('2026-01'), '2026-01-31');
+  is('a 30-day month',            A.monthEnd('2026-09'), '2026-09-30');
+  is('and the other 30s',         ['04','06','11'].map(m => A.monthEnd('2026-'+m).slice(-2)), ['30','30','30']);
+  is('February, ordinarily',      A.monthEnd('2026-02'), '2026-02-28');
+  is('February in a leap year',   A.monthEnd('2028-02'), '2028-02-29');
+  is('and 1900 was not one',      A.monthEnd('1900-02'), '1900-02-28');
+  is('nonsense gets nothing',     A.monthEnd('2026-13'), '');
+  is('the start is the start',    A.monthStart('2026-09'), '2026-09-01');
+  is('no month ends after its last day',
+     ['2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08',
+      '2026-09','2026-10','2026-11','2026-12'].every(ym => {
+        const e = A.monthEnd(ym), d = new Date(e + 'T12:00:00');
+        return A.dstr(d) === e && A.monthDays(ym).slice(-1)[0] === e;
+      }), true);
+}
+
+console.log('\nleave marked in advance');
+{
+  is('one day is one day',        A.dayRange('2026-09-09'), ['2026-09-09']);
+  is('a range spans the month end',
+     A.dayRange('2026-09-29', '2026-10-02'),
+     ['2026-09-29','2026-09-30','2026-10-01','2026-10-02']);
+  is('backwards is the same range', A.dayRange('2026-09-03','2026-09-01').length, 3);
+  is('and February does not gain a day',
+     A.dayRange('2026-02-27','2026-03-01'), ['2026-02-27','2026-02-28','2026-03-01']);
+
+  const marks = [
+    { day:'2026-09-02', person:'p1', note:'Wedding' },
+    { day:'2026-09-03', person:'p1', note:'Wedding' },
+    { day:'2026-09-04', person:'p1', note:'Wedding' },
+    { day:'2026-09-08', person:'p1', note:'Sick' },
+    { day:'2026-09-03', person:'p2', note:'' }
+  ];
+  const g = A.groupLeave(marks);
+  is('consecutive days are one run',  g.length, 3);
+  is('the run knows both ends',       [g[0].person, g[0].from, g[0].to], ['p1','2026-09-02','2026-09-04']);
+  is('and how many days it is',       g[0].days.length, 3);
+  is('the note comes with it',        g[0].note, 'Wedding');
+  is('a gap starts a new run',        [g[2].from, g[2].to], ['2026-09-08','2026-09-08']);
+  is('another person is another run', g[1].person, 'p2');
+  is('runs come out in date order',   g.map(r => r.from),
+     ['2026-09-02','2026-09-03','2026-09-08']);
+  is('nothing is nothing',            A.groupLeave([]), []);
+  is('and a mark with no day is skipped', A.groupLeave([{person:'p1'}]), []);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);

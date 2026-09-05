@@ -1072,6 +1072,24 @@
     if (error) throw new Error(tidyAttend(error.message));
   }
 
+  /* A stretch of days off, written in one go. Somebody says on Friday that
+     they are away all next week, and that is one act by the office even though
+     it is five rows. */
+  async function attendSetLeaveRange(days, person, note){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const rows = (days || []).map(day => ({ day, person, label: 'Leave', note: note || '' }));
+    if (!rows.length) return 0;
+    const { error } = await c.from('attend_leave').upsert(rows, { onConflict: 'day,person' });
+    if (error) throw new Error(tidyAttend(error.message));
+    return rows.length;
+  }
+  async function attendClearLeaveRange(days, person){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    if (!(days || []).length) return;
+    const { error } = await c.from('attend_leave').delete().in('day', days).eq('person', person);
+    if (error) throw new Error(tidyAttend(error.message));
+  }
+
   /* The links themselves, owner only. Making one is a row; the address is
      built from it on the page, because the token is the whole of the secret
      and it should exist in as few places as possible. */
@@ -1103,10 +1121,13 @@
     const { error } = await c.from('attend_records').update({ members }).eq('id', id);
     if (error) throw new Error(tidyAttend(error.message));
   }
+  /* The payload goes through rather than being swallowed: a photograph
+     arriving is worth a sound, and a photograph being renamed is not, so the
+     page has to be able to tell the two apart. */
   async function attendSubscribe(fn){
     const c = await client(); if (!c) return;
     c.channel('attend_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attend_records' }, () => fn())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attend_records' }, p => fn(p))
       .subscribe();
   }
   function tidyAttend(m){
@@ -1221,6 +1242,7 @@
                 attendFile, attendName, attendSubscribe,
                 attendSubmit, attendDeviceToday, attendDevices, attendMakeDevice, attendDropDevice,
                 attendLeave, attendSetLeave, attendRange, attendLeaveRange,
+                attendSetLeaveRange, attendClearLeaveRange,
                 attendClearPhoto, attendDropRecord, attendClearBefore,
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
