@@ -89,6 +89,24 @@
   .panel .row + .row{border-top:1px solid var(--line)}
   .sw{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);cursor:pointer}
 
+  /* Asking twice, properly */
+  .ask-back{position:fixed;inset:0;z-index:200;background:rgba(4,6,14,.74);backdrop-filter:blur(3px);
+    display:grid;place-items:center;padding:20px;animation:askIn .18s ease}
+  @keyframes askIn{from{opacity:0}to{opacity:1}}
+  .ask{width:min(430px,100%);background:var(--card);border:1px solid var(--line2);border-radius:16px;
+    padding:22px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
+  .ask .step{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted)}
+  .ask h3{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;
+    letter-spacing:-.02em;margin:7px 0 9px;line-height:1.2}
+  .ask p{font-size:13.5px;color:var(--dim);line-height:1.65}
+  .ask .btns{display:flex;gap:9px;justify-content:flex-end;margin-top:19px;flex-wrap:wrap}
+  .ask .btns button{font:inherit;font-size:13.5px;padding:9px 15px;border-radius:9px;cursor:pointer;
+    border:1px solid var(--line2);background:transparent;color:var(--text)}
+  .ask .btns .no:hover{border-color:var(--accent)}
+  .ask .btns .yes{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
+  .ask .btns .yes:hover{opacity:.9}
+
   /* --------------------------------------------------------- the office */
   .obar{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
     flex-wrap:wrap;margin-bottom:16px}
@@ -182,7 +200,10 @@
 const A = window.ATT, $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-const SHIFT = '08:30', GRACE = 15;
+/* The shift starts at nine and a quarter of an hour is allowed for the road,
+   so anybody photographed after 09:15 is late. Everything that says so on
+   screen and in the exports reads this, rather than repeating the time. */
+const SHIFT = '09:00', GRACE = 15;
 let PEOPLE = [], RECS = [], DAY = A.dstr(new Date()), BUSY = false, ERR = '';
 let DEVICES = [], MADE = null, LEAVE = [];      // MADE: a link just created, shown once in full
 /* What the export covers. The day is what is on screen; the two monthly ones
@@ -201,6 +222,43 @@ let SOUND = pref('sound', true), DESKTOP = pref('desktop', false);
 
 let tt; function toast(m, ms){ const t=$('toast'); t.textContent=m; t.classList.add('show');
   clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'), ms||2400); }
+
+/* --------------------------------------------------------- asking twice
+
+   Two questions, not one question asked twice. A box that says "are you sure"
+   and then says it again only teaches somebody to click through both; the
+   second question here says what is actually about to be lost, and naming it
+   is the only thing that makes asking again worth anything.
+
+   Built rather than confirm(), because a browser that has just shown two
+   confirms in a row offers to suppress the next one - and the one it would
+   suppress is the second, which is the one that matters. Escape and the
+   safe button both cancel, and the safe button is the one that has focus. */
+function ask(steps){
+  return new Promise(resolve => {
+    let at = 0;
+    const back = document.createElement('div');
+    back.className = 'ask-back';
+    const close = ok => { document.removeEventListener('keydown', key); back.remove(); resolve(ok); };
+    const key = e => { if (e.key === 'Escape') close(false); };
+    function draw(){
+      const s = steps[at];
+      back.innerHTML = '<div class="ask" role="dialog" aria-modal="true">' +
+        '<div class="step">Step ' + (at + 1) + ' of ' + steps.length + '</div>' +
+        '<h3>' + esc(s.title) + '</h3><p>' + esc(s.body) + '</p>' +
+        '<div class="btns"><button class="no">' + esc(s.no || 'Cancel') + '</button>' +
+        '<button class="yes">' + esc(s.yes || 'Yes') + '</button></div></div>';
+      back.querySelector('.no').onclick = () => close(false);
+      back.querySelector('.yes').onclick = () => { at++; if (at < steps.length) draw(); else close(true); };
+      back.querySelector('.no').focus();
+    }
+    back.onclick = e => { if (e.target === back) close(false); };
+    document.addEventListener('keydown', key);
+    document.body.appendChild(back);
+    draw();
+  });
+}
+const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
 
 /* -------------------------------------------------------------- an arrival
 
@@ -615,16 +673,46 @@ function wireOffice(sheet, late){
   const x = $('xls'); if (x) x.onclick = () => exportXlsx(sheet, late);
 
   document.querySelectorAll('[data-delpic]').forEach(b => b.onclick = async () => {
-    if (!confirm('Delete the picture from this record?\n\nThe time, the place and the names ticked on it stay.')) return;
+    const rec = RECS.find(r => r.id === b.dataset.delpic);
+    const n = rec ? (rec.members || []).length : 0;
+    const when = rec ? A.fmt(rec.ts) : 'this';
+    const ok = await ask([
+      { title: 'Delete the picture from the ' + when + ' photo?',
+        body: 'The photograph is the evidence behind this row. Deleting it is not the same as ' +
+              'deleting the record, and there is a second question after this one.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'The row stays. Only the face goes.',
+        body: 'The time, the place, the device it came from and the ' + plural(n, 'name') +
+              ' ticked on it all stay, so the sheet for this day does not change. ' +
+              'The photograph itself does not come back.',
+        no: 'No, keep the picture', yes: 'Delete the picture' }
+    ]);
+    if (!ok) return;
     try { await window.DB.attendClearPhoto(b.dataset.delpic); await refresh(); toast('The picture is gone'); }
     catch (e){ toast(e.message, 5000); }
   });
   document.querySelectorAll('[data-delrec]').forEach(b => b.onclick = async () => {
     const rec = RECS.find(r => r.id === b.dataset.delrec);
-    const n = rec ? (rec.members || []).length : 0;
-    if (!confirm('Delete this record altogether?\n\n' +
-      (n ? n + ' name' + (n>1?'s':'') + ' ticked on it will come off the sheet for this day. ' : '') +
-      'This cannot be undone.')) return;
+    const on = rec ? (rec.members || []) : [];
+    const names = on.map(id => (PEOPLE.find(p => p.id === id) || {}).name).filter(Boolean);
+    const kind = rec && rec.kind === 'out' ? 'clock-out' : 'clock-in';
+    const ok = await ask([
+      { title: 'Delete the ' + (rec ? A.fmt(rec.ts) : '') + ' ' + kind + ' altogether?',
+        body: 'This removes the whole record – the photograph, the time, the place and every ' +
+              'name ticked on it. It is the one to use for a photo that should never have been filed.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: !names.length ? 'Nothing is ticked on it'
+                : names.length === 1 ? 'One name comes off this day'
+                : names.length + ' names come off this day',
+        body: (names.length
+                ? names.join(', ') + (names.length > 1 ? ' lose their ' : ' loses their ') + kind +
+                  ' for ' + new Date(DAY + 'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'long'}) +
+                  ', and the sheet will recount without it. '
+                : 'No names are ticked on this photo, so no row on the sheet changes. ') +
+              'There is no undo.',
+        no: 'No, keep the record', yes: 'Delete the record' }
+    ]);
+    if (!ok) return;
     try { await window.DB.attendDropRecord(b.dataset.delrec); await refresh(); toast('Record deleted'); }
     catch (e){ toast(e.message, 5000); }
   });
@@ -633,9 +721,20 @@ function wireOffice(sheet, late){
   if (pc) pc.onclick = async () => {
     const cut = new Date(); cut.setDate(cut.getDate() - OLD);
     const cutDay = A.dstr(cut);
-    if (!confirm('Delete every picture filed before ' +
-      new Date(cutDay + 'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}) +
-      '?\n\nThe records stay. Only the photographs go, and they do not come back.')) return;
+    const pretty = new Date(cutDay + 'T12:00:00')
+      .toLocaleDateString(undefined, { day:'numeric', month:'long', year:'numeric' });
+    const ok = await ask([
+      { title: 'Delete every picture filed before ' + pretty + '?',
+        body: 'This is the only control here that reaches days you are not looking at, and it ' +
+              'reaches all of them at once. There is a second question after this one.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Every face older than ' + OLD + ' days, in one go.',
+        body: 'The records stay – times, places, devices and names – so every old month still ' +
+              'exports exactly the same figures. The photographs are deleted from the database ' +
+              'and there is no copy of them anywhere else.',
+        no: 'No, leave them', yes: 'Delete the pictures' }
+    ]);
+    if (!ok) return;
     BUSY = true; paint();
     try { const n = await window.DB.attendClearBefore(cutDay);
       BUSY = false; await refresh();
@@ -686,11 +785,43 @@ function wireOffice(sheet, late){
       .then(() => toast('Link copied')).catch(() => toast('Select it and copy by hand'));
   };
   document.querySelectorAll('[data-dd]').forEach(b => b.onclick = async () => {
+    const d = DEVICES.find(x => x.id === b.dataset.dd) || {};
+    const label = d.label || d.id || 'this phone';
+    const ok = await ask([
+      { title: 'Stop the ' + label + ' link working?',
+        body: 'This is the link saved on that phone. Do it if the phone is lost, or if it should ' +
+              'no longer be able to file attendance.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'That phone stops filing immediately.',
+        body: 'Whoever is holding it cannot clock anybody in until you make a new link and set it ' +
+              'up on the phone again – this one cannot be switched back on. Photos it has already ' +
+              'filed stay exactly where they are.',
+        no: 'No, keep it working', yes: 'Stop the link' }
+    ]);
+    if (!ok) return;
     try { await window.DB.attendDropDevice(b.dataset.dd); MADE = null; await refresh();
       toast('That link no longer works'); }
     catch (e){ toast(e.message, 5000); }
   });
   document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
+    const p = PEOPLE.find(x => x.id === b.dataset.rm) || {};
+    const name = p.name || 'this person';
+    /* Counted rather than guessed at, because "they are in 34 photographs" is
+       the fact that decides whether somebody goes through with this. */
+    const seen = RECS.filter(r => (r.members || []).indexOf(b.dataset.rm) > -1).length;
+    const ok = await ask([
+      { title: 'Take ' + name + ' off the roster?',
+        body: 'They stop appearing on the attendance sheet from today onward, and cannot be ticked ' +
+              'in new photographs.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Nothing already recorded is lost.',
+        body: name + ' is marked away rather than deleted – every past sheet still counts them' +
+              (seen ? ', including the ' + plural(seen, 'photograph') + ' they are named in on this day' : '') +
+              '. Adding the same name again later starts a new person, so their history would not ' +
+              'come back with it.',
+        no: 'No, leave them on', yes: 'Take ' + name + ' off' }
+    ]);
+    if (!ok) return;
     try { await window.DB.attendRemovePerson(b.dataset.rm); await refresh(); toast('Taken off the roster'); }
     catch (e){ toast(e.message, 5000); }
   });

@@ -34,6 +34,9 @@ const RECS = [
   { id:'u3', date:DAY, kind:'out', ts:at(17,5), geo:'6.9280, 79.8600', members:['p1','p3'] }
 ];
 
+/* Chosen to sit either side of the invented clock-ins below, not to mirror the
+   tool's own setting - the page passes its real shift (09:00, 15 minutes'
+   grace) into the same function. */
 const LATE = A.lateAfter('08:30', 15);            // 08:45
 
 console.log('\nthe clock');
