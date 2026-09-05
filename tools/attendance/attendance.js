@@ -63,7 +63,13 @@
      The earliest clock-in they appear in and the latest clock-out: if two
      photos were taken at the start of a shift, being in either one is being
      there, and the first is when they arrived. */
-  function buildSheet(people, records, date, lateMins) {
+  /* Leave is a mark the office puts against a person for a day: it is not the
+     same fact as not turning up, and a sheet that calls them both Absent is
+     wrong about somebody who asked in advance. A photograph outranks it - if
+     they were marked on leave and came in anyway, they were here. */
+  function buildSheet(people, records, date, lateMins, leave) {
+    var marks = {};
+    (leave || []).forEach(function (l) { if (l && l.day === date) marks[l.person] = l; });
     var ups = ofDay(records, date);
     var la = lateMins == null ? lateAfter() : lateMins;
     return (people || []).map(function (p) {
@@ -77,7 +83,9 @@
       var i = ins[0] || null, o = outs[0] || null;
 
       var late = !!i && minsOf(i.ts) > la;
+      var mark = marks[p.id] || null;
       var status = 'Absent', tag = 'tag-out';
+      if (mark && !i) { status = mark.label || 'Leave'; tag = 'tag-leave'; }
       if (i) { status = late ? 'Late' : 'On time'; tag = late ? 'tag-late' : 'tag-ok'; }
       /* still on site: clocked in, no photo out yet */
       if (i && !o) { status = status + ' · in'; }
@@ -88,7 +96,9 @@
         inGeo: i ? (i.geo || '—') : '—', outGeo: o ? (o.geo || '—') : '—',
         /* hours only when both ends exist - half a day is not a number */
         hours: i && o ? ((o.ts - i.ts) / 3600000).toFixed(2) : '—',
-        status: status, tagClass: tag, late: late, present: !!i, closed: !!(i && o)
+        status: status, tagClass: tag, late: late, present: !!i, closed: !!(i && o),
+        /* on leave and not here: the one case an empty row is accounted for */
+        leave: !!(mark && !i), note: mark ? (mark.note || '') : ''
       };
     });
   }
@@ -97,12 +107,16 @@
     var present = (sheet || []).filter(function (r) { return r.present; });
     var late = (sheet || []).filter(function (r) { return r.late; });
     var named = (dayRecords || []).reduce(function (a, u) { return a + (u.members || []).length; }, 0);
+    var onLeave = (sheet || []).filter(function (r) { return r.leave; });
     return {
       photos: (dayRecords || []).length,
       named: named,
       present: present.length,
       roster: (sheet || []).length,
-      late: late.length
+      late: late.length,
+      leave: onLeave.length,
+      /* absent means unaccounted for: on leave is accounted for */
+      absent: (sheet || []).length - present.length - onLeave.length
     };
   }
 
@@ -163,8 +177,126 @@
     return {
       title: 'Daily attendance · ' + s(date),
       note: st.present + ' of ' + st.roster + ' present · ' + st.late +
-            ' late · late is any clock-in after ' + hm(lateMins == null ? lateAfter() : lateMins),
+            ' late · ' + st.leave + ' on leave · ' + st.absent + ' absent · late is any clock-in after ' +
+            hm(lateMins == null ? lateAfter() : lateMins),
       head: head, rows: rows
+    };
+  }
+
+  /* ------------------------------------------------------------- a month
+
+     The day sheet answers who is here. A month answers how much somebody
+     worked, which is the question the office is actually asked - by a payroll
+     line, by a query about one person, by a query about the crew. All three
+     are built out of buildSheet, one day at a time, so a month can never
+     disagree with the days it is made of.
+
+     Days that have not happened yet are left out rather than counted absent:
+     an export taken on the 5th should not say a person missed the rest of the
+     month. */
+  function monthDays(ym, today) {
+    var p = s(ym).split('-');
+    var y = parseInt(p[0], 10), m = parseInt(p[1], 10);
+    if (!y || !m || m < 1 || m > 12) return [];
+    var last = new Date(y, m, 0).getDate();
+    if (today && s(today).slice(0, 7) === s(ym)) {
+      var d = parseInt(s(today).slice(8, 10), 10);
+      if (d && d < last) last = d;
+    }
+    var out = [];
+    for (var i = 1; i <= last; i++) out.push(y + '-' + pad(m) + '-' + pad(i));
+    return out;
+  }
+  function monthLabel(ym) {
+    var p = s(ym).split('-');
+    var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, 1);
+    return isNaN(d.getTime()) ? s(ym) :
+      d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  }
+  function weekdayOf(date) {
+    var d = new Date(s(date) + 'T12:00:00');
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { weekday: 'short' });
+  }
+
+  /* One cell of a month grid. Short because there are thirty-one of them
+     across, and a dot rather than a second letter for the day somebody was
+     photographed arriving and never photographed leaving - the hours for that
+     day are not a number, and the grid should say so quietly. */
+  function dayCode(row) {
+    if (!row) return '';
+    if (row.present) return (row.late ? 'L' : 'P') + (row.closed ? '' : '·');
+    return row.leave ? 'LV' : 'A';
+  }
+
+  function monthSheets(people, records, leave, ym, lateMins, today) {
+    var la = lateMins == null ? lateAfter() : lateMins;
+    return monthDays(ym, today).map(function (d) {
+      return { date: d, sheet: buildSheet(people, records, d, la, leave) };
+    });
+  }
+
+  /* The team, a month across: a person a row, a day a column, and the counts
+     somebody would otherwise reach for a calculator to get. */
+  function monthTeamRows(people, records, leave, ym, lateMins, today) {
+    var la = lateMins == null ? lateAfter() : lateMins;
+    var days = monthSheets(people, records, leave, ym, la, today);
+    var head = ['Staff', 'Role']
+      .concat(days.map(function (d) { return String(parseInt(d.date.slice(8), 10)); }))
+      .concat(['Present', 'Late', 'On leave', 'Absent', 'Hours']);
+    var rows = (people || []).map(function (p) {
+      var t = { present: 0, late: 0, leave: 0, absent: 0, hours: 0 };
+      var cells = days.map(function (d) {
+        var r = null;
+        d.sheet.forEach(function (x) { if (x.id === p.id) r = x; });
+        if (!r) return '';
+        if (r.present) { t.present++; if (r.late) t.late++; }
+        else if (r.leave) t.leave++;
+        else t.absent++;
+        if (r.hours !== '—') t.hours += parseFloat(r.hours);
+        return dayCode(r);
+      });
+      return [p.name, p.role || ''].concat(cells)
+        .concat([t.present, t.late, t.leave, t.absent, Number(t.hours.toFixed(2))]);
+    });
+    return {
+      title: 'Daily attendance – the team – ' + monthLabel(ym),
+      note: 'P present · L late · LV on leave · A absent · a dot means no clock-out was ' +
+            'photographed, so that day has no hours. Late is any clock-in after ' + hm(la) + '.',
+      head: head, rows: rows, days: days.length
+    };
+  }
+
+  /* One person, a month down: the shape somebody reads when they are being
+     asked about their own month, or when a day of it is being disputed. */
+  function monthPersonRows(person, records, leave, ym, lateMins, today) {
+    var la = lateMins == null ? lateAfter() : lateMins;
+    var days = monthSheets([person], records, leave, ym, la, today);
+    var t = { present: 0, late: 0, leave: 0, absent: 0, hours: 0 };
+    var rows = days.map(function (d) {
+      var r = d.sheet[0] || null;
+      if (r) {
+        if (r.present) { t.present++; if (r.late) t.late++; }
+        else if (r.leave) t.leave++;
+        else t.absent++;
+        if (r.hours !== '—') t.hours += parseFloat(r.hours);
+      }
+      return [d.date, weekdayOf(d.date), r ? r.in : '—', r ? r.inGeo : '—',
+              r ? r.out : '—', r ? r.outGeo : '—', r ? r.hours : '—',
+              r ? r.status : '', r ? r.note : ''];
+    });
+    rows.push(['', '', '', '', '', '', '', '', '']);
+    rows.push(['Total', days.length + ' days', '', '', '', '',
+               Number(t.hours.toFixed(2)),
+               t.present + ' present · ' + t.late + ' late · ' + t.leave +
+               ' on leave · ' + t.absent + ' absent', '']);
+    return {
+      title: 'Daily attendance – ' + s(person && person.name) + ' – ' + monthLabel(ym),
+      note: (person && person.role ? person.role + ' · ' : '') +
+            'Late is any clock-in after ' + hm(la) + '. Hours are counted only where both ' +
+            'a clock-in and a clock-out were photographed.',
+      head: ['Date', 'Day', 'Clock in', 'In location', 'Clock out', 'Out location',
+             'Hours', 'Status', 'Note'],
+      rows: rows, totals: t
     };
   }
 
@@ -188,6 +320,9 @@
     buildSheet: buildSheet, stats: stats, dateOpts: dateOpts,
     deviceState: deviceState, hoursBetween: hoursBetween,
     toggleMember: toggleMember, exportRows: exportRows,
+    monthDays: monthDays, monthLabel: monthLabel, weekdayOf: weekdayOf,
+    dayCode: dayCode, monthSheets: monthSheets,
+    monthTeamRows: monthTeamRows, monthPersonRows: monthPersonRows,
     cleanPerson: cleanPerson, sortPeople: sortPeople
   };
 }));

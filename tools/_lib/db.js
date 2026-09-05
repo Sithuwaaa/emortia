@@ -948,41 +948,160 @@
   async function attendDay(day){
     const c = await client(); if (!c) return { records: [], error: 'offline' };
     const { data, error } = await c.from('attend_records')
-      .select('id,day,kind,taken_at,geo,photo,members,ref')
+      .select('id,day,kind,taken_at,geo,photo,photo_data,members,ref')
       .eq('day', day).order('taken_at', { ascending: false });
     if (error) return { records: [], error: tidyAttend(error.message) };
     return { records: (data || []).map(r => ({
       id: r.id, date: r.day, kind: r.kind, ts: new Date(r.taken_at).getTime(),
-      geo: r.geo || '', photo: r.photo || '', members: r.members || [], ref: r.ref || ''
+      geo: r.geo || '', photo: r.photo_data || '', members: r.members || [], ref: r.ref || ''
     })), error: null };
   }
-  async function attendFile(rec, blob){
+  /* The office filing a photograph itself - rare, but the tool should not
+     need the shared phone to correct a day. The picture goes in the row, the
+     same as the one the plain screen sends, so there is one shape of record
+     rather than two. */
+  async function attendFile(rec, dataUrl){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
-    let path = '';
-    if (blob){
-      const stamp = new Date(rec.ts).toISOString().replace(/[:.]/g, '-');
-      path = rec.date + '/' + stamp + '-' + rec.kind + '.jpg';
-      const up = await c.storage.from(ABUCKET).upload(path, blob,
-        { contentType: 'image/jpeg', upsert: false });
-      if (up.error) throw new Error(up.error.message);
-    }
     const { error } = await c.from('attend_records').insert({
       id: rec.id, day: rec.date, kind: rec.kind,
       taken_at: new Date(rec.ts).toISOString(),
-      geo: rec.geo || '', photo: path, members: [], ref: rec.ref || ''
+      geo: rec.geo || '', photo: '', photo_data: dataUrl || '',
+      members: [], ref: rec.ref || ''
     });
     if (error) throw new Error(tidyAttend(error.message));
-    return path;
   }
+
+  /* ---------------------------------------------------- the device link
+
+     No session on this path. The token in the address is checked inside a
+     security definer function, which is the only thing an unsigned caller can
+     reach - it files a photograph and returns whether that worked, and there
+     is no way through it to a record, a name or another device. */
+  async function attendSubmit(token, kind, geo, photo){
+    const c = await client(); if (!c) throw new Error('No connection just now.');
+    const { data, error } = await c.rpc('attend_submit',
+      { p_token: token, p_kind: kind, p_geo: geo || '', p_photo: photo });
+    if (error) throw new Error(/function .*attend_submit|schema cache/i.test(error.message)
+      ? 'Attendance is not switched on yet – run migration 019.' : error.message);
+    return data;
+  }
+  async function attendDeviceToday(token){
+    const c = await client(); if (!c) return null;
+    const { data, error } = await c.rpc('attend_device_today', { p_token: token });
+    if (error) return null;
+    return data;
+  }
+
+  /* A stretch of days, for the monthly exports. Deliberately without the
+     photographs: a month of them is tens of megabytes and the export writes
+     times and names, not faces. */
+  async function attendRange(from, to){
+    const c = await client(); if (!c) return { records: [], error: 'offline' };
+    const { data, error } = await c.from('attend_records')
+      .select('id,day,kind,taken_at,geo,members,ref')
+      .gte('day', from).lte('day', to).order('taken_at');
+    if (error) return { records: [], error: tidyAttend(error.message) };
+    return { records: (data || []).map(r => ({
+      id: r.id, date: r.day, kind: r.kind, ts: new Date(r.taken_at).getTime(),
+      geo: r.geo || '', photo: '', members: r.members || [], ref: r.ref || ''
+    })), error: null };
+  }
+  async function attendLeaveRange(from, to){
+    const c = await client(); if (!c) return { leave: [], error: 'offline' };
+    const { data, error } = await c.from('attend_leave')
+      .select('day,person,label,note').gte('day', from).lte('day', to);
+    if (error) return { leave: [], error: tidyAttend(error.message) };
+    return { leave: (data || []).map(l => ({ day: l.day, person: l.person,
+      label: l.label || 'Leave', note: l.note || '' })), error: null };
+  }
+
+  /* -------------------------------------------------- getting rid of a photo
+
+     Two different acts, and it matters which one is meant. Clearing the
+     picture keeps the record: the time, the place and the names ticked on it
+     stay, so the sheet for that day still adds up - all that goes is the face,
+     which is the part there is no reason to keep once the month is closed.
+     Deleting the record takes the day's evidence with it, and is for the photo
+     that should never have been filed. Both are the owner's alone. */
+  async function attendClearPhoto(id){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('attend_records')
+      .update({ photo_data: '', photo: '' }).eq('id', id);
+    if (error) throw new Error(tidyPhoto(error.message));
+  }
+  async function attendDropRecord(id){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('attend_records').delete().eq('id', id);
+    if (error) throw new Error(tidyPhoto(error.message));
+  }
+  /* The housekeeping one: everything older than a date loses its picture. The
+     rows are left where they are, so an old month still exports. */
+  async function attendClearBefore(day){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { data, error } = await c.from('attend_records')
+      .update({ photo_data: '', photo: '' })
+      .lt('day', day).neq('photo_data', '').select('id');
+    if (error) throw new Error(tidyPhoto(error.message));
+    return (data || []).length;
+  }
+  function tidyPhoto(m){
+    return /row-level security|permission|only the owner/i.test(m)
+      ? 'Only Sithara can remove a photograph.' : tidyAttend(m);
+  }
+
+  /* Who is on leave, for one day. A mark rather than a record: it says the
+     office knew in advance, and it is the difference between an empty row that
+     is accounted for and one that is not. */
+  async function attendLeave(day){
+    const c = await client(); if (!c) return { leave: [], error: 'offline' };
+    const { data, error } = await c.from('attend_leave')
+      .select('day,person,label,note').eq('day', day);
+    if (error) return { leave: [], error: tidyAttend(error.message) };
+    return { leave: (data || []).map(l => ({ day: l.day, person: l.person,
+      label: l.label || 'Leave', note: l.note || '' })), error: null };
+  }
+  async function attendSetLeave(day, person, on, note){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    if (!on){
+      const { error } = await c.from('attend_leave').delete().eq('day', day).eq('person', person);
+      if (error) throw new Error(tidyAttend(error.message));
+      return;
+    }
+    const { error } = await c.from('attend_leave')
+      .upsert({ day, person, label: 'Leave', note: note || '' }, { onConflict: 'day,person' });
+    if (error) throw new Error(tidyAttend(error.message));
+  }
+
+  /* The links themselves, owner only. Making one is a row; the address is
+     built from it on the page, because the token is the whole of the secret
+     and it should exist in as few places as possible. */
+  async function attendDevices(){
+    const c = await client(); if (!c) return { devices: [], error: 'offline' };
+    const { data, error } = await c.from('attend_devices')
+      .select('id,label,token,active,last_used').order('created_at');
+    if (error) return { devices: [], error: tidyAttend(error.message) };
+    return { devices: (data || []).filter(d => d.active), error: null };
+  }
+  async function attendMakeDevice(label){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const bytes = new Uint8Array(18); crypto.getRandomValues(bytes);
+    const token = Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+    const id = 'd' + Date.now().toString(36);
+    const { error } = await c.from('attend_devices').insert({ id, label: label || '', token });
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only Sithara can make a device link.' : tidyAttend(error.message));
+    return { id, label, token };
+  }
+  async function attendDropDevice(id){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('attend_devices').update({ active: false }).eq('id', id);
+    if (error) throw new Error(tidyAttend(error.message));
+  }
+
   async function attendName(id, members){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
     const { error } = await c.from('attend_records').update({ members }).eq('id', id);
     if (error) throw new Error(tidyAttend(error.message));
-  }
-  async function attendPhoto(path, seconds){
-    const c = await client(); if (!c || !path) return null;
-    const { data, error } = await c.storage.from(ABUCKET).createSignedUrl(path, seconds || 3600);
-    return error ? null : (data ? data.signedUrl : null);
   }
   async function attendSubscribe(fn){
     const c = await client(); if (!c) return;
@@ -1099,7 +1218,10 @@
                 fieldConfigLoad, fieldConfigSave, fieldConfigSubscribe,
                 materialsLoad, materialsSave, materialsSubscribe,
                 attendPeople, attendAddPerson, attendRemovePerson, attendDay,
-                attendFile, attendName, attendPhoto, attendSubscribe,
+                attendFile, attendName, attendSubscribe,
+                attendSubmit, attendDeviceToday, attendDevices, attendMakeDevice, attendDropDevice,
+                attendLeave, attendSetLeave, attendRange, attendLeaveRange,
+                attendClearPhoto, attendDropRecord, attendClearBefore,
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
                 teamSavePerson, teamDeletePerson, teamSaveVehicle, teamDeleteVehicle,

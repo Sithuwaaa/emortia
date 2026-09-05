@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c1619">
+<meta name="robots" content="noindex, nofollow">
+<title>Attendance</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- No access-config, no access.js, no gate. This page has no sign-in and is
+     not supposed to: the crews have no account on the site and are not going
+     to be given one. What lets it write is the token in the address, and the
+     only thing that token can do is file a photograph - see the note at the
+     top of supabase/019_attendance_device.sql. -->
+<script src="../tools/_lib/supabase-config.js"></script>
+<script src="../tools/_lib/db.js"></script>
+<script src="../tools/attendance/attendance.js"></script>
+<style>
+  :root{
+    --bg:#0c1013; --card:#141a20; --card2:#1a222a; --line:#222c36; --line2:#2b3742;
+    --text:#eef3f7; --dim:#9fb0bd; --muted:#6f8290;
+    --accent:#6b7fd7; --accentB:#8b9cf0; --ink:#0b0e1c;
+    --ok:#5fc189; --bad:#e2607a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);min-height:100%;
+    font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;
+    -webkit-tap-highlight-color:transparent}
+  body{display:flex;justify-content:center;
+    padding:calc(env(safe-area-inset-top) + 22px) 18px calc(env(safe-area-inset-bottom) + 34px)}
+  .wrap{width:100%;max-width:400px}
+
+  .top{display:flex;align-items:center;gap:9px;margin-bottom:22px}
+  .logo{width:28px;height:28px;border-radius:50%;flex-shrink:0;
+    background:linear-gradient(150deg,#d15873,#87213c);
+    display:flex;align-items:center;justify-content:center;gap:2.4px}
+  .logo i{width:2.4px;border-radius:2px;background:#170d10;display:block}
+  .logo i:nth-child(1){height:6px} .logo i:nth-child(2){height:11px}
+  .logo i:nth-child(3){height:8px} .logo i:nth-child(4){height:12px}
+  .top b{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em}
+  .top span{margin-left:auto;font-family:'Space Mono',monospace;font-size:10.5px;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    max-width:15ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .kicker{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--accentB)}
+  .head{border-bottom:2px solid var(--line2);padding-bottom:15px}
+  .clock{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:62px;
+    line-height:.94;letter-spacing:-.035em;margin-top:5px;font-variant-numeric:tabular-nums}
+  .date{font-size:13px;color:var(--muted);margin-top:5px}
+
+  .stamps{display:flex;border-bottom:1px solid var(--line)}
+  .stamp{flex:1;padding:15px 0}
+  .stamp + .stamp{padding-left:18px;border-left:1px solid var(--line)}
+  .stamp .k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--muted)}
+  .stamp .v{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:28px;
+    margin-top:5px;font-variant-numeric:tabular-nums;color:#3c4a56}
+  .stamp .v.set{color:var(--accentB)}
+
+  .shot{width:100%;aspect-ratio:4/3;border:2px solid var(--line2);border-radius:12px;
+    background:var(--card2) center/cover no-repeat;display:block}
+  .meta{font-size:13px;color:var(--muted);margin-top:11px;line-height:1.6}
+
+  /* One target, and it is enormous on purpose: this is pressed with a thumb,
+     outdoors, often in gloves, by somebody who is not looking for it. */
+  .go{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
+    min-height:82px;border:none;border-radius:14px;background:var(--accent);color:var(--ink);
+    font:inherit;font-size:18px;font-weight:700;cursor:pointer;position:relative;
+    box-shadow:0 10px 26px rgba(107,127,215,.24);transition:transform .12s ease,background .16s ease}
+  .go:active{transform:scale(.985)}
+  .go input{position:absolute;inset:0;opacity:0}
+  .row{display:flex;gap:11px;margin-top:15px}
+  .btn{border:1px solid var(--line2);background:none;color:var(--text);border-radius:12px;
+    padding:14px 18px;font:inherit;font-size:15.5px;cursor:pointer;min-height:60px}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700;flex:1}
+  .btn[disabled]{opacity:.55}
+
+  .done{margin-top:24px;background:var(--accent);color:var(--ink);border-radius:14px;padding:22px}
+  .done .h{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:36px;
+    line-height:1;letter-spacing:-.03em;margin-top:8px}
+  .done p{font-size:14px;margin-top:7px;opacity:.9}
+
+  .fine{border-top:2px solid var(--line2);margin-top:28px;padding-top:15px;
+    font-size:12.5px;line-height:1.8;color:var(--muted)}
+  .bad{border:1px solid var(--bad);border-radius:12px;padding:18px;color:var(--text);
+    background:rgba(226,96,122,.07);font-size:14.5px;line-height:1.65}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(14px);
+    background:#1b2530;color:#fff;border:1px solid var(--line2);border-radius:12px;
+    padding:13px 20px;font-size:14.5px;opacity:0;pointer-events:none;
+    transition:opacity .2s ease,transform .2s ease;max-width:calc(100vw - 36px);text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+const A = window.ATT, $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* The token in the address is the whole of this page's authority. It is kept
+   in the page only, never written down anywhere on the phone: the link itself
+   is what is saved to the home screen, so the address bar is the store. */
+const TOKEN = new URLSearchParams(location.search).get('d') || '';
+
+let NOW = Date.now(), COORDS = null, PENDING = null, BUSY = false;
+let LABEL = '', IN = null, OUT = null, READY = false, FAIL = '';
+
+let tt; function toast(m, ms){ const t=$('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'), ms||2800); }
+
+/* ------------------------------------------------------------------ paint */
+function paint(){
+  const now = new Date(NOW);
+  const geo = COORDS || '';
+  let h = '<div class="top"><span class="logo"><i></i><i></i><i></i><i></i></span>' +
+          '<b>Attendance</b>' + (LABEL ? '<span>' + esc(LABEL) + '</span>' : '') + '</div>';
+
+  if (!TOKEN || FAIL){
+    h += '<div class="bad">' + esc(FAIL || 'This page needs the link Sithara gave you. ' +
+      'Open it from the shortcut on this phone rather than typing the address.') + '</div>';
+    $('wrap').innerHTML = h;
+    return;
+  }
+  if (!READY){
+    h += '<div class="meta">Getting ready…</div>';
+    $('wrap').innerHTML = h;
+    return;
+  }
+
+  h += '<div class="head"><div class="kicker">' + esc(now.toLocaleDateString(undefined,{weekday:'long'})) + '</div>' +
+    '<div class="clock">' + A.pad(now.getHours()) + ':' + A.pad(now.getMinutes()) + '</div>' +
+    '<div class="date">' + esc(now.toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'})) + '</div></div>' +
+    '<div class="stamps">' +
+      '<div class="stamp"><div class="k">Clock in</div><div class="v' + (IN?' set':'') + '">' + A.fmt(IN) + '</div></div>' +
+      '<div class="stamp"><div class="k">Clock out</div><div class="v' + (OUT?' set':'') + '">' + A.fmt(OUT) + '</div></div>' +
+    '</div>';
+
+  const next = IN ? 'out' : 'in';
+
+  if (PENDING){
+    h += '<div style="margin-top:22px">' +
+      '<div class="shot" style="background-image:url(' + PENDING.dataUrl + ')" role="img" aria-label="Photo to send"></div>' +
+      '<div class="meta">' + (PENDING.kind==='in'?'Clock in':'Clock out') + ' · ' +
+        A.pad(now.getHours()) + ':' + A.pad(now.getMinutes()) + ' · ' + esc(geo || 'no location') + '</div>' +
+      '<div class="row"><button class="btn pri" id="send"' + (BUSY?' disabled':'') + '>' +
+        (BUSY ? 'Sending…' : (PENDING.kind==='in' ? 'Send clock in' : 'Send clock out')) + '</button>' +
+      '<button class="btn" id="drop"' + (BUSY?' disabled':'') + '>Retake</button></div></div>';
+  } else if (IN && OUT){
+    h += '<div class="done"><div class="kicker" style="color:inherit;opacity:.8">Day complete</div>' +
+      '<div class="h">' + A.hoursBetween(IN, OUT) + ' hours</div>' +
+      '<p>Both photos have gone to the office. Nothing else to do today.</p></div>';
+  } else {
+    h += '<div style="margin-top:24px"><label class="go">' +
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+      '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/>' +
+      '<circle cx="12" cy="13" r="3.5"/></svg><span>' +
+      (next==='in' ? 'Take photo – clock in' : 'Take photo – clock out') + '</span>' +
+      '<input type="file" accept="image/*" capture="environment" id="cam"></label>' +
+      '<div class="meta">' + (next==='in'
+        ? 'One photo of everyone starting work today.'
+        : 'One photo of everyone leaving. This finishes the day.') + '</div></div>';
+  }
+
+  h += '<div class="fine"><div>' + (geo ? 'Location ' + esc(geo) : 'Waiting for the location…') + '</div>' +
+    '<div>The time and the place are sent with the photo.</div></div>';
+  $('wrap').innerHTML = h;
+
+  const cam = $('cam');
+  if (cam) cam.onchange = async e => {
+    const f = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { PENDING = Object.assign({ kind: next }, await shrink(f)); paint(); }
+    catch (err){ toast('Could not read that photo. Try again.'); }
+  };
+  const s = $('send'); if (s) s.onclick = send;
+  const d = $('drop'); if (d) d.onclick = () => { PENDING = null; paint(); };
+}
+
+/* 560px, JPEG. Big enough to know a face, small enough to leave a phone on a
+   site connection – and the shrink happens here, so the full-size original
+   never leaves the device. */
+async function shrink(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image();
+      i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const w = 560, h = Math.round(w * 0.75);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    const r = Math.max(w / img.width, h / img.height);
+    const dw = img.width * r, dh = img.height * r;
+    g.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    return { dataUrl: c.toDataURL('image/jpeg', 0.62) };
+  } finally { URL.revokeObjectURL(url); }
+}
+
+async function send(){
+  if (!PENDING || BUSY) return;
+  BUSY = true; paint();
+  try {
+    const r = await window.DB.attendSubmit(TOKEN, PENDING.kind, COORDS || '', PENDING.dataUrl);
+    if (!r || !r.ok) throw new Error((r && r.why) || 'That did not send.');
+    PENDING = null;
+    await refresh();
+    toast(r.kind === 'out' ? 'Clocked out. That is the day done.' : 'Clocked in. Have a good day.', 4000);
+  } catch (e){ toast(e.message, 6000); }
+  BUSY = false; paint();
+}
+
+/* What this device has filed today. Times only – the page never sees a name,
+   a photograph, another device or another day. */
+async function refresh(){
+  if (!TOKEN) { READY = true; return; }
+  try {
+    const r = await window.DB.attendDeviceToday(TOKEN);
+    if (!r || !r.ok){ FAIL = 'This device link is not recognised. Ask Sithara for a new one.'; }
+    else { LABEL = r.label || ''; IN = r.in ? new Date(r.in).getTime() : null;
+           OUT = r.out ? new Date(r.out).getTime() : null; FAIL = ''; }
+  } catch (e){ FAIL = 'No connection just now. Try again in a moment.'; }
+  READY = true;
+}
+
+setInterval(() => { NOW = Date.now(); if (!PENDING && !BUSY) paint(); }, 1000);
+if (navigator.geolocation) navigator.geolocation.getCurrentPosition(
+  p => { COORDS = p.coords.latitude.toFixed(4) + ', ' + p.coords.longitude.toFixed(4); paint(); },
+  () => { COORDS = ''; paint(); }, { enableHighAccuracy: true, timeout: 10000 });
+
+paint();
+refresh().then(paint);
+/* Midnight, or a phone woken after being asleep all night: ask again rather
+   than showing yesterday's two stamps to somebody starting today. */
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh().then(paint); });
+})();
+</script>
+</body>
+</html>

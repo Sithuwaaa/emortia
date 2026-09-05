@@ -65,57 +65,22 @@
 
   main{max-width:1180px;margin:0 auto;padding:18px 16px 90px}
 
-  /* --------------------------------------------------- the device screen
-
-     One column, one job, and no way out of it. This is a shared phone left on
-     a table: whoever picks it up is clocking in, not browsing a website. */
-  .dev{max-width:390px;margin:0 auto;padding:26px 4px 40px}
-  .devhead{border-bottom:2px solid var(--line2);padding-bottom:14px}
-  .kicker{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;
-    text-transform:uppercase;color:var(--accent)}
-  .clock{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:56px;
-    line-height:.95;letter-spacing:-.03em;margin-top:4px;font-variant-numeric:tabular-nums}
-  .datelong{font-size:12.5px;color:var(--muted);margin-top:4px}
-  .stamps{border-bottom:1px solid var(--line);display:flex}
-  .stamp{flex:1;padding:14px 0}
-  .stamp + .stamp{padding-left:16px;border-left:1px solid var(--line)}
-  .stamp .k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;
-    text-transform:uppercase;color:var(--muted)}
-  .stamp .v{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:26px;
-    margin-top:4px;font-variant-numeric:tabular-nums;color:var(--dim)}
-  .stamp .v.set{color:var(--accent)}
-
-  .shot{width:100%;aspect-ratio:4/3;border:2px solid var(--line3);border-radius:10px;
-    background:var(--card2) center/cover no-repeat;display:block}
-  .meta{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6}
-  .go{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
-    min-height:66px;border:none;border-radius:12px;background:var(--accent);
-    color:var(--accent-ink);font:inherit;font-size:16px;font-weight:700;cursor:pointer;
-    position:relative;transition:background .16s ease}
-  .go:hover{background:var(--goHover)}
-  .go input{position:absolute;inset:0;opacity:0;cursor:pointer}
-  .row2{display:flex;gap:10px;margin-top:14px}
-  .btn{border:1px solid var(--line3);background:none;color:var(--text);border-radius:11px;
-    padding:12px 16px;font:inherit;font-size:14.5px;cursor:pointer;min-height:54px}
-  .btn:hover{border-color:var(--accent);color:var(--accent)}
-  .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);
-    font-weight:700;flex:1}
-  .btn.pri:hover{background:var(--goHover);color:var(--accent-ink)}
-  .done{margin-top:22px;background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:20px}
-  .done .h{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:34px;
-    line-height:1;letter-spacing:-.03em;margin-top:8px}
-  .fine{border-top:2px solid var(--line2);margin-top:26px;padding-top:14px;
-    font-size:12px;line-height:1.75;color:var(--muted)}
-
   /* --------------------------------------------------------- the office */
   .obar{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
     flex-wrap:wrap;margin-bottom:16px}
   .obar h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:27px;
     letter-spacing:-.02em;margin-top:6px}
   .ctl{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-  select,input[type=text]{font:inherit;font-size:14px;color:var(--text);background:var(--card);
-    border:1px solid var(--line);border-radius:10px;padding:9px 11px;outline:none}
-  select:focus,input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glowSoft)}
+  select,input[type=text],input[type=month]{font:inherit;font-size:14px;color:var(--text);
+    background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;outline:none}
+  select:focus,input[type=text]:focus,input[type=month]:focus{border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--glowSoft)}
+  /* the photograph itself, 4:3 because that is what a phone camera hands over */
+  .shot{width:100%;aspect-ratio:4/3;border:1px solid var(--line2);border-radius:12px;
+    background:var(--card) center/cover no-repeat}
+  .shot.gone{display:flex;align-items:center;justify-content:center;border-style:dashed;
+    font-size:12px;color:var(--muted);text-align:center;padding:12px}
+  .del{display:flex;gap:14px;margin-top:8px}
   .tiles{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);
     border-radius:12px;overflow:hidden;background:var(--card);margin-bottom:22px}
   .tile{padding:15px 18px}
@@ -136,6 +101,9 @@
   .tag-ok{color:var(--ok);border-color:var(--ok)}
   .tag-late{background:var(--bad);border-color:var(--bad);color:#fff}
   .tag-out{color:var(--muted)}
+  .tag-leave{color:var(--accentB);border-color:var(--accentB)}
+  .lv{margin-left:9px;font-size:11.5px;opacity:.65}
+  .lv:hover{opacity:1}
   .up .t{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:20px;
     font-variant-numeric:tabular-nums}
   .up .fine2{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.6}
@@ -156,6 +124,11 @@
   .who .r{font-size:11.5px;color:var(--muted)}
   .geo{font-size:12px;color:var(--muted)}
 
+  .madelink{border:1px solid var(--accent);border-radius:12px;padding:16px 18px;margin-bottom:14px;
+    background:var(--glowSoft)}
+  .madelink .url{font-family:'Space Mono',monospace;font-size:12.5px;word-break:break-all;
+    margin-top:8px;color:var(--text);user-select:all}
+  .madelink .fine2{font-size:12px;color:var(--dim);line-height:1.65}
   .empty{padding:34px 4px;color:var(--muted);font-size:13.5px;line-height:1.75}
   .foot{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
     font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
@@ -185,162 +158,59 @@
 const A = window.ATT, $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* The device remembers only its own day, and only for a day. Nothing on a
-   shared phone should outlive the shift it belongs to. */
-const DEVKEY = 'emortia_attend_device_v1';
 const SHIFT = '08:30', GRACE = 15;
-
-let VIEW  = (location.hash === '#office') ? 'office' : 'device';
-let NOW   = Date.now();
-let COORDS = null;
-let PENDING = null;                 // { kind, dataUrl, blob }
-let DEVICE = load();
-let PEOPLE = [], RECS = [], DAY = A.dstr(new Date()), LINKS = {}, BUSY = false, ERR = '';
-
-function load(){ try { const d = JSON.parse(localStorage.getItem(DEVKEY)||'null');
-  return (d && d.expires > Date.now()) ? d : null; } catch(e){ return null; } }
-function keep(d){ DEVICE = d; try { localStorage.setItem(DEVKEY, JSON.stringify(d)); } catch(e){} }
+let PEOPLE = [], RECS = [], DAY = A.dstr(new Date()), BUSY = false, ERR = '';
+let DEVICES = [], MADE = null, LEAVE = [];      // MADE: a link just created, shown once in full
+/* What the export covers. The day is what is on screen; the two monthly ones
+   are asked for by a month rather than read off it, because a month is not a
+   thing this page shows and pretending otherwise would mean loading one. */
+let XSCOPE = 'day', XMONTH = DAY.slice(0, 7), XWHO = '';
+let OLD = 90;                                   // how old a picture has to be to be swept
 
 let tt; function toast(m, ms){ const t=$('toast'); t.textContent=m; t.classList.add('show');
   clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'), ms||2400); }
 
 /* ---------------------------------------------------------------- chrome */
 function renderHead(){
-  const office = VIEW === 'office';
-  /* The device screen carries no way off itself – no brand link, no tabs.
-     A shared phone on a site table is not a door into the rest of the site,
-     and the person clocking in has one thing to do. The office view keeps
-     the ordinary header, because it is opened on a laptop by somebody who
-     came from the Tools page. */
-  $('hdr').innerHTML = office
-    ? '<a class="brand" href="../../" title="Emortia"><span class="logo"><i></i><i></i><i></i><i></i></span>' +
-      '<span class="bname">Emortia</span></a><span class="hsep"></span>' +
-      '<h1>Daily Attendance</h1>' +
-      '<div class="seg"><button id="toDev">Device</button><button class="on">Office</button></div>' +
-      '<button class="theme" id="themeBtn" title="Light / dark">☾</button>'
-    : '<span class="logo"><i></i><i></i><i></i><i></i></span>' +
-      '<h1>Daily Attendance</h1>' +
-      (window.IS_OWNER ? '<div class="seg"><button class="on">Device</button><button id="toOffice">Office</button></div>' : '') +
-      '<button class="theme" id="themeBtn" title="Light / dark">☾</button>';
-
+  /* One view, so no switch. The crews' screen is /attendance/ - a page with no
+     sign-in, opened from a link on the shared phone - and there is deliberately
+     nothing here that navigates to it: it is not a thing to be browsed into,
+     and a link from an office laptop would be a link to a credential. */
+  $('hdr').innerHTML =
+    '<a class="brand" href="../../" title="Emortia"><span class="logo"><i></i><i></i><i></i><i></i></span>' +
+    '<span class="bname">Emortia</span></a><span class="hsep"></span>' +
+    '<h1>Daily Attendance</h1>' +
+    '<button class="theme" id="themeBtn" title="Light / dark">☾</button>';
   const t = $('themeBtn');
   if (t){ t.textContent = document.documentElement.dataset.theme === 'dark' ? '☀' : '☾';
     t.onclick = () => { const to = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       document.documentElement.dataset.theme = to;
       try { localStorage.setItem('office_tool_theme', to); } catch(e){}
       t.textContent = to === 'dark' ? '☀' : '☾'; }; }
-  const a = $('toOffice'), b = $('toDev');
-  if (a) a.onclick = () => { VIEW='office'; location.hash='office'; refresh(); };
-  if (b) b.onclick = () => { VIEW='device'; location.hash=''; paint(); };
-}
-
-/* ------------------------------------------------------------ the device */
-function renderDevice(){
-  const now = new Date(NOW);
-  const d = A.deviceState(DEVICE, NOW);
-  const geo = COORDS || 'unavailable – allow location on this device';
-
-  let h = '<div class="dev"><div class="devhead">' +
-    '<div class="kicker">' + esc(now.toLocaleDateString(undefined,{weekday:'long'})) + '</div>' +
-    '<div class="clock">' + A.pad(now.getHours()) + ':' + A.pad(now.getMinutes()) + '</div>' +
-    '<div class="datelong">' + esc(now.toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'})) + '</div>' +
-    '</div><div class="stamps">' +
-      '<div class="stamp"><div class="k">Clock in</div><div class="v' + (d.in?' set':'') + '">' + A.fmt(d.in) + '</div></div>' +
-      '<div class="stamp"><div class="k">Clock out</div><div class="v' + (d.out?' set':'') + '">' + A.fmt(d.out) + '</div></div>' +
-    '</div>';
-
-  if (PENDING){
-    h += '<div style="margin-top:20px">' +
-      '<div class="shot" style="background-image:url(' + PENDING.dataUrl + ')" role="img" aria-label="Photo to submit"></div>' +
-      '<div class="meta">' + (PENDING.kind==='in'?'Clock in':'Clock out') + ' · ' +
-        A.pad(now.getHours()) + ':' + A.pad(now.getMinutes()) + ':' + A.pad(now.getSeconds()) + ' · ' + esc(geo) + '</div>' +
-      '<div class="row2"><button class="btn pri" id="send">' + (BUSY ? 'Sending…' : (PENDING.kind==='in'?'Clock in':'Clock out')) + '</button>' +
-      '<button class="btn" id="drop">Discard</button></div></div>';
-  } else if (!d.done){
-    h += '<div style="margin-top:22px"><label class="go">' +
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-      '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/>' +
-      '<circle cx="12" cy="13" r="3.5"/></svg><span>' +
-      (d.next==='in' ? 'Take photo – clock in' : 'Take photo – clock out') + '</span>' +
-      '<input type="file" accept="image/*" capture="user" id="cam"></label>' +
-      '<div class="meta">' + (d.next==='in'
-        ? 'One photo of everyone starting the shift. The office names each face afterwards.'
-        : 'One photo of everyone leaving. This closes the day on this device.') + '</div></div>';
-  } else {
-    h += '<div class="done"><div class="kicker" style="color:inherit;opacity:.85">Day complete</div>' +
-      '<div class="h">' + A.hoursBetween(d.in, d.out) + ' hours</div>' +
-      '<div style="font-size:13px;margin-top:6px;opacity:.9">Both photos are with the office. Nothing else to do today.</div></div>';
-  }
-
-  h += '<div class="fine"><div>Location ' + esc(geo) + '</div>' +
-    '<div>The time and the location are sent the moment you submit.</div>' +
-    '<div>This device remembers today only, and forgets it after a day.</div></div></div>';
-  $('main').innerHTML = h;
-
-  const cam = $('cam');
-  if (cam) cam.onchange = async e => {
-    const f = e.target.files && e.target.files[0]; e.target.value = '';
-    if (!f) return;
-    try { PENDING = Object.assign({ kind: d.next }, await shrink(f)); paint(); }
-    catch (err){ toast('Could not read that photo'); }
-  };
-  const send = $('send'); if (send) send.onclick = submit;
-  const drop = $('drop'); if (drop) drop.onclick = () => { PENDING = null; paint(); };
-}
-
-/* 560px wide, JPEG. Big enough to recognise a face, small enough to leave a
-   phone on a site connection – and the shrink happens before anything is
-   sent, so the full-size original never leaves the device. */
-async function shrink(file){
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image();
-      i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    const w = 560, h = Math.round(w * 0.75);
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const g = c.getContext('2d');
-    const r = Math.max(w / img.width, h / img.height);
-    const dw = img.width * r, dh = img.height * r;
-    g.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-    const dataUrl = c.toDataURL('image/jpeg', 0.62);
-    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.62));
-    return { dataUrl, blob };
-  } finally { URL.revokeObjectURL(url); }
-}
-
-async function submit(){
-  if (!PENDING || BUSY) return;
-  BUSY = true; paint();
-  const ts = Date.now(), day = A.dstr(new Date(ts));
-  try {
-    await window.DB.attendFile({
-      id: 'A' + ts + Math.random().toString(36).slice(2,5),
-      date: day, kind: PENDING.kind, ts,
-      geo: COORDS || '', ref: A.refFor(day, ts)
-    }, PENDING.blob);
-    const dev = PENDING.kind === 'in'
-      ? { in: ts, out: null, expires: ts + 86400000 }
-      : Object.assign({}, DEVICE || {}, { out: ts });
-    keep(dev);
-    PENDING = null;
-    toast(dev.out ? 'Clocked out. That is the day done.' : 'Clocked in. Have a good shift.', 4000);
-  } catch (e){ toast(e.message, 6000); }
-  BUSY = false; paint();
 }
 
 /* ------------------------------------------------------------ the office */
 function renderOffice(){
   const late = A.lateAfter(SHIFT, GRACE);
-  const sheet = A.buildSheet(PEOPLE, RECS, DAY, late);
+  const sheet = A.buildSheet(PEOPLE, RECS, DAY, late, LEAVE);
   const day = A.ofDay(RECS, DAY);
   const st = A.stats(sheet, day);
   const opts = A.dateOpts(A.dstr(new Date()), 10);
 
   let h = '<div class="obar"><div><div class="kicker">The office</div>' +
     '<h2>Name the faces, and the sheet fills itself in.</h2></div>' +
-    '<div class="ctl"><select id="day">' +
+    '<div class="ctl"><select id="day" title="Which day the screen shows">' +
       opts.map(o => '<option value="'+o.value+'"'+(o.value===DAY?' selected':'')+'>'+esc(o.label)+'</option>').join('') +
-    '</select><button class="btn" id="xls" style="min-height:0;padding:9px 14px">' +
+    '</select>' +
+    '<select id="xscope" title="What the export covers">' +
+      [['day','This day – the team'],['month','A month – the team'],['person','A month – one person']]
+        .map(o => '<option value="'+o[0]+'"'+(XSCOPE===o[0]?' selected':'')+'>'+o[1]+'</option>').join('') +
+    '</select>' +
+    (XSCOPE === 'day' ? '' : '<input type="month" id="xmonth" value="'+esc(XMONTH)+'">') +
+    (XSCOPE === 'person' ? '<select id="xwho">' + (PEOPLE.length
+        ? PEOPLE.map(p => '<option value="'+esc(p.id)+'"'+(XWHO===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')
+        : '<option value="">Nobody on the roster</option>') + '</select>' : '') +
+    '<button class="btn" id="xls" style="min-height:0;padding:9px 14px">' +
       (BUSY ? 'Building…' : 'Export Excel') + '</button></div></div>';
 
   if (ERR) h += '<div class="empty">' + esc(ERR) + '</div>';
@@ -358,10 +228,21 @@ function renderOffice(){
     h += day.map(u => {
       const on = u.members || [];
       return '<div class="up"><div>' +
-        '<div class="shot" style="background-image:url(' + (LINKS[u.id] || '') + ')" role="img" aria-label="Attendance photo"></div>' +
+        (u.photo
+          ? '<div class="shot" style="background-image:url(' + u.photo + ')" role="img" aria-label="Attendance photo"></div>'
+          : '<div class="shot gone">The picture has been removed. The time, the place and the names stay.</div>') +
         '<div class="when"><span class="tag ' + (u.kind==='in'?'tag-in':'') + '">' +
           (u.kind==='in'?'Clock in':'Clock out') + '</span><span class="t">' + A.fmt(u.ts) + '</span></div>' +
-        '<div class="fine2">' + esc(u.geo || 'location unavailable') + '<br>' + esc(u.ref) + '</div></div>' +
+        '<div class="fine2">' + esc(u.geo || 'location unavailable') + '<br>' + esc(deviceOf(u)) +
+        /* Two different acts, so two buttons: the picture goes and the day
+           still adds up, or the whole record goes because it should never
+           have been filed. Owner only, and the delete is owner-only in the
+           database too - a shared phone cannot erase what it filed. */
+        (window.IS_OWNER ? '<div class="del">' +
+          (u.photo ? '<button class="link" data-delpic="'+esc(u.id)+'">Delete the picture</button>' : '') +
+          '<button class="link" data-delrec="'+esc(u.id)+'" style="color:var(--bad)">Delete the record</button>' +
+        '</div>' : '') +
+        '</div></div>' +
         '<div><div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px">' +
           '<div class="kicker" style="color:var(--muted)">Who is in this photo – ' + on.length + ' ticked</div>' +
           (on.length ? '<button class="link" data-clear="'+esc(u.id)+'">Clear</button>' : '') +
@@ -383,11 +264,19 @@ function renderOffice(){
       '<td class="num">'+r.in+'</td><td class="geo">'+esc(r.inGeo)+'</td>' +
       '<td class="num">'+r.out+'</td><td class="geo">'+esc(r.outGeo)+'</td>' +
       '<td class="num">'+r.hours+'</td>' +
-      '<td style="text-align:right"><span class="tag '+r.tagClass+'">'+esc(r.status)+'</span></td></tr>').join('')
+      '<td style="text-align:right"><span class="tag '+r.tagClass+'">'+esc(r.status)+'</span>' +
+      /* only where it can mean anything: somebody who was photographed was
+         here, and marking them on leave would be a note contradicting a fact */
+      (r.present ? '' :
+        '<button class="link lv" data-lv="'+esc(r.id)+'" data-on="'+(r.leave?'1':'0')+'">' +
+        (r.leave ? 'not on leave' : 'on leave') + '</button>') +
+      (r.leave && r.note ? '<div class="geo" style="margin-top:3px">'+esc(r.note)+'</div>' : '') +
+      '</td></tr>').join('')
       : '<tr><td colspan="7" class="empty">No names on the roster yet.</td></tr>') +
     '</tbody></table></div>';
   h += '<div class="foot"><span>A row fills in only from a photo somebody has named. ' +
-    'Late is any clock-in after ' + A.hm(late) + '.</span></div>';
+    'Late is any clock-in after ' + A.hm(late) + '. ' +
+    (st.leave ? st.leave + ' on leave, ' : '') + st.absent + ' unaccounted for.</span></div>';
 
   /* the roster, at the bottom, where it is edited rarely and read never */
   h += '<div class="sec">The roster – ' + PEOPLE.length + '</div>';
@@ -405,8 +294,63 @@ function renderOffice(){
     : '<span class="empty" style="padding:0">Nobody yet. ' +
       (window.IS_OWNER ? 'Add the first name above.' : 'Ask Sithara to add the team.') + '</span>') + '</div>';
 
+  /* The device links. A crew phone opens /attendance/ with its token in the
+     address and files a photograph; it cannot read a record, a name or another
+     device. The token is shown in full when it is made and abbreviated after,
+     because it is a credential and a screen in an office is not private. */
+  if (window.IS_OWNER){
+    h += '<div class="sec">Device links – ' + DEVICES.length + '</div>';
+    h += '<div class="ctl" style="margin-bottom:12px">' +
+      '<input type="text" id="dl" placeholder="Which phone (e.g. Janaka crew)" style="min-width:220px">' +
+      '<button class="btn" id="dadd" style="min-height:0;padding:9px 14px">Make a link</button></div>';
+    if (MADE){
+      const url = location.origin + '/attendance/?d=' + MADE.token;
+      h += '<div class="madelink"><div class="kicker" style="color:var(--accent)">' +
+        esc(MADE.label || 'New device') + ' – copy this now</div>' +
+        '<div class="url" id="madeurl">' + esc(url) + '</div>' +
+        '<div class="ctl" style="margin-top:10px">' +
+          '<button class="btn" id="dcopy" style="min-height:0;padding:8px 13px">Copy the link</button>' +
+        '</div>' +
+        '<div class="fine2" style="margin-top:9px">Open it once on the phone and add it to the home screen. ' +
+        'Whoever has this link can file a photo for this device and nothing else – it cannot read the sheet, ' +
+        'the roster or any name. If a phone is lost, drop the link here and make another.</div></div>';
+    }
+    h += '<div class="chips">' + (DEVICES.length ? DEVICES.map(d =>
+        '<span class="chip" style="cursor:default">' + esc(d.label || d.id) +
+        ' <span style="opacity:.5;font-family:\'Space Mono\',monospace;font-size:11px">…' + esc(String(d.token).slice(-6)) + '</span>' +
+        (d.last_used ? ' <span style="opacity:.5">· used ' + esc(new Date(d.last_used).toLocaleDateString()) + '</span>' : ' <span style="opacity:.5">· never used</span>') +
+        ' <button class="link" data-dd="' + esc(d.id) + '" title="Stop this link working" style="color:inherit;opacity:.5">×</button>' +
+        '</span>').join('')
+      : '<span class="empty" style="padding:0">No device links yet. Make one and open it on the crew phone.</span>') + '</div>';
+
+    /* Housekeeping. A face and a coordinate together are the most personal
+       thing this site holds, and there is no reason to hold them once the
+       month they belong to has been read and exported. The rows stay, so an
+       old month still exports; only the pictures go. */
+    h += '<div class="sec">Stored pictures</div>';
+    h += '<div class="ctl"><select id="pold">' +
+      [[30,'older than 30 days'],[60,'older than 60 days'],[90,'older than 90 days'],
+       [365,'older than a year']].map(o =>
+        '<option value="'+o[0]+'"'+(o[0]===OLD?' selected':'')+'>Pictures '+o[1]+'</option>').join('') +
+      '</select><button class="btn" id="pclear" style="min-height:0;padding:9px 14px">' +
+      (BUSY ? 'Working…' : 'Delete them') + '</button></div>';
+    h += '<div class="foot"><span>Only the photograph goes. The time, the place, the device and the ' +
+      'names ticked on it stay, so a month that has already been read still exports the same figures.</span></div>';
+  }
+
   $('main').innerHTML = h;
   wireOffice(sheet, late);
+}
+/* The crews do not sign in, so what ties a photograph to a phone is the
+   device link the office issued: every record filed through it carries the
+   device in its reference. Shown by label rather than by id, because
+   "Janaka crew phone" is something somebody in the office can act on and
+   d1 is not. A photo the office filed itself carries no device at all. */
+function deviceOf(u){
+  var m = /^D:([^:]+):/.exec(u.ref || '');
+  if (!m) return u.ref || 'filed from the office';
+  var d = DEVICES.find(function(x){ return x.id === m[1]; });
+  return d ? (d.label || d.id) : 'a device link that has since been dropped';
 }
 function tile(k, v, colour){
   return '<div class="tile"><div class="k">'+esc(k)+'</div>' +
@@ -415,7 +359,43 @@ function tile(k, v, colour){
 
 function wireOffice(sheet, late){
   const sel = $('day'); if (sel) sel.onchange = () => { DAY = sel.value; refresh(); };
+  const sc = $('xscope'); if (sc) sc.onchange = () => {
+    XSCOPE = sc.value;
+    if (XSCOPE === 'person' && !XWHO && PEOPLE.length) XWHO = PEOPLE[0].id;
+    paint();
+  };
+  const mo = $('xmonth'); if (mo) mo.onchange = () => { XMONTH = mo.value || XMONTH; };
+  const wh = $('xwho'); if (wh) wh.onchange = () => { XWHO = wh.value; };
   const x = $('xls'); if (x) x.onclick = () => exportXlsx(sheet, late);
+
+  document.querySelectorAll('[data-delpic]').forEach(b => b.onclick = async () => {
+    if (!confirm('Delete the picture from this record?\n\nThe time, the place and the names ticked on it stay.')) return;
+    try { await window.DB.attendClearPhoto(b.dataset.delpic); await refresh(); toast('The picture is gone'); }
+    catch (e){ toast(e.message, 5000); }
+  });
+  document.querySelectorAll('[data-delrec]').forEach(b => b.onclick = async () => {
+    const rec = RECS.find(r => r.id === b.dataset.delrec);
+    const n = rec ? (rec.members || []).length : 0;
+    if (!confirm('Delete this record altogether?\n\n' +
+      (n ? n + ' name' + (n>1?'s':'') + ' ticked on it will come off the sheet for this day. ' : '') +
+      'This cannot be undone.')) return;
+    try { await window.DB.attendDropRecord(b.dataset.delrec); await refresh(); toast('Record deleted'); }
+    catch (e){ toast(e.message, 5000); }
+  });
+  const po = $('pold'); if (po) po.onchange = () => { OLD = parseInt(po.value, 10) || 90; };
+  const pc = $('pclear');
+  if (pc) pc.onclick = async () => {
+    const cut = new Date(); cut.setDate(cut.getDate() - OLD);
+    const cutDay = A.dstr(cut);
+    if (!confirm('Delete every picture filed before ' +
+      new Date(cutDay + 'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}) +
+      '?\n\nThe records stay. Only the photographs go, and they do not come back.')) return;
+    BUSY = true; paint();
+    try { const n = await window.DB.attendClearBefore(cutDay);
+      BUSY = false; await refresh();
+      toast(n ? n + ' picture' + (n>1?'s':'') + ' deleted' : 'There were none that old', 4000); }
+    catch (e){ BUSY = false; paint(); toast(e.message, 5000); }
+  };
 
   document.querySelectorAll('.chip[data-u]').forEach(b => b.onclick = async () => {
     const rec = RECS.find(r => r.id === b.dataset.u); if (!rec) return;
@@ -440,51 +420,108 @@ function wireOffice(sheet, late){
       await refresh(); toast(p.name + ' is on the roster'); }
     catch (e){ toast(e.message, 5000); }
   };
+  document.querySelectorAll('[data-lv]').forEach(b => b.onclick = async () => {
+    const on = b.dataset.on !== '1';
+    const note = on ? (prompt('A note, if there is one (optional)') || '') : '';
+    try { await window.DB.attendSetLeave(DAY, b.dataset.lv, on, note); await refresh();
+      toast(on ? 'Marked on leave' : 'Leave taken off'); }
+    catch (e){ toast(e.message, 5000); }
+  });
+  const dadd = $('dadd');
+  if (dadd) dadd.onclick = async () => {
+    try { MADE = await window.DB.attendMakeDevice($('dl').value.trim());
+      $('dl').value = ''; await refresh(); toast('Link made. Copy it now – it is shown in full once.', 6000); }
+    catch (e){ toast(e.message, 5000); }
+  };
+  const dcopy = $('dcopy');
+  if (dcopy) dcopy.onclick = () => {
+    const url = $('madeurl').textContent;
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+      .then(() => toast('Link copied')).catch(() => toast('Select it and copy by hand'));
+  };
+  document.querySelectorAll('[data-dd]').forEach(b => b.onclick = async () => {
+    try { await window.DB.attendDropDevice(b.dataset.dd); MADE = null; await refresh();
+      toast('That link no longer works'); }
+    catch (e){ toast(e.message, 5000); }
+  });
   document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
     try { await window.DB.attendRemovePerson(b.dataset.rm); await refresh(); toast('Taken off the roster'); }
     catch (e){ toast(e.message, 5000); }
   });
 }
 
-function exportXlsx(sheet, late){
-  if (!window.XLSX){ toast('The spreadsheet library is still loading'); return; }
-  const x = A.exportRows(sheet, DAY, late);
+/* One writer for all three shapes, because a title line, a note line and a
+   frozen heading row are what makes any of them readable, and three copies of
+   that would drift apart. */
+function writeXlsx(x, cols, tab, file){
   const aoa = [[x.title], [x.note], [], x.head].concat(x.rows);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:22},{wch:16},{wch:11},{wch:22},{wch:11},{wch:22},{wch:8},{wch:14}];
-  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:7}},{s:{r:1,c:0},e:{r:1,c:7}}];
+  ws['!cols'] = cols;
+  const wide = { s:{r:0,c:0}, e:{r:0,c:Math.max(1, x.head.length - 1)} };
+  ws['!merges'] = [wide, { s:{r:1,c:0}, e:{r:1,c:wide.e.c} }];
   ws['!freeze'] = { ySplit: 4 };
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
-  XLSX.writeFile(wb, 'Attendance ' + DAY + '.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, tab);
+  XLSX.writeFile(wb, file);
+}
+
+async function exportXlsx(sheet, late){
+  if (!window.XLSX){ toast('The spreadsheet library is still loading'); return; }
+
+  if (XSCOPE === 'day'){
+    const x = A.exportRows(sheet, DAY, late);
+    writeXlsx(x, [{wch:22},{wch:16},{wch:11},{wch:22},{wch:11},{wch:22},{wch:8},{wch:14}],
+      'Attendance', 'Attendance ' + DAY + '.xlsx');
+    return;
+  }
+
+  /* A month is not on screen, so it is fetched - without the photographs,
+     which the spreadsheet has no use for and which would be tens of
+     megabytes of them. */
+  const ym = XMONTH, from = ym + '-01', to = ym + '-31';
+  BUSY = true; paint();
+  let r, l;
+  try { [r, l] = await Promise.all([window.DB.attendRange(from, to), window.DB.attendLeaveRange(from, to)]); }
+  catch (e){ BUSY = false; paint(); toast(e.message, 5000); return; }
+  BUSY = false; paint();
+  if (r.error){ toast(r.error, 5000); return; }
+
+  const today = A.dstr(new Date());
+  if (XSCOPE === 'month'){
+    if (!PEOPLE.length){ toast('Nobody on the roster yet'); return; }
+    const x = A.monthTeamRows(PEOPLE, r.records, l.leave || [], ym, late, today);
+    const cols = [{wch:22},{wch:14}].concat(
+      new Array(x.days).fill({wch:5}), [{wch:9},{wch:7},{wch:10},{wch:8},{wch:9}]);
+    writeXlsx(x, cols, 'The month', 'Attendance – team – ' + ym + '.xlsx');
+    return;
+  }
+
+  const who = PEOPLE.find(p => p.id === XWHO) || PEOPLE[0];
+  if (!who){ toast('Nobody on the roster yet'); return; }
+  const x = A.monthPersonRows(who, r.records, l.leave || [], ym, late, today);
+  writeXlsx(x, [{wch:12},{wch:6},{wch:11},{wch:22},{wch:11},{wch:22},{wch:8},{wch:15},{wch:24}],
+    'The month', 'Attendance – ' + who.name + ' – ' + ym + '.xlsx');
 }
 
 /* ------------------------------------------------------------------ wiring */
-function paint(){ renderHead(); (VIEW === 'office' ? renderOffice : renderDevice)(); }
+function paint(){ renderHead(); renderOffice(); }
 
 async function refresh(){
-  if (VIEW !== 'office'){ paint(); return; }
-  const [p, r] = await Promise.all([window.DB.attendPeople(), window.DB.attendDay(DAY)]);
+  const [p, r, d, l] = await Promise.all([
+    window.DB.attendPeople(), window.DB.attendDay(DAY), window.DB.attendDevices(),
+    window.DB.attendLeave(DAY)
+  ]);
   ERR = p.error || r.error || '';
   PEOPLE = A.sortPeople(p.people || []);
   RECS = r.records || [];
+  DEVICES = d.devices || [];
+  LEAVE = l.leave || [];
   paint();
-  /* signed links, asked for one at a time and only for the day on screen */
-  for (const u of RECS){
-    if (!u.photo || LINKS[u.id]) continue;
-    const url = await window.DB.attendPhoto(u.photo, 3600);
-    if (url){ LINKS[u.id] = url; paint(); }
-  }
 }
 
-setInterval(() => { NOW = Date.now(); if (VIEW === 'device' && !PENDING) paint(); }, 1000);
-if (navigator.geolocation) navigator.geolocation.getCurrentPosition(
-  p => { COORDS = p.coords.latitude.toFixed(4) + ', ' + p.coords.longitude.toFixed(4); paint(); },
-  () => {}, { enableHighAccuracy: true, timeout: 8000 });
-
 paint();
-if (VIEW === 'office') refresh();
-window.DB.attendSubscribe(() => { if (VIEW === 'office') refresh(); });
+refresh();
+window.DB.attendSubscribe(() => refresh());
 })();
 </script>
 </body>

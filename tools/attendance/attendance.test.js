@@ -141,6 +141,36 @@ console.log('\nthe roster');
      ['Bob','Ann','Zoe']);
 }
 
+console.log('\nsomebody on leave');
+{
+  const LEAVE = [{ day: DAY, person: 'p4', label: 'Leave', note: 'Told me on Friday' }];
+  const sheet = A.buildSheet(PEOPLE, RECS, DAY, LATE, LEAVE);
+  const sunil = sheet.find(r => r.id === 'p4');
+  /* not the same fact as not turning up, and a sheet that calls both Absent is
+     wrong about somebody who asked in advance */
+  is('a marked day is leave, not absent', [sunil.status, sunil.leave, sunil.present], ['Leave', true, false]);
+  is('and the note comes with it',        sunil.note, 'Told me on Friday');
+  is('nobody else is touched',            sheet.find(r => r.id === 'p1').status, 'On time');
+
+  /* marked on leave and came in anyway: the photograph is the fact */
+  const CAME = [{ day: DAY, person: 'p3', label: 'Leave' }];
+  const ajith = A.buildSheet(PEOPLE, RECS, DAY, LATE, CAME).find(r => r.id === 'p3');
+  is('a photo outranks the mark',         [ajith.status, ajith.leave], ['Late', false]);
+
+  /* a mark for another day is not this day's business */
+  const OTHER = [{ day: '2026-05-11', person: 'p4', label: 'Leave' }];
+  is('yesterday\'s leave is not today\'s',
+     A.buildSheet(PEOPLE, RECS, DAY, LATE, OTHER).find(r => r.id === 'p4').status, 'Absent');
+
+  const st = A.stats(sheet, A.ofDay(RECS, DAY));
+  is('leave is counted apart from absent', [st.present, st.leave, st.absent], [3, 1, 0]);
+  const none = A.stats(A.buildSheet(PEOPLE, RECS, DAY, LATE), A.ofDay(RECS, DAY));
+  is('and with no marks it is all absent', [none.leave, none.absent], [0, 1]);
+
+  const x = A.exportRows(sheet, DAY, LATE);
+  is('the export note says both',         /1 on leave · 0 absent/.test(x.note), true);
+}
+
 console.log('\nthe dates on offer');
 {
   const opts = A.dateOpts(DAY, 4);
@@ -158,6 +188,61 @@ console.log('\nwhat the export writes');
   is('the absent one is in it too', x.rows[3][0], 'Sunil');
   is('the note counts the day',     /3 of 4 present · 1 late/.test(x.note), true);
   is('and says where late begins',  /after 08:45/.test(x.note), true);
+}
+
+console.log('\na month of it');
+{
+  is('every day of May',          A.monthDays('2026-05').length, 31);
+  is('and February is short',     A.monthDays('2026-02').length, 28);
+  is('a month still running stops at today',
+     A.monthDays('2026-05', '2026-05-12').slice(-1), ['2026-05-12']);
+  is('a month already over does not',
+     A.monthDays('2026-04', '2026-05-12').length, 30);
+  is('nonsense is no month',      A.monthDays('bad'), []);
+
+  const sheet = A.buildSheet(PEOPLE, RECS, DAY, LATE);
+  const by = id => sheet.filter(r => r.id === id)[0];
+  is('on time and closed is P',   A.dayCode(by('p1')), 'P');
+  is('late and closed is L',      A.dayCode(by('p3')), 'L');
+  is('in but not out is dotted',  A.dayCode(by('p2')), 'P·');
+  is('nobody is A',               A.dayCode(by('p4')), 'A');
+  is('on leave is LV',
+     A.dayCode(A.buildSheet(PEOPLE, RECS, DAY, LATE,
+       [{ day:DAY, person:'p4', label:'Leave', note:'' }]).filter(r => r.id === 'p4')[0]), 'LV');
+}
+
+console.log('\nthe team, a month across');
+{
+  const leave = [{ day:DAY, person:'p4', label:'Leave', note:'Told me on Friday' }];
+  const x = A.monthTeamRows(PEOPLE, RECS, leave, '2026-05', LATE, '2026-05-12');
+  is('a column per day so far, plus both ends', x.head.length, 2 + 12 + 5);
+  is('the first day column is 1',   x.head[2], '1');
+  is('and the last is the 12th',    x.head[13], '12');
+  is('a row per person',            x.rows.length, 4);
+  /* the 12th is the 12th column of days: 2 name columns + 11 earlier days */
+  is('Nimal was there that day',    x.rows[0][13], 'P');
+  is('Ajith was late',              x.rows[2][13], 'L');
+  is('Sunil was on leave',          x.rows[3][13], 'LV');
+  is('Nimal: one day present',      x.rows[0].slice(-5), [1, 0, 0, 11, 8.67]);
+  is('Sunil: one on leave, no hours', x.rows[3].slice(-5), [0, 0, 1, 11, 0]);
+  is('Kasun has no hours, being still in', x.rows[1].slice(-1), [0]);
+  is('the legend explains the dot', /a dot means no clock-out/.test(x.note), true);
+  is('nothing before the month leaks in',
+     A.monthTeamRows(PEOPLE, RECS, [], '2026-04', LATE, '2026-05-12').rows[0][2], 'A');
+}
+
+console.log('\none person, a month down');
+{
+  const leave = [{ day:'2026-05-11', person:'p1', label:'Leave', note:'Wedding' }];
+  const x = A.monthPersonRows(PEOPLE[0], RECS, leave, '2026-05', LATE, '2026-05-12');
+  is('a row per day, a gap and a total', x.rows.length, 12 + 2);
+  is('the day he worked',           x.rows[11].slice(0, 3), ['2026-05-12', A.weekdayOf('2026-05-12'), '08:25']);
+  is('the day before he was off',   x.rows[10][7], 'Leave');
+  is('and the note came with it',   x.rows[10][8], 'Wedding');
+  is('the total is his hours',      x.rows[13][6], 8.67);
+  is('and counts the month',        x.rows[13][7], '1 present · 0 late · 1 on leave · 10 absent');
+  is('his name is on it',           /Nimal/.test(x.title), true);
+  is('and his role',                /^Rigger · /.test(x.note), true);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
