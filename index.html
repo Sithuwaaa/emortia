@@ -1672,8 +1672,17 @@ class Component extends DCLogic {
       .map(p=>({title:p.title, date:p.date, track:p.track, book:p.book,
         art:p.art && (p.art.indexOf('/') > -1 ? p.art : 'media/poems/art/' + p.art),
         body:p.body.join('\n').replace(/^\n+|\n+$/g,'')}))
-      // oldest first, so the page reads forward in time whatever order the file is in
-      .sort((a,b)=>this.poemTime(a)-this.poemTime(b));
+      /* Newest first, whatever order the file is in: the poem written most
+         recently is the one worth opening on. Undated poems keep sinking to
+         the back rather than riding the reversal to the front - not knowing
+         when something was written is not the same as it being the newest. */
+      .sort((a,b)=>{
+        const ta=this.poemTime(a), tb=this.poemTime(b);
+        const ua=!isFinite(ta), ub=!isFinite(tb);
+        if(ua&&ub) return 0;
+        if(ua!==ub) return ua?1:-1;
+        return tb-ta;
+      });
   }
   /* Dates are written by hand, so read them loosely: a Sinhala or English month
      name with a year, or a plain 2024/09/10. Anything unreadable sinks to the
