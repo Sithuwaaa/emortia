@@ -971,6 +971,38 @@
     if (error) throw new Error(tidyAttend(error.message));
   }
 
+  /* An entry the office typed rather than a photograph somebody sent.
+
+     The crews do not always send one, and a sheet that can only record what
+     arrived by camera records the days the camera was used rather than the
+     days people worked. So: the same table, the same shape, one row per
+     person per stamp - what differs is that photo_data is empty and the
+     reference says who entered it instead of which device filed it.
+
+     Deliberately one row per person rather than one row naming several. A
+     photograph is a single fact about several people; a typed entry is a
+     separate claim about each, made at a different moment, and it should be
+     correctable one person at a time. */
+  async function attendManual(day, kind, personId, hhmm, by){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const t = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ''));
+    if (!t) throw new Error('A time like 09:05.');
+    const h = +t[1], m = +t[2];
+    if (h > 23 || m > 59) throw new Error('A time like 09:05.');
+    const when = new Date(day + 'T00:00:00');
+    when.setHours(h, m, 0, 0);
+    const id = 'M' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const { error } = await c.from('attend_records').insert({
+      id, day, kind, taken_at: when.toISOString(), geo: '',
+      photo: '', photo_data: '', members: [personId],
+      /* M: is read back by the page the way D: is - it is what makes a typed
+         row say "entered by the office" rather than name a phone */
+      ref: 'M:' + (by || 'office')
+    });
+    if (error) throw new Error(tidyAttend(error.message));
+    return id;
+  }
+
   /* ---------------------------------------------------- the device link
 
      No session on this path. The token in the address is checked inside a
@@ -1242,7 +1274,7 @@
                 attendFile, attendName, attendSubscribe,
                 attendSubmit, attendDeviceToday, attendDevices, attendMakeDevice, attendDropDevice,
                 attendLeave, attendSetLeave, attendRange, attendLeaveRange,
-                attendSetLeaveRange, attendClearLeaveRange,
+                attendSetLeaveRange, attendClearLeaveRange, attendManual,
                 attendClearPhoto, attendDropRecord, attendClearBefore,
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,

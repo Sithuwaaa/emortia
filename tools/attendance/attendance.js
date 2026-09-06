@@ -90,9 +90,18 @@
       /* still on site: clocked in, no photo out yet */
       if (i && !o) { status = status + ' · in'; }
 
+      /* A stamp the office typed is not the same evidence as a photograph, and
+         the sheet should not pretend otherwise. It counts identically - the
+         crews often do not send a picture and a day worked is a day worked -
+         but it says which it is, so a disputed row can be traced back to
+         either a face or a decision somebody made. */
+      var typed = function (u) { return !!u && /^M:/.test(u.ref || ''); };
+
       return {
         id: p.id, name: p.name, role: p.role || '',
         in: fmt(i && i.ts), out: fmt(o && o.ts),
+        inId: i ? i.id : '', outId: o ? o.id : '',
+        inTyped: typed(i), outTyped: typed(o),
         inGeo: i ? (i.geo || '—') : '—', outGeo: o ? (o.geo || '—') : '—',
         /* hours only when both ends exist - half a day is not a number */
         hours: i && o ? ((o.ts - i.ts) / 3600000).toFixed(2) : '—',
@@ -101,6 +110,20 @@
         leave: !!(mark && !i), note: mark ? (mark.note || '') : ''
       };
     });
+  }
+
+  /* Twenty-five names in one column is a list to be scrolled; the same names
+     under Office, Supervisor, Trainee and Field is a sheet somebody can find
+     their crew in. The roster is already ordered so the groups fall together,
+     so this only has to notice where one ends. */
+  function groupSheet(sheet) {
+    var out = [], last = null;
+    (sheet || []).forEach(function (r) {
+      var g = r.role || 'Everyone else';
+      if (!last || last.role !== g) { last = { role: g, rows: [] }; out.push(last); }
+      last.rows.push(r);
+    });
+    return out;
   }
 
   function stats(sheet, dayRecords) {
@@ -382,7 +405,7 @@
   return {
     pad: pad, dstr: dstr, hm: hm, minsOf: minsOf, fmt: fmt,
     lateAfter: lateAfter, refFor: refFor, ofDay: ofDay,
-    buildSheet: buildSheet, stats: stats, dateOpts: dateOpts,
+    buildSheet: buildSheet, groupSheet: groupSheet, stats: stats, dateOpts: dateOpts,
     deviceState: deviceState, hoursBetween: hoursBetween,
     toggleMember: toggleMember, exportRows: exportRows,
     monthDays: monthDays, monthEnd: monthEnd, monthStart: monthStart,

@@ -248,6 +248,49 @@ console.log('\none person, a month down');
   is('and his role',                /^Rigger · /.test(x.note), true);
 }
 
+console.log('\nwhat the office typed, and what the camera saw');
+{
+  /* The crews often do not send a photograph, so the office enters the time
+     itself. It counts the same - a day worked is a day worked - but the sheet
+     has to be able to say which of the two a row came from. */
+  const typed = RECS.concat([
+    { id:'m1', date:DAY, kind:'in',  ts:at(8,40), geo:'', members:['p4'], ref:'M:sithuwaaa' },
+    { id:'m2', date:DAY, kind:'out', ts:at(16,40), geo:'', members:['p4'], ref:'M:sithuwaaa' }
+  ]);
+  const sheet = A.buildSheet(PEOPLE, typed, DAY, LATE);
+  const sunil = sheet[3], nimal = sheet[0];
+  is('a typed stamp counts as present',   [sunil.present, sunil.status], [true, 'On time']);
+  is('and its hours add up like any other', sunil.hours, '8.00');
+  is('the sheet says it was typed',       [sunil.inTyped, sunil.outTyped], [true, true]);
+  is('a photographed one says it was not',[nimal.inTyped, nimal.outTyped], [false, false]);
+  is('and each stamp names its record',   [sunil.inId, sunil.outId], ['m1','m2']);
+  is('a row with nothing has neither',    [sheet[1].outId, sheet[1].outTyped], ['', false]);
+  /* a photograph outranks a typed entry only by being earlier, not by being a
+     photograph - the earliest clock-in is when they arrived either way */
+  const both = A.buildSheet(PEOPLE, typed.concat([
+    { id:'m3', date:DAY, kind:'in', ts:at(7,55), geo:'', members:['p1'], ref:'M:sithuwaaa' }
+  ]), DAY, LATE);
+  is('the earliest in wins whoever made it', [both[0].in, both[0].inTyped], ['07:55', true]);
+}
+
+console.log('\nthe sheet in groups');
+{
+  const roster = [
+    { id:'a1', name:'Nilruk', role:'Office',     sort:101 },
+    { id:'a2', name:'Sithara', role:'Office',    sort:102 },
+    { id:'b1', name:'SK Suranga', role:'Supervisor', sort:201 },
+    { id:'c1', name:'Athula', role:'Field',      sort:401 },
+    { id:'c2', name:'Kelum', role:'Field',       sort:402 }
+  ];
+  const g = A.groupSheet(A.buildSheet(roster, [], DAY, LATE));
+  is('one block per role, in roster order', g.map(x => x.role), ['Office','Supervisor','Field']);
+  is('and everybody lands in one',          g.map(x => x.rows.length), [2,1,2]);
+  is('the names keep their order',          g[0].rows.map(r => r.name), ['Nilruk','Sithara']);
+  is('a blank role is not a blank heading',
+     A.groupSheet([{ name:'X', role:'' }]).map(x => x.role), ['Everyone else']);
+  is('nothing groups into nothing',         A.groupSheet([]), []);
+}
+
 console.log('\nwhere a month ends');
 {
   /* The bug this replaces: the export asked the database for the 1st to the

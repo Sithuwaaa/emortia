@@ -123,10 +123,16 @@
      somebody's daily clerical job rather than the owner's record of something:
      naming faces on the attendance sheet, keeping the directory current.
 
-     EDITABLE is the whole of it, and it is a list rather than a rule because
-     the next tool added should have to be put on it deliberately. Device links
-     are not here and are not a tool: a link is a standing permission to file
-     attendance from a phone, and those stay with the owner.
+     EDITABLE is the whole of it - both what they may change and, since
+     migration 021, the whole of what they may reach. An admin is not staff for
+     reading purposes: staff read the entire tooway tier, which is site access
+     permissions, NIC numbers, mobiles, ESN records and the materials list, and
+     keeping two tools has never needed any of that.
+
+     It is a list rather than a rule because the next tool added should have to
+     be put on it deliberately. Device links are not here and are not a tool: a
+     link is a standing permission to file attendance from a phone, and those
+     stay with the owner.
 
      As everywhere else in this file, this decides what to draw. The policies
      in 020 decide what the database will actually accept. */
@@ -848,9 +854,18 @@
     if (tier === 'tooway') return isStaff();
     return isOwner();
   }
+  /* The tier is not the whole question once a role can be scoped to a couple
+     of tools. An office admin is staff for the tier and not for the tool: they
+     reach the two they keep and nothing else, which is what may_read() answers
+     in migration 021. Asked per feature here for the same reason. */
   function allowed(feature) {
     if (!feature) return false;
-    return mayReach(tierOf(feature));
+    var tier = tierOf(feature);
+    if (tier === 'public') return true;
+    if (isOwner()) return true;
+    if (tier !== 'tooway') return false;
+    if (isAdmin()) return EDITABLE.indexOf(feature) > -1;
+    return isStaff();
   }
   /* the async form, for a page deciding whether to open at all */
   function allow(feature) {

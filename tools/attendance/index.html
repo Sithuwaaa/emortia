@@ -161,7 +161,37 @@
     color:var(--muted);text-align:left;padding:9px 10px;border-bottom:2px solid var(--line2);white-space:nowrap}
   td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
   tbody tr:nth-child(even){background:var(--zebra)}
-  .num{font-variant-numeric:tabular-nums}
+  .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  /* the date and the clock, for a screen somebody stands in front of at nine */
+  .clockbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+    border:1px solid var(--line);border-radius:12px;background:var(--card);
+    padding:14px 18px;margin-bottom:16px}
+  .clockbar .dnum{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:19px;
+    letter-spacing:-.02em}
+  .clockbar .dsub{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .clockbar .clock{font-family:'Space Mono',monospace;font-size:30px;font-weight:700;
+    letter-spacing:-.02em;color:var(--accent);font-variant-numeric:tabular-nums}
+
+  /* a heading row per group, so twenty-five names read as four crews */
+  tr.grp td{background:var(--zebra);border-bottom:1px solid var(--line2);
+    font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);padding:11px 10px 7px}
+  tr.grp .grpn{float:right;letter-spacing:.1em;color:var(--dim)}
+  tbody tr.grp:nth-child(even){background:none}
+
+  /* the office's own entries, and the buttons that make them */
+  .typed{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:1px 4px;margin-left:6px;
+    vertical-align:2px}
+  .addt{font-size:12px;opacity:.6;border:1px dashed var(--line2);border-radius:7px;padding:3px 8px}
+  .addt:hover{opacity:1;border-color:var(--accent);border-style:solid}
+  .tw{margin-left:6px;font-size:11px;opacity:0;color:var(--muted)}
+  tr:hover .tw{opacity:.55}
+  .tw:hover{opacity:1;color:var(--bad)}
+  .ask input[type=time]{font:inherit;font-size:19px;font-family:'Space Mono',monospace;
+    color:var(--text);background:var(--bg);border:1px solid var(--line2);border-radius:9px;
+    padding:9px 11px;margin-top:12px;width:100%}
   .who .n{font-weight:600}
   .who .r{font-size:11.5px;color:var(--muted)}
   .geo{font-size:12px;color:var(--muted)}
@@ -259,6 +289,31 @@ function ask(steps){
   });
 }
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+
+/* The same box, with a time in it. Filled with the clock as it is now, because
+   the common case by far is somebody standing there marking a person in at the
+   moment they walk up; typing over it covers the other case. */
+function askTime(title, body, value){
+  return new Promise(resolve => {
+    const back = document.createElement('div');
+    back.className = 'ask-back';
+    back.innerHTML = '<div class="ask" role="dialog" aria-modal="true">' +
+      '<div class="step">The office is entering this</div>' +
+      '<h3>' + esc(title) + '</h3><p>' + esc(body) + '</p>' +
+      '<input type="time" id="askt" value="' + esc(value) + '" step="60">' +
+      '<div class="btns"><button class="no">Cancel</button>' +
+      '<button class="yes" style="background:var(--accent);border-color:var(--accent);color:var(--accent-ink)">Save the time</button></div></div>';
+    const close = v => { document.removeEventListener('keydown', key); back.remove(); resolve(v); };
+    const key = e => { if (e.key === 'Escape') close(null);
+      if (e.key === 'Enter') close(back.querySelector('#askt').value || null); };
+    back.querySelector('.no').onclick = () => close(null);
+    back.querySelector('.yes').onclick = () => close(back.querySelector('#askt').value || null);
+    back.onclick = e => { if (e.target === back) close(null); };
+    document.addEventListener('keydown', key);
+    document.body.appendChild(back);
+    const f = back.querySelector('#askt'); f.focus(); f.select && f.select();
+  });
+}
 
 /* -------------------------------------------------------------- an arrival
 
@@ -384,6 +439,23 @@ function bellPanel(day){
 function viewDay(sheet, day, st, late){
   const opts = A.dateOpts(A.dstr(new Date()), 10);
 
+  /* The date and the clock, because this is a screen somebody stands in front
+     of at nine in the morning and the first question is always which day it is
+     showing. It says "Today" only when it is: reading Tuesday's sheet on
+     Thursday and seeing a live clock tick would be the wrong thing entirely. */
+  const now = new Date(), today = A.dstr(now);
+  const shown = new Date(DAY + 'T12:00:00');
+  const clockBar = '<div class="clockbar"><div>' +
+    '<div class="dnum">' + esc(shown.toLocaleDateString(undefined,
+        { weekday:'long', day:'numeric', month:'long', year:'numeric' })) + '</div>' +
+    '<div class="dsub">' + (DAY === today
+      ? 'Today · the shift starts at ' + SHIFT + ', late after ' + A.hm(late)
+      : 'Looking back · today is ' + esc(now.toLocaleDateString(undefined,
+          { weekday:'long', day:'numeric', month:'long' }))) + '</div></div>' +
+    (DAY === today ? '<div class="clock" id="clock">' + esc(now.toLocaleTimeString(undefined,
+      { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })) + '</div>' : '') +
+    '</div>';
+
   let h = '<div class="obar"><div><div class="kicker">The office</div>' +
     '<h2>Name the faces, and the sheet fills itself in.</h2></div>' +
     '<div class="ctl"><select id="day" title="Which day the screen shows">' +
@@ -400,6 +472,7 @@ function viewDay(sheet, day, st, late){
     '<button class="btn" id="xls" style="min-height:0;padding:9px 14px">' +
       (BUSY ? 'Building…' : 'Export Excel') + '</button></div></div>';
 
+  h += clockBar;
   if (ERR) h += '<div class="empty">' + esc(ERR) + '</div>';
 
   h += '<div class="tiles">' +
@@ -444,12 +517,39 @@ function viewDay(sheet, day, st, late){
 
   h += '<div class="sec">Attendance sheet – ' +
     esc(new Date(DAY+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})) + '</div>';
+  /* A time cell. Either a stamp - with a mark on it if the office typed it
+     rather than a camera taking it - or, where there is nothing yet, the
+     button that puts one there. The crews often do not send a photograph, and
+     a sheet that can only record what arrived by camera records the days the
+     camera was used rather than the days people worked. */
+  const timeCell = (r, kind) => {
+    const at = kind === 'in' ? r.in : r.out;
+    const typed = kind === 'in' ? r.inTyped : r.outTyped;
+    if (at !== '—'){
+      return '<td class="num">' + at +
+        (typed ? '<span class="typed" title="Entered by the office, not photographed">typed</span>' : '') +
+        (window.CAN_EDIT ? '<button class="link tw" data-untime="' +
+          esc(kind === 'in' ? r.inId : r.outId) + '" title="Undo this entry">×</button>' : '') +
+        '</td>';
+    }
+    /* no clocking out before clocking in - an out with no in is not a shift,
+       it is a mistake waiting to be argued about */
+    if (!window.CAN_EDIT || (kind === 'out' && r.in === '—')) return '<td class="num">—</td>';
+    return '<td class="num"><button class="link addt" data-add="' + esc(r.id) +
+      '" data-kind="' + kind + '">+ ' + kind + '</button></td>';
+  };
+
   h += '<div class="wrap-x"><table><thead><tr><th>Staff</th><th>Clock in</th><th>In location</th>' +
     '<th>Clock out</th><th>Out location</th><th>Hours</th><th style="text-align:right">Status</th></tr></thead><tbody>' +
-    (sheet.length ? sheet.map(r =>
+    (sheet.length ? A.groupSheet(sheet).map(g =>
+      /* twenty-five names in one column is a list to scroll; the same names
+         under Office, Supervisor, Trainee and Field is a sheet to read */
+      '<tr class="grp"><td colspan="7">' + esc(g.role) + ' – ' + g.rows.length +
+      '<span class="grpn">' + g.rows.filter(r => r.present).length + ' in</span></td></tr>' +
+      g.rows.map(r =>
       '<tr><td class="who"><div class="n">'+esc(r.name)+'</div><div class="r">'+esc(r.role)+'</div></td>' +
-      '<td class="num">'+r.in+'</td><td class="geo">'+esc(r.inGeo)+'</td>' +
-      '<td class="num">'+r.out+'</td><td class="geo">'+esc(r.outGeo)+'</td>' +
+      timeCell(r, 'in') + '<td class="geo">'+esc(r.inGeo)+'</td>' +
+      timeCell(r, 'out') + '<td class="geo">'+esc(r.outGeo)+'</td>' +
       '<td class="num">'+r.hours+'</td>' +
       '<td style="text-align:right"><span class="tag '+r.tagClass+'">'+esc(r.status)+'</span>' +
       /* only where it can mean anything: somebody who was photographed was
@@ -458,12 +558,14 @@ function viewDay(sheet, day, st, late){
         '<button class="link lv" data-lv="'+esc(r.id)+'" data-on="'+(r.leave?'1':'0')+'">' +
         (r.leave ? 'not on leave' : 'on leave') + '</button>') +
       (r.leave && r.note ? '<div class="geo" style="margin-top:3px">'+esc(r.note)+'</div>' : '') +
-      '</td></tr>').join('')
+      '</td></tr>').join('')).join('')
       : '<tr><td colspan="7" class="empty">No names on the roster yet.</td></tr>') +
     '</tbody></table></div>';
-  h += '<div class="foot"><span>A row fills in only from a photo somebody has named. ' +
-    'Late is any clock-in after ' + A.hm(late) + '. ' +
-    (st.leave ? st.leave + ' on leave, ' : '') + st.absent + ' unaccounted for.</span></div>';
+  const nTyped = sheet.filter(r => r.inTyped || r.outTyped).length;
+  h += '<div class="foot"><span>A row fills in from a photo somebody has named, or from a time ' +
+    'the office entered where no photo came. Late is any clock-in after ' + A.hm(late) + '. ' +
+    (st.leave ? st.leave + ' on leave, ' : '') + st.absent + ' unaccounted for' +
+    (nTyped ? ', ' + nTyped + ' entered by hand' : '') + '.</span></div>';
   return h;
 }
 
@@ -600,6 +702,8 @@ function viewLinks(){
    "Janaka crew phone" is something somebody in the office can act on and
    d1 is not. A photo the office filed itself carries no device at all. */
 function deviceOf(u){
+  var t = /^M:(.*)$/.exec(u.ref || '');
+  if (t) return 'entered by ' + (t[1] || 'the office');
   var m = /^D:([^:]+):/.exec(u.ref || '');
   if (!m) return u.ref || 'filed from the office';
   var d = DEVICES.find(function(x){ return x.id === m[1]; });
@@ -659,6 +763,45 @@ function wireOffice(sheet, late){
     const parts = b.dataset.lvdrop.split('|');
     try { await window.DB.attendClearLeaveRange(parts[1].split(','), parts[0]);
       await refresh(); toast('Leave taken off'); }
+    catch (e){ toast(e.message, 5000); }
+  });
+
+  /* A time the office enters, for the days no photograph came. */
+  document.querySelectorAll('[data-add]').forEach(b => b.onclick = async () => {
+    const p = PEOPLE.find(x => x.id === b.dataset.add) || {};
+    const kind = b.dataset.kind;
+    const now = new Date();
+    const at = await askTime(
+      (kind === 'in' ? 'Clock ' : 'Clock ') + kind + ' – ' + (p.name || ''),
+      'No photograph came for this, so the time is yours. It counts on the sheet exactly like a ' +
+      'photographed one, and the row will say it was typed.',
+      A.pad(now.getHours()) + ':' + A.pad(now.getMinutes()));
+    if (!at) return;
+    /* signed by whoever entered it, so a disputed row names a person rather
+       than "the office" - the same way a photographed one names a phone */
+    const by = (window.Access && Access.currentUser && Access.currentUser()) || 'office';
+    try { await window.DB.attendManual(DAY, kind, b.dataset.add, at, by);
+      await refresh(); toast(p.name + ' – ' + kind + ' at ' + at); }
+    catch (e){ toast(e.message, 5000); }
+  });
+  /* and undoing one. A typed entry is a decision somebody made, so taking it
+     back is one question rather than two - it is not evidence being deleted. */
+  document.querySelectorAll('[data-untime]').forEach(b => b.onclick = async () => {
+    const rec = RECS.find(r => r.id === b.dataset.untime);
+    const typed = rec && /^M:/.test(rec.ref || '');
+    const ok = typed
+      ? confirm('Take this entry off the sheet?\n\nIt was typed by the office, not photographed.')
+      : await ask([
+          { title: 'This stamp came from a photograph.',
+            body: 'Removing it here would delete the record and take every name ticked on that ' +
+                  'photo with it. The photo itself is on this page, above the sheet.',
+            no: 'Cancel', yes: 'I know, go on' },
+          { title: 'The whole record goes, not just this row.',
+            body: 'Anybody else named in the same photograph loses this stamp too. There is no undo.',
+            no: 'No, keep it', yes: 'Delete the record' }
+        ]);
+    if (!ok) return;
+    try { await window.DB.attendDropRecord(b.dataset.untime); await refresh(); toast('Taken off'); }
     catch (e){ toast(e.message, 5000); }
   });
 
@@ -914,6 +1057,18 @@ async function refresh(){
   SEEN = ids;
   paint();
 }
+
+/* The clock ticks by writing into the one element, not by painting the page:
+   a repaint every second would close a dialog, drop a half-typed name and
+   fight whatever the cursor is over. It also notices midnight, when the sheet
+   on screen quietly stops being today's. */
+setInterval(() => {
+  const el = $('clock');
+  if (el) el.textContent = new Date().toLocaleTimeString(undefined,
+    { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+  const today = A.dstr(new Date());
+  if (DAY !== today && el){ DAY = today; refresh(); }   // only when it was today a moment ago
+}, 1000);
 
 paint();
 refresh();
