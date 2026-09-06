@@ -161,7 +161,21 @@
     if (!Array.isArray(l)) return null;             // undefined: anyone with an account
     return l.map(function (n) { return String(n).trim().toLowerCase(); });
   }
-  function mayUse(name, email) {
+  /* An account carrying a role in the database may sign in, whatever the list
+     says. The list was written when there was no role column and it was the
+     only answer to "who?"; now profiles.role is that answer, and it is the one
+     the policies read. Keeping the list as the only gate meant every account
+     added had to be added twice - once in Supabase and once in a file that has
+     to be committed and deployed - and the second half was forgotten, which is
+     why an admin with the role correctly set was told the account cannot open
+     this site.
+
+     A role is still only ever set by the owner in SQL, so this is not a way in;
+     it is the same permission, read from the place that already holds it. An
+     account with no role is unchanged: the list decides, and off the list it
+     opens nothing. */
+  function mayUse(name, email, role) {
+    if (role === 'staff' || role === 'admin' || role === 'owner') return true;
     var list = allowList();
     if (!list) return true;
     var n = String(name || '').trim().toLowerCase();
@@ -292,7 +306,7 @@
            and typing the wrong password look and take the same. Signed out
            again on the way past: an account that may not be here should not
            be left holding a Supabase session either. */
-        if (!mayUse(who, email)) {
+        if (!mayUse(who, email, role)) {
           try { if (window.DB && window.DB.signOut) await window.DB.signOut(); } catch (e3) {}
           return { ok: false, error: NOT_ALLOWED };
         }
@@ -792,7 +806,12 @@
      same string in both places rather than a boolean here translated into a
      policy there. This is the copy of the answer, not the answer: the
      policies in migration 015 are what actually refuse. */
-  var TIERS = ['public', 'tooway', 'mine'];
+  /* Four audiences, widest first. 'admin' sits between the team and me: the
+     office admins reach it and the team does not, which is the one shape the
+     other three could not express. It is narrower than tooway despite the
+     admin also keeping two tooway tools - those two are named in EDITABLE and
+     are a separate thing from the tier. */
+  var TIERS = ['public', 'tooway', 'admin', 'mine'];
   function okTier(t) { return TIERS.indexOf(String(t)) > -1 ? String(t) : null; }
 
   /* Something not in the table is not a mistake to be forgiven. A tool page
@@ -852,6 +871,7 @@
   function mayReach(tier) {
     if (tier === 'public') return true;
     if (tier === 'tooway') return isStaff();
+    if (tier === 'admin') return isOwner() || isAdmin();
     return isOwner();
   }
   /* The tier is not the whole question once a role can be scoped to a couple
@@ -863,9 +883,12 @@
     var tier = tierOf(feature);
     if (tier === 'public') return true;
     if (isOwner()) return true;
-    if (tier !== 'tooway') return false;
-    if (isAdmin()) return EDITABLE.indexOf(feature) > -1;
-    return isStaff();
+    /* An admin reaches the admin tier, and the two tooway tools that are
+       theirs to keep. Nothing else - not the rest of the tooway tier, which
+       is where the NIC numbers and the site permissions are. */
+    if (isAdmin()) return tier === 'admin' || EDITABLE.indexOf(feature) > -1;
+    if (tier === 'tooway') return isStaff();
+    return false;
   }
   /* the async form, for a page deciding whether to open at all */
   function allow(feature) {
@@ -982,6 +1005,7 @@
     /* the three tiers, and who the person holding the page is under them */
     TIERS: TIERS, tierOf: tierOf, defaultTier: defaultTier, mayReach: mayReach,
     isStaff: isStaff, myRole: myRole, isAdmin: isAdmin, mayEdit: mayEdit,
+    mayUse: mayUse,
     EDITABLE: EDITABLE,
     FEATURES: FEATURES, defaultOf: defaultOf, rememberLocks: remember,
     grouped: grouped, groupOf: groupOf, byName: byName,

@@ -632,14 +632,43 @@ function viewTeam(){
       '<input type="text" id="pr" placeholder="Role (optional)" style="min-width:150px">' +
       '<button class="btn" id="padd" style="min-height:0;padding:9px 14px">Add to the roster</button></div>';
   }
-  h += '<div class="chips">' + (PEOPLE.length ? PEOPLE.map(p =>
-      '<span class="chip" style="cursor:default">' + esc(p.name) +
-      (p.role ? ' <span style="opacity:.6">· '+esc(p.role)+'</span>' : '') +
-      (window.CAN_EDIT ? ' <button class="link" data-rm="'+esc(p.id)+'" title="Take off the roster" style="color:inherit;opacity:.5">×</button>' : '') +
-      '</span>').join('')
-    : '<span class="empty" style="padding:0">Nobody yet. ' +
-      (window.CAN_EDIT ? 'Add the first name above.' : 'Ask Sithara to add the team.') + '</span>') + '</div>';
-  h += '<div class="foot"><span>Taking somebody off marks them away rather than deleting them – ' +
+  /* The same table as the sheet, grouped the same way. Twenty-five chips
+     wrapped across three lines is a tag cloud: it has no columns to read down,
+     the eye cannot find a name in it, and the role is a footnote in brackets
+     rather than something you can scan. A roster is a list of people, so it is
+     a list. The counts here are for the day on screen, which is what makes
+     this a roster somebody reads rather than a form they fill in. */
+  const seenOf = id => RECS.filter(r => (r.members || []).indexOf(id) > -1).length;
+  const sheet = A.buildSheet(PEOPLE, RECS, DAY, A.lateAfter(SHIFT, GRACE), LEAVE);
+  const stateOf = {};
+  sheet.forEach(r => { stateOf[r.id] = r; });
+
+  /* No column for the group: groupSheet splits on exactly that field, so it
+     would repeat the heading it sits under on every single row. */
+  h += '<div class="wrap-x"><table><thead><tr><th>Name</th>' +
+    '<th>Today</th><th>In photos today</th>' +
+    (window.CAN_EDIT ? '<th style="text-align:right">On the roster</th>' : '') +
+    '</tr></thead><tbody>' +
+    (PEOPLE.length ? A.groupSheet(sheet).map(g =>
+      '<tr class="grp"><td colspan="' + (window.CAN_EDIT ? 4 : 3) + '">' + esc(g.role) +
+      '<span class="grpn">' + plural(g.rows.length, 'person', 'people') + '</span></td></tr>' +
+      g.rows.map(r => {
+        const st = stateOf[r.id] || {};
+        const n = seenOf(r.id);
+        return '<tr><td class="who"><div class="n">' + esc(r.name) + '</div></td>' +
+          '<td><span class="tag ' + (st.tagClass || 'tag-out') + '">' + esc(st.status || 'Absent') + '</span></td>' +
+          '<td class="num geo">' + (n || '—') + '</td>' +
+          (window.CAN_EDIT ? '<td style="text-align:right">' +
+            '<button class="link" data-rm="' + esc(r.id) + '">take off</button></td>' : '') +
+          '</tr>';
+      }).join('')).join('')
+      : '<tr><td colspan="4" class="empty">Nobody yet. ' +
+        (window.CAN_EDIT ? 'Add the first name above.' : 'Ask Sithara to add the team.') +
+        '</td></tr>') +
+    '</tbody></table></div>';
+  h += '<div class="foot"><span>Today and the photo count are for ' +
+    esc(new Date(DAY + 'T12:00:00').toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'long' })) +
+    ', the day the sheet is showing. Taking somebody off marks them away rather than deleting them – ' +
     'a name removed outright would take every past absence of that person with it.</span></div>';
   return h;
 }

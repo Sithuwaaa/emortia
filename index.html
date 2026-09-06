@@ -1449,7 +1449,15 @@ class Component extends DCLogic {
        switch is thrown on another device, so the tabs match without a reload. */
     this._readLocks = () => {
       if(!window.DB || !window.DB.featureLocks) return;
-      window.DB.featureLocks().then(locks => this.setState({locks})).catch(()=>{});
+      window.DB.featureLocks().then(locks => {
+        /* Access keeps its own memoised copy and every tool page reads that
+           one, so the answer this page draws cards from and the answer a tool
+           page opens on have to be the same object. Seeded here as well as in
+           setTier, or the first paint decides with whatever access.js had
+           cached from a previous visit. */
+        if (window.Access && Access.rememberLocks) Access.rememberLocks(locks);
+        this.setState({locks});
+      }).catch(()=>{});
     };
     this._readLocks();
     try { window.DB.onFeatureLocks && window.DB.onFeatureLocks(this._readLocks); } catch(e){}
@@ -2458,12 +2466,13 @@ class Component extends DCLogic {
     const TIERS = [
       ['public', 'Public', 'anyone at all, signed out included'],
       ['tooway', 'Tooway', 'the team, and me'],
+      ['admin',  'Admin',  'the office admins, and me – not the team'],
       ['mine',   'Mine',   'me alone']
     ];
     const row = ({ key, name, what, tier }) => {
       const at = (locks[key] && locks[key].tier) || tier || 'mine';
       const working = busy === key;
-      const said = (TIERS.find(t => t[0] === at) || TIERS[2]);
+      const said = (TIERS.find(t => t[0] === at) || TIERS[TIERS.length - 1]);
       return React.createElement('div',{key,
         style:{display:'flex',alignItems:'center',gap:'14px',padding:'13px 0',
           borderTop:'1px solid var(--line)',flexWrap:'wrap'}},
@@ -2472,7 +2481,8 @@ class Component extends DCLogic {
           React.createElement('div',{style:{color:'var(--dim)',fontSize:'12.5px',marginTop:'2px'}}, what),
           React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'10.5px',
             letterSpacing:'.1em',textTransform:'uppercase',marginTop:'6px',
-            color: at==='public' ? 'var(--accentB)' : at==='tooway' ? 'var(--ok)' : 'var(--mute)'}},
+            color: at==='public' ? 'var(--accentB)' : at==='tooway' ? 'var(--ok)'
+                 : at==='admin' ? 'var(--accent)' : 'var(--mute)'}},
             said[2])),
         React.createElement('div',{role:'radiogroup','aria-label':name+' – who can reach it',
           style:{display:'flex',gap:'2px',flexShrink:0,padding:'3px',borderRadius:'10px',
@@ -2503,8 +2513,11 @@ class Component extends DCLogic {
       React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:700,
         fontSize:'17px',marginBottom:'6px'}}, 'What the team can reach'),
       React.createElement('p',{style:{color:'var(--dim)',fontSize:'13.5px',lineHeight:1.6,margin:'0 0 4px'}},
-        'Three tiers. Public is readable with no account at all. Tooway is anyone ' +
-        'carrying the staff role, and me. Mine is me alone. Writing stays mine at ' +
+        'Four audiences, widest first. Public is readable with no account at all. ' +
+        'Tooway is anyone carrying the staff role, and me. Admin is the office admins ' +
+        'and me, with the team shut out – narrower than Tooway, not wider. Mine is me ' +
+        'alone. An office admin also keeps Daily Attendance and Team Directory wherever ' +
+        'those two sit, because that is what the role is for. Writing stays mine at ' +
         'every tier – opening something lets people read and copy it, never rewrite it. ' +
         'Each one applies everywhere at once, and it is the database that refuses, ' +
         'not the page: a card that is not drawn is a tidy list, but the row behind ' +
@@ -2832,11 +2845,18 @@ class Component extends DCLogic {
        it. And it is the policies that refuse - a tab not drawn is a tidy nav,
        not a lock; the row behind it is out of reach either way. */
     const A0 = window.Access;
-    const staff = s.isOwner || !!(A0 && A0.isStaff && A0.isStaff());
     const tierOf = f => (s.locks && s.locks[f] && s.locks[f].tier)
       || (A0 && A0.defaultTier ? A0.defaultTier(f) : 'mine');
-    const may = f => { const t = tierOf(f);
-      return t === 'public' ? true : t === 'tooway' ? staff : !!s.isOwner; };
+    /* Asked of Access rather than worked out again here. This list used to
+       decide with its own copy of the rule - tier plus isStaff - and an office
+       admin is staff by that rule, so the page offered thirteen tools where
+       the database would open two. One answer, in one place, and the cards
+       drawn are the cards that work. */
+    const may = f => {
+      if (A0 && A0.allowed) return A0.allowed(f);
+      const t = tierOf(f);                       // access.js missing: the careful answer
+      return t === 'public' ? true : !!s.isOwner;
+    };
 
     const TOOLGROUPS = (()=>{
       const A = window.Access;
