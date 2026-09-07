@@ -549,6 +549,62 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 /* The shift is a share of the image's own height and the image is always held
    larger than its frame, so the frame is covered at every point of the cycle:
    at the far end the shift is 5% against 6.9% of overhang. */
+/* Ken Burns for a still photograph, the slow crossfade under the shuffle
+   hero, and the arrow on the Again button. */
+@keyframes kb{0%{transform:scale(1.04)}100%{transform:scale(1.15)}}
+@keyframes swap{0%,42%{opacity:1}58%,100%{opacity:0}}
+@keyframes turn{to{transform:rotate(360deg)}}
+
+/* The three features. Fixed heights in the design; here they are a minimum,
+   so a long Sinhala title grows the card instead of being clipped by it. */
+.hm-feat3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:46px;}
+.hm-feat{position:relative;border-radius:16px;overflow:hidden;min-height:370px;
+  display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer;
+  transition:transform .28s cubic-bezier(.2,.8,.3,1),box-shadow .28s ease;}
+.hm-feat:hover{transform:translateY(-3px);box-shadow:0 26px 60px -30px rgba(0,0,0,.95);}
+.hm-feat .in{position:relative;display:flex;flex-direction:column;gap:14px;padding:26px;}
+.hm-feat .kick{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;}
+.hm-feat .ttl{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(30px,3.4vw,40px);
+  line-height:1;letter-spacing:-.04em;text-wrap:balance;}
+.hm-feat .pill{width:fit-content;display:inline-flex;align-items:center;gap:9px;font-weight:700;
+  font-size:14.5px;padding:12px 22px;border-radius:999px;white-space:nowrap;}
+.hm-shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 24s ease-in-out infinite alternate;}
+.hm-veil{position:absolute;inset:0;background:linear-gradient(178deg,rgba(23,13,16,.18) 0%,rgba(23,13,16,.52) 52%,rgba(23,13,16,.92) 100%);}
+
+/* One at random: two sleeves crossfading behind a title that changes with them. */
+.hm-shuf{position:relative;margin-top:16px;border:1px solid #4a2632;border-radius:16px;overflow:hidden;
+  min-height:460px;display:flex;flex-direction:column;justify-content:flex-end;}
+.hm-shuf .in{position:relative;display:flex;flex-direction:column;gap:16px;padding:clamp(20px,3vw,26px);}
+.hm-shuf .ttl{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+  font-size:clamp(34px,5.4vw,56px);line-height:.98;letter-spacing:-.045em;
+  text-shadow:0 8px 40px rgba(0,0,0,.7);text-wrap:balance;}
+
+/* The about card and the social band, folded into one thing. */
+.hm-about{margin-top:16px;position:relative;border:1px solid #2a2547;border-radius:16px;overflow:hidden;
+  background:#131024;display:grid;grid-template-columns:1fr 132px;min-height:380px;}
+.social-rail{width:52px;height:52px;border-radius:50%;border:1px solid var(--line2);
+  background:rgba(255,255,255,.02);display:grid;place-items:center;text-decoration:none;flex-shrink:0;
+  transition:border-color .18s ease,background .18s ease,transform .18s ease;}
+.social-rail:hover{border-color:var(--hb);background:var(--hbg);transform:translateY(-2px);}
+.social-rail .sp-colour{opacity:0;position:absolute;transition:opacity .18s ease;}
+.social-rail:hover .sp-colour{opacity:1;}
+.social-rail:hover .sp-mono{opacity:0;}
+.social-rail .sp-mark{position:relative;display:grid;place-items:center;color:var(--dim);}
+.social-rail .sp-mono{transition:opacity .18s ease;}
+.hm-about .rail{position:relative;border-left:1px solid #2a2547;background:var(--surface2);
+  padding:26px 0;display:flex;flex-direction:column;align-items:center;gap:16px;}
+@media (max-width:860px){
+  .hm-feat3{grid-template-columns:1fr;}
+  .hm-feat{min-height:300px;}
+  .hm-shuf{min-height:400px;}
+  .hm-about{grid-template-columns:1fr;}
+  .hm-about .rail{border-left:none;border-top:1px solid #2a2547;flex-direction:row;flex-wrap:wrap;
+    justify-content:center;padding:20px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .hm-shot,.hm-swap{animation:none !important;}
+}
+
 @keyframes wallFloat{
   0%,100%{transform:translate3d(0,0,0)   scale(1.06)}
   50%    {transform:translate3d(0,-5%,0) scale(1.16)}}
@@ -727,167 +783,93 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </div>
       </div>
 
-      <!-- 2a · marquee ticker -->
-      <div style="margin-top:34px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface2);overflow:hidden;padding:15px 0;">
-        <div class="hm-ticker" style="display:flex;width:max-content;animation:tickerRun 30s linear infinite;">
-          <div style="display:flex;gap:30px;flex-shrink:0;align-items:center;padding-right:30px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:clamp(18px,2.2vw,26px);letter-spacing:-0.02em;white-space:nowrap;color:var(--text2);">
-            <sc-for list="{{ hmTicker }}" as="tk" hint-placeholder-count="6"><span style="display:flex;align-items:center;gap:30px;">{{ tk }}<span style="color:var(--accent);font-size:12px;">&#9679;</span></span></sc-for>
-          </div>
-          <div style="display:flex;gap:30px;flex-shrink:0;align-items:center;padding-right:30px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:clamp(18px,2.2vw,26px);letter-spacing:-0.02em;white-space:nowrap;color:var(--text2);" aria-hidden="true">
-            <sc-for list="{{ hmTicker }}" as="tk2" hint-placeholder-count="6"><span style="display:flex;align-items:center;gap:30px;">{{ tk2 }}<span style="color:var(--accent);font-size:12px;">&#9679;</span></span></sc-for>
-          </div>
-        </div>
-      </div>
+      <!-- 7a · the three things that are newest: a song, a tool, a poem.
+           Each card is a door, and each names the thing behind it rather than
+           the section it lives in - "Thissema", not "Music". -->
+      <div class="hm-feat3">
 
-      <!-- 1a · now / next console -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:46px;">
-
-        <div class="hm-card" onClick="{{ nav.music }}" style="--hmRGB:209,88,115;position:relative;border:1px solid #4a2632;border-radius:12px;background:#1e1014;overflow:hidden;cursor:pointer;">
-          <div style="display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.22);">
-            <span style="width:7px;height:7px;border-radius:50%;background:#e87a94;flex-shrink:0;animation:termLed 1.6s ease-in-out infinite;"></span>
-            <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.1em;color:var(--dim);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">Now spinning</span>
-          </div>
-          <div style="padding:16px 14px 18px;display:flex;flex-direction:column;gap:11px;">
-            <div style="display:inline-block;height:1.6em;overflow:hidden;vertical-align:bottom;font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.6em;color:var(--text);">
-              <div style="animation:termRoll 5.4s ease-in-out infinite;">
-                <div>play --last</div>
-                <div style="color:#e87a94;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">&#9654; {{ curTitle }}</div>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:34px;line-height:1;color:#d15873;">{{ hmSongCount }}</span>
-              <span style="font-size:13.5px;color:var(--dim);line-height:1.35;">{{ hmCatSummary }}</span>
-            </div>
-            <div style="height:1px;background:#4a2632;"></div>
-            <sc-for list="{{ hmTrackList }}" as="htr" hint-placeholder-count="3">
-              <div style="display:flex;align-items:center;gap:9px;font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);"><span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:{{ htr.dot }};"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ htr.name }}</span></div>
-            </sc-for>
+        <div class="hm-feat" onClick="{{ nav.music }}" style="border:1px solid #4a2632;">
+          <sc-if value="{{ hmNewArtReady }}" hint-placeholder-val="{{ true }}">
+            {{ hmNewShot }}
+          </sc-if>
+          <sc-if value="{{ hmNewNoArt }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;background:{{ hmNewTone }};display:grid;place-items:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:86px;color:rgba(247,237,240,.16);">{{ hmNewInitial }}</div>
+          </sc-if>
+          <div class="hm-veil"></div>
+          <div class="in">
+            <div class="kick" style="color:#d15873;">Newest release</div>
+            <div class="ttl">{{ hmNewTitle }}</div>
+            <button class="pill" onClick="{{ hmPlayNewest }}" style="background:var(--accent);color:#f7edf0;border:none;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;">
+              <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="7,4 20,12 7,20" fill="currentColor"></polygon></svg> Play it now
+            </button>
           </div>
         </div>
 
-        <sc-if condition="{{ showJournal }}">
-        <div class="hm-card" onClick="{{ nav.poetry }}" style="--hmRGB:201,149,74;position:relative;border:1px solid #453518;border-radius:12px;background:#1c1610;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;">
-          <div style="display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.22);">
-            <span style="width:7px;height:7px;border-radius:50%;background:#dfae63;flex-shrink:0;animation:termLed 1.6s ease-in-out .4s infinite;"></span>
-            <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.1em;color:var(--dim);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">Newest poem</span>
-          </div>
-          <div style="padding:16px 14px 18px;display:flex;flex-direction:column;gap:11px;flex:1;">
-            <div style="display:inline-block;height:1.6em;overflow:hidden;vertical-align:bottom;font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.6em;color:var(--text);">
-              <div style="animation:termRoll 5.4s ease-in-out .4s infinite;">
-                <div>open කවිය</div>
-                <div style="color:#dfae63;">&#9654; {{ hmPoemCount }} poems</div>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:34px;line-height:1;color:#dfae63;">{{ hmPoemCount }}</span>
-              <span style="font-size:13.5px;color:var(--dim);line-height:1.35;">poems in the journal</span>
-            </div>
-            <div style="height:1px;background:#453518;"></div>
-            <sc-for list="{{ hmPoemList }}" as="hp" hint-placeholder-count="3">
-              <div style="display:flex;align-items:baseline;gap:9px;min-width:0;">
-                <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:{{ hp.dot }};"></span>
-                <span style="font-family:'EB Garamond',serif;font-size:16.5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ hp.title }}</span>
-              </div>
-            </sc-for>
+        <!-- Named only when there is one this visitor can actually open. The
+             mockup had a tool that does not exist yet; a door onto a 404 is
+             worse than no door. -->
+        <sc-if value="{{ hmToolShow }}" hint-placeholder-val="{{ true }}">
+        <div class="hm-feat" onClick="{{ hmToolGo }}" style="border:1px solid #1c3a42;background:radial-gradient(90% 120% at 80% 12%,#123844 0%,#0e1a1e 64%);">
+          <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(31,151,168,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(31,151,168,.09) 1px,transparent 1px);background-size:30px 30px;"></div>
+          <div style="position:absolute;right:-56px;top:-56px;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(63,189,208,.30),transparent 68%);filter:blur(24px);"></div>
+          <div class="in">
+            <div class="kick" style="color:#3fbdd0;">Latest tool</div>
+            <div class="ttl">{{ hmToolName }}</div>
+            <span class="pill" style="background:#1f97a8;color:#0e1a1e;">Open it &#8594;</span>
           </div>
         </div>
         </sc-if>
 
-        <div class="hm-card" onClick="{{ nav.tools }}" style="--hmRGB:31,151,168;position:relative;border:1px solid #1c3a42;border-radius:12px;background:#0e1a1e;overflow:hidden;cursor:pointer;">
-          <div style="display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid #1c3a42;background:rgba(0,0,0,.22);">
-            <span style="width:7px;height:7px;border-radius:50%;background:#3fbdd0;flex-shrink:0;animation:termLed 1.6s ease-in-out .8s infinite;"></span>
-            <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.1em;color:var(--dim);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">The office side</span>
-          </div>
-          <div style="padding:16px 14px 18px;display:flex;flex-direction:column;gap:11px;">
-            <div style="display:inline-block;height:1.6em;overflow:hidden;vertical-align:bottom;font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.6em;color:var(--text);">
-              <div style="animation:termRoll 5.4s ease-in-out .8s infinite;">
-                <div>run --tools</div>
-                <div style="color:#3fbdd0;">&#9654; {{ hmToolCount }} utilities</div>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:34px;line-height:1;color:#3fbdd0;">{{ hmToolCount }}</span>
-              <span style="font-size:13.5px;color:var(--dim);line-height:1.35;">small utilities, built for real work</span>
-            </div>
-            <div style="height:1px;background:#1c3a42;"></div>
-            <sc-for list="{{ hmTools }}" as="ht" hint-placeholder-count="3">
-              <div style="display:flex;align-items:center;gap:9px;font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);"><span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:{{ ht.dot }};"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ht.name }}</span></div>
-            </sc-for>
+        <sc-if value="{{ showJournal }}" hint-placeholder-val="{{ true }}">
+        <div class="hm-feat" onClick="{{ nav.poetry }}" style="border:1px solid #453518;background:radial-gradient(95% 120% at 18% 8%,#2f2211 0%,#1c1610 62%);">
+          <div style="position:absolute;right:-18px;top:6px;font-family:'EB Garamond',serif;font-size:120px;line-height:1;color:rgba(223,174,99,.10);" aria-hidden="true">කවි</div>
+          <div class="in">
+            <div class="kick" style="color:#c9954a;">Latest poem</div>
+            <div class="ttl" style="font-family:'UN-Agni','EB Garamond',serif;font-weight:400;font-size:clamp(28px,3.2vw,38px);line-height:1.14;letter-spacing:0;">{{ hmPoemTitle }}</div>
+            <span class="pill" style="background:#c9954a;color:#1c1610;">Read it &#8594;</span>
           </div>
         </div>
+        </sc-if>
 
       </div>
 
-      <!-- 1a · newest release feature -->
-      <div style="margin-top:46px;border:1px solid var(--line2);border-radius:18px;background:var(--surface2);overflow:hidden;display:grid;grid-template-columns:minmax(200px,290px) 1fr;" class="hm-feature">
-        <div style="position:relative;min-height:260px;background:{{ hmNewTone }};">
-          <sc-if value="{{ hmNewArtReady }}" hint-placeholder-val="{{ false }}">
-            {{ hmNewArtImg }}
-          </sc-if>
-          <sc-if value="{{ hmNewNoArt }}" hint-placeholder-val="{{ true }}">
-            <div style="position:absolute;inset:0;display:grid;place-items:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:86px;color:rgba(247,237,240,.16);">{{ hmNewInitial }}</div>
-          </sc-if>
-        </div>
-        <div style="padding:clamp(24px,3vw,34px) clamp(22px,3vw,36px);display:flex;flex-direction:column;justify-content:center;gap:13px;">
-          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);">Newest release</div>
-          <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(30px,4.4vw,44px);letter-spacing:-0.03em;line-height:1.02;">{{ hmNewTitle }}</div>
-          <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:18px;color:var(--dim);max-width:50ch;line-height:1.5;">The last one out of the room.</div>
-          <div style="display:flex;align-items:center;gap:16px;margin-top:8px;flex-wrap:wrap;">
-            <button onClick="{{ hmPlayNewest }}" style="display:inline-flex;align-items:center;gap:9px;background:var(--accent);color:var(--bg);border:none;font-weight:700;font-size:14.5px;padding:12px 20px;border-radius:999px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="opacity:0.88;">
-              <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="7,4 20,12 7,20" fill="var(--bg)"></polygon></svg> Play it now
+      <!-- 7a · one at random. A different sleeve every visit, because a
+           catalogue this size is easier to enter sideways than from the top. -->
+      <div class="hm-shuf">
+        {{ shufBackShot }}
+        {{ shufShot }}
+        <div class="hm-veil" style="background:linear-gradient(178deg,rgba(23,13,16,.22) 0%,rgba(23,13,16,.5) 50%,rgba(23,13,16,.92) 100%);"></div>
+        <div class="in">
+          <div class="kick" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#e87a94;">One at random</div>
+          <div class="ttl">{{ shufTitle }}</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <button onClick="{{ shufPlay }}" style="display:inline-flex;align-items:center;gap:9px;background:var(--accent);color:#f7edf0;border:none;font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="opacity:.88;">
+              <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="7,4 20,12 7,20" fill="currentColor"></polygon></svg> Play
             </button>
-            <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--faint);">{{ hmNewMeta }}</span>
+            <button onClick="{{ shufAgain }}" style="display:inline-flex;align-items:center;gap:9px;border:1px solid #51313c;background:rgba(23,13,16,.5);color:var(--text);font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="border-color:var(--accent);">
+              Again <span style="display:inline-block;animation:turn 3.4s linear infinite;">&#8635;</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- 1c · invitation, not inventory -->
-      <div style="margin-top:16px;border:1px solid var(--line2);border-radius:18px;background:var(--surface2);padding:clamp(24px,3vw,36px);">
-        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;">Since you were last here</div>
-        <div style="font-family:'EB Garamond',serif;font-size:clamp(22px,3vw,30px);line-height:1.4;margin:16px 0 28px;max-width:44ch;text-wrap:pretty;">{{ hmInviteLine }}</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
-          <sc-for list="{{ hmDoors }}" as="dr" hint-placeholder-count="3">
-            <div onClick="{{ dr.go }}" style="border:1px solid {{ dr.border }};border-radius:12px;background:{{ dr.bg }};padding:18px 20px;display:flex;flex-direction:column;gap:6px;cursor:pointer;" style-hover="opacity:0.82;">
-              <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:15px;">{{ dr.label }}</span>
-              <span style="font-family:'Space Mono',monospace;font-size:11.5px;color:{{ dr.tone }};">{{ dr.count }}</span>
-            </div>
-          </sc-for>
+      <!-- 7a · who is behind it, with everywhere else to find it. Two stacked
+           slabs in the old page; one thing here. -->
+      <div class="hm-about">
+        <div style="position:relative;overflow:hidden;">
+          <img src="media/portrait.webp" alt="Sithara Perera" width="760" height="950" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 14%;opacity:.55;animation:kb 28s ease-in-out infinite alternate;"></img>
+          <div style="position:absolute;inset:0;background:linear-gradient(100deg,rgba(19,16,36,.96) 10%,rgba(19,16,36,.74) 50%,rgba(19,16,36,.3) 100%);"></div>
+          <div style="position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;gap:13px;padding:clamp(22px,3vw,34px);max-width:60ch;">
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#8a7cf0;">The person making it</div>
+            <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(30px,4vw,40px);line-height:1;letter-spacing:-.04em;">Sithara Perera</div>
+            <div style="font-size:15.5px;line-height:1.7;color:var(--dim);text-wrap:pretty;max-width:52ch;">I write the songs, keep the poems, and build the tools &ndash; all of it ends up here, on one site, in one voice.</div>
+            <button onClick="{{ nav.about }}" style="width:fit-content;display:inline-flex;align-items:center;gap:9px;border:1px solid #4a3cb8;background:rgba(107,92,224,.18);color:var(--text);font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;white-space:nowrap;margin-top:4px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="background:rgba(107,92,224,.3);">More about me &#8594;</button>
+          </div>
         </div>
-      </div>
-
-      <!-- 1c · mood entry -->
-      <div style="margin-top:16px;border:1px solid var(--line2);border-radius:18px;background:var(--surface2);padding:clamp(20px,3vw,30px);">
-        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;color:#8a7cf0;text-transform:uppercase;">Come in by feeling</div>
-        <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(24px,3vw,30px);letter-spacing:-0.025em;margin-top:10px;">Pick a mood</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:20px;">
-          <sc-for list="{{ hmMoods }}" as="md" hint-placeholder-count="3">
-            <div class="hm-card" onClick="{{ md.go }}" style="--hmRGB:{{ md.rgb }};position:relative;border:1px solid {{ md.line }};border-radius:12px;padding:16px;cursor:pointer;overflow:hidden;background:{{ md.wash }};">
-              <div style="width:22px;height:22px;border-radius:6px;background:{{ md.color }};box-shadow:0 0 18px {{ md.glow }};"></div>
-              <div style="font-family:'EB Garamond',serif;font-size:20px;margin-top:11px;">{{ md.name }}</div>
-              <div style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.08em;color:var(--mute);margin-top:5px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ md.meta }}</div>
-            </div>
-          </sc-for>
+        <div class="rail">
+          <div style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);">Elsewhere</div>
+          {{ socialRail }}
         </div>
-      </div>
-
-      <!-- 2f · who's behind it -->
-      <div style="margin-top:46px;border:1px solid var(--line2);border-radius:18px;background:var(--surface2);padding:clamp(22px,3vw,34px);display:flex;gap:clamp(20px,3vw,34px);align-items:center;flex-wrap:wrap;">
-        <img src="media/portrait.webp" alt="Sithara Perera" width="760" height="950" loading="lazy" decoding="async" style="width:132px;height:160px;object-fit:cover;border-radius:14px;flex-shrink:0;filter:saturate(.85);box-shadow:0 18px 40px -18px rgba(0,0,0,.9);"></img>
-        <div style="flex:1;min-width:240px;">
-          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;color:#8a7cf0;text-transform:uppercase;">The person making it</div>
-          <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.025em;margin:10px 0 12px;">Sithara Perera</div>
-          <div style="color:var(--dim);font-size:15px;line-height:1.7;max-width:52ch;">I write the songs, keep the poems, and build the tools – all of it ends up here, on one site, in one voice.</div>
-          <div onClick="{{ nav.about }}" style="font-family:'Space Mono',monospace;font-size:12.5px;color:#8a7cf0;margin-top:16px;cursor:pointer;width:fit-content;white-space:nowrap;" style-hover="color:#b3a8ff;">More about me &#8594;</div>
-        </div>
-      </div>
-
-      <!-- 2b · listen anywhere -->
-      <div style="margin-top:16px;border:1px solid var(--line2);border-radius:18px;background:var(--surface2);padding:30px clamp(20px,3vw,34px);display:flex;align-items:center;gap:28px;flex-wrap:wrap;">
-        <div style="min-width:200px;flex:1;">
-          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;">Wherever you listen</div>
-          <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:30px;letter-spacing:-0.025em;margin-top:10px;">Follow the sound</div>
-        </div>
-        {{ socialLinksLarge }}
       </div>
     </section>
     </sc-if>
@@ -1237,6 +1219,9 @@ class Component extends DCLogic {
       /* Poetry: which poem, which way it was turned, and a counter that
          alternates the A/B animations so a turn always moves. */
       ppIdx:0, ppDir:1, ppTick:0,
+      /* which sleeve the front page is offering, and the one it was offering
+         a moment ago, which stays underneath for the crossfade */
+      shuf:0, shufPrev:null,
       playing:false, idx:0, picked:false, progress:0, volume:pp.volume, muted:pp.muted, shuffle:pp.shuffle, repeat:pp.repeat,
       /* the queue and the words share one drawer, so one flag says which face
          of it is showing: '' shut, 'queue', or 'lyrics' */
@@ -1431,6 +1416,7 @@ class Component extends DCLogic {
   fmt(s){ s = Math.max(0, Math.floor(s)); const m=Math.floor(s/60); const ss=String(s%60).padStart(2,'0'); return m+':'+ss; }
 
   componentDidMount(){
+    this.rollShuffle();
     this.bindAudioEvents();
     /* The player used to open with the first track already loaded, so the
        bar read 'Harana Hitha' and row one sat highlighted before anyone had
@@ -1613,7 +1599,10 @@ class Component extends DCLogic {
       style:{objectFit:'cover',flexShrink:0,...style}});
   }
 
-  socials(large){
+  /* rail: the icon on its own in a circle, for the column beside the about
+     card where there is no room for a word and the mark is the word anyway.
+     The title attribute carries the name for anyone hovering or listening. */
+  socials(large, rail){
     const items=[
       {name:'YouTube', href:'https://www.youtube.com/@emortiamusic', hoverBorder:'rgba(255,0,0,.42)', hoverBg:'rgba(255,0,0,.07)',
         path:'M23.5 6.2a3 3 0 0 0-2.12-2.12C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.53A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .5 5.8 3 3 0 0 0 2.12 2.12c1.88.53 9.38.53 9.38.53s7.5 0 9.38-.53a3 3 0 0 0 2.12-2.12A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8zM9.55 15.57V8.43L15.82 12z',
@@ -1637,9 +1626,12 @@ class Component extends DCLogic {
         colour:[{d:'M12 0a12 12 0 1 0 0 24 12 12 0 0 0 0-24z', fill:'#ffffff'},
                  {d:'M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.09 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.09 24 18.1 24 12.07z', fill:'#1877F2'}]},
     ];
-    return React.createElement('div',{style:{display:'flex',gap:'10px',flexWrap:'wrap'}},
+    return React.createElement('div',{style:{display:'flex',gap:rail?'11px':'10px',flexWrap:'wrap',
+        flexDirection:rail?'column':'row',alignItems:'center'}},
       items.map(it=>React.createElement('a',{key:it.name, href:it.href, target:'_blank', rel:'noopener noreferrer',
-        title:it.name, className:large?'social-pill lg':'social-pill', style:{'--hb':it.hoverBorder, '--hbg':it.hoverBg}},
+        title:it.name, 'aria-label':it.name,
+        className:rail?'social-rail':(large?'social-pill lg':'social-pill'),
+        style:{'--hb':it.hoverBorder, '--hbg':it.hoverBg}},
         React.createElement('span',{className:'sp-mark'},
           React.createElement('svg',{className:'sp-mono', width:large?20:16, height:large?20:16, viewBox:'0 0 24 24', fill:'currentColor', 'aria-hidden':true},
             React.createElement('path',{d:it.path})),
@@ -1647,7 +1639,7 @@ class Component extends DCLogic {
             it.colour.map((c,ci)=>React.createElement('path',{key:ci, d:c.d, fill:c.fill,
               transform:(c.dx||c.dy)?('translate('+(c.dx||0)+','+(c.dy||0)+')'):undefined})))
         ),
-        it.name
+        rail ? null : it.name
       ))
     );
   }
@@ -1993,6 +1985,16 @@ class Component extends DCLogic {
      make the whole wall rise and fall as one slab, which reads as the page
      scrolling rather than as artwork breathing. The offsets are irrational
      multiples so no two tiles come back into line for a very long time. */
+  /* A different song every visit, and a different one again on request -
+     never the one already showing, or pressing Again would look broken. */
+  rollShuffle(){
+    const pool = this.tracks.filter(t => t.img).map(t => t.i);
+    if (!pool.length) return;
+    const others = pool.filter(i => i !== this.state.shuf);
+    const pick = (others.length ? others : pool)[Math.floor(Math.random() * (others.length || pool.length))];
+    this.setState({ shuf: pick, shufPrev: this.state.shuf });
+  }
+
   renderHeroWall(){
     const covers = this.tracks.filter(t=>t.img);
     if(!covers.length) return null;
@@ -2970,6 +2972,10 @@ class Component extends DCLogic {
       musicScene: s.page==='music' ? this.renderMusicBg() : null,
       dustField: this.dustField(),
       heroWall: this.renderHeroWall(),
+      /* the newest sleeve, filling its card rather than sitting in a column */
+      hmNewShot: this.artImg((this.tracks[this.tracks.length-1]||{}).img,
+        {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 16%'}, true),
+      socialRail: this.socials(true, true),
       heroWordmark: this.renderWordmark(),
       /* what the front page is playing, or that it is not */
       nowSpinning: s.picked ? (t.t + ' · ' + t.a) : 'Nothing playing',
@@ -3035,7 +3041,17 @@ class Component extends DCLogic {
          tool or throwing a switch moves it without anyone remembering to. */
       hmToolCount: ((window.Access && Access.FEATURES) || [])
         .filter(f => f.key.indexOf('tool:') === 0 && may(f.key)).length,
-      hmTools: [{name:'What To Do', dot:'#d4547a'},{name:'Project Update', dot:'#1f97a8'},{name:'Site Access Lookup', dot:'#2f8fd4'}],
+      /* The newest tool this visitor can open, newest first. A list rather
+         than a date on each feature: there are thirteen of them and exactly
+         one line has to change when the fourteenth ships. Signed out, every
+         entry fails may() and the card is not drawn at all. */
+      ...(()=>{
+        const NEWEST = ['tool:attendance','tool:materials','tool:team','tool:field-config',
+                        'tool:esn','tool:bom','tool:design-extractor'];
+        const key = NEWEST.find(k => may(k));
+        const f = key && ((window.Access && Access.FEATURES) || []).find(x => x.key === key);
+        return { hmToolShow: !!f, hmToolName: f ? f.name : '', hmToolGo: this.go('tools') };
+      })(),
       hmSongCount: this.tracks.length,
       hmCatSummary: (()=>{ const tot=this.tracks.reduce((a,b)=>a+(b.dur||0),0); const m=Math.round(tot/60);
         return 'songs \u00b7 '+(m>0?m+' min of music':'a few minutes of music'); })(),
@@ -3051,6 +3067,23 @@ class Component extends DCLogic {
         return line.length>90 ? line.slice(0,88)+'…' : line; })(),
       hmPoemMeta: (()=>{ const p=(s.poems||[])[(s.poems||[]).length-1]; const n=(s.poems||[]).length;
         return (p&&p.date?p.date+' · ':'')+n+' poems in the journal'; })(),
+      /* One at random. The sleeve underneath is the one before it, so pressing
+         Again crossfades from what was there rather than cutting. */
+      ...(()=>{
+        const withArt = this.tracks.filter(x => x.img);
+        const cur = this.tracks[this.state.shuf] || withArt[0] || this.tracks[0];
+        const prev = this.tracks[this.state.shufPrev];
+        return {
+          shufTitle: cur ? cur.t : '—',
+          shufShot: this.artImg(cur && cur.img,
+            {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 20%',
+             animation:'kb 26s ease-in-out infinite alternate'}),
+          shufBackShot: this.artImg(prev && prev.img,
+            {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 20%'}),
+          shufPlay: cur ? this.play(cur.i) : (()=>{}),
+          shufAgain: ()=>this.rollShuffle(),
+        };
+      })(),
       playerWave: this.wave({ n:26, maxH:26, barW:3, gap:2 }),
       heroWave: this.wave({ n:64, maxH:160, barW:5, gap:4, origin:'center', cushion:true, dur:1.4 }),
       musicWave: this.wave({ n:52, maxH:54, barW:4, gap:3, origin:'center', cushion:true }),
