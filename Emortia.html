@@ -362,8 +362,6 @@ input,textarea,button{font-family:inherit;}
   opacity:.35;transition:opacity .3s ease;}
 .term-card:hover::after{opacity:1;}
 .term-card>*{position:relative;z-index:1;}
-@keyframes tickerRun{to{transform:translateX(-50%);}}
-@media (max-width:700px){.hm-feature{grid-template-columns:1fr !important;}}
 
 /* ---- the front page ---- */
 .hero{position:relative;border-radius:24px;border:1px solid var(--line);overflow:hidden;
@@ -675,13 +673,6 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   .wv i,.boot-wave i{animation:none;transform:none}
   #boot{transition:none}
 }
-@keyframes termRoll{0%,42%{transform:translateY(0);}50%,92%{transform:translateY(-1.6em);}100%{transform:translateY(0);}}
-.hm-card{transition:border-color .22s ease,transform .22s ease,box-shadow .3s ease;}
-.hm-card:hover{transform:translateY(-2px);border-color:rgba(var(--hmRGB),.7) !important;box-shadow:0 20px 48px -22px rgba(var(--hmRGB),.6);}
-.hm-card::before{content:'';position:absolute;inset:-45% -15%;pointer-events:none;z-index:0;background:radial-gradient(46% 40% at 50% 0%,rgba(var(--hmRGB),.24),rgba(var(--hmRGB),0) 70%);opacity:.6;transition:opacity .35s ease;}
-.hm-card:hover::before{opacity:1;}
-.hm-card>*{position:relative;z-index:1;}
-@media (prefers-reduced-motion:reduce){.hm-ticker{animation:none !important;}}
 /* contact pills: brand colour arrives on hover */
 .social-pill{display:inline-flex;align-items:center;gap:9px;text-decoration:none;border-radius:999px;
   padding:10px 18px;font-family:'Space Mono',monospace;font-size:13px;color:var(--dim);
@@ -1235,11 +1226,6 @@ class Component extends DCLogic {
       /* which owner-only things have been opened to the team */
       locks:{}, lockBusy:'', lockErr:'' };
     this.PLAYER_KEY='emortia_player_v1';
-    this.moods=[
-      {name:'Longing', color:'#d15873', rgb:'209,88,115', line:'#4a2632', glow:'rgba(209,88,115,.55)', wash:'linear-gradient(135deg,rgba(209,88,115,.12),transparent 70%)', track:0},
-      {name:'Night',   color:'#6b5ce0', rgb:'107,92,224', line:'#2a2547', glow:'rgba(107,92,224,.5)',  wash:'linear-gradient(135deg,rgba(107,92,224,.12),transparent 70%)', track:1},
-      {name:'Warmth',  color:'#c9954a', rgb:'201,149,74', line:'#453518', glow:'rgba(201,149,74,.5)',  wash:'linear-gradient(135deg,rgba(201,149,74,.12),transparent 70%)', track:2},
-    ];
     this._preMuteVol=pp.volume||0.78;
     this.audio = new Audio();
     this.audio.preload = 'metadata';
@@ -3001,9 +2987,6 @@ class Component extends DCLogic {
       syncPanel: this.renderSyncPanel(),
 
       socialLinks: this.socials(),
-      socialLinksLarge: this.socials(true),
-      hmTicker: (()=>{ const t=this.tracks.map(x=>x.t).slice(0,6); return t.length?t.concat(['new music','emortia']):['emortia','new music']; })(),
-      hmNowMeta: s.playing ? (t.durLabel+' \u00b7 '+this.fmt(s.progress)) : t.durLabel,
       ...(()=>{
         const goPage=(p)=>()=>this.setPage(p);
         const newest=this.tracks[this.tracks.length-1];
@@ -3013,34 +2996,13 @@ class Component extends DCLogic {
           hmNewInitial: newest.initial,
           hmNewArtReady: (typeof newest.img==='string' && newest.img.length>0),
           hmNewNoArt: !newest.img,
-          hmNewArtImg: this.artImg(newest.img,{position:'absolute',inset:0,width:'100%',height:'100%'}),
-          hmNewMeta: newest.durLabel+' \u00b7 newest of '+this.tracks.length+' songs',
           hmPlayNewest: this.play(newest.i),
-          hmInviteLine: (()=>{ const ns=this.tracks.length, np=(s.poems||[]).length;
-            return s.isOwner
-              ? ns+' songs and '+np+' poems live here now \u2013 plus a few small tools I built to get my own work done.'
-              : ns+' songs live here now \u2013 plus a few small tools I built to get my own work done.'; })(),
           /* the journal door goes with the journal tab, for the same reason */
-          hmDoors: [
-            {label:'Hear the songs', count:this.tracks.length+' tracks \u2192', border:'#4a2632', bg:'rgba(209,88,115,0.07)', tone:'#e87a94', go:goPage('music')},
-          ].concat(s.isOwner ? [
-            {label:'Read the poems', count:((s.poems||[]).length)+' poems \u2192', border:'#453518', bg:'rgba(223,174,99,0.07)', tone:'#dfae63', go:goPage('poetry')},
-          ] : []).concat([
-            /* the same count as the tools tab actually shows this visitor,
-               rather than a seven that stopped being true three tools ago */
-            {label:'Try the tools', count:(((window.Access && Access.FEATURES) || [])
-                .filter(f => f.key.indexOf('tool:') === 0 && may(f.key)).length) + ' utilities \u2192',
-             border:'#1c3a42', bg:'rgba(63,189,208,0.07)', tone:'#3fbdd0', go:goPage('tools')},
-          ]),
-          hmMoods: this.moods.map(m=>{ const mt=this.tracks[m.track]; return { ...m,
-            meta: mt?mt.t:'', go: ()=>{ this.loadTrack(m.track, true); this.setPage('music'); } }; }),
         };
       })(),
       /* The number on the front page counts what this visitor can open.
          Counted off the same table the cards are filtered by, so adding a
          tool or throwing a switch moves it without anyone remembering to. */
-      hmToolCount: ((window.Access && Access.FEATURES) || [])
-        .filter(f => f.key.indexOf('tool:') === 0 && may(f.key)).length,
       /* The newest tool this visitor can open, newest first. A list rather
          than a date on each feature: there are thirteen of them and exactly
          one line has to change when the fourteenth ships. Signed out, every
@@ -3052,21 +3014,8 @@ class Component extends DCLogic {
         const f = key && ((window.Access && Access.FEATURES) || []).find(x => x.key === key);
         return { hmToolShow: !!f, hmToolName: f ? f.name : '', hmToolGo: this.go('tools') };
       })(),
-      hmSongCount: this.tracks.length,
-      hmCatSummary: (()=>{ const tot=this.tracks.reduce((a,b)=>a+(b.dur||0),0); const m=Math.round(tot/60);
-        return 'songs \u00b7 '+(m>0?m+' min of music':'a few minutes of music'); })(),
-      hmTrackList: (()=>{ const dots=['#e87a94','#c25a74','#8d3d52'];
-        return this.tracks.slice(0,3).map((x,i)=>({ name:x.t, dot:dots[i]||'#8d3d52' })); })(),
       showJournal: may('journal'),
-      hmPoemCount: (s.poems||[]).length,
-      hmPoemList: (()=>{ const ps=(s.poems||[]).slice(-3).reverse(); const dots=['#dfae63','#c9954a','#8d6b34'];
-        return ps.map((p,i)=>({ title:p.title||'—', dot:dots[i]||'#8d6b34' })); })(),
       hmPoemTitle: (()=>{ const p=(s.poems||[])[(s.poems||[]).length-1]; return p?p.title:'—'; })(),
-      hmPoemExcerpt: (()=>{ const p=(s.poems||[])[(s.poems||[]).length-1]; if(!p) return 'Loading…';
-        const line=String(p.body||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean)[0]||'';
-        return line.length>90 ? line.slice(0,88)+'…' : line; })(),
-      hmPoemMeta: (()=>{ const p=(s.poems||[])[(s.poems||[]).length-1]; const n=(s.poems||[]).length;
-        return (p&&p.date?p.date+' · ':'')+n+' poems in the journal'; })(),
       /* One at random. The sleeve underneath is the one before it, so pressing
          Again crossfades from what was there rather than cutting. */
       ...(()=>{
