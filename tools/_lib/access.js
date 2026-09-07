@@ -311,6 +311,10 @@
           return { ok: false, error: NOT_ALLOWED };
         }
         keep(who, email, role);
+        /* One row per sign-in, so the Owner page can show which machines have
+           been signed in on and when. Fire and forget - it names the account
+           from the session on the server, not from anything passed here. */
+        try { if (window.DB && window.DB.trackSignIn) window.DB.trackSignIn(); } catch (e4) {}
         return { ok: true, user: who };
       } catch (e) {
         /* a name only in the local list still works when the server says no */

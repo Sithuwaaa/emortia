@@ -925,6 +925,109 @@
     ch.subscribe();
   }
 
+  /* --------------------------------------------------------------- insight
+
+     A row per page view, and a row per sign-in. No IP addresses: every request
+     reaches Supabase through its pooler, so the address on it is the pooler's
+     and not the visitor's - and none of the questions being asked need one.
+     What identifies a browser is two random strings this file makes and keeps,
+     one per browser and one per sitting, which mean nothing anywhere else and
+     cannot be worked back into a person.
+
+     Failures here are swallowed on purpose. Counting visits is not worth one
+     visitor seeing an error, and a site that breaks when its analytics are off
+     is a worse site than one that quietly stops counting. */
+  const VKEY = 'emortia_visitor', SKEY = 'emortia_sess';
+  function randId(){
+    const b = new Uint8Array(12); crypto.getRandomValues(b);
+    return Array.from(b).map(x => x.toString(16).padStart(2,'0')).join('');
+  }
+  function visitorId(){
+    try { let v = localStorage.getItem(VKEY); if (!v){ v = randId(); localStorage.setItem(VKEY, v); } return v; }
+    catch(e){ return randId(); }        // private window: counted, never remembered
+  }
+  function sessId(){
+    try { let v = sessionStorage.getItem(SKEY); if (!v){ v = randId(); sessionStorage.setItem(SKEY, v); } return v; }
+    catch(e){ return randId(); }
+  }
+  /* Coarse on purpose. "phone / Chrome" is enough to know what to design for;
+     the full user-agent string is a fingerprint and is not kept. */
+  function machine(){
+    const ua = navigator.userAgent || '';
+    const device = /iPad|Tablet/i.test(ua) ? 'tablet'
+                 : /Mobi|Android|iPhone/i.test(ua) ? 'phone' : 'desktop';
+    /* Plain string tests rather than regexes: the tokens are literal, the
+       order matters (Edge and Opera both claim Chrome, Chrome claims Safari),
+       and there is no escaping to get wrong. */
+    const has = t => ua.indexOf(t) > -1;
+    const browser = has('Edg/')     ? 'Edge'
+                  : has('OPR/')     ? 'Opera'
+                  : has('Firefox/') ? 'Firefox'
+                  : has('Chrome/')  ? 'Chrome'
+                  : has('Safari/')  ? 'Safari' : 'Other';
+    return { device, browser };
+  }
+  async function trackVisit(path){
+    try {
+      const c = await client(); if (!c) return;
+      const m = machine();
+      /* the referrer's host, never the whole address - the path somebody came
+         from is their business and is not needed to know they came */
+      let ref = '';
+      try { const r = document.referrer;
+        if (r){ const h = new URL(r).host; if (h && h !== location.host) ref = h; } } catch(e){}
+      await c.rpc('track_visit', {
+        p_path: path || location.pathname, p_ref: ref,
+        p_visitor: visitorId(), p_sess: sessId(),
+        p_device: m.device, p_browser: m.browser,
+        p_tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
+        p_lang: (navigator.language || ''), p_w: window.innerWidth || 0
+      });
+    } catch(e){}
+  }
+  async function trackSignIn(){
+    try {
+      const c = await client(); if (!c) return;
+      const m = machine();
+      await c.rpc('track_signin', { p_visitor: visitorId(), p_device: m.device, p_browser: m.browser });
+    } catch(e){}
+  }
+
+  /* Reading it back. Owner only, and the functions check that themselves -
+     they count rows the caller cannot select, so the check cannot be left to
+     a policy. */
+  async function insightSummary(days){
+    const c = await client(); if (!c) return null;
+    const { data, error } = await c.rpc('insight_summary', { p_days: days || 30 });
+    if (error) throw new Error(tidyInsight(error.message));
+    return data;
+  }
+  async function insightDaily(days){
+    const c = await client(); if (!c) return [];
+    const { data, error } = await c.rpc('insight_daily', { p_days: days || 30 });
+    if (error) throw new Error(tidyInsight(error.message));
+    return data || [];
+  }
+  async function insightBy(field, days, limit){
+    const c = await client(); if (!c) return [];
+    const { data, error } = await c.rpc('insight_by',
+      { p_field: field, p_days: days || 30, p_limit: limit || 12 });
+    if (error) throw new Error(tidyInsight(error.message));
+    return data || [];
+  }
+  async function insightDevices(days){
+    const c = await client(); if (!c) return [];
+    const { data, error } = await c.rpc('insight_devices', { p_days: days || 90 });
+    if (error) throw new Error(tidyInsight(error.message));
+    return data || [];
+  }
+  function tidyInsight(m){
+    return /does not exist|schema cache|could not find/i.test(m)
+        ? 'Insight is not switched on yet – run migration 024.'
+      : /not yours to read/i.test(m) ? 'Only Sithara can read this.'
+      : m;
+  }
+
   /* ------------------------------------------------------ daily attendance
 
      A roster, one row per photograph, and the photographs in a private bucket.
@@ -1282,6 +1385,7 @@
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
                 fieldConfigLoad, fieldConfigSave, fieldConfigSubscribe,
                 materialsLoad, materialsSave, materialsSubscribe,
+                trackVisit, trackSignIn, insightSummary, insightDaily, insightBy, insightDevices,
                 attendPeople, attendAddPerson, attendRemovePerson, attendDay,
                 attendFile, attendName, attendSubscribe,
                 attendSubmit, attendDeviceToday, attendDevices, attendMakeDevice, attendDropDevice,

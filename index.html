@@ -1223,6 +1223,9 @@ class Component extends DCLogic {
       /* which sleeve the front page is offering, and the one it was offering
          a moment ago, which stays underneath for the crossfade */
       shuf:0, shufPrev:null,
+      /* the Insight panel: nothing is fetched until the Owner page is opened */
+      insDays:30, insSum:null, insDaily:[], insPaths:[], insDev:[], insWho:[],
+      insTz:[], insDevices:[], insBusy:false, insErr:'', insLoaded:false,
       playing:false, idx:0, picked:false, progress:0, volume:pp.volume, muted:pp.muted, shuffle:pp.shuffle, repeat:pp.repeat,
       /* the queue and the words share one drawer, so one flag says which face
          of it is showing: '' shut, 'queue', or 'lyrics' */
@@ -1413,6 +1416,9 @@ class Component extends DCLogic {
 
   componentDidMount(){
     this.rollShuffle();
+    /* One row per page view. Fire and forget: db.js swallows every failure,
+       because counting visits is not worth a visitor seeing an error. */
+    if (window.DB && DB.trackVisit) DB.trackVisit(location.pathname);
     this.bindAudioEvents();
     /* The player used to open with the first track already loaded, so the
        bar read 'Harana Hitha' and row one sat highlighted before anyone had
@@ -1569,6 +1575,9 @@ class Component extends DCLogic {
     return p || 'home';
   }
   setPage(p, replace){
+    /* A tab is a page here - the address changes and so does everything on
+       screen - so moving between them is a page view like any other. */
+    if (window.DB && DB.trackVisit && p !== this.state.page) DB.trackVisit('/' + p);
     const path = this.pathFor(p);
     if (location.pathname !== path){
       try { history[replace ? 'replaceState' : 'pushState']({ page:p }, '', path); } catch(e){}
@@ -2404,6 +2413,153 @@ class Component extends DCLogic {
   /* The Owner page. What used to be a chip floating in the bottom corner,
      given somewhere to live — reachable because it is a tab, not because you
      remembered a word to type after a hash. */
+  /* Six questions in one round trip each, asked only when the Owner page is
+     actually open. Every one of them refuses anybody but the owner on the
+     server, so this is convenience rather than the lock. */
+  async loadInsight(days){
+    const d = days || this.state.insDays;
+    this.setState({ insBusy:true, insErr:'', insDays:d });
+    try {
+      const [sum, daily, paths, dev, who, tz, devices] = await Promise.all([
+        DB.insightSummary(d), DB.insightDaily(d <= 31 ? d : 30),
+        DB.insightBy('path', d, 10), DB.insightBy('device', d, 6),
+        DB.insightBy('who', d, 10), DB.insightBy('tz', d, 8),
+        DB.insightDevices(90)
+      ]);
+      this.setState({ insSum:sum, insDaily:daily, insPaths:paths, insDev:dev,
+        insWho:who.filter(r => r.label !== '(none)'), insTz:tz,
+        insDevices:devices, insBusy:false, insLoaded:true });
+    } catch(e){ this.setState({ insBusy:false, insErr:e.message, insLoaded:true }); }
+  }
+
+  /* ---------------------------------------------------------- the panel
+
+     Five blocks: the totals, a bar per day, what they looked at, what they
+     looked at it on, and the machines that have signed in.
+
+     One thing this cannot show, and says so rather than pretending: Supabase
+     will not let a browser list live auth sessions, so "signed in devices" is
+     every device that has signed in and when it was last seen - a history,
+     not a list of who is logged in this second. */
+  renderInsight(){
+    const s = this.state;
+    const box = (children, span) => React.createElement('div',{
+      style:{background:'var(--panelS)',border:'1px solid var(--line2)',borderRadius:'14px',
+        padding:'18px 20px',gridColumn: span || 'auto'}}, children);
+    const head = (t, sub) => React.createElement('div',{key:'h'},
+      React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",
+        fontWeight:700,fontSize:'17px'}}, t),
+      sub ? React.createElement('p',{style:{color:'var(--dim)',fontSize:'13px',
+        lineHeight:1.6,margin:'5px 0 14px'}}, sub) : null);
+    const mono = {fontFamily:"'Space Mono',monospace",fontSize:'10.5px',letterSpacing:'.14em',
+      textTransform:'uppercase',color:'var(--mute)'};
+
+    if (!s.insLoaded && !s.insBusy){
+      return box([head('Who is visiting', 'Page views, sittings and the machines they came on. Nothing is fetched until you ask.'),
+        React.createElement('button',{key:'go', onClick:()=>this.loadInsight(30),
+          style:{background:'var(--accent)',color:'#fff',border:'none',borderRadius:'10px',
+            padding:'10px 16px',cursor:'pointer',font:'inherit',fontWeight:600}}, 'Show me')], '1 / -1');
+    }
+    if (s.insBusy && !s.insSum) return box([head('Who is visiting'), this.waveLoader('Counting', true)], '1 / -1');
+    if (s.insErr) return box([head('Who is visiting'),
+      React.createElement('p',{key:'e',style:{color:'var(--accent)',fontSize:'13.5px',margin:0}}, s.insErr)], '1 / -1');
+
+    const n = s.insSum || {};
+    const tile = (k, v, tone) => React.createElement('div',{key:k,
+      style:{border:'1px solid var(--line)',borderRadius:'12px',padding:'13px 15px',background:'var(--surface2)'}},
+      React.createElement('div',{style:mono}, k),
+      React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:800,
+        fontSize:'28px',lineHeight:1.05,marginTop:'4px',color:tone||'var(--text)'}}, String(v)));
+
+    /* the days, as bars. Scaled to the busiest day so the shape reads even
+       when the numbers are small, which they will be at first. */
+    const peak = Math.max(1, ...s.insDaily.map(d => Number(d.visits)));
+    const bars = React.createElement('div',{key:'bars',
+      style:{display:'flex',alignItems:'flex-end',gap:'3px',height:'110px',marginTop:'6px'}},
+      s.insDaily.map((d,i) => React.createElement('div',{key:i,
+        title: d.day + ' – ' + d.visits + ' views, ' + d.visitors + ' browsers',
+        style:{flex:'1 1 0',minWidth:0,display:'flex',flexDirection:'column',justifyContent:'flex-end',height:'100%'}},
+        React.createElement('div',{style:{
+          height: Math.max(2, Math.round(Number(d.visits) / peak * 100)) + '%',
+          background: Number(d.visits) ? 'linear-gradient(180deg,var(--accentB),var(--accent))' : 'var(--line2)',
+          borderRadius:'3px 3px 2px 2px'}}))));
+
+    const rows = (list, unit) => list.length
+      ? list.map((r,i) => React.createElement('div',{key:i,
+          style:{display:'flex',alignItems:'center',gap:'10px',padding:'7px 0',
+            borderTop: i ? '1px solid var(--line)' : 'none',fontSize:'13.5px'}},
+          React.createElement('span',{style:{flex:1,minWidth:0,overflow:'hidden',
+            textOverflow:'ellipsis',whiteSpace:'nowrap'}}, r.label),
+          React.createElement('span',{style:{fontFamily:"'Space Mono',monospace",fontSize:'12px',
+            color:'var(--dim)'}}, r.visitors + ' \u00b7 '),
+          React.createElement('b',{style:{fontFamily:"'Space Mono',monospace",fontSize:'13px'}}, String(r.visits))))
+      : React.createElement('p',{style:{color:'var(--mute)',fontSize:'13px',margin:0}},
+          'Nothing yet' + (unit ? ' \u2013 ' + unit : '') + '.');
+
+    const ago = t => {
+      if (!t) return 'never';
+      const m = Math.round((Date.now() - new Date(t).getTime()) / 60000);
+      if (m < 2) return 'just now';
+      if (m < 60) return m + ' min ago';
+      if (m < 60*24) return Math.round(m/60) + 'h ago';
+      return Math.round(m/60/24) + ' days ago';
+    };
+
+    const range = [7,30,90].map(d => React.createElement('button',{key:d,
+      onClick:()=>this.loadInsight(d), disabled: s.insBusy,
+      style:{border:'1px solid ' + (s.insDays===d ? 'var(--accent)' : 'var(--line3)'),
+        background: s.insDays===d ? 'var(--accent)' : 'none',
+        color: s.insDays===d ? '#fff' : 'var(--dim)',borderRadius:'8px',padding:'5px 11px',
+        font:'inherit',fontSize:'12.5px',cursor:'pointer'}}, d + ' days'));
+
+    return React.createElement(React.Fragment,{key:'insight'},
+      box([
+        React.createElement('div',{key:'top',style:{display:'flex',alignItems:'baseline',
+          justifyContent:'space-between',gap:'12px',flexWrap:'wrap',marginBottom:'12px'}},
+          React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",
+            fontWeight:700,fontSize:'17px'}}, 'Who is visiting'),
+          React.createElement('div',{style:{display:'flex',gap:'6px'}}, range)),
+        React.createElement('div',{key:'tiles',style:{display:'grid',
+          gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:'10px'}},
+          tile('Page views', n.visits || 0),
+          tile('Browsers', n.visitors || 0),
+          tile('Sittings', n.sittings || 0),
+          tile('Came back', n.returning || 0, 'var(--accentB)'),
+          tile('Signed in', n.signed || 0, 'var(--ok)'),
+          tile('Today', n.today || 0)),
+        React.createElement('div',{key:'lab',style:{...mono,marginTop:'18px'}},
+          'Views a day \u00b7 ' + (s.insDaily.length) + ' days'),
+        bars,
+        React.createElement('p',{key:'note',style:{color:'var(--mute)',fontSize:'12px',
+          lineHeight:1.6,margin:'12px 0 0'}},
+          'A browser is one machine that has been here, counted by a random id kept in ' +
+          'its own storage \u2013 no addresses are recorded, and clearing site data makes it ' +
+          'a new one. A sitting is one visit from opening the site to closing it.')
+      ], '1 / -1'),
+      box([head('What they opened'), rows(s.insPaths, 'nobody has been here yet')]),
+      box([head('What they came on'), rows(s.insDev),
+        React.createElement('div',{key:'tz',style:{...mono,margin:'16px 0 4px'}}, 'By clock'),
+        rows(s.insTz)]),
+      box([head('Signed in', 'Views by people with an account, and every machine that has signed in. ' +
+        'Supabase will not let a browser list live sessions, so this is a history of sign-ins and when ' +
+        'each machine was last seen \u2013 not who is logged in this second.'),
+        rows(s.insWho, 'nobody has signed in'),
+        React.createElement('div',{key:'dl',style:{...mono,margin:'18px 0 4px'}}, 'Machines'),
+        s.insDevices.length
+          ? s.insDevices.map((d,i) => React.createElement('div',{key:i,
+              style:{display:'flex',alignItems:'center',gap:'10px',padding:'8px 0',
+                borderTop: i ? '1px solid var(--line)' : 'none',fontSize:'13.5px'}},
+              React.createElement('span',{style:{flex:1,minWidth:0}},
+                React.createElement('b',null, d.who || 'unnamed'),
+                React.createElement('span',{style:{color:'var(--dim)'}},
+                  ' \u00b7 ' + d.device + ' \u00b7 ' + d.browser)),
+              React.createElement('span',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11.5px',
+                color:'var(--mute)',whiteSpace:'nowrap'}},
+                d.sign_ins + '\u00d7 \u00b7 ' + ago(d.last_seen || d.last_at))))
+          : React.createElement('p',{style:{color:'var(--mute)',fontSize:'13px',margin:0}},
+              'No sign-ins recorded yet.')], '1 / -1'));
+  }
+
   renderOwnerPage(){
     if(!(this.state.page==='owner' && this.state.isOwner))
       return React.createElement('div',{style:{display:'none'}});
@@ -2433,6 +2589,7 @@ class Component extends DCLogic {
       card('The tools',
         'Everything on the Tools tab is open to you here, and to anyone else who has signed up. Owner mode only adds the editing.',
         btn('Open Tools', this.go('tools'))),
+      this.renderInsight(),
       this.renderLockPanel());
   }
 
