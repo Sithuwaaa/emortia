@@ -674,7 +674,13 @@
      somebody with no session cannot do if the answer needs a session. What it
      gives away is the list of switches and where they are set, which is what
      the Owner page puts on screen anyway. */
-  const TIERS = ['public', 'tooway', 'mine'];
+  /* The same four words as access.js, the Owner page and feature_tier() in
+     the database. This list was left at three when the admin tier was added,
+     and because an unknown tier fell through to 'mine' below, pressing Admin
+     did not fail - it quietly wrote the most restrictive tier instead. A list
+     that has to agree with three other places is worth checking against them
+     when any of the four changes. */
+  const TIERS = ['public', 'tooway', 'admin', 'mine'];
   const asTier = (t, unlocked) =>
     TIERS.indexOf(String(t)) > -1 ? String(t) : (unlocked ? 'tooway' : 'mine');
 
@@ -702,7 +708,11 @@
   async function setFeatureLock(feature, tier, note){
     const c = await client(); if (!c) throw new Error('Not connected.');
     const s = await session(); if (!s) throw new Error('Sign in first.');
-    const t = TIERS.indexOf(String(tier)) > -1 ? String(tier) : 'mine';
+    /* Refused rather than coerced. Falling back to the safest value sounds
+        careful and is how the missing tier above went unnoticed: the switch
+        appeared to do nothing while writing something else. */
+    if (TIERS.indexOf(String(tier)) < 0) throw new Error('"' + tier + '" is not one of the tiers.');
+    const t = String(tier);
     const { error } = await c.from('feature_locks').upsert(
       { feature, tier: t, note: note || null,
         updated_at: new Date().toISOString(), updated_by: s.user.id },
@@ -710,8 +720,10 @@
     /* the policy is the real lock; if it refuses, say so plainly */
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
       ? 'Only the owner can change these.'
+      : /feature_locks_tier_shape|violates check/i.test(error.message || '')
+        ? 'The database will not accept that tier yet – run migration 022 in Supabase.'
       : /tier/i.test(error.message || '')
-        ? 'The three tiers are not set up yet – run migration 015 in Supabase.'
+        ? 'The tiers are not set up yet – run migration 015 in Supabase.'
         : error.message);
   }
 
@@ -934,7 +946,7 @@
       { id: p.id, name: p.name, role: p.role || '', sort: p.sort || 0, active: true },
       { onConflict: 'id' });
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
-      ? 'Only Sithara can change the roster.' : error.message);
+      ? 'Only Sithara or an office admin can change the roster.' : error.message);
   }
   async function attendRemovePerson(id){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
@@ -942,7 +954,7 @@
        every past absence of that person with it. */
     const { error } = await c.from('attend_people').update({ active: false }).eq('id', id);
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
-      ? 'Only Sithara can change the roster.' : error.message);
+      ? 'Only Sithara or an office admin can change the roster.' : error.message);
   }
 
   async function attendDay(day){
@@ -1078,7 +1090,7 @@
   }
   function tidyPhoto(m){
     return /row-level security|permission|only the owner/i.test(m)
-      ? 'Only Sithara can remove a photograph.' : tidyAttend(m);
+      ? 'Only Sithara or an office admin can remove a photograph.' : tidyAttend(m);
   }
 
   /* Who is on leave, for one day. A mark rather than a record: it says the
@@ -1139,7 +1151,7 @@
     const id = 'd' + Date.now().toString(36);
     const { error } = await c.from('attend_devices').insert({ id, label: label || '', token });
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
-      ? 'Only Sithara can make a device link.' : tidyAttend(error.message));
+      ? 'Only Sithara or an office admin can make a device link.' : tidyAttend(error.message));
     return { id, label, token };
   }
   async function attendDropDevice(id){
