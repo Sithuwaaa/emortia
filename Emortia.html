@@ -106,6 +106,7 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
+html{scrollbar-gutter:stable;}
 body{background:var(--bg);}
 ::selection{background:var(--accent);color:var(--bg);}
 @keyframes eq{0%,100%{transform:scaleY(0.5);}50%{transform:scaleY(1);}}
@@ -519,7 +520,9 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    somewhere quiet to sit */
 .hero-wall{position:absolute;inset:0;display:grid;
   grid-template-columns:repeat(7,1fr);
-  pointer-events:none;opacity:.62;}
+  pointer-events:none;opacity:.62;
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 44%,rgba(0,0,0,.45) 74%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0%,#000 44%,rgba(0,0,0,.45) 74%,transparent 100%);}
 .hero-wall .tile{--off:0px;position:relative;overflow:hidden;background:var(--surface2);}
 /* Below the wide breakpoint seven columns are 50px each and every sleeve is a
    sliver, so the wall thins out rather than shrinking. */
@@ -560,9 +563,13 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
 /* The three features. Fixed heights in the design; here they are a minimum,
    so a long Sinhala title grows the card instead of being clipped by it. */
-.hm-feat3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:46px;}
-.hm-feat{position:relative;border-radius:16px;overflow:hidden;min-height:370px;
+/* auto-fit rather than three fixed columns: with the tool card hidden from a
+   signed-out visitor, three columns left a third of the row empty. */
+.hm-feat3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:16px;margin-top:34px;}
+.hm-feat{position:relative;border-radius:16px;overflow:hidden;min-height:390px;
   display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer;
+  box-shadow:0 30px 70px -40px rgba(0,0,0,.9);
   transition:transform .28s cubic-bezier(.2,.8,.3,1),box-shadow .28s ease;}
 .hm-feat:hover{transform:translateY(-3px);box-shadow:0 26px 60px -30px rgba(0,0,0,.95);}
 .hm-feat .in{position:relative;display:flex;flex-direction:column;gap:14px;padding:26px;}
@@ -576,16 +583,18 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
 /* One at random: two sleeves crossfading behind a title that changes with them. */
 .hm-shuf{position:relative;margin-top:16px;border:1px solid #4a2632;border-radius:16px;overflow:hidden;
-  min-height:460px;display:flex;flex-direction:column;justify-content:flex-end;}
+  min-height:420px;display:flex;flex-direction:column;justify-content:flex-end;
+  box-shadow:0 30px 70px -40px rgba(0,0,0,.9);}
 .hm-shuf .in{position:relative;display:flex;flex-direction:column;gap:16px;padding:clamp(20px,3vw,26px);}
 .hm-shuf .ttl{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
   font-size:clamp(34px,5.4vw,56px);line-height:.98;letter-spacing:-.045em;
   text-shadow:0 8px 40px rgba(0,0,0,.7);text-wrap:balance;}
 
 /* The about card and the social band, folded into one thing. */
-.hm-about{margin-top:16px;position:relative;border:1px solid #2a2547;border-radius:16px;overflow:hidden;
-  background:#131024;display:grid;grid-template-columns:1fr 132px;min-height:380px;}
-.social-rail{width:52px;height:52px;border-radius:50%;border:1px solid var(--line2);
+.hm-about{margin-top:16px;position:relative;border:1px solid #4a2632;border-radius:16px;overflow:hidden;
+  background:#1d1014;display:grid;grid-template-columns:minmax(0,1fr) 168px;min-height:380px;
+  box-shadow:0 30px 70px -40px rgba(0,0,0,.9);}
+.social-rail{width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);
   background:rgba(255,255,255,.02);display:grid;place-items:center;text-decoration:none;flex-shrink:0;
   transition:border-color .18s ease,background .18s ease,transform .18s ease;}
 .social-rail:hover{border-color:var(--hb);background:var(--hbg);transform:translateY(-2px);}
@@ -594,14 +603,14 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .social-rail:hover .sp-mono{opacity:0;}
 .social-rail .sp-mark{position:relative;display:grid;place-items:center;color:var(--dim);}
 .social-rail .sp-mono{transition:opacity .18s ease;}
-.hm-about .rail{position:relative;border-left:1px solid #2a2547;background:var(--surface2);
-  padding:26px 0;display:flex;flex-direction:column;align-items:center;gap:16px;}
+.hm-about .rail{position:relative;border-left:1px solid #3a2028;
+  padding:28px 0;display:flex;flex-direction:column;align-items:center;gap:14px;}
 @media (max-width:860px){
   .hm-feat3{grid-template-columns:1fr;}
   .hm-feat{min-height:300px;}
   .hm-shuf{min-height:400px;}
   .hm-about{grid-template-columns:1fr;}
-  .hm-about .rail{border-left:none;border-top:1px solid #2a2547;flex-direction:row;flex-wrap:wrap;
+  .hm-about .rail{border-left:none;border-top:1px solid #3a2028;flex-direction:row;flex-wrap:wrap;
     justify-content:center;padding:20px;}
 }
 @media (prefers-reduced-motion:reduce){
@@ -623,8 +632,11 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 }
 
 .hero::before{content:'';position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(23,13,16,.42) 0%,rgba(23,13,16,.12) 32%,
-    rgba(23,13,16,.62) 68%,rgba(23,13,16,.94) 88%,var(--bg) 100%);}
+  background:linear-gradient(180deg,rgba(23,13,16,.86) 0%,rgba(23,13,16,.34) 26%,
+    rgba(23,13,16,.30) 52%,rgba(23,13,16,.66) 82%,rgba(23,13,16,.94) 100%);}
+/* the second wash, from the left, under the wordmark */
+.hero::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(96deg,rgba(20,11,14,.72) 0%,rgba(20,11,14,.34) 42%,transparent 72%);}
 .hero-front{position:relative;width:100%;max-width:1180px;margin:0 auto;
   padding:0 28px;}
 .wm{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
@@ -811,7 +823,6 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
              worse than no door. -->
         <sc-if value="{{ hmToolShow }}" hint-placeholder-val="{{ true }}">
         <div class="hm-feat" onClick="{{ hmToolGo }}" style="border:1px solid #1c3a42;background:radial-gradient(90% 120% at 80% 12%,#123844 0%,#0e1a1e 64%);">
-          <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(31,151,168,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(31,151,168,.09) 1px,transparent 1px);background-size:30px 30px;"></div>
           <div style="position:absolute;right:-56px;top:-56px;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(63,189,208,.30),transparent 68%);filter:blur(24px);"></div>
           <div class="in">
             <div class="kick" style="color:#3fbdd0;">Latest tool</div>
@@ -822,12 +833,24 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </sc-if>
 
         <sc-if value="{{ showJournal }}" hint-placeholder-val="{{ true }}">
-        <div class="hm-feat" onClick="{{ nav.poetry }}" style="border:1px solid #453518;background:radial-gradient(95% 120% at 18% 8%,#2f2211 0%,#1c1610 62%);">
-          <div style="position:absolute;right:-18px;top:6px;font-family:'EB Garamond',serif;font-size:120px;line-height:1;color:rgba(223,174,99,.10);" aria-hidden="true">කවි</div>
-          <div class="in">
-            <div class="kick" style="color:#c9954a;">Latest poem</div>
-            <div class="ttl" style="font-family:'UN-Agni','EB Garamond',serif;font-weight:400;font-size:clamp(28px,3.2vw,38px);line-height:1.14;letter-spacing:0;">{{ hmPoemTitle }}</div>
-            <span class="pill" style="background:#c9954a;color:#1c1610;">Read it &#8594;</span>
+        <div class="hm-feat" onClick="{{ nav.poetry }}" style="border:1px solid #453518;background:radial-gradient(95% 120% at 18% 8%,#2f2211 0%,#1c1610 62%);justify-content:stretch;">
+          <div style="position:absolute;right:-22px;top:-16px;font-family:'EB Garamond',serif;font-size:150px;line-height:1;color:rgba(223,174,99,.09);" aria-hidden="true">&#8221;</div>
+          <div class="in" style="height:100%;gap:18px;">
+            <div style="flex:1;min-height:110px;display:flex;gap:16px;">
+              <span style="width:2px;flex-shrink:0;border-radius:2px;background:linear-gradient(180deg,#c9954a,rgba(201,149,74,0));"></span>
+              <div style="font-family:'UN-Agni','EB Garamond',serif;font-size:21px;line-height:1.75;color:#f0dcbb;">
+                <sc-for list="{{ hmPoemLines }}" as="pl" hint-placeholder-count="3">
+                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ pl }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:11px;">
+              <div style="display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#c9954a;">
+                <span>Latest poem</span><span style="color:rgba(201,149,74,.45);">&#183;</span><span style="letter-spacing:.1em;color:#9d7c4c;">{{ hmPoemLen }}</span>
+              </div>
+              <div class="ttl" style="font-family:'UN-Agni','EB Garamond',serif;font-weight:400;font-size:clamp(28px,3.2vw,36px);line-height:1.14;letter-spacing:0;">{{ hmPoemTitle }}</div>
+              <span class="pill" style="background:#c9954a;color:#1c1610;">Read it &#8594;</span>
+            </div>
           </div>
         </div>
         </sc-if>
@@ -858,17 +881,17 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
            slabs in the old page; one thing here. -->
       <div class="hm-about">
         <div style="position:relative;overflow:hidden;">
-          <img src="media/portrait.webp" alt="Sithara Perera" width="760" height="950" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 14%;opacity:.55;animation:kb 28s ease-in-out infinite alternate;"></img>
-          <div style="position:absolute;inset:0;background:linear-gradient(100deg,rgba(19,16,36,.96) 10%,rgba(19,16,36,.74) 50%,rgba(19,16,36,.3) 100%);"></div>
+          <img src="media/portrait.webp" alt="Sithara Perera" width="760" height="950" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:62% 28%;animation:kb 28s ease-in-out infinite alternate;"></img>
+          <div style="position:absolute;inset:0;background:linear-gradient(96deg,rgba(29,16,20,.96) 0%,rgba(29,16,20,.82) 38%,rgba(29,16,20,.3) 74%,rgba(29,16,20,.1) 100%);"></div>
           <div style="position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;gap:13px;padding:clamp(22px,3vw,34px);max-width:60ch;">
-            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#8a7cf0;">The person making it</div>
+            <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);">The person making it</div>
             <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(30px,4vw,40px);line-height:1;letter-spacing:-.04em;">Sithara Perera</div>
             <div style="font-size:15.5px;line-height:1.7;color:var(--dim);text-wrap:pretty;max-width:52ch;">I write the songs, keep the poems, and build the tools &ndash; all of it ends up here, on one site, in one voice.</div>
-            <button onClick="{{ nav.about }}" style="width:fit-content;display:inline-flex;align-items:center;gap:9px;border:1px solid #4a3cb8;background:rgba(107,92,224,.18);color:var(--text);font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;white-space:nowrap;margin-top:4px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="background:rgba(107,92,224,.3);">More about me &#8594;</button>
+            <button onClick="{{ nav.about }}" style="width:fit-content;display:inline-flex;align-items:center;gap:9px;border:1px solid #51313c;background:rgba(23,13,16,.6);color:var(--text);font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;white-space:nowrap;margin-top:4px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="border-color:#7a4a58;">More about me &#8594;</button>
           </div>
         </div>
         <div class="rail">
-          <div style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);">Elsewhere</div>
+          <div style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8d6a75;">Elsewhere</div>
           {{ socialRail }}
         </div>
       </div>
@@ -3191,6 +3214,21 @@ class Component extends DCLogic {
          poemTime which is newest cannot come apart from the sort again.
          Undated poems are Infinity there and are skipped: not knowing when
          something was written is not the same as it being the newest. */
+      /* The first three lines of the newest poem, and how long it is. Three
+         because that is what fits above the title without the card growing a
+         scrollbar, and because three lines is enough to know whether you want
+         to read the rest. */
+      ...(()=>{
+        const ps = (this.state.poems||[]).filter(p => isFinite(this.poemTime(p)));
+        const p = ps.length
+          ? ps.reduce((best,x) => this.poemTime(x) > this.poemTime(best) ? x : best)
+          : (this.state.poems||[])[0];
+        const lines = String((p&&p.body)||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+        return {
+          hmPoemLines: lines.slice(0,3),
+          hmPoemLen: lines.length ? lines.length + ' lines' : '',
+        };
+      })(),
       hmPoemTitle: (()=>{
         const ps = (s.poems||[]).filter(p => isFinite(this.poemTime(p)));
         if (!ps.length) return (s.poems||[]).length ? s.poems[0].title : '—';
