@@ -3184,7 +3184,19 @@ class Component extends DCLogic {
         return { hmToolShow: !!f, hmToolName: f ? f.name : '', hmToolGo: this.go('tools') };
       })(),
       showJournal: may('journal'),
-      hmPoemTitle: (()=>{ const p=(s.poems||[])[(s.poems||[]).length-1]; return p?p.title:'—'; })(),
+      /* The newest by its date, not by where it sits in the list. This read
+         the last entry, which was the newest while the list ran oldest-first
+         and became the oldest the day the list was flipped to open on the most
+         recent poem - so the card quietly advertised a poem from 2020. Asking
+         poemTime which is newest cannot come apart from the sort again.
+         Undated poems are Infinity there and are skipped: not knowing when
+         something was written is not the same as it being the newest. */
+      hmPoemTitle: (()=>{
+        const ps = (s.poems||[]).filter(p => isFinite(this.poemTime(p)));
+        if (!ps.length) return (s.poems||[]).length ? s.poems[0].title : '—';
+        const p = ps.reduce((best,x) => this.poemTime(x) > this.poemTime(best) ? x : best);
+        return p.title || '—';
+      })(),
       /* One at random. The sleeve underneath is the one before it, so pressing
          Again crossfades from what was there rather than cutting. */
       ...(()=>{
