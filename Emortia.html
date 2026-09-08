@@ -520,9 +520,9 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    somewhere quiet to sit */
 .hero-wall{position:absolute;inset:0;display:grid;
   grid-template-columns:repeat(7,1fr);
-  pointer-events:none;opacity:.62;
-  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 44%,rgba(0,0,0,.45) 74%,transparent 100%);
-  mask-image:linear-gradient(180deg,#000 0%,#000 44%,rgba(0,0,0,.45) 74%,transparent 100%);}
+  pointer-events:none;opacity:.92;
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 52%,rgba(0,0,0,.5) 80%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0%,#000 52%,rgba(0,0,0,.5) 80%,transparent 100%);}
 .hero-wall .tile{--off:0px;position:relative;overflow:hidden;background:var(--surface2);}
 /* Below the wide breakpoint seven columns are 50px each and every sleeve is a
    sliver, so the wall thins out rather than shrinking. */
@@ -557,6 +557,10 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    at the far end the shift is 5% against 6.9% of overhang. */
 /* Ken Burns for a still photograph, the slow crossfade under the shuffle
    hero, and the arrow on the Again button. */
+/* The new sleeve fades up over the one before it. Without this the picture
+   was swapped between two frames and the change did not register as a change -
+   which is what made it look as though Again only moved the words. */
+@keyframes shufIn{from{opacity:0}to{opacity:1}}
 @keyframes kb{0%{transform:scale(1.04)}100%{transform:scale(1.15)}}
 @keyframes swap{0%,42%{opacity:1}58%,100%{opacity:0}}
 @keyframes turn{to{transform:rotate(360deg)}}
@@ -582,10 +586,14 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .hm-veil{position:absolute;inset:0;background:linear-gradient(178deg,rgba(23,13,16,.18) 0%,rgba(23,13,16,.52) 52%,rgba(23,13,16,.92) 100%);}
 
 /* One at random: two sleeves crossfading behind a title that changes with them. */
-.hm-shuf{position:relative;margin-top:16px;border:1px solid #4a2632;border-radius:16px;overflow:hidden;
-  min-height:420px;display:flex;flex-direction:column;justify-content:flex-end;
-  box-shadow:0 30px 70px -40px rgba(0,0,0,.9);}
-.hm-shuf .in{position:relative;display:flex;flex-direction:column;gap:16px;padding:clamp(20px,3vw,26px);}
+.hm-shuf{position:relative;margin:34px 0 34px calc(50% - 50vw);width:100vw;
+  border:0;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;border-radius:0;
+  overflow:hidden;min-height:min(56vh,480px);
+  display:flex;flex-direction:column;justify-content:flex-end;}
+/* the text keeps the page's column even though the picture does not */
+.hm-shuf .in{position:relative;width:100%;max-width:1180px;margin:0 auto;
+  display:flex;flex-direction:column;gap:16px;
+  padding:0 28px clamp(24px,3.4vw,38px);}
 .hm-shuf .ttl{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
   font-size:clamp(34px,5.4vw,56px);line-height:.98;letter-spacing:-.045em;
   text-shadow:0 8px 40px rgba(0,0,0,.7);text-wrap:balance;}
@@ -601,7 +609,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .social-rail .sp-colour{opacity:0;position:absolute;transition:opacity .18s ease;}
 .social-rail:hover .sp-colour{opacity:1;}
 .social-rail:hover .sp-mono{opacity:0;}
-.social-rail .sp-mark{position:relative;display:grid;place-items:center;color:var(--dim);}
+.social-rail .sp-mark{position:relative;display:block;width:20px;height:20px;color:var(--dim);}
 .social-rail .sp-mono{transition:opacity .18s ease;}
 .hm-about .rail{position:relative;border-left:1px solid #3a2028;
   padding:28px 0;display:flex;flex-direction:column;align-items:center;gap:14px;}
@@ -632,11 +640,11 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 }
 
 .hero::before{content:'';position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(23,13,16,.86) 0%,rgba(23,13,16,.34) 26%,
-    rgba(23,13,16,.30) 52%,rgba(23,13,16,.66) 82%,rgba(23,13,16,.94) 100%);}
+  background:linear-gradient(180deg,rgba(23,13,16,.52) 0%,rgba(23,13,16,.14) 22%,
+    rgba(23,13,16,.16) 46%,rgba(23,13,16,.72) 78%,rgba(23,13,16,.97) 100%);}
 /* the second wash, from the left, under the wordmark */
 .hero::after{content:'';position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(96deg,rgba(20,11,14,.72) 0%,rgba(20,11,14,.34) 42%,transparent 72%);}
+  background:linear-gradient(96deg,rgba(20,11,14,.62) 0%,rgba(20,11,14,.22) 40%,transparent 68%);}
 .hero-front{position:relative;width:100%;max-width:1180px;margin:0 auto;
   padding:0 28px;}
 .wm{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
@@ -727,7 +735,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
 
   <header style="position:sticky;top:0;z-index:40;backdrop-filter:blur(14px);background:var(--bar);border-bottom:1px solid var(--line);">
-    <div class="hdr-inner" style="max-width:1180px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
+    <div class="hdr-inner" style="width:100%;margin:0;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
       <div onClick="{{ nav.home }}" style="display:flex;align-items:center;gap:11px;cursor:pointer;">
         <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(150deg,var(--accentB),var(--accentD));display:flex;align-items:center;justify-content:center;gap:2.5px;box-shadow:0 0 20px var(--glow);animation:logoFloat 4.5s ease-in-out infinite;">
           <span style="width:3px;height:8px;border-radius:2px;background:var(--bg);transform-origin:center;animation:eq 0.85s ease-in-out infinite;animation-delay:0s;animation-play-state:{{ spinState }};"></span>
@@ -770,7 +778,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
     <!-- ============ HOME ============ -->
     <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
-    <section style="animation:fadeUp 0.5s ease;padding:30px 0 70px;">
+    <section style="animation:fadeUp 0.5s ease;padding:0 0 70px;">
       <!-- HERO: the catalogue behind the name.
            The record and the arm are gone. The covers do the work instead -
            the whole catalogue laid out behind the wordmark, dimmed back so the
@@ -836,11 +844,11 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         <div class="hm-feat" onClick="{{ nav.poetry }}" style="border:1px solid #453518;background:radial-gradient(95% 120% at 18% 8%,#2f2211 0%,#1c1610 62%);justify-content:stretch;">
           <div style="position:absolute;right:-22px;top:-16px;font-family:'EB Garamond',serif;font-size:150px;line-height:1;color:rgba(223,174,99,.09);" aria-hidden="true">&#8221;</div>
           <div class="in" style="height:100%;gap:18px;">
-            <div style="flex:1;min-height:110px;display:flex;gap:16px;">
+            <div style="flex:1;min-height:64px;display:flex;align-items:center;gap:16px;">
               <span style="width:2px;flex-shrink:0;border-radius:2px;background:linear-gradient(180deg,#c9954a,rgba(201,149,74,0));"></span>
-              <div style="font-family:'UN-Agni','EB Garamond',serif;font-size:21px;line-height:1.75;color:#f0dcbb;">
-                <sc-for list="{{ hmPoemLines }}" as="pl" hint-placeholder-count="3">
-                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ pl }}</div>
+              <div style="font-family:'UN-Agni','EB Garamond',serif;font-size:23px;line-height:1.6;color:#f0dcbb;">
+                <sc-for list="{{ hmPoemLines }}" as="pl" hint-placeholder-count="1">
+                  <div style="text-wrap:pretty;">{{ pl }}</div>
                 </sc-for>
               </div>
             </div>
@@ -2023,6 +2031,16 @@ class Component extends DCLogic {
     this.setState({ shuf: pick, shufPrev: this.state.shuf });
   }
 
+  /* The wide cards stretch one sleeve across the whole window. At 900px the
+     source has to be scaled past 2x to cover that and it shows; the @2x encode
+     is 1800 square for about twice the bytes. The hero's own columns are 200px
+     wide and stay on the small one - there is nothing there for the extra
+     pixels to do. */
+  big(src){
+    return (typeof src === 'string' && src.endsWith('.webp'))
+      ? src.replace(/.webp$/, '@2x.webp') : src;
+  }
+
   renderHeroWall(){
     const covers = this.tracks.filter(t=>t.img);
     if(!covers.length) return null;
@@ -3151,7 +3169,7 @@ class Component extends DCLogic {
       dustField: this.dustField(),
       heroWall: this.renderHeroWall(),
       /* the newest sleeve, filling its card rather than sitting in a column */
-      hmNewShot: this.artImg((this.tracks[this.tracks.length-1]||{}).img,
+      hmNewShot: this.artImg(this.big((this.tracks[this.tracks.length-1]||{}).img),
         {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 16%'}, true),
       socialRail: this.socials(true, true),
       heroWordmark: this.renderWordmark(),
@@ -3225,7 +3243,7 @@ class Component extends DCLogic {
           : (this.state.poems||[])[0];
         const lines = String((p&&p.body)||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
         return {
-          hmPoemLines: lines.slice(0,3),
+          hmPoemLines: lines.slice(0,1),
           hmPoemLen: lines.length ? lines.length + ' lines' : '',
         };
       })(),
@@ -3243,10 +3261,13 @@ class Component extends DCLogic {
         const prev = this.tracks[this.state.shufPrev];
         return {
           shufTitle: cur ? cur.t : '—',
-          shufShot: this.artImg(cur && cur.img,
-            {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 20%',
-             animation:'kb 26s ease-in-out infinite alternate'}),
-          shufBackShot: this.artImg(prev && prev.img,
+          shufShot: (cur && cur.img) ? React.createElement('img', {
+            key:'shuf' + this.state.shuf, src:this.big(cur.img), alt:'',
+            width:1800, height:1800, decoding:'async',
+            style:{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',
+              objectPosition:'50% 20%',
+              animation:'shufIn .7s ease both, kb 26s ease-in-out infinite alternate'}}) : null,
+          shufBackShot: this.artImg(prev && this.big(prev.img),
             {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 20%'}),
           shufPlay: cur ? this.play(cur.i) : (()=>{}),
           shufAgain: ()=>this.rollShuffle(),
