@@ -588,8 +588,17 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 /* One at random: two sleeves crossfading behind a title that changes with them. */
 .hm-shuf{position:relative;margin:34px 0 34px calc(50% - 50vw);width:100vw;
   border:0;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;border-radius:0;
-  overflow:hidden;min-height:min(56vh,480px);
+  overflow:hidden;min-height:min(82vh,760px);
   display:flex;flex-direction:column;justify-content:flex-end;}
+/* the width-filler: the same picture, blurred back until it is only colour */
+.hm-shuf .blur{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  filter:blur(38px) saturate(1.2) brightness(.5);transform:scale(1.14);}
+/* the record itself, whole, in the middle */
+.hm-shuf .sleeve{position:absolute;top:0;bottom:0;left:50%;translate:-50% 0;
+  height:100%;width:auto;max-width:none;object-fit:contain;}
+@media (max-width:760px){
+  .hm-shuf{min-height:min(72vh,560px);}
+}
 /* the text keeps the page's column even though the picture does not */
 .hm-shuf .in{position:relative;width:100%;max-width:1180px;margin:0 auto;
   display:flex;flex-direction:column;gap:16px;
@@ -641,7 +650,8 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
 .hero::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(180deg,rgba(23,13,16,.52) 0%,rgba(23,13,16,.14) 22%,
-    rgba(23,13,16,.16) 46%,rgba(23,13,16,.72) 78%,rgba(23,13,16,.97) 100%);}
+    rgba(23,13,16,.16) 44%,rgba(23,13,16,.55) 66%,rgba(23,13,16,.88) 84%,
+    rgba(23,13,16,.99) 100%);}
 /* the second wash, from the left, under the wordmark */
 .hero::after{content:'';position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(96deg,rgba(20,11,14,.62) 0%,rgba(20,11,14,.22) 40%,transparent 68%);}
@@ -666,9 +676,10 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .spin-now{display:flex;align-items:center;gap:11px;min-width:0}
 .spin-dot{width:9px;height:9px;border-radius:50%;background:var(--accentB);flex-shrink:0;
   box-shadow:0 0 0 4px var(--glowSoft);animation:termLed 1.9s ease-in-out infinite}
-.spin-lab{display:block;font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.2em;
-  text-transform:uppercase;color:var(--mute)}
-.spin-tit{display:block;font-size:14.5px;font-weight:600;color:var(--text2);margin-top:2px;
+.spin-lab{display:block;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--dim);text-shadow:0 2px 10px rgba(0,0,0,.9)}
+.spin-tit{display:block;font-size:16px;font-weight:700;color:#fff;margin-top:2px;
+  text-shadow:0 2px 14px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,.9);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
 @media (prefers-reduced-motion:reduce){
   .wm span{animation:none}
@@ -868,6 +879,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
       <!-- 7a · one at random. A different sleeve every visit, because a
            catalogue this size is easier to enter sideways than from the top. -->
       <div class="hm-shuf">
+        {{ shufBlur }}
         {{ shufBackShot }}
         {{ shufShot }}
         <div class="hm-veil" style="background:linear-gradient(178deg,rgba(23,13,16,.22) 0%,rgba(23,13,16,.5) 50%,rgba(23,13,16,.92) 100%);"></div>
@@ -1447,6 +1459,7 @@ class Component extends DCLogic {
 
   componentDidMount(){
     this.rollShuffle();
+    this.shufTimer();
     /* One row per page view. Fire and forget: db.js swallows every failure,
        because counting visits is not worth a visitor seeing an error. */
     if (window.DB && DB.trackVisit) DB.trackVisit(location.pathname);
@@ -1545,6 +1558,7 @@ class Component extends DCLogic {
     if(on) this._ppFit();
   }
   componentWillUnmount(){
+    clearInterval(this._shufT);
     this.audio.pause();
     if(this._onPpResize) window.removeEventListener('resize', this._onPpResize);
     clearTimeout(this._ppFitT);
@@ -2023,6 +2037,16 @@ class Component extends DCLogic {
      multiples so no two tiles come back into line for a very long time. */
   /* A different song every visit, and a different one again on request -
      never the one already showing, or pressing Again would look broken. */
+  shufTimer(){
+    clearInterval(this._shufT);
+    const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still) return;
+    this._shufT = setInterval(() => {
+      if (this.state.page !== 'home' || document.hidden) return;
+      this.rollShuffle();
+    }, 9000);
+  }
+
   rollShuffle(){
     const pool = this.tracks.filter(t => t.img).map(t => t.i);
     if (!pool.length) return;
@@ -3261,14 +3285,19 @@ class Component extends DCLogic {
         const prev = this.tracks[this.state.shufPrev];
         return {
           shufTitle: cur ? cur.t : '—',
+          shufBlur: (cur && cur.img) ? React.createElement('img', {
+            key:'blur' + this.state.shuf, className:'blur', src:cur.img, alt:'',
+            width:900, height:900, decoding:'async',
+            /* the small file on purpose: it is about to be blurred to nothing
+               and the big one would be 150KB of detail thrown away */
+            style:{animation:'shufIn .7s ease both'}}) : null,
           shufShot: (cur && cur.img) ? React.createElement('img', {
-            key:'shuf' + this.state.shuf, src:this.big(cur.img), alt:'',
+            key:'shuf' + this.state.shuf, className:'sleeve', src:this.big(cur.img), alt:'',
             width:1800, height:1800, decoding:'async',
-            style:{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',
-              objectPosition:'50% 20%',
-              animation:'shufIn .7s ease both, kb 26s ease-in-out infinite alternate'}}) : null,
-          shufBackShot: this.artImg(prev && this.big(prev.img),
-            {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 20%'}),
+            style:{animation:'shufIn .7s ease both'}}) : null,
+          shufBackShot: (prev && prev.img) ? React.createElement('img', {
+            key:'back' + this.state.shufPrev, className:'sleeve', src:this.big(prev.img),
+            alt:'', width:1800, height:1800, decoding:'async'}) : null,
           shufPlay: cur ? this.play(cur.i) : (()=>{}),
           shufAgain: ()=>this.rollShuffle(),
         };
