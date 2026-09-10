@@ -107,6 +107,7 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 html{scrollbar-gutter:stable;}
+:root{--pageBot:132px;}
 body{background:var(--bg);}
 ::selection{background:var(--accent);color:var(--bg);}
 @keyframes eq{0%,100%{transform:scaleY(0.5);}50%{transform:scaleY(1);}}
@@ -595,15 +596,44 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    between the about card and the player. Every number is counted rather than
    typed - the tools one counts what this particular visitor can open, so it
    never promises a door that is not there. */
-.hm-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:clamp(20px,3vw,34px);margin:44px 0 8px;padding:clamp(26px,3.4vw,38px) 0 0;
-  border-top:1px solid var(--line);}
+/* Edge to edge, and pulled down over the wrapper's bottom padding so its own
+   ground continues under the player rather than stopping short of it - the
+   page ends here, and it should look as though it does. The padding it adds
+   back inside is what keeps the words themselves clear of the transport. */
+.hm-sum{margin:44px 0 calc(-1 * var(--pageBot)) calc(50% - 50vw);width:100vw;
+  background:var(--surface2);border-top:1px solid var(--line);
+  padding:clamp(28px,3.4vw,40px) 0 calc(var(--pageBot) + 10px);}
+.hm-sum .row{max-width:1180px;margin:0 auto;padding:0 28px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:clamp(20px,3vw,34px);}
 .hm-sum .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
   font-size:clamp(44px,5.6vw,62px);line-height:.9;letter-spacing:-.04em;}
 .hm-sum .k{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;
   text-transform:uppercase;color:var(--mute);margin-top:12px;}
 .hm-sum .d{font-size:14.5px;line-height:1.6;color:var(--dim);margin-top:9px;
   max-width:26ch;text-wrap:pretty;}
+
+/* A rule down the left of the words, so the block has an edge of its own on a
+   panel that has none. */
+.hm-shuf .in{border-left:2px solid transparent;
+  border-image:linear-gradient(180deg,var(--accent),rgba(209,88,115,0)) 1;}
+.hm-shuf .pos{color:var(--mute);letter-spacing:.16em;margin-left:10px;}
+.hm-shuf .sub{font-family:'EB Garamond',serif;font-style:italic;font-size:17.5px;
+  line-height:1.55;color:var(--dim);max-width:44ch;}
+.hm-shuf .btns{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+/* the rest of the catalogue, small, for when the shuffle chose badly */
+.hm-shuf .picks{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;}
+.hm-shuf .picks .lab{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--mute);margin-right:4px;}
+.hm-shuf .pick{width:54px;height:54px;border-radius:9px;overflow:hidden;flex-shrink:0;
+  border:1px solid var(--line2);background:var(--surface2);padding:0;cursor:pointer;
+  opacity:.72;transition:opacity .18s ease,transform .18s ease,border-color .18s ease;}
+.hm-shuf .pick img{width:100%;height:100%;object-fit:cover;display:block;}
+.hm-shuf .pick:hover{opacity:1;transform:translateY(-2px);border-color:var(--accent);}
+@media (max-width:760px){
+  .hm-shuf .pick{width:44px;height:44px;}
+  .hm-shuf .sub{font-size:16px;}
+}
 
 /* the record itself, whole, held to the right edge */
 .hm-shuf .sleeve{position:absolute;top:0;right:0;left:auto;
@@ -625,7 +655,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 }
 /* the text keeps the page's column even though the picture does not */
 .hm-shuf .in{position:relative;width:100%;max-width:1180px;margin:0 auto;
-  display:flex;flex-direction:column;gap:16px;
+  display:flex;flex-direction:column;gap:14px;
   padding:clamp(24px,3.4vw,38px) 28px;}
 /* the words never run under the record */
 @media (min-width:761px){ .hm-shuf .in > *{max-width:min(52%,560px);} }
@@ -634,9 +664,16 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   text-shadow:0 8px 40px rgba(0,0,0,.7);text-wrap:balance;}
 
 /* The about card and the social band, folded into one thing. */
-.hm-about{margin-top:16px;position:relative;border:1px solid #4a2632;border-radius:16px;overflow:hidden;
-  background:#1d1014;display:grid;grid-template-columns:minmax(0,1fr) 168px;min-height:380px;
-  box-shadow:0 30px 70px -40px rgba(0,0,0,.9);}
+.hm-about{margin:34px 0 0 calc(50% - 50vw);width:100vw;position:relative;
+  border:0;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;border-radius:0;
+  overflow:hidden;background:#1d1014;
+  display:grid;grid-template-columns:minmax(0,1fr) 168px;min-height:420px;}
+.hm-about .say{padding-left:max(28px,calc((100vw - 1180px)/2 + 28px)) !important;}
+.hm-about .go{transition:background .2s ease,border-color .2s ease,color .2s ease,
+  box-shadow .25s ease,transform .2s ease;}
+.hm-about .go:hover,.hm-about .go:focus-visible{background:var(--accent) !important;
+  border-color:var(--accent) !important;color:#fff !important;transform:translateY(-1px);
+  box-shadow:0 14px 34px -12px var(--glow);}
 .social-rail{width:44px;height:44px;border-radius:50%;border:1px solid var(--line2);
   background:rgba(255,255,255,.02);display:grid;place-items:center;text-decoration:none;flex-shrink:0;
   transition:border-color .18s ease,background .18s ease,transform .18s ease;}
@@ -653,6 +690,8 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   .hm-feat{min-height:300px;}
   .hm-shuf{min-height:400px;}
   .hm-about{grid-template-columns:1fr;}
+  .hm-about{min-height:0;}
+  .hm-about .say{padding-left:28px !important;}
   .hm-about .rail{border-left:none;border-top:1px solid #3a2028;flex-direction:row;flex-wrap:wrap;
     justify-content:center;padding:20px;}
 }
@@ -764,7 +803,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 </style>
 </helmet>
 
-<div data-theme="burgundy" data-section="{{ page }}" style="min-height:100vh;background:radial-gradient(120% 80% at 80% -10%,var(--bg2) 0%,var(--bg) 60%);color:var(--text);font-family:'Hanken Grotesk',system-ui,sans-serif;padding-bottom:132px;">
+<div data-theme="burgundy" data-section="{{ page }}" style="min-height:100vh;background:radial-gradient(120% 80% at 80% -10%,var(--bg2) 0%,var(--bg) 60%);color:var(--text);font-family:'Hanken Grotesk',system-ui,sans-serif;padding-bottom:var(--pageBot);">
 
   <div class="{{ musicBgClass }}" aria-hidden="true">{{ musicScene }}</div>
 
@@ -815,7 +854,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
     <!-- ============ HOME ============ -->
     <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
-    <section style="animation:fadeUp 0.5s ease;padding:0 0 70px;">
+    <section style="animation:fadeUp 0.5s ease;padding:0;">
       <!-- HERO: the catalogue behind the name.
            The record and the arm are gone. The covers do the work instead -
            the whole catalogue laid out behind the wordmark, dimmed back so the
@@ -909,15 +948,20 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         {{ shufShot }}
         <div class="shuf-veil"></div>
         <div class="in">
-          <div class="kick" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#e87a94;">One at random</div>
+          <div class="kick" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#e87a94;">One at random<span class="pos">{{ shufNo }} / {{ shufOf }}</span></div>
           <div class="ttl">{{ shufTitle }}</div>
-          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div class="sub">Nothing chose this for you &ndash; the shuffle did.<br>{{ shufDur }}</div>
+          <div class="btns">
             <button onClick="{{ shufPlay }}" style="display:inline-flex;align-items:center;gap:9px;background:var(--accent);color:#f7edf0;border:none;font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="opacity:.88;">
-              <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="7,4 20,12 7,20" fill="currentColor"></polygon></svg> Play
+              <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="7,4 20,12 7,20" fill="currentColor"></polygon></svg> Play this one
             </button>
             <button onClick="{{ shufAgain }}" style="display:inline-flex;align-items:center;gap:9px;border:1px solid #51313c;background:rgba(23,13,16,.5);color:var(--text);font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="border-color:var(--accent);">
-              Again <span style="display:inline-block;animation:turn 3.4s linear infinite;">&#8635;</span>
+              Shuffle again <span style="display:inline-block;animation:turn 3.4s linear infinite;">&#8635;</span>
             </button>
+          </div>
+          <div class="picks">
+            <span class="lab">Or pick one</span>
+            {{ shufPicks }}
           </div>
         </div>
       </div>
@@ -928,11 +972,11 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         <div style="position:relative;overflow:hidden;">
           <img src="media/portrait.webp" alt="Sithara Perera" width="760" height="950" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:62% 28%;animation:kb 28s ease-in-out infinite alternate;"></img>
           <div style="position:absolute;inset:0;background:linear-gradient(96deg,rgba(29,16,20,.96) 0%,rgba(29,16,20,.82) 38%,rgba(29,16,20,.3) 74%,rgba(29,16,20,.1) 100%);"></div>
-          <div style="position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;gap:13px;padding:clamp(22px,3vw,34px);max-width:60ch;">
+          <div class="say" style="position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;gap:13px;padding:clamp(22px,3vw,34px);max-width:74ch;">
             <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);">The person making it</div>
             <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(30px,4vw,40px);line-height:1;letter-spacing:-.04em;">Sithara Perera</div>
             <div style="font-size:15.5px;line-height:1.7;color:var(--dim);text-wrap:pretty;max-width:52ch;">I write the songs, keep the poems, and build the tools &ndash; all of it ends up here, on one site, in one voice.</div>
-            <button onClick="{{ nav.about }}" style="width:fit-content;display:inline-flex;align-items:center;gap:9px;border:1px solid #51313c;background:rgba(23,13,16,.6);color:var(--text);font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;white-space:nowrap;margin-top:4px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="border-color:#7a4a58;">More about me &#8594;</button>
+            <button class="go" onClick="{{ nav.about }}" style="width:fit-content;display:inline-flex;align-items:center;gap:9px;border:1px solid #51313c;background:rgba(23,13,16,.6);color:var(--text);font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;white-space:nowrap;margin-top:4px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 14px 34px -12px var(--glow);">More about me &#8594;</button>
           </div>
         </div>
         <div class="rail">
@@ -942,13 +986,15 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
       </div>
 
       <div class="hm-sum">
-        <sc-for list="{{ hmSum }}" as="sm" hint-placeholder-count="4">
-          <div>
-            <div class="n" style="color:{{ sm.tone }};">{{ sm.n }}</div>
-            <div class="k">{{ sm.k }}</div>
-            <div class="d">{{ sm.d }}</div>
-          </div>
-        </sc-for>
+        <div class="row">
+          <sc-for list="{{ hmSum }}" as="sm" hint-placeholder-count="4">
+            <div>
+              <div class="n" style="color:{{ sm.tone }};">{{ sm.n }}</div>
+              <div class="k">{{ sm.k }}</div>
+              <div class="d">{{ sm.d }}</div>
+            </div>
+          </sc-for>
+        </div>
       </div>
     </section>
     </sc-if>
@@ -3349,6 +3395,20 @@ class Component extends DCLogic {
             alt:'', width:1800, height:1800, decoding:'async'}) : null,
           shufPlay: cur ? this.play(cur.i) : (()=>{}),
           shufAgain: ()=>this.rollShuffle(),
+          /* where this one sits in the catalogue, padded so the pair does not
+             change width as the shuffle moves through it */
+          shufNo: cur ? String(withArt.indexOf(cur) + 1).padStart(2,'0') : '00',
+          shufOf: String(withArt.length).padStart(2,'0'),
+          shufDur: cur && cur.durLabel ? cur.durLabel + ' long.' : '',
+          /* the others, in catalogue order, for when the shuffle chose badly.
+             Picking one stops it being random, so the timer is left alone and
+             the next turn carries on from whatever was chosen. */
+          shufPicks: React.createElement(React.Fragment, null,
+            withArt.filter(x => x !== cur).map(x => React.createElement('button', {
+              key: 'pk' + x.i, className: 'pick', title: x.t, 'aria-label': x.t,
+              onClick: () => this.setState({ shuf: x.i, shufPrev: this.state.shuf })
+            }, React.createElement('img', { src: x.img, alt: '', width: 900, height: 900,
+              loading: 'lazy', decoding: 'async' })))),
         };
       })(),
       playerWave: this.wave({ n:26, maxH:26, barW:3, gap:2 }),
