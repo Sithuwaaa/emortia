@@ -812,8 +812,9 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   text-transform:uppercase;color:var(--accentB);}
 .mt-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
   font-size:clamp(34px,4.6vw,60px);line-height:.96;letter-spacing:-.04em;text-wrap:balance;}
-.mt-sub{font-family:'EB Garamond',serif;font-style:italic;
-  font-size:clamp(16px,1.5vw,19px);color:var(--dim);}
+/* the same lettering as the sleeve itself: spaced, capital, quiet */
+.mt-sub{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.28em;
+  text-transform:uppercase;color:var(--dim);}
 .mt-ctl{display:flex;align-items:center;gap:clamp(10px,1.4vw,16px);flex-wrap:wrap;}
 .mt-ctl .step{background:transparent;border:none;color:var(--dim);cursor:pointer;padding:8px;
   display:grid;place-items:center;transition:color .16s ease;}
@@ -849,6 +850,23 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   text-transform:uppercase;color:var(--mute);}
 .mt-row .d{font-family:'Space Mono',monospace;font-size:12px;color:var(--mute);}
 .mt-row.on .d{color:var(--accentB);}
+/* where a song sits in the queue, on the row itself */
+.mt-row .qd{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;
+  color:var(--accent-ink,#0d0709);background:var(--accentB);border-radius:3px;padding:3px 6px;}
+/* right-click a row */
+.rowmenu-back{position:fixed;inset:0;z-index:60;}
+.rowmenu{position:fixed;min-width:216px;background:var(--surface2);border:1px solid var(--line3);
+  border-radius:10px;padding:6px;box-shadow:0 24px 60px rgba(0,0,0,.66);}
+.rowmenu .h{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--mute);padding:8px 11px 7px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.rowmenu button{display:flex;align-items:center;gap:11px;width:100%;background:transparent;
+  border:none;border-radius:7px;padding:10px 11px;color:var(--dim);font:inherit;font-size:14.5px;
+  font-weight:600;cursor:pointer;text-align:left;transition:background .14s ease,color .14s ease;}
+.rowmenu button:hover{background:var(--glowSoft);color:var(--text);}
+.rowmenu .g{font-family:'Space Mono',monospace;font-size:12px;color:var(--accentB);
+  width:14px;flex:none;}
+
 /* the little equaliser that marks the row you are on */
 .mt-eq{display:flex;align-items:flex-end;gap:2.5px;height:17px;}
 .mt-eq i{width:3px;height:100%;background:var(--accentB);transform-origin:bottom;
@@ -858,10 +876,14 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 @keyframes eqb{0%,100%{transform:scaleY(.32)}50%{transform:scaleY(1)}}
 
 @media (min-width:901px){
-  [data-section="music"]{min-height:0 !important;padding-bottom:0 !important;}
-  /* the screen, less the header, the player dock and the section's own room */
-  .mt-stage{height:calc(100svh - 63px - 85px - 100px);}
-  .mt-now{position:static;}
+  [data-section="music"]{min-height:0 !important;padding-bottom:0 !important;
+    height:100svh;overflow:hidden;display:flex;flex-direction:column;}
+  [data-section="music"] main{flex:1;min-height:0;display:flex;flex-direction:column;}
+  [data-section="music"] main > section{flex:1;min-height:0;display:flex;
+    flex-direction:column;padding-bottom:var(--pageBot) !important;}
+  .mt-stage{flex:1;min-height:0;}
+  .mt-now{position:static;min-height:0;}
+  .mt-art{width:min(380px,100%,34vh);max-width:none;flex:none;}
   /* min-height:0 or the list refuses to shrink below its content and pushes
      the box past the bottom of the screen instead of scrolling */
   .mt-side{height:100%;min-height:0;}
@@ -1155,7 +1177,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
           <div class="mt-list">
             <sc-for list="{{ tracks }}" as="track" hint-placeholder-count="7">
-              <button class="mt-row {{ track.rowOn }}" onClick="{{ track.onPlay }}">
+              <button class="mt-row {{ track.rowOn }}" onClick="{{ track.onPlay }}" onContextMenu="{{ track.onMenu }}">
                 <span style="display:grid;place-items:center;">
                   <sc-if value="{{ track.playingNow }}" hint-placeholder-val="{{ false }}">
                     <span class="mt-eq"><i></i><i></i><i></i></span>
@@ -1176,7 +1198,12 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
                   <span class="t">{{ track.t }}</span>
                   <span class="tag">{{ track.a }}</span>
                 </span>
-                <span class="d">{{ track.durLabel }}</span>
+                <span style="display:flex;align-items:center;gap:9px;">
+                  <sc-if value="{{ track.queued }}" hint-placeholder-val="{{ false }}">
+                    <span class="qd">{{ track.queuedAt }}</span>
+                  </sc-if>
+                  <span class="d">{{ track.durLabel }}</span>
+                </span>
               </button>
             </sc-for>
           </div>
@@ -1305,6 +1332,16 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
     </section>
     </sc-if>
 
+  <sc-if value="{{ rowMenuOpen }}" hint-placeholder-val="{{ false }}">
+    <div class="rowmenu-back" onClick="{{ closeRowMenu }}" onContextMenu="{{ closeRowMenu }}">
+      <div class="rowmenu" style="left:{{ rowMenuX }};top:{{ rowMenuY }};">
+        <span class="h">{{ rowMenuTitle }}</span>
+        <sc-for list="{{ rowMenuItems }}" as="mi" hint-placeholder-count="3">
+          <button onClick="{{ mi.act }}"><span class="g">{{ mi.glyph }}</span>{{ mi.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
   </main>
 
   <!-- ============ PERSISTENT PLAYER DOCK ============ -->
@@ -1447,7 +1484,7 @@ class Component extends DCLogic {
       ppIdx:0, ppDir:1, ppTick:0,
       /* which sleeve the front page is offering, and the one it was offering
          a moment ago, which stays underneath for the crossfade */
-      shuf:0, shufPrev:null,
+      shuf:0, shufPrev:null, queue:[], rowMenu:null,
       /* the Insight panel: nothing is fetched until the Owner page is opened */
       insDays:30, insSum:null, insDaily:[], insPaths:[], insDev:[], insWho:[],
       insTz:[], insDevices:[], insBusy:false, insErr:'', insLoaded:false,
@@ -1475,6 +1512,13 @@ class Component extends DCLogic {
   // ---- real audio playback ----
   loadTrack(i, autoplay){
     const track = this.tracks[i];
+    /* A song that has started is no longer waiting, so it comes off the queue
+       the moment it plays - whether the queue chose it, the list did, or
+       somebody clicked the row. A queue you have to empty by hand is a chore
+       rather than a convenience. */
+    if (this.state.queue.indexOf(i) > -1) {
+      this.setState(st => ({ queue: st.queue.filter(x => x !== i) }));
+    }
     this.audio.pause();
     this.audio.src = track.src;
     this.audio.currentTime = 0;
@@ -1621,7 +1665,24 @@ class Component extends DCLogic {
   toggleShuffle(){ const shuffle=!this.state.shuffle; this.savePlayerPrefs({shuffle}); this.setState({shuffle}); }
   cycleRepeat(){ const order=['off','all','one']; const repeat=order[(order.indexOf(this.state.repeat)+1)%3]; this.savePlayerPrefs({repeat}); this.setState({repeat}); }
   /* Both of these step through the order on screen, not the order in the file. */
+  /* What has been asked for by name, in the order it was asked for. It sits
+     in front of whatever the list would have played next, and a song leaves it
+     the moment it starts - a queue you have to empty by hand is a chore, not a
+     convenience. */
+  queueAdd(i, front){
+    this.setState(st => ({
+      queue: front ? [i].concat(st.queue.filter(x => x !== i))
+                   : (st.queue.indexOf(i) > -1 ? st.queue : st.queue.concat([i])),
+      rowMenu: null
+    }));
+  }
+  queueDrop(i){
+    this.setState(st => ({ queue: st.queue.filter(x => x !== i), rowMenu: null }));
+  }
+
   pickNext(){
+    /* the queue first, always - it is the whole point of it */
+    if (this.state.queue.length) return this.state.queue[0];
     const order=this.playOrder(), n=order.length;
     if(this.state.shuffle && n>1){
       let r; do{ r=order[Math.floor(Math.random()*n)]; }while(r===this.state.idx);
@@ -3339,7 +3400,10 @@ class Component extends DCLogic {
       toggleMenu: ()=>this.setState(st=>({menuOpen:!st.menuOpen})),
       /* numbered by where it sits now, not by where it sits in the file — a
          sorted list that still read 01..07 in the old order would be a lie */
-      tracks: this.sortedTracks().map((x,pos)=>{ const cur=s.picked && x.i===s.idx; const pn=cur&&s.playing; return { ...x, num:String(pos+1).padStart(2,'0'), artReady:(typeof x.img==='string' && x.img.length>0), artImg:this.artImg(x.img,{width:'42px',height:'42px',borderRadius:'7px'}), artImgSm:this.artImg(x.img,{width:'34px',height:'34px',borderRadius:'8px'}), artImgRow:this.artImg(x.img,{width:'100%',height:'100%'}), rowOn: cur?'on':'', current:cur, notCurrent:!cur, playingNow:pn, notPlayingNow:!pn, titleColor: cur?'var(--accent)':'var(--text)', onPlay:this.play(x.i), hasArt:!!x.img, noArt:!x.img }; }),
+      tracks: this.sortedTracks().map((x,pos)=>{ const cur=s.picked && x.i===s.idx; const pn=cur&&s.playing; return { ...x, num:String(pos+1).padStart(2,'0'), artReady:(typeof x.img==='string' && x.img.length>0), artImg:this.artImg(x.img,{width:'42px',height:'42px',borderRadius:'7px'}), artImgSm:this.artImg(x.img,{width:'34px',height:'34px',borderRadius:'8px'}), artImgRow:this.artImg(x.img,{width:'100%',height:'100%'}), rowOn: cur?'on':'',
+        queued: s.queue.indexOf(x.i) > -1, queuedAt: String(s.queue.indexOf(x.i)+1),
+        onMenu:(e)=>{ e.preventDefault(); e.stopPropagation();
+          this.setState({ rowMenu:{ i:x.i, x:e.clientX, y:e.clientY }, sortOpen:false }); }, current:cur, notCurrent:!cur, playingNow:pn, notPlayingNow:!pn, titleColor: cur?'var(--accent)':'var(--text)', onPlay:this.play(x.i), hasArt:!!x.img, noArt:!x.img }; }),
 
       sortOpen: s.sortOpen, sortShut: !s.sortOpen,
       sortLabel: (SORTS.find(x=>x[0]===s.sortBy)||SORTS[0])[1],
@@ -3383,10 +3447,30 @@ class Component extends DCLogic {
       /* the artist and the length, which is what is actually known about a
          track here - the mock-up had "single · 2025" tags this catalogue does
          not carry, and inventing a release year is not a design decision */
-      curSub: s.picked ? (t.a + ' · ' + t.durLabel) : 'Pick a song to start',
+      /* the name on its own - the length is on the row and in the dock, and
+         saying it a third time under the title said nothing */
+      curSub: s.picked ? t.a : 'Pick a song to start',
       repeatColor: s.repeat==='off' ? 'var(--dim)' : 'var(--accentB)',
       repeatDot:   s.repeat==='off' ? 'transparent' : 'var(--accentB)',
       shuffleDot:  s.shuffle ? 'var(--accentB)' : 'transparent',
+
+      /* the right-click menu on a row */
+      rowMenuOpen: !!s.rowMenu,
+      rowMenuX: s.rowMenu ? Math.min(s.rowMenu.x, window.innerWidth - 236) + 'px' : '0px',
+      rowMenuY: s.rowMenu ? Math.min(s.rowMenu.y, window.innerHeight - 200) + 'px' : '0px',
+      rowMenuTitle: s.rowMenu ? this.tracks[s.rowMenu.i].t : '',
+      closeRowMenu: ()=>this.setState({ rowMenu:null }),
+      rowMenuItems: (()=>{
+        if (!s.rowMenu) return [];
+        const i = s.rowMenu.i, queued = s.queue.indexOf(i) > -1;
+        return [
+          queued
+            ? { glyph:'−', label:'Take off the queue', act:()=>this.queueDrop(i) }
+            : { glyph:'+', label:'Add to the queue',   act:()=>this.queueAdd(i, false) },
+          { glyph:'↑', label:'Play it next', act:()=>this.queueAdd(i, true) },
+          { glyph:'▸', label:'Play it now',  act:()=>{ this.setState({rowMenu:null}); this.play(i)(); } },
+        ];
+      })(),
       dustField: this.dustField(),
       heroWall: this.renderHeroWall(),
       /* the newest sleeve, filling its card rather than sitting in a column */
