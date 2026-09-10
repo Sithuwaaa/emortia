@@ -109,7 +109,7 @@ That document is the source; this one is what the site reads.
 
 @title: හාරනා හිත
 @date: නොවැම්බර් 01, 2025
-@art: harana-hitha.png
+@art: harana-hitha.jpeg
 @track: Harana Hitha
 හාරනා හිත පාරනා වග දැනෙන මුත් මම අහනවා
 කාරණා ගතු වාරණා වන තෙක්ම හිස්තැන් සොයනවා
@@ -118,7 +118,7 @@ That document is the source; this one is what the site reads.
 
 @title: නපුරු හිත
 @date: නොවැම්බර් 21, 2025
-@art: napuru-hitha.png
+@art: napuru-hitha.jpeg
 @track: Napuru Hitha
 හිටියා නුඹ මේ නපුරු හිත ලඟ
 ආදරෙන් පපුවට තුරුළු කර
@@ -127,7 +127,7 @@ That document is the source; this one is what the site reads.
 
 @title: සුවඳ විතරයි
 @date: නොවැම්බර් 29, 2025
-@art: suwanda-vitharayi.png
+@art: suwanda-vitharayi.jpeg
 @track: Suwanda Vitharayi
 තිගැස්සී මගෙ දෑස ඇරුනා හිස් කමින් පිරි ඝනදුරේ
 මතක් වී මට ඉන්න හිතුනා ඔයාගේ ඔය පපුතුරේ
@@ -136,7 +136,7 @@ That document is the source; this one is what the site reads.
 
 @title: පුංචි කෙල්ල
 @date: නොවැම්බර් 29, 2025
-@art: punchi-kella.png
+@art: punchi-kella.jpeg
 @track: Punchi Kella
 ගියත් වයසින් මුහුකුරා ගත
 නොයන් දෙන්නට ගති ලමා
@@ -145,7 +145,7 @@ That document is the source; this one is what the site reads.
 
 @title: පරිස්සම්
 @date: ජනවාරි 04, 2026
-@art: parissam.png
+@art: parissam.jpeg
 @track: Parissam
 පරිස්සම් කර ගන්න හැදුවත්
 නොරිස්සුම් බව දන්නවා මං
@@ -154,7 +154,7 @@ That document is the source; this one is what the site reads.
 
 @title: හැඩැති මල
 @date: ජනවාරි 28, 2026
-@art: hadathi-mala.png
+@art: hadathi-mala.jpeg
 @track: Hadathi Mala
 හැඩැති මල වුව නෑ සුවඳ ලඟ
 පෙරැති වී මම නෙළුවෙ උඩ පැන
