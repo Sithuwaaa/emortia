@@ -734,7 +734,9 @@
      table and both sort it the same way, so adding a line here is the whole
      job of adding a tool - it lands in its group, in its place, in both. */
   var FEATURES = [
-    { key:'journal', name:'Journal', tier:'public', group:'Emortia',
+    /* the key is 'journal' because that is what the database has stored
+       against it since 015; the name is what it has actually been for months */
+    { key:'journal', name:'Poetry', tier:'public', group:'Emortia',
       what:'The poems. Reading only – writing stays mine.' },
     { key:'tool:lyric-video', name:'Video & Artwork', tier:'mine', group:'Emortia',
       what:'The lyric video and the cover art tool.' },

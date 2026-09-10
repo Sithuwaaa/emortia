@@ -603,9 +603,28 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .hm-sum{margin:44px 0 calc(-1 * var(--pageBot)) calc(50% - 50vw);width:100vw;
   background:var(--surface2);border-top:1px solid var(--line);
   padding:clamp(28px,3.4vw,40px) 0 calc(var(--pageBot) + 10px);}
-.hm-sum .row{max-width:1180px;margin:0 auto;padding:0 28px;
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:clamp(20px,3vw,34px);}
+.hm-sum .row{max-width:none;margin:0;padding:0 clamp(28px,4vw,72px);
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:clamp(20px,3vw,40px);}
+
+/* They arrive when the band does: the number first and the words after it, a
+   beat apart down the row, so it reads as four things being counted rather
+   than a block appearing. Only once - the home page re-renders every nine
+   seconds while the shuffle turns, and a count that flinched each time would
+   be unbearable. */
+.hm-sum .row > div{opacity:0;}
+.hm-sum.seen .row > div{animation:sumRise .72s cubic-bezier(.2,.8,.25,1) both;}
+.hm-sum.seen .row > div:nth-child(2){animation-delay:.09s}
+.hm-sum.seen .row > div:nth-child(3){animation-delay:.18s}
+.hm-sum.seen .row > div:nth-child(4){animation-delay:.27s}
+.hm-sum.seen .n{animation:sumPop .72s cubic-bezier(.2,.9,.2,1) both;animation-delay:inherit;}
+@keyframes sumRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes sumPop{0%{transform:translateY(6px) scale(.86);filter:blur(6px)}
+  60%{filter:blur(0)}100%{transform:none;scale:1;filter:blur(0)}}
+@media (prefers-reduced-motion:reduce){
+  .hm-sum .row > div{opacity:1;}
+  .hm-sum.seen .row > div,.hm-sum.seen .n{animation:none !important;}
+}
 .hm-sum .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
   font-size:clamp(44px,5.6vw,62px);line-height:.9;letter-spacing:-.04em;}
 .hm-sum .k{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;
@@ -1460,13 +1479,13 @@ class Component extends DCLogic {
     super(props);
     const raw = [
       // d = fallback seconds, replaced by the file's real duration once metadata loads
-      {t:'Harana Hitha', a:'Emortia', d:111, tone:'var(--artA)', src:'media/audio/harana-hitha.wav', img:'media/audio/art/harana-hitha.webp'},
-      {t:'Napuru Hitha', a:'Emortia', d:44, tone:'#312338', src:'media/audio/napuru-hitha.wav', img:'media/audio/art/napuru-hitha.webp'},
-      {t:'Suwanda Vitharayi', a:'Emortia', d:97, tone:'#1f2e2c', src:'media/audio/suwanda-vitharayi.wav', img:'media/audio/art/suwanda-vitharayi.webp'},
-      {t:'Punchi Kella', a:'Emortia', d:73, tone:'#3d2a1e', src:'media/audio/punchi-kella.wav', img:'media/audio/art/punchi-kella.webp'},
-      {t:'Parissam', a:'Emortia', d:120, tone:'#23303f', src:'media/audio/parissam.wav', img:'media/audio/art/parissam.webp'},
-      {t:'Hadathi Mala', a:'Emortia', d:98, tone:'#3a2436', src:'media/audio/hadathi-mala.wav', img:'media/audio/art/hadathi-mala.webp'},
-      {t:'Thissema', a:'Emortia', d:108, tone:'#412f2b', src:'media/audio/thissema.wav', img:'media/audio/art/thissema.webp'},
+      {t:'Harana Hitha', a:'Emortia', d:111, tone:'var(--artA)', src:'media/audio/harana-hitha.wav', img:'media/audio/art/harana-hitha.webp', bg:'media/poems/art/harana-hitha.jpeg'},
+      {t:'Napuru Hitha', a:'Emortia', d:44, tone:'#312338', src:'media/audio/napuru-hitha.wav', img:'media/audio/art/napuru-hitha.webp', bg:'media/poems/art/napuru-hitha.jpeg'},
+      {t:'Suwanda Vitharayi', a:'Emortia', d:97, tone:'#1f2e2c', src:'media/audio/suwanda-vitharayi.wav', img:'media/audio/art/suwanda-vitharayi.webp', bg:'media/poems/art/suwanda-vitharayi.jpeg'},
+      {t:'Punchi Kella', a:'Emortia', d:73, tone:'#3d2a1e', src:'media/audio/punchi-kella.wav', img:'media/audio/art/punchi-kella.webp', bg:'media/poems/art/punchi-kella.jpeg'},
+      {t:'Parissam', a:'Emortia', d:120, tone:'#23303f', src:'media/audio/parissam.wav', img:'media/audio/art/parissam.webp', bg:'media/poems/art/parissam.jpeg'},
+      {t:'Hadathi Mala', a:'Emortia', d:98, tone:'#3a2436', src:'media/audio/hadathi-mala.wav', img:'media/audio/art/hadathi-mala.webp', bg:'media/poems/art/hadathi-mala.jpeg'},
+      {t:'Thissema', a:'Emortia', d:108, tone:'#412f2b', src:'media/audio/thissema.wav', img:'media/audio/art/thissema.webp', bg:'media/poems/art/thisema.jpeg'},
     ];
     const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
     this.tracks = raw.map((x,i)=>({
@@ -1703,6 +1722,7 @@ class Component extends DCLogic {
   componentDidMount(){
     this.rollShuffle();
     this.shufTimer();
+    this.watchSum();
     /* One row per page view. Fire and forget: db.js swallows every failure,
        because counting visits is not worth a visitor seeing an error. */
     if (window.DB && DB.trackVisit) DB.trackVisit(location.pathname);
@@ -1795,6 +1815,7 @@ class Component extends DCLogic {
     }).catch(()=>this.setState({poems:[], poemsLoaded:true}));
   }
   componentDidUpdate(){
+    this.watchSum();
     /* Nothing behind the poem should scroll under it. */
     const on = (this.state.page === 'poetry');
     document.documentElement.classList.toggle('pp-on', on);
@@ -2197,8 +2218,9 @@ class Component extends DCLogic {
         React.createElement('div',{className:'pp-bar'}),
         React.createElement('div',{lang:'si', className:'pp-verse'}, verse),
         React.createElement('div',{className:'pp-sign'},
-          React.createElement('span',{style:{fontSize:'10px',letterSpacing:'.34em',color:'rgba(196,166,176,.95)',textShadow:'0 2px 14px rgba(0,0,0,.85)'}},'E M O R T I A'),
-          React.createElement('i',{style:{fontFamily:"'EB Garamond',serif",fontStyle:'normal',fontSize:'15px',letterSpacing:'.03em',color:'rgba(228,206,213,.95)',textShadow:'0 2px 14px rgba(0,0,0,.85)'}},'Sithara Perera'))));
+          /* the mark alone signs the poem - the name under it was the same
+             thing said twice, and the page it sits on is already his */
+          React.createElement('span',{style:{fontSize:'10px',letterSpacing:'.34em',color:'rgba(196,166,176,.95)',textShadow:'0 2px 14px rgba(0,0,0,.85)'}},'E M O R T I A'))));
 
     return React.createElement('div',{className:'pp-stage', ref:el=>{this._ppStage = el;}},
       /* The webp of the same cover, underneath, at 40KB against the png's four
@@ -2288,6 +2310,24 @@ class Component extends DCLogic {
       if (this.state.page !== 'home' || document.hidden) return;
       this.rollShuffle();
     }, 9000);
+  }
+
+  /* Watched rather than fired on load: the band is the last thing on the page
+     and nobody sees it arrive from the top. Once it has been seen it stays
+     seen - the class goes on the element and every later render finds it
+     already there, so the numbers do not flinch each time the shuffle turns. */
+  watchSum(){
+    const el = document.querySelector('.hm-sum');
+    if (!el || el === this._sumEl) return;
+    this._sumEl = el;
+    if (el.classList.contains('seen')) return;
+    if (this._sumObs) this._sumObs.disconnect();
+    if (!('IntersectionObserver' in window)) { el.classList.add('seen'); return; }
+    this._sumObs = new IntersectionObserver(es => {
+      es.forEach(e => { if (e.isIntersecting){ e.target.classList.add('seen');
+        this._sumObs.disconnect(); this._sumObs = null; } });
+    }, { threshold: .25 });
+    this._sumObs.observe(el);
   }
 
   rollShuffle(){
@@ -2398,7 +2438,7 @@ class Component extends DCLogic {
     const t=this.tracks[idx];
     const L=[];
     if(t.img){
-      L.push(React.createElement('div',{key:'art', className:'art', style:{backgroundImage:'url('+t.img+')'}}));
+      L.push(React.createElement('div',{key:'art', className:'art', style:{backgroundImage:'url('+(t.bg||t.img)+')'}}));
       L.push(React.createElement('div',{key:'scrim', className:'scrim'}));
       L.push(this.starField(26));
     }else{
