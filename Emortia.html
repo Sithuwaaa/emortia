@@ -589,20 +589,46 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .hm-shuf{position:relative;margin:34px 0 34px calc(50% - 50vw);width:100vw;
   border:0;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;border-radius:0;
   overflow:hidden;min-height:min(82vh,760px);
-  display:flex;flex-direction:column;justify-content:flex-end;}
-/* the width-filler: the same picture, blurred back until it is only colour */
-.hm-shuf .blur{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  filter:blur(38px) saturate(1.2) brightness(.5);transform:scale(1.14);}
-/* the record itself, whole, in the middle */
-.hm-shuf .sleeve{position:absolute;top:0;bottom:0;left:50%;translate:-50% 0;
-  height:100%;width:auto;max-width:none;object-fit:contain;}
+  display:flex;flex-direction:column;justify-content:center;}
+/* What the site adds up to, in four numbers. It closes the page on the only
+   claim it makes about itself, and it fills the ground that was sitting empty
+   between the about card and the player. Every number is counted rather than
+   typed - the tools one counts what this particular visitor can open, so it
+   never promises a door that is not there. */
+.hm-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:clamp(20px,3vw,34px);margin:44px 0 8px;padding:clamp(26px,3.4vw,38px) 0 0;
+  border-top:1px solid var(--line);}
+.hm-sum .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+  font-size:clamp(44px,5.6vw,62px);line-height:.9;letter-spacing:-.04em;}
+.hm-sum .k{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--mute);margin-top:12px;}
+.hm-sum .d{font-size:14.5px;line-height:1.6;color:var(--dim);margin-top:9px;
+  max-width:26ch;text-wrap:pretty;}
+
+/* the record itself, whole, held to the right edge */
+.hm-shuf .sleeve{position:absolute;top:0;right:0;left:auto;
+  height:100%;width:auto;max-width:none;object-fit:cover;}
+/* the panel the words are read on, fading out across the picture's left edge
+   so there is no seam between the two */
+.hm-shuf .shuf-veil{position:absolute;inset:0;
+  background:linear-gradient(90deg,var(--bg) 0%,var(--bg) 30%,rgba(16,8,9,.86) 46%,
+    rgba(16,8,9,.42) 62%,rgba(16,8,9,.08) 78%,transparent 90%);}
+/* Below the breakpoint the square is already as wide as the tile, so there is
+   no panel to put anything on - the picture fills it and the words go back
+   underneath, on a wash coming up from the floor. */
 @media (max-width:760px){
-  .hm-shuf{min-height:min(72vh,560px);}
+  .hm-shuf{min-height:min(72vh,560px);justify-content:flex-end;}
+  .hm-shuf .sleeve{left:0;right:0;width:100%;height:100%;object-position:50% 22%;}
+  .hm-shuf .shuf-veil{background:linear-gradient(180deg,rgba(16,8,9,.18) 0%,
+    rgba(16,8,9,.52) 50%,rgba(16,8,9,.95) 100%);}
+  .hm-shuf .in{padding:0 28px clamp(24px,3.4vw,38px);}
 }
 /* the text keeps the page's column even though the picture does not */
 .hm-shuf .in{position:relative;width:100%;max-width:1180px;margin:0 auto;
   display:flex;flex-direction:column;gap:16px;
-  padding:0 28px clamp(24px,3.4vw,38px);}
+  padding:clamp(24px,3.4vw,38px) 28px;}
+/* the words never run under the record */
+@media (min-width:761px){ .hm-shuf .in > *{max-width:min(52%,560px);} }
 .hm-shuf .ttl{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
   font-size:clamp(34px,5.4vw,56px);line-height:.98;letter-spacing:-.045em;
   text-shadow:0 8px 40px rgba(0,0,0,.7);text-wrap:balance;}
@@ -879,10 +905,9 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
       <!-- 7a · one at random. A different sleeve every visit, because a
            catalogue this size is easier to enter sideways than from the top. -->
       <div class="hm-shuf">
-        {{ shufBlur }}
         {{ shufBackShot }}
         {{ shufShot }}
-        <div class="hm-veil" style="background:linear-gradient(178deg,rgba(23,13,16,.22) 0%,rgba(23,13,16,.5) 50%,rgba(23,13,16,.92) 100%);"></div>
+        <div class="shuf-veil"></div>
         <div class="in">
           <div class="kick" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#e87a94;">One at random</div>
           <div class="ttl">{{ shufTitle }}</div>
@@ -914,6 +939,16 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
           <div style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8d6a75;">Elsewhere</div>
           {{ socialRail }}
         </div>
+      </div>
+
+      <div class="hm-sum">
+        <sc-for list="{{ hmSum }}" as="sm" hint-placeholder-count="4">
+          <div>
+            <div class="n" style="color:{{ sm.tone }};">{{ sm.n }}</div>
+            <div class="k">{{ sm.k }}</div>
+            <div class="d">{{ sm.d }}</div>
+          </div>
+        </sc-for>
       </div>
     </section>
     </sc-if>
@@ -3271,6 +3306,26 @@ class Component extends DCLogic {
           hmPoemLen: lines.length ? lines.length + ' lines' : '',
         };
       })(),
+      /* Counted, not typed. The tools figure is the same may() the cards are
+         filtered by, so a signed-out visitor is told about the tools they can
+         actually reach and not about thirteen they cannot. */
+      hmSum: (()=>{
+        const tools = ((window.Access && Access.FEATURES) || [])
+          .filter(f => f.key.indexOf('tool:') === 0 && may(f.key)).length;
+        const poems = (s.poems || []).length;
+        const out = [
+          { n: this.tracks.length, k: 'Songs', tone: '#e87a94',
+            d: 'written, recorded, and mixed at home' },
+        ];
+        /* the poem count only where the poems can be read */
+        if (may('journal')) out.push({ n: poems, k: 'Poems in කවිය', tone: '#dfae63',
+          d: 'one plain text file, kept by hand' });
+        if (tools) out.push({ n: tools, k: tools === 1 ? 'Tool' : 'Tools', tone: '#3fbdd0',
+          d: 'built to get real work done' });
+        out.push({ n: 1, k: 'Person', tone: '#8a7cf0',
+          d: 'all of it, since October 2025' });
+        return out;
+      })(),
       hmPoemTitle: (()=>{
         const ps = (s.poems||[]).filter(p => isFinite(this.poemTime(p)));
         if (!ps.length) return (s.poems||[]).length ? s.poems[0].title : '—';
@@ -3285,12 +3340,6 @@ class Component extends DCLogic {
         const prev = this.tracks[this.state.shufPrev];
         return {
           shufTitle: cur ? cur.t : '—',
-          shufBlur: (cur && cur.img) ? React.createElement('img', {
-            key:'blur' + this.state.shuf, className:'blur', src:cur.img, alt:'',
-            width:900, height:900, decoding:'async',
-            /* the small file on purpose: it is about to be blurred to nothing
-               and the big one would be 150KB of detail thrown away */
-            style:{animation:'shufIn .7s ease both'}}) : null,
           shufShot: (cur && cur.img) ? React.createElement('img', {
             key:'shuf' + this.state.shuf, className:'sleeve', src:this.big(cur.img), alt:'',
             width:1800, height:1800, decoding:'async',
