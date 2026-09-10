@@ -974,6 +974,11 @@
   }
   async function trackVisit(path){
     try {
+      /* The database refuses the owner's rows anyway - that check is the first
+         line of track_visit and is the one that counts, because it is the one
+         a browser cannot edit out. This is only so the owner's own machine
+         does not make the round trip at all. */
+      if (window.Access && window.Access.isOwner && window.Access.isOwner()) return;
       const c = await client(); if (!c) return;
       const m = machine();
       /* the referrer's host, never the whole address - the path somebody came
@@ -992,6 +997,7 @@
   }
   async function trackSignIn(){
     try {
+      if (window.Access && window.Access.isOwner && window.Access.isOwner()) return;
       const c = await client(); if (!c) return;
       const m = machine();
       await c.rpc('track_signin', { p_visitor: visitorId(), p_device: m.device,
