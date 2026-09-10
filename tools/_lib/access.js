@@ -1002,6 +1002,26 @@
     return on;
   }
 
+  async function obeyRevoke() {
+    var s = session();
+    if (!s || !window.DB || !window.DB.revokedAt) return;
+    try {
+      var at = await window.DB.revokedAt();
+      if (!at) return;
+      var cut = new Date(at).getTime();
+      var issued = s.until - MS;                 // when this session began
+      if (cut >= issued) {
+        clear();
+        try { if (window.DB.signOut) await window.DB.signOut(); } catch (e) {}
+        try { location.reload(); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+  /* after the page has settled, so it never delays first paint */
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('load', function () { setTimeout(obeyRevoke, 1200); });
+  }
+
   window.Access = {
     signedIn: signedIn, currentUser: currentUser, currentEmail: currentEmail,
     daysLeft: daysLeft, isOwner: isOwner,
@@ -1011,7 +1031,7 @@
     /* the three tiers, and who the person holding the page is under them */
     TIERS: TIERS, tierOf: tierOf, defaultTier: defaultTier, mayReach: mayReach,
     isStaff: isStaff, myRole: myRole, isAdmin: isAdmin, mayEdit: mayEdit,
-    mayUse: mayUse,
+    mayUse: mayUse, obeyRevoke: obeyRevoke,
     EDITABLE: EDITABLE,
     FEATURES: FEATURES, defaultOf: defaultOf, rememberLocks: remember,
     grouped: grouped, groupOf: groupOf, byName: byName,

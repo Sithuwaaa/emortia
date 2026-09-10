@@ -440,7 +440,16 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 /* the poem itself, held left against the art */
 .pp-read{position:relative;z-index:2;flex:1;min-width:0;min-height:0;box-sizing:border-box;
   display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
-  padding:clamp(28px,5vh,52px) clamp(28px,8vw,120px) clamp(28px,5vh,52px) clamp(22px,5vw,76px);}
+  padding:clamp(28px,5vh,52px) clamp(28px,8vw,120px) clamp(28px,5vh,52px) clamp(22px,5vw,76px);
+  /* The poem was scrolling behind the system's own scrollbar - a grey channel
+     with arrows on it, running the height of a page that is otherwise a
+     photograph. The same thin rail the song list uses: visible enough to say
+     there is more poem, quiet enough not to be furniture. */
+  scrollbar-width:thin;scrollbar-color:rgba(228,206,213,.28) transparent;}
+.pp-read::-webkit-scrollbar{width:8px}
+.pp-read::-webkit-scrollbar-thumb{background:rgba(228,206,213,.28);border-radius:4px}
+.pp-read::-webkit-scrollbar-thumb:hover{background:rgba(228,206,213,.45)}
+.pp-read::-webkit-scrollbar-track{background:transparent}
 .pp-hold{position:relative;z-index:1;max-width:40ch;flex:none;margin:auto auto auto 0;}
 /* a pane of frosted glass under the words, faded at its edges so it is a
    softening of the picture rather than a card sitting on top of it */
@@ -603,9 +612,20 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .hm-sum{margin:44px 0 calc(-1 * var(--pageBot)) calc(50% - 50vw);width:100vw;
   background:var(--surface2);border-top:1px solid var(--line);
   padding:clamp(28px,3.4vw,40px) 0 calc(var(--pageBot) + 10px);}
+/* Equal columns made the boxes even and the page look lopsided: each
+   column's words sit at its left edge, so the first began at the gutter and
+   the last stopped a couple of hundred pixels short of it. Sizing each to its
+   own text and spreading the space between them puts the first hard against
+   the left gutter and the last against the right, which is what "evenly" looks
+   like when the things being spread are different lengths. */
 .hm-sum .row{max-width:none;margin:0;padding:0 clamp(28px,4vw,72px);
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
-  gap:clamp(20px,3vw,40px);}
+  display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;
+  gap:clamp(24px,3vw,44px);}
+.hm-sum .row > div{flex:0 1 auto;max-width:30ch;}
+@media (max-width:760px){
+  .hm-sum .row{display:grid;grid-template-columns:1fr 1fr;}
+  .hm-sum .row > div{max-width:none;}
+}
 
 /* They arrive when the band does: the number first and the words after it, a
    beat apart down the row, so it reads as four things being counted rather
@@ -2764,6 +2784,19 @@ class Component extends DCLogic {
   /* Six questions in one round trip each, asked only when the Owner page is
      actually open. Every one of them refuses anybody but the owner on the
      server, so this is convenience rather than the lock. */
+  /* The owner leaves the note; the machine acts on it when it next loads. */
+  async signOutDevice(d, lift){
+    const who = d.who || 'that machine';
+    if (!confirm(lift
+      ? 'Let ' + who + ' sign in again on this machine?'
+      : 'Sign ' + who + ' out on this machine?\n\nIt reads the note the next time it loads a page '
+        + 'and signs itself out then \u2013 not this second.')) return;
+    try {
+      await (lift ? DB.unrevokeDevice(d.visitor) : DB.revokeDevice(d.visitor));
+      await this.loadInsight();
+    } catch(e){ this.setState({ insErr: e.message }); }
+  }
+
   async loadInsight(days){
     const d = days || this.state.insDays;
     this.setState({ insBusy:true, insErr:'', insDays:d });
@@ -2894,18 +2927,39 @@ class Component extends DCLogic {
         rows(s.insWho, 'nobody has signed in'),
         React.createElement('div',{key:'dl',style:{...mono,margin:'18px 0 4px'}}, 'Machines'),
         s.insDevices.length
-          ? s.insDevices.map((d,i) => React.createElement('div',{key:i,
-              style:{display:'flex',alignItems:'center',gap:'10px',padding:'8px 0',
-                borderTop: i ? '1px solid var(--line)' : 'none',fontSize:'13.5px'}},
-              React.createElement('span',{style:{flex:1,minWidth:0}},
-                React.createElement('b',null, d.who || 'unnamed'),
-                React.createElement('span',{style:{color:'var(--dim)'}},
-                  ' \u00b7 ' + d.device + ' \u00b7 ' + d.browser)),
-              React.createElement('span',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11.5px',
-                color:'var(--mute)',whiteSpace:'nowrap'}},
-                d.sign_ins + '\u00d7 \u00b7 ' + ago(d.last_seen || d.last_at))))
+          ? s.insDevices.map((d,i) => {
+              const cut = d.cut_at ? new Date(d.cut_at) : null;
+              return React.createElement('div',{key:i,
+                style:{display:'flex',alignItems:'center',gap:'10px',padding:'9px 0',
+                  borderTop: i ? '1px solid var(--line)' : 'none',fontSize:'13.5px',
+                  flexWrap:'wrap',opacity: cut ? .55 : 1}},
+                React.createElement('span',{style:{flex:1,minWidth:'170px'}},
+                  React.createElement('b',null, d.who || 'unnamed'),
+                  React.createElement('span',{style:{color:'var(--dim)'}},
+                    ' \u00b7 ' + [d.platform, d.device, d.browser].filter(Boolean).join(' \u00b7 ')),
+                  cut ? React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",
+                    fontSize:'10.5px',letterSpacing:'.12em',textTransform:'uppercase',
+                    color:'var(--accent)',marginTop:'3px'}},
+                    'Signed out ' + ago(d.cut_at)) : null),
+                React.createElement('span',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11.5px',
+                  color:'var(--mute)',whiteSpace:'nowrap'}},
+                  d.sign_ins + '\u00d7 \u00b7 ' + ago(d.last_seen || d.last_at)),
+                React.createElement('button',{
+                  onClick: ()=>this.signOutDevice(d, !!cut),
+                  style:{background:'none',border:'1px solid var(--line3)',borderRadius:'8px',
+                    padding:'5px 11px',color: cut ? 'var(--dim)' : 'var(--accent)',
+                    font:'inherit',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}},
+                  cut ? 'Let it back in' : 'Sign it out'));
+            })
           : React.createElement('p',{style:{color:'var(--mute)',fontSize:'13px',margin:0}},
-              'No sign-ins recorded yet.')], '1 / -1'));
+              'No sign-ins recorded yet.'),
+        React.createElement('p',{key:'sonote',style:{color:'var(--mute)',fontSize:'12px',
+          lineHeight:1.6,margin:'12px 0 0'}},
+          'Signing a machine out leaves a note it reads the next time it loads a page, and it ' +
+          'signs itself out then \u2013 not this second. Supabase will not let one browser end ' +
+          'another\u2019s session; that needs a key this site cannot hold without handing it to ' +
+          'everyone who views the source. If a phone is genuinely lost, change that account\u2019s ' +
+          'password in Supabase \u2013 that ends every session it has, everywhere, at once.')], '1 / -1'));
   }
 
   renderOwnerPage(){

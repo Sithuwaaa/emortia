@@ -960,12 +960,17 @@
        order matters (Edge and Opera both claim Chrome, Chrome claims Safari),
        and there is no escaping to get wrong. */
     const has = t => ua.indexOf(t) > -1;
+    const platform = has('Windows')  ? 'Windows'
+                   : has('Android')  ? 'Android'
+                   : (has('iPhone') || has('iPad')) ? 'iOS'
+                   : has('Mac OS')   ? 'macOS'
+                   : has('Linux')    ? 'Linux' : '';
     const browser = has('Edg/')     ? 'Edge'
                   : has('OPR/')     ? 'Opera'
                   : has('Firefox/') ? 'Firefox'
                   : has('Chrome/')  ? 'Chrome'
                   : has('Safari/')  ? 'Safari' : 'Other';
-    return { device, browser };
+    return { device, browser, platform };
   }
   async function trackVisit(path){
     try {
@@ -989,7 +994,8 @@
     try {
       const c = await client(); if (!c) return;
       const m = machine();
-      await c.rpc('track_signin', { p_visitor: visitorId(), p_device: m.device, p_browser: m.browser });
+      await c.rpc('track_signin', { p_visitor: visitorId(), p_device: m.device,
+        p_browser: m.browser, p_platform: m.platform });
     } catch(e){}
   }
 
@@ -1021,6 +1027,33 @@
     if (error) throw new Error(tidyInsight(error.message));
     return data || [];
   }
+  /* The owner leaves a note against a browser; that browser reads it the next
+     time it loads a page and signs itself out. Supabase will not let one
+     browser end another's session - that needs the service-role key, which
+     cannot live in a page anyone can view the source of. */
+  async function revokeDevice(visitor, note){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.rpc('revoke_device', { p_visitor: visitor, p_note: note || '' });
+    if (error) throw new Error(tidyInsight(error.message));
+  }
+  async function unrevokeDevice(visitor){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.rpc('unrevoke_device', { p_visitor: visitor });
+    if (error) throw new Error(tidyInsight(error.message));
+  }
+  /* Asked once on the way in. Returns when this browser was signed out, or
+     null. Failure is silence: a page that cannot reach the database has
+     nothing to act on either way. */
+  async function revokedAt(){
+    try {
+      const c = await client(); if (!c) return null;
+      const { data, error } = await c.rpc('revoked_at', { p_visitor: visitorId() });
+      if (error) return null;
+      return data || null;
+    } catch(e){ return null; }
+  }
+  function myVisitor(){ return visitorId(); }
+
   function tidyInsight(m){
     return /does not exist|schema cache|could not find/i.test(m)
         ? 'Insight is not switched on yet – run migration 024.'
@@ -1386,6 +1419,7 @@
                 fieldConfigLoad, fieldConfigSave, fieldConfigSubscribe,
                 materialsLoad, materialsSave, materialsSubscribe,
                 trackVisit, trackSignIn, insightSummary, insightDaily, insightBy, insightDevices,
+                revokeDevice, unrevokeDevice, revokedAt, myVisitor,
                 attendPeople, attendAddPerson, attendRemovePerson, attendDay,
                 attendFile, attendName, attendSubscribe,
                 attendSubmit, attendDeviceToday, attendDevices, attendMakeDevice, attendDropDevice,
