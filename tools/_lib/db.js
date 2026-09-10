@@ -1060,11 +1060,35 @@
   }
   function myVisitor(){ return visitorId(); }
 
+  /* Which migration puts each of these in the database. A missing function
+     used to be reported as "run migration 024" whatever was missing, which was
+     wrong twice over once there were four of them: 024 could be applied and
+     the message still appear, and it named a file that would not have helped.
+
+     track_signin is the one worth explaining. It exists from 024, but with
+     three arguments; 026 replaces it with a four-argument version that also
+     takes the platform, and PostgREST resolves a call by name AND argument
+     names - so calling the four-argument form against the three-argument
+     function is reported as the function not existing at all. */
+  const MADE_BY = {
+    track_visit: '024', insight_summary: '024', insight_daily: '024', insight_by: '024',
+    insight_devices: '024',
+    track_signin: '026', revoked_at: '026', revoke_device: '026', unrevoke_device: '026',
+    my_visitors: '027'
+  };
   function tidyInsight(m){
-    return /does not exist|schema cache|could not find/i.test(m)
-        ? 'Insight is not switched on yet – run migration 024.'
-      : /not yours to read/i.test(m) ? 'Only Sithara can read this.'
-      : m;
+    const msg = String(m || '');
+    if (/does not exist|schema cache|could not find/i.test(msg)){
+      /* the name out of "public.revoked_at(p_visitor)" or "function
+         public.track_signin(...) does not exist" */
+      const hit = msg.match(/public.([a-z_]+)/i) || msg.match(/functions+([a-z_]+)/i);
+      const fn = hit && hit[1];
+      const mig = fn && MADE_BY[fn];
+      if (fn && mig) return fn + '() is not in the database – run migration ' + mig + '.';
+      if (fn) return fn + '() is not in the database.';
+      return 'Something Insight needs is not in the database yet.';
+    }
+    return /not yours to read/i.test(msg) ? 'Only Sithara can read this.' : msg;
   }
 
   /* ------------------------------------------------------ daily attendance
