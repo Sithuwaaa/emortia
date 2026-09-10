@@ -795,6 +795,91 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 @media (prefers-reduced-motion:reduce){
   .dust-layer *,.term-card *{animation:none !important;}
 }
+/* ---- the music tab ----
+
+   Two columns: the record you are on, and the rest of them. The left column
+   is sticky, so the sleeve and the title stay put while the list scrolls -
+   the thing you are listening to should not leave the screen because you
+   went looking for the next one. */
+.mt-stage{display:grid;grid-template-columns:minmax(300px,1fr) minmax(320px,.94fr);
+  gap:clamp(24px,3.4vw,52px);align-items:start;}
+.mt-now{display:flex;flex-direction:column;gap:clamp(18px,2.2vw,26px);min-width:0;
+  position:sticky;top:96px;}
+.mt-art{width:100%;max-width:380px;aspect-ratio:1;border-radius:14px;overflow:hidden;
+  background:var(--surface2);box-shadow:0 34px 80px rgba(0,0,0,.62);}
+.mt-art img{width:100%;height:100%;object-fit:cover;display:block;}
+.mt-kick{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--accentB);}
+.mt-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+  font-size:clamp(34px,4.6vw,60px);line-height:.96;letter-spacing:-.04em;text-wrap:balance;}
+.mt-sub{font-family:'EB Garamond',serif;font-style:italic;
+  font-size:clamp(16px,1.5vw,19px);color:var(--dim);}
+.mt-ctl{display:flex;align-items:center;gap:clamp(10px,1.4vw,16px);flex-wrap:wrap;}
+.mt-ctl .step{background:transparent;border:none;color:var(--dim);cursor:pointer;padding:8px;
+  display:grid;place-items:center;transition:color .16s ease;}
+.mt-ctl .step:hover{color:var(--text);}
+.mt-ctl .big{width:62px;height:62px;border-radius:50%;background:var(--accentD);border:none;
+  color:#fff;cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 14px 36px var(--glowSoft);transition:background .16s ease,transform .16s ease;}
+.mt-ctl .big:hover{background:var(--accent);transform:scale(1.04);}
+.mt-ctl .tog{position:relative;display:grid;place-items:center;width:42px;height:42px;
+  border-radius:50%;background:transparent;border:none;cursor:pointer;margin-left:4px;
+  transition:color .16s ease;}
+.mt-ctl .tog i{position:absolute;bottom:4px;left:50%;width:4px;height:4px;margin-left:-2px;
+  border-radius:50%;}
+
+.mt-side{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.mt-list{display:flex;flex-direction:column;background:rgba(13,7,9,.52);
+  border:1px solid var(--line2);border-radius:14px;padding:clamp(10px,1.2vw,14px);}
+.mt-row{display:grid;grid-template-columns:26px auto minmax(0,1fr) auto;
+  gap:clamp(11px,1.4vw,16px);align-items:center;background:transparent;border:none;
+  border-radius:10px;padding:clamp(9px,1.1vw,12px) clamp(8px,1vw,12px);cursor:pointer;
+  text-align:left;font:inherit;color:inherit;transition:background .16s ease;}
+.mt-row:hover{background:rgba(var(--accentRGB,194,65,95),.14);}
+.mt-row.on{background:rgba(var(--accentRGB,194,65,95),.18);}
+.mt-row .n{font-family:'Space Mono',monospace;font-size:12px;color:var(--mute);}
+.mt-row .shot{width:46px;height:46px;border-radius:8px;flex:none;overflow:hidden;
+  background:var(--surface2);box-shadow:0 8px 20px rgba(0,0,0,.4);opacity:.78;}
+.mt-row.on .shot{opacity:1;}
+.mt-row .shot img{width:100%;height:100%;object-fit:cover;display:block;}
+.mt-row .t{font-weight:700;font-size:clamp(16px,1.7vw,19px);letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim);}
+.mt-row.on .t{color:var(--text);}
+.mt-row .tag{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--mute);}
+.mt-row .d{font-family:'Space Mono',monospace;font-size:12px;color:var(--mute);}
+.mt-row.on .d{color:var(--accentB);}
+/* the little equaliser that marks the row you are on */
+.mt-eq{display:flex;align-items:flex-end;gap:2.5px;height:17px;}
+.mt-eq i{width:3px;height:100%;background:var(--accentB);transform-origin:bottom;
+  animation:eqb .9s ease-in-out infinite;}
+.mt-eq i:nth-child(2){animation-delay:.18s}
+.mt-eq i:nth-child(3){animation-delay:.36s}
+@keyframes eqb{0%,100%{transform:scaleY(.32)}50%{transform:scaleY(1)}}
+
+@media (min-width:901px){
+  [data-section="music"]{min-height:0 !important;padding-bottom:0 !important;}
+  /* the screen, less the header, the player dock and the section's own room */
+  .mt-stage{height:calc(100svh - 63px - 85px - 100px);}
+  .mt-now{position:static;}
+  /* min-height:0 or the list refuses to shrink below its content and pushes
+     the box past the bottom of the screen instead of scrolling */
+  .mt-side{height:100%;min-height:0;}
+  .mt-list{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;
+    scrollbar-color:var(--line3) transparent;}
+  .mt-list::-webkit-scrollbar{width:8px}
+  .mt-list::-webkit-scrollbar-thumb{background:var(--line3);border-radius:4px}
+  .mt-list::-webkit-scrollbar-track{background:transparent}
+}
+@media (max-width:900px){
+  .mt-stage{grid-template-columns:1fr;}
+  .mt-now{position:static;}
+  .mt-art{max-width:300px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .mt-eq i{animation:none !important;}
+}
+
 /* ---- synced lyrics ---- */
 .lyrics-box{position:relative;max-height:340px;overflow-y:auto;scrollbar-width:none;text-align:center;-webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 18%,#000 82%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0%,#000 18%,#000 82%,transparent 100%);}
 .lyrics-box::-webkit-scrollbar{display:none;}
@@ -1002,86 +1087,102 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
     <!-- ============ MUSIC ============ -->
     <sc-if value="{{ isMusic }}" hint-placeholder-val="{{ false }}">
     <section style="animation:fadeUp 0.5s ease;padding:40px 0 60px;position:relative;z-index:1;">
-      <!-- playlist-style header -->
-      <div style="display:flex;gap:28px;align-items:flex-end;flex-wrap:wrap;margin-bottom:30px;">
-        <sc-if value="{{ curArtReady }}" hint-placeholder-val="{{ false }}">
-          {{ curArtImgLg }}
-        </sc-if>
-        <sc-if value="{{ curNoArt }}" hint-placeholder-val="{{ true }}">
-          <div style="width:190px;height:190px;border-radius:14px;background:linear-gradient(150deg,var(--artA),var(--bg2));display:grid;place-items:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:80px;color:rgba(244,239,230,0.14);flex-shrink:0;box-shadow:0 18px 46px rgba(0,0,0,0.5);">{{ curInitial }}</div>
-        </sc-if>
-        <div style="flex:1;min-width:240px;">
-          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.18em;color:var(--dim);text-transform:uppercase;">Catalogue</div>
-          <h2 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(44px,8vw,92px);letter-spacing:-0.03em;line-height:1;margin:8px 0 16px;">Music</h2>
-          <div style="color:var(--dim);font-size:14px;">{{ catMeta }}</div>
+
+      <div class="mt-stage" style="position:relative;z-index:1;">
+
+        <div class="mt-now">
+          <div class="mt-art">
+            <sc-if value="{{ curArtReady }}" hint-placeholder-val="{{ true }}">
+              {{ mtArtImg }}
+            </sc-if>
+            <sc-if value="{{ curNoArt }}" hint-placeholder-val="{{ false }}">
+              <div style="width:100%;height:100%;display:grid;place-items:center;background:{{ curTone }};font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:96px;color:rgba(244,239,230,.14);">{{ curInitial }}</div>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:0;">
+            <span class="mt-kick">Now playing &#183; {{ curNum }}</span>
+            <span class="mt-title">{{ curTitle }}</span>
+            <span class="mt-sub">{{ curSub }}</span>
+          </div>
+
+          <div class="mt-ctl">
+            <button class="step" onClick="{{ playPrev }}" title="Previous">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><polygon points="18,5 8,12 18,19"></polygon><rect x="5" y="5" width="2.4" height="14"></rect></svg>
+            </button>
+            <button class="big" onClick="{{ togglePlay }}" title="Play or pause">
+              <sc-if value="{{ paused }}" hint-placeholder-val="{{ true }}"><svg width="22" height="22" viewBox="0 0 24 24" style="margin-left:3px;"><polygon points="7,4 20,12 7,20" fill="currentColor"></polygon></svg></sc-if>
+              <sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"></rect><rect x="14" y="5" width="4" height="14" fill="currentColor"></rect></svg></sc-if>
+            </button>
+            <button class="step" onClick="{{ playNext }}" title="Next">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,5 16,12 6,19"></polygon><rect x="16.6" y="5" width="2.4" height="14"></rect></svg>
+            </button>
+            <button class="tog" onClick="{{ toggleShuffle }}" title="Shuffle" style="color:{{ shuffleColor }};">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+              <i style="background:{{ shuffleDot }};"></i>
+            </button>
+            <button class="tog" onClick="{{ cycleRepeat }}" title="Repeat" style="color:{{ repeatColor }};">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 22l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+              <i style="background:{{ repeatDot }};"></i>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- control bar -->
-      <div style="display:flex;align-items:center;gap:20px;margin-bottom:30px;">
-        <button onClick="{{ togglePlay }}" title="Play" style="width:58px;height:58px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:grid;place-items:center;flex-shrink:0;box-shadow:0 8px 22px var(--glowSoft);" style-hover="background:var(--accentB);transform:scale(1.04);">
-          <sc-if value="{{ paused }}" hint-placeholder-val="{{ true }}"><svg width="24" height="24" viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19" fill="var(--bg)"></polygon></svg></sc-if>
-          <sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}"><svg width="22" height="22" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1" fill="var(--bg)"></rect><rect x="14" y="5" width="4" height="14" rx="1" fill="var(--bg)"></rect></svg></sc-if>
-        </button>
-        <button onClick="{{ toggleShuffle }}" title="Shuffle" style="background:none;border:none;cursor:pointer;padding:8px;display:grid;place-items:center;" style-hover="opacity:0.75;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{ shuffleColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
-        </button>
-      </div>
+        <div class="mt-side">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);">Up next</span>
+              <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(22px,2.4vw,30px);letter-spacing:-.03em;">{{ catMeta }}</span>
+            </div>
+            <div class="sortbar">
+              <button class="sortbtn" onClick="{{ toggleSort }}" title="Change the order">
+                <span class="sortbtn-l">Sort by</span>
+                <span class="sortbtn-v">{{ sortLabel }}</span>
+                <span class="sortbtn-a">{{ sortArrow }}</span>
+              </button>
+              <sc-if value="{{ sortOpen }}" hint-placeholder-val="{{ false }}">
+                <div class="sortmenu">
+                  <div class="sortmenu-h">Sort by</div>
+                  <sc-for list="{{ sortItems }}" as="opt" hint-placeholder-count="4">
+                    <button class="sortopt" onClick="{{ opt.onPick }}" style="color:{{ opt.colour }};">
+                      <span>{{ opt.label }}</span><span class="sortopt-m">{{ opt.mark }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
 
-      <!-- sort: the order shown is the order that plays -->
-      <div class="sortbar">
-        <button class="sortbtn" onClick="{{ toggleSort }}" title="Change the order">
-          <span class="sortbtn-l">Sort by</span>
-          <span class="sortbtn-v">{{ sortLabel }}</span>
-          <span class="sortbtn-a">{{ sortArrow }}</span>
-        </button>
-        <sc-if value="{{ sortOpen }}" hint-placeholder-val="{{ false }}">
-          <div class="sortmenu">
-            <div class="sortmenu-h">Sort by</div>
-            <sc-for list="{{ sortItems }}" as="opt" hint-placeholder-count="4">
-              <button class="sortopt" onClick="{{ opt.onPick }}" style="color:{{ opt.colour }};">
-                <span>{{ opt.label }}</span><span class="sortopt-m">{{ opt.mark }}</span>
+          <div class="mt-list">
+            <sc-for list="{{ tracks }}" as="track" hint-placeholder-count="7">
+              <button class="mt-row {{ track.rowOn }}" onClick="{{ track.onPlay }}">
+                <span style="display:grid;place-items:center;">
+                  <sc-if value="{{ track.playingNow }}" hint-placeholder-val="{{ false }}">
+                    <span class="mt-eq"><i></i><i></i><i></i></span>
+                  </sc-if>
+                  <sc-if value="{{ track.notPlayingNow }}" hint-placeholder-val="{{ true }}">
+                    <span class="n">{{ track.num }}</span>
+                  </sc-if>
+                </span>
+                <span class="shot">
+                  <sc-if value="{{ track.artReady }}" hint-placeholder-val="{{ true }}">
+                    {{ track.artImgRow }}
+                  </sc-if>
+                  <sc-if value="{{ track.noArt }}" hint-placeholder-val="{{ false }}">
+                    <span style="display:grid;place-items:center;width:100%;height:100%;background:{{ track.tone }};font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:17px;color:rgba(244,239,230,.5);">{{ track.initial }}</span>
+                  </sc-if>
+                </span>
+                <span style="display:flex;flex-direction:column;gap:3px;min-width:0;">
+                  <span class="t">{{ track.t }}</span>
+                  <span class="tag">{{ track.a }}</span>
+                </span>
+                <span class="d">{{ track.durLabel }}</span>
               </button>
             </sc-for>
           </div>
-        </sc-if>
-      </div>
+        </div>
 
-      <!-- track table -->
-      <div class="trk-head">
-        <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--mute);text-align:center;">#</div>
-        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;color:var(--mute);text-transform:uppercase;">Title</div>
-        <div style="display:grid;place-items:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--mute)" stroke-width="2"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2" stroke-linecap="round"></path></svg></div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:1px;">
-        <sc-for list="{{ tracks }}" as="track" hint-placeholder-count="6">
-          <div class="trk-row" onClick="{{ track.onPlay }}">
-            <div class="trk-idx">
-              <sc-if value="{{ track.playingNow }}" hint-placeholder-val="{{ false }}">
-                <span class="trk-eq"><span style="height:40%;animation-delay:0s;"></span><span style="height:95%;animation-delay:.2s;"></span><span style="height:60%;animation-delay:.38s;"></span><span style="height:80%;animation-delay:.1s;"></span></span>
-              </sc-if>
-              <sc-if value="{{ track.notPlayingNow }}" hint-placeholder-val="{{ true }}">
-                <span class="trk-num" style="font-family:'Space Mono',monospace;font-size:13px;color:var(--mute);">{{ track.num }}</span>
-                <span class="trk-play"><svg width="13" height="13" viewBox="0 0 24 24"><polygon points="6,4 20,12 6,20" fill="var(--text)"></polygon></svg></span>
-              </sc-if>
-            </div>
-            <div style="display:flex;align-items:center;gap:14px;min-width:0;">
-              <sc-if value="{{ track.artReady }}" hint-placeholder-val="{{ false }}">
-              {{ track.artImg }}
-              </sc-if>
-              <sc-if value="{{ track.noArt }}" hint-placeholder-val="{{ true }}">
-                <div style="width:42px;height:42px;border-radius:7px;display:grid;place-items:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:17px;color:rgba(244,239,230,0.5);flex-shrink:0;background:{{ track.tone }};">{{ track.initial }}</div>
-              </sc-if>
-              <div style="min-width:0;">
-                <div style="font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:{{ track.titleColor }};">{{ track.t }}</div>
-                <div style="color:var(--mute);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ track.a }}</div>
-              </div>
-            </div>
-            <div class="trk-dur">{{ track.durLabel }}</div>
-          </div>
-        </sc-for>
-      </div>
-
     </section>
     </sc-if>
 
@@ -3238,7 +3339,7 @@ class Component extends DCLogic {
       toggleMenu: ()=>this.setState(st=>({menuOpen:!st.menuOpen})),
       /* numbered by where it sits now, not by where it sits in the file — a
          sorted list that still read 01..07 in the old order would be a lie */
-      tracks: this.sortedTracks().map((x,pos)=>{ const cur=s.picked && x.i===s.idx; const pn=cur&&s.playing; return { ...x, num:String(pos+1).padStart(2,'0'), artReady:(typeof x.img==='string' && x.img.length>0), artImg:this.artImg(x.img,{width:'42px',height:'42px',borderRadius:'7px'}), artImgSm:this.artImg(x.img,{width:'34px',height:'34px',borderRadius:'8px'}), current:cur, notCurrent:!cur, playingNow:pn, notPlayingNow:!pn, titleColor: cur?'var(--accent)':'var(--text)', onPlay:this.play(x.i), hasArt:!!x.img, noArt:!x.img }; }),
+      tracks: this.sortedTracks().map((x,pos)=>{ const cur=s.picked && x.i===s.idx; const pn=cur&&s.playing; return { ...x, num:String(pos+1).padStart(2,'0'), artReady:(typeof x.img==='string' && x.img.length>0), artImg:this.artImg(x.img,{width:'42px',height:'42px',borderRadius:'7px'}), artImgSm:this.artImg(x.img,{width:'34px',height:'34px',borderRadius:'8px'}), artImgRow:this.artImg(x.img,{width:'100%',height:'100%'}), rowOn: cur?'on':'', current:cur, notCurrent:!cur, playingNow:pn, notPlayingNow:!pn, titleColor: cur?'var(--accent)':'var(--text)', onPlay:this.play(x.i), hasArt:!!x.img, noArt:!x.img }; }),
 
       sortOpen: s.sortOpen, sortShut: !s.sortOpen,
       sortLabel: (SORTS.find(x=>x[0]===s.sortBy)||SORTS[0])[1],
@@ -3269,8 +3370,23 @@ class Component extends DCLogic {
       pct, pctLabel: pct.toFixed(2)+'%',
       playing:s.playing, paused:!s.playing, spinState: s.playing?'running':'paused',
       audioMissing:!!s.audioMissing, notMissing:!s.audioMissing,
-      musicBgClass: (s.page==='music' && s.playing) ? 'music-bg on' : 'music-bg',
-      musicScene: s.page==='music' ? this.renderMusicBg() : null,
+      musicBgClass: (s.page==='music' && s.picked) ? 'music-bg on' : 'music-bg',
+      musicScene: (s.page==='music' && s.picked) ? this.renderMusicBg() : null,
+
+      /* The music tab's own furniture. The sleeve stays behind the page for
+         as long as a song is chosen - not only while it is playing - because
+         pausing to read the list should not take the record off the wall. */
+      mtArtImg: this.artImg(t.img, { width:'100%', height:'100%' }, true),
+      curNum: (()=>{ const n=this.tracks.length;
+        return s.picked ? String(t.i+1).padStart(2,'0') + ' / ' + String(n).padStart(2,'0')
+                        : '-- / ' + String(n).padStart(2,'0'); })(),
+      /* the artist and the length, which is what is actually known about a
+         track here - the mock-up had "single · 2025" tags this catalogue does
+         not carry, and inventing a release year is not a design decision */
+      curSub: s.picked ? (t.a + ' · ' + t.durLabel) : 'Pick a song to start',
+      repeatColor: s.repeat==='off' ? 'var(--dim)' : 'var(--accentB)',
+      repeatDot:   s.repeat==='off' ? 'transparent' : 'var(--accentB)',
+      shuffleDot:  s.shuffle ? 'var(--accentB)' : 'transparent',
       dustField: this.dustField(),
       heroWall: this.renderHeroWall(),
       /* the newest sleeve, filling its card rather than sitting in a column */
