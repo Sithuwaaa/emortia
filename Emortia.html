@@ -840,7 +840,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    is sticky, so the sleeve and the title stay put while the list scrolls -
    the thing you are listening to should not leave the screen because you
    went looking for the next one. */
-.mt-stage{display:grid;grid-template-columns:minmax(300px,1fr) minmax(320px,.94fr);
+.mt-stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.94fr);
   gap:clamp(24px,3.4vw,52px);align-items:start;}
 .mt-now{display:flex;flex-direction:column;gap:clamp(18px,2.2vw,26px);min-width:0;
   position:sticky;top:96px;}
@@ -917,7 +917,11 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 @media (min-width:901px){
   [data-section="music"]{min-height:0 !important;padding-bottom:0 !important;
     height:100svh;overflow:hidden;display:flex;flex-direction:column;}
-  [data-section="music"] main{flex:1;min-height:0;display:flex;flex-direction:column;}
+  /* width:100% or main's auto margins make it shrink to its content in this
+     flex column - a longer title or sort label then widened the whole stage
+     and re-centred it, so sorting slid both boxes sideways */
+  [data-section="music"] main{flex:1;min-height:0;display:flex;flex-direction:column;
+    width:100%;box-sizing:border-box;}
   [data-section="music"] main > section{flex:1;min-height:0;display:flex;
     flex-direction:column;padding-bottom:var(--pageBot) !important;}
   .mt-stage{flex:1;min-height:0;}
