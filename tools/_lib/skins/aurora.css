@@ -1,0 +1,87 @@
+/* ============================================================
+   AURORA - a dark room, glass panels over a plain page.
+
+   Taken from the Claude Design project (tools/_lib/skins/aurora.css),
+   with every moving thing in the header left out on purpose: no sweep
+   of light across the bar, no line travelling the rule beneath it, no
+   pulsing status light, no floating mark. The header stands still; the
+   content itself only ever fades up.
+   ============================================================ */
+:root,
+html[data-theme="dark"]{
+  --navy:#120f24;   --navy-2:#1a1536;
+  --accent:#7c6bf0; --accentB:#a99cff; --accentD:#5a49c9; --accent-ink:#0a0716;
+  --ok:#48d6a8;     --warn:#f0a54a;    --err:#f2748e;     --info:#6fb0f5;
+  --bg:#08060f;     --card:#151229;  --card-2:#100d20;
+  --line:rgba(150,135,255,.16);  --line3:rgba(150,135,255,.3);
+  --text:#efeaff;   --muted:#a49cc6;
+  --glow:rgba(124,107,240,.5); --glowSoft:rgba(124,107,240,.26);
+}
+html[data-theme="light"]{
+  --navy:#241d40;   --navy-2:#31285a;
+  --accent:#5a49c9; --accentB:#7c6bf0; --accentD:#42349e; --accent-ink:#ffffff;
+  --bg:#f4f2fb;     --card:#ffffff; --card-2:#f7f5fd;
+  --line:rgba(90,73,201,.16);    --line3:rgba(90,73,201,.28);
+  --text:#1b1630;   --muted:#635b85;
+}
+
+/* the weather, injected by aurora.js as .aurora-layer */
+/* The background is plain: a flat page, no weather behind it. The layer is
+   left in the stylesheet so it can be switched back on in one line. */
+.aurora-layer{display:none}
+.aurora-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;filter:blur(60px)}
+.aurora-layer i{position:absolute;display:block;border-radius:50%;opacity:.55;
+  will-change:transform;mix-blend-mode:screen}
+.aurora-layer i:nth-child(1){width:62vw;height:62vw;left:-14vw;top:-18vw;
+  background:radial-gradient(circle,#7c6bf0,transparent 65%);animation:auA 34s ease-in-out infinite}
+.aurora-layer i:nth-child(2){width:50vw;height:50vw;right:-12vw;top:8vh;
+  background:radial-gradient(circle,#2ea6a0,transparent 65%);animation:auB 47s ease-in-out infinite}
+.aurora-layer i:nth-child(3){width:46vw;height:46vw;left:24vw;bottom:-20vh;
+  background:radial-gradient(circle,#d1548f,transparent 65%);animation:auC 41s ease-in-out infinite}
+@keyframes auA{ 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(14vw,10vh) scale(1.18)} }
+@keyframes auB{ 0%,100%{transform:translate(0,0) scale(1.1)} 50%{transform:translate(-12vw,16vh) scale(.9)} }
+@keyframes auC{ 0%,100%{transform:translate(0,0) scale(.95)} 50%{transform:translate(10vw,-14vh) scale(1.2)} }
+main,footer{position:relative;z-index:1}
+
+/* glass everywhere the tools draw a panel */
+.hdr{background:rgba(18,15,36,.55);backdrop-filter:blur(18px) saturate(1.3);
+  -webkit-backdrop-filter:blur(18px) saturate(1.3);border-bottom:1px solid var(--line);
+  overflow:hidden}
+.hdr > *{position:relative;z-index:1}
+.hdr .logo{box-shadow:0 0 22px var(--glow)}
+.hdr h1{font-weight:700;letter-spacing:-.01em}
+.pill{background:rgba(255,255,255,.06);backdrop-filter:blur(8px);border-radius:999px}
+.pill b{color:var(--accentB)}
+.theme{border-radius:999px;transition:transform .2s ease,border-color .2s ease}
+.theme:hover{transform:rotate(20deg);border-color:var(--accentB)}
+
+#q,.rrow,.detail,.dhead,.act{backdrop-filter:blur(14px) saturate(1.2);
+  -webkit-backdrop-filter:blur(14px) saturate(1.2)}
+#q{border-radius:14px;transition:border-color .2s ease,box-shadow .2s ease}
+#q:focus{border-color:var(--accentB);box-shadow:0 0 0 4px var(--glowSoft)}
+
+.rrow{border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.28);
+  transition:transform .22s cubic-bezier(.2,.8,.3,1),border-color .22s ease,box-shadow .22s ease;
+  animation:auRise .5s cubic-bezier(.2,.8,.3,1) both}
+@keyframes auRise{ from{opacity:0;transform:translateY(12px);filter:blur(6px)}
+                   to{opacity:1;transform:none;filter:none} }
+.rrow:nth-child(2){animation-delay:.07s}.rrow:nth-child(3){animation-delay:.14s}
+.rrow:nth-child(4){animation-delay:.21s}.rrow:nth-child(5){animation-delay:.28s}
+.rrow:hover{transform:translateY(-3px);border-color:var(--accentB);
+  box-shadow:0 16px 40px rgba(0,0,0,.42),0 0 0 1px var(--glowSoft)}
+.rrow .id{color:var(--accentB);font-family:'Space Mono',ui-monospace,monospace}
+.rrow .st{border-radius:999px}
+
+.detail{border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.45);animation:auRise .55s cubic-bezier(.2,.8,.3,1) both}
+.dhead{background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.02))}
+.dhead .nm{font-family:'Bricolage Grotesque',sans-serif}
+.dhead .id,.group h3{color:var(--accentB)}
+.act{border-radius:999px;transition:transform .2s ease,box-shadow .2s ease,background .2s ease}
+.act:hover{transform:translateY(-2px);border-color:var(--accentB)}
+.act.primary{box-shadow:0 10px 26px var(--glowSoft)}
+.act.primary:hover{background:var(--accentB)}
+.toast{border-radius:999px;background:rgba(26,21,54,.8);backdrop-filter:blur(14px)}
+
+@media (prefers-reduced-motion:reduce){
+  .aurora-layer i,.rrow,.detail{animation:none !important}
+}
