@@ -50,19 +50,12 @@ html,body{
 main{position:relative;z-index:1;}
 .stage,.bar,.drop{z-index:1;}
 
-/* --- header: plain terminal panel with a still grid and a live LED --- */
+/* --- header: one plain colour, no lines, and a live LED --- */
 .hdr{
-  background:linear-gradient(180deg,var(--navy-2),var(--navy)) !important;
+  background:var(--navy) !important;
   border-bottom:1px solid var(--line3);
   box-shadow:0 6px 26px rgba(0,0,0,.5) !important;
   overflow:hidden;
-}
-/* the grid stays put - it used to scroll, and moving lines behind text are tiring */
-.hdr::before{
-  content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
-  background-image:linear-gradient(rgba(63,189,208,.10) 1px,transparent 1px),
-                   linear-gradient(90deg,rgba(63,189,208,.07) 1px,transparent 1px);
-  background-size:24px 24px;
 }
 .hdr > *{position:relative;z-index:1;}
 .hdr .logo{
@@ -114,13 +107,7 @@ main{position:relative;z-index:1;}
 
 /* --- detail panel --- */
 .detail{animation:tRise .4s ease both;box-shadow:0 16px 40px rgba(0,0,0,.45) !important;}
-.dhead{background:linear-gradient(160deg,var(--card),var(--card-2)) !important;position:relative;overflow:hidden;}
-.dhead::before{
-  content:'';position:absolute;inset:0;pointer-events:none;opacity:.35;
-  background-image:linear-gradient(rgba(63,189,208,.09) 1px,transparent 1px),
-                   linear-gradient(90deg,rgba(63,189,208,.06) 1px,transparent 1px);
-  background-size:24px 24px;
-}
+.dhead{background:var(--card) !important;position:relative;overflow:hidden;}
 .dhead > *{position:relative;z-index:1;}
 .dhead .id{font-family:'Space Mono',ui-monospace,monospace;color:var(--accentB);}
 .dhead .nm{font-family:'Bricolage Grotesque',sans-serif;}
