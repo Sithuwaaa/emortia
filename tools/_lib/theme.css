@@ -50,20 +50,28 @@ html,body{
 main{position:relative;z-index:1;}
 .stage,.bar,.drop{z-index:1;}
 
-/* --- header: terminal panel with a scrolling grid and a live LED --- */
+/* --- header: terminal panel with a still grid, a drifting glow and a live LED --- */
 .hdr{
   background:linear-gradient(180deg,var(--navy-2),var(--navy)) !important;
   border-bottom:1px solid var(--line3);
   box-shadow:0 6px 26px rgba(0,0,0,.5) !important;
   overflow:hidden;
 }
+/* the grid stays put - it used to scroll, and moving lines behind text are tiring */
 .hdr::before{
-  content:'';position:absolute;inset:-24px 0;pointer-events:none;opacity:.5;
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
   background-image:linear-gradient(rgba(63,189,208,.10) 1px,transparent 1px),
                    linear-gradient(90deg,rgba(63,189,208,.07) 1px,transparent 1px);
-  background-size:24px 24px;animation:tGrid 2.8s linear infinite;
+  background-size:24px 24px;
 }
-@keyframes tGrid{ to{ transform:translateY(24px); } }
+/* a soft pool of the tool's own accent drifting slowly across the bar and back.
+   It takes --accentB, so every tool and both themes get it in their own colour. */
+.hdr::after{
+  content:'';position:absolute;top:-80%;bottom:-80%;left:0;width:36%;pointer-events:none;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--accentB) 34%,transparent),transparent);
+  animation:tGlow 18s ease-in-out infinite alternate;
+}
+@keyframes tGlow{ from{ transform:translateX(-60%); } to{ transform:translateX(240%); } }
 .hdr > *{position:relative;z-index:1;}
 .hdr .logo{
   border-radius:50% !important;
@@ -121,10 +129,15 @@ main{position:relative;z-index:1;}
 .detail{animation:tRise .4s ease both;box-shadow:0 16px 40px rgba(0,0,0,.45) !important;}
 .dhead{background:linear-gradient(160deg,var(--card),var(--card-2)) !important;position:relative;overflow:hidden;}
 .dhead::before{
-  content:'';position:absolute;inset:-24px 0;pointer-events:none;opacity:.35;
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.35;
   background-image:linear-gradient(rgba(63,189,208,.09) 1px,transparent 1px),
                    linear-gradient(90deg,rgba(63,189,208,.06) 1px,transparent 1px);
-  background-size:24px 24px;animation:tGrid 3.4s linear infinite;
+  background-size:24px 24px;
+}
+.dhead::after{
+  content:'';position:absolute;top:-60%;bottom:-60%;left:0;width:45%;pointer-events:none;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--accentB) 20%,transparent),transparent);
+  animation:tGlow 22s ease-in-out infinite alternate;
 }
 .dhead > *{position:relative;z-index:1;}
 .dhead .id{font-family:'Space Mono',ui-monospace,monospace;color:var(--accentB);}
@@ -177,7 +190,7 @@ td.mono,td.num,td.sn{font-family:'Space Mono',ui-monospace,monospace;}
 .frow{animation:tRise .3s ease both;}
 
 @media (prefers-reduced-motion:reduce){
-  .dust-layer *,.hdr::before,.dhead::before,.hdr .logo,.hdr h1::after,
+  .dust-layer *,.hdr::after,.dhead::after,.hdr .logo,.hdr h1::after,
   .pill::before,.rrow,.drop .ritem,.detail,.empty .big,.hlite,.frow{
     animation:none !important;
   }

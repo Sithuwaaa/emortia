@@ -42,10 +42,15 @@
   .hdr{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,var(--navy-2),var(--navy));
     color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;display:flex;align-items:center;gap:10px;
     border-bottom:1px solid var(--line3);box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden}
-  .hdr::before{content:'';position:absolute;inset:-24px 0;pointer-events:none;opacity:.5;
+  .hdr::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
     background-image:linear-gradient(rgba(169,201,87,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(169,201,87,.07) 1px,transparent 1px);
-    background-size:24px 24px;animation:tGrid 2.8s linear infinite}
-  @keyframes tGrid{to{transform:translateY(24px)}}
+    background-size:24px 24px}
+  /* the grid stays still; a soft glow of the accent drifts across instead */
+  .hdr::after{content:'';position:absolute;top:-80%;bottom:-80%;left:0;width:36%;pointer-events:none;
+    background:radial-gradient(closest-side,color-mix(in srgb,var(--accentB) 34%,transparent),transparent);
+    animation:tGlow 18s ease-in-out infinite alternate}
+  @keyframes tGlow{from{transform:translateX(-60%)}to{transform:translateX(240%)}}
+  @media (prefers-reduced-motion:reduce){.hdr::after{animation:none}}
   .hdr>*{position:relative;z-index:1}
   .hdr .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;flex-shrink:0;transition:opacity .18s ease}
   .hdr .brand:hover{opacity:.86}
