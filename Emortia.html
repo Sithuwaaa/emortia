@@ -243,7 +243,8 @@ input,textarea,button{font-family:inherit;}
 }
 /* ---- spotify-style track table ---- */
 /* ---- sort control ---- */
-.sortbar{position:relative;display:flex;justify-content:flex-end;margin-bottom:6px;}
+.mt-head{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
+.sortbar{position:relative;display:flex;justify-content:flex-start;margin-bottom:6px;}
 .sortbtn{display:inline-flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;
   padding:6px 4px;font-family:'Space Mono',monospace;font-size:11.5px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--mute);transition:color .15s ease;}
@@ -251,7 +252,7 @@ input,textarea,button{font-family:inherit;}
 .sortbtn-v{color:var(--text);}
 .sortbtn:hover .sortbtn-v{color:var(--accent);}
 .sortbtn-a{color:var(--accent);font-size:13px;}
-.sortmenu{position:absolute;top:100%;right:0;z-index:46;min-width:210px;padding:6px;
+.sortmenu{position:absolute;top:100%;left:0;z-index:46;min-width:210px;padding:6px;
   background:var(--queueBg);backdrop-filter:blur(14px);border:1px solid var(--line2);
   border-radius:13px;box-shadow:0 22px 54px rgba(0,0,0,.5);animation:fadeUp .16s ease;}
 .sortmenu-h{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.14em;
@@ -1194,7 +1195,10 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </div>
 
         <div class="mt-side">
-          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+          <!-- the sort control always sits on its own line: beside the heading it
+               fitted for "Title" and wrapped for "Custom order", so picking a sort
+               moved the control and pushed the list up and down -->
+          <div class="mt-head">
             <div style="display:flex;flex-direction:column;gap:4px;">
               <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);">Up next</span>
               <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(22px,2.4vw,30px);letter-spacing:-.03em;">{{ catMeta }}</span>
