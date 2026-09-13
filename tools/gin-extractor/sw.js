@@ -1,5 +1,5 @@
 /* GIN Extractor service worker - bump CACHE_VERSION on every deployment */
-const CACHE_VERSION = 'gin-v9';
+const CACHE_VERSION = 'gin-v10';
 const APP_SHELL = [
   './',
   './index.html',

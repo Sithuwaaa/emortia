@@ -50,7 +50,7 @@ html,body{
 main{position:relative;z-index:1;}
 .stage,.bar,.drop{z-index:1;}
 
-/* --- header: terminal panel with a still grid, a drifting glow and a live LED --- */
+/* --- header: plain terminal panel with a still grid and a live LED --- */
 .hdr{
   background:linear-gradient(180deg,var(--navy-2),var(--navy)) !important;
   border-bottom:1px solid var(--line3);
@@ -64,14 +64,6 @@ main{position:relative;z-index:1;}
                    linear-gradient(90deg,rgba(63,189,208,.07) 1px,transparent 1px);
   background-size:24px 24px;
 }
-/* a soft pool of the tool's own accent drifting slowly across the bar and back.
-   It takes --accentB, so every tool and both themes get it in their own colour. */
-.hdr::after{
-  content:'';position:absolute;top:-80%;bottom:-80%;left:0;width:36%;pointer-events:none;
-  background:radial-gradient(closest-side,color-mix(in srgb,var(--accentB) 34%,transparent),transparent);
-  animation:tGlow 18s ease-in-out infinite alternate;
-}
-@keyframes tGlow{ from{ transform:translateX(-60%); } to{ transform:translateX(240%); } }
 .hdr > *{position:relative;z-index:1;}
 .hdr .logo{
   border-radius:50% !important;
@@ -85,11 +77,6 @@ main{position:relative;z-index:1;}
   font-family:'Bricolage Grotesque','Hanken Grotesk',sans-serif;
   letter-spacing:-.01em;
 }
-.hdr h1::after{
-  content:'\2588';color:var(--accentB);font-weight:400;margin-left:6px;
-  animation:tCaret 1s steps(1,end) infinite;
-}
-@keyframes tCaret{ 0%,49%{opacity:1;} 50%,100%{opacity:0;} }
 .pill{
   font-family:'Space Mono',ui-monospace,monospace;
   background:rgba(0,0,0,.32) !important;border-color:var(--line3) !important;
@@ -133,11 +120,6 @@ main{position:relative;z-index:1;}
   background-image:linear-gradient(rgba(63,189,208,.09) 1px,transparent 1px),
                    linear-gradient(90deg,rgba(63,189,208,.06) 1px,transparent 1px);
   background-size:24px 24px;
-}
-.dhead::after{
-  content:'';position:absolute;top:-60%;bottom:-60%;left:0;width:45%;pointer-events:none;
-  background:radial-gradient(closest-side,color-mix(in srgb,var(--accentB) 20%,transparent),transparent);
-  animation:tGlow 22s ease-in-out infinite alternate;
 }
 .dhead > *{position:relative;z-index:1;}
 .dhead .id{font-family:'Space Mono',ui-monospace,monospace;color:var(--accentB);}
@@ -190,7 +172,7 @@ td.mono,td.num,td.sn{font-family:'Space Mono',ui-monospace,monospace;}
 .frow{animation:tRise .3s ease both;}
 
 @media (prefers-reduced-motion:reduce){
-  .dust-layer *,.hdr::after,.dhead::after,.hdr .logo,.hdr h1::after,
+  .dust-layer *,.hdr .logo,
   .pill::before,.rrow,.drop .ritem,.detail,.empty .big,.hlite,.frow{
     animation:none !important;
   }

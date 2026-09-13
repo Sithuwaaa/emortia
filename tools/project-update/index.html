@@ -43,20 +43,12 @@
   .hdr::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.5;
     background-image:linear-gradient(rgba(63,189,208,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(63,189,208,.07) 1px,transparent 1px);
     background-size:24px 24px}
-  /* the grid stays still; a soft glow of the accent drifts across instead */
-  .hdr::after{content:'';position:absolute;top:-80%;bottom:-80%;left:0;width:36%;pointer-events:none;
-    background:radial-gradient(closest-side,color-mix(in srgb,var(--accentB) 34%,transparent),transparent);
-    animation:tGlow 18s ease-in-out infinite alternate}
-  @keyframes tGlow{from{transform:translateX(-60%)}to{transform:translateX(240%)}}
-  @media (prefers-reduced-motion:reduce){.hdr::after{animation:none}}
   .hdr>*{position:relative;z-index:1}
   .hdr .logo{width:30px;height:30px;border-radius:50%;background:linear-gradient(150deg,var(--accentB),var(--accentD));
     display:grid;place-items:center;font-weight:800;color:#f2fbfd;font-size:14px;flex-shrink:0;
     box-shadow:0 0 18px rgba(31,151,168,.5);animation:tFloat 4.5s ease-in-out infinite}
   @keyframes tFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
   .hdr h1{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;margin-right:auto;white-space:nowrap;color:#fff}
-  .hdr h1::after{content:'\2588';color:var(--accentB);margin-left:6px;animation:tCaret 1s steps(1,end) infinite}
-  @keyframes tCaret{0%,49%{opacity:1}50%,100%{opacity:0}}
   .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:rgba(0,0,0,.32);border:1px solid var(--line3);
     color:#cfe4e8;border-radius:999px;padding:5px 12px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
   .pill::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accentB);animation:tLed 1.6s ease-in-out infinite}
