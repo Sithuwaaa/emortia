@@ -1,11 +1,10 @@
 /* ============================================================
-   AURORA - a dark room, glass panels over a plain page.
+   AURORA - a dark room with weather in it.
 
-   Taken from the Claude Design project (tools/_lib/skins/aurora.css),
-   with every moving thing in the header left out on purpose: no sweep
-   of light across the bar, no line travelling the rule beneath it, no
-   pulsing status light, no floating mark. The header stands still; the
-   content itself only ever fades up.
+   Three wide blooms of colour drift behind the page on periods long
+   enough that you never catch them repeating, and the panels are
+   glass over the top: translucent, blurred, edge-lit. The motion is
+   all in the background; the content itself only ever fades up.
    ============================================================ */
 :root,
 html[data-theme="dark"]{
@@ -25,9 +24,10 @@ html[data-theme="light"]{
   --text:#1b1630;   --muted:#635b85;
 }
 
-/* the weather, injected by aurora.js as .aurora-layer */
+/* the weather, injected by the page as .aurora-layer */
 /* The background is plain: a flat page, no weather behind it. The layer is
-   left in the stylesheet so it can be switched back on in one line. */
+   left in the stylesheet so it can be switched back on in one line, and the
+   glass treatment stays on the header where it still reads. */
 .aurora-layer{display:none}
 .aurora-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;filter:blur(60px)}
 .aurora-layer i{position:absolute;display:block;border-radius:50%;opacity:.55;
@@ -43,12 +43,46 @@ html[data-theme="light"]{
 @keyframes auC{ 0%,100%{transform:translate(0,0) scale(.95)} 50%{transform:translate(10vw,-14vh) scale(1.2)} }
 main,footer{position:relative;z-index:1}
 
+/* the site's dust, rising behind everything (injected by aurora.js) */
+.dust-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.dust{position:absolute;bottom:-12px;border-radius:50%;
+  background:radial-gradient(circle,var(--accentB),transparent 70%);
+  will-change:transform,opacity;animation:auDust linear infinite}
+@keyframes auDust{
+  0%{transform:translateY(0) translateX(0);opacity:0}
+  14%{opacity:.65}
+  100%{transform:translateY(-106vh) translateX(3vw);opacity:0}
+}
+
 /* glass everywhere the tools draw a panel */
 .hdr{background:rgba(18,15,36,.55);backdrop-filter:blur(18px) saturate(1.3);
   -webkit-backdrop-filter:blur(18px) saturate(1.3);border-bottom:1px solid var(--line);
   overflow:hidden}
+/* Blueprint's setting-out line, borrowed for the bar: a wedge of light
+   crossing it every few seconds. Behind the content, never over it. */
+.hdr::after{
+  content:'';position:absolute;top:0;bottom:0;left:-20%;width:18%;z-index:0;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(169,156,255,.22) 50%,transparent);
+  animation:auSweep 6.5s cubic-bezier(.5,0,.5,1) infinite;
+}
+@keyframes auSweep{ 0%{left:-20%} 70%,100%{left:120%} }
+/* a short bright length travelling the rule beneath the bar, left to right */
+.hdr::before{
+  content:'';position:absolute;bottom:0;left:0;width:34%;height:2px;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--accentB),transparent);
+  animation:auRule 3.6s linear infinite;
+}
+@keyframes auRule{ from{transform:translateX(-110%)} to{transform:translateX(330%)} }
+/* the status light: the tool is connected, and says so without a word */
+.hdr h1::after{
+  content:'';display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--accentB);margin-left:10px;vertical-align:middle;
+  animation:auLed 1.5s ease-in-out infinite;
+}
+@keyframes auLed{ 0%,100%{opacity:.25;box-shadow:none} 50%{opacity:1;box-shadow:0 0 10px var(--accentB)} }
 .hdr > *{position:relative;z-index:1}
-.hdr .logo{box-shadow:0 0 22px var(--glow)}
+.hdr .logo{box-shadow:0 0 22px var(--glow);animation:auFloat 6s ease-in-out infinite}
+@keyframes auFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
 .hdr h1{font-weight:700;letter-spacing:-.01em}
 .pill{background:rgba(255,255,255,.06);backdrop-filter:blur(8px);border-radius:999px}
 .pill b{color:var(--accentB)}
@@ -83,5 +117,5 @@ main,footer{position:relative;z-index:1}
 .toast{border-radius:999px;background:rgba(26,21,54,.8);backdrop-filter:blur(14px)}
 
 @media (prefers-reduced-motion:reduce){
-  .aurora-layer i,.rrow,.detail{animation:none !important}
+  .aurora-layer i,.dust-layer *,.hdr::after,.hdr::before,.hdr h1::after,.hdr .logo,.rrow,.detail{animation:none !important}
 }
