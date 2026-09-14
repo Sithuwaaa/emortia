@@ -1,0 +1,57 @@
+/* ============================================================
+   The tools' header motion and background dust, shared.
+
+   The same movement Site Data and Site Access have from the aurora
+   skin, without aurora's violet: every colour here is the tool's own
+   --accentB, so each tool moves in its own hue. Loaded last in each
+   tool's head, after its own styles.
+   ============================================================ */
+
+/* the header holds its own light, and keeps it inside */
+.hdr{overflow:hidden}
+.hdr > *{position:relative;z-index:1}
+
+/* a wedge of light crossing the bar every few seconds, behind the content */
+.hdr::after{
+  content:'';position:absolute;top:0;bottom:0;left:-20%;width:18%;z-index:0;pointer-events:none;
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accentB) 24%,transparent) 50%,transparent);
+  animation:mSweep 6.5s cubic-bezier(.5,0,.5,1) infinite;
+}
+@keyframes mSweep{ 0%{left:-20%} 70%,100%{left:120%} }
+
+/* a short bright length travelling the rule beneath the bar */
+.hdr::before{
+  content:'';position:absolute;bottom:0;left:0;width:34%;height:2px;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--accentB),transparent);
+  animation:mRule 3.6s linear infinite;
+}
+@keyframes mRule{ from{transform:translateX(-110%)} to{transform:translateX(330%)} }
+
+/* the status light after the tool's name */
+.hdr h1::after{
+  content:'';display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--accentB);margin-left:10px;vertical-align:middle;
+  animation:mLed 1.5s ease-in-out infinite;
+}
+@keyframes mLed{ 0%,100%{opacity:.25;box-shadow:none} 50%{opacity:1;box-shadow:0 0 10px var(--accentB)} }
+
+/* the mark, floating */
+.hdr .logo{animation:mFloat 6s ease-in-out infinite}
+@keyframes mFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+
+/* the site's dust, rising behind everything (injected by motion.js) */
+.dust-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.dust{position:absolute;bottom:-12px;border-radius:50%;
+  background:radial-gradient(circle,var(--accentB),transparent 70%);
+  will-change:transform,opacity;animation:mDust linear infinite}
+@keyframes mDust{
+  0%{transform:translateY(0) translateX(0);opacity:0}
+  14%{opacity:.65}
+  100%{transform:translateY(-106vh) translateX(3vw);opacity:0}
+}
+/* page content stays above the dust */
+main,footer{position:relative;z-index:1}
+
+@media (prefers-reduced-motion:reduce){
+  .hdr::after,.hdr::before,.hdr h1::after,.hdr .logo,.dust-layer *{animation:none !important}
+}
