@@ -221,6 +221,7 @@
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 </head>
 <body>
 <header class="hdr">
@@ -846,6 +847,17 @@ $('file').addEventListener('change', async e => {
     p = parseWorkbook(buf);
     if (!p.sheets['Full Plan']) { toast('That workbook has no “Full Plan” sheet'); return; }
   } catch (err){ console.error(err); toast('Could not read that file: ' + err.message); return; }
+
+  const okRep = await Ask.twice([
+    { title: 'Replace ' + ds().label + ' with ' + f.name + '?',
+      body: 'Every sheet in this workbook takes the place of what is published now – ' +
+            p.sheets['Full Plan'].rows.length + ' sites on the Full Plan.',
+      no: 'Cancel', yes: 'Yes, go on' },
+    { title: 'Every device sees this at once.',
+      body: 'The workbook published now is not kept anywhere else. Publish only if this file is the newer one.',
+      no: 'No, leave it', yes: 'Publish it' }
+  ]);
+  if (!okRep){ toast('Nothing was published'); return; }
 
   // ask for the session before writing, rather than failing inside the upsert
   let s;

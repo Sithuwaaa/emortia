@@ -185,6 +185,7 @@
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 </head>
 <body>
 <header class="hdr">
@@ -687,7 +688,16 @@ function wire(){
     saveReg();
     cb.closest('label').classList.toggle('on', cb.checked);
   });
-  const del = m => { if (!confirm('Take ' + m + ' out of the register?')) return;
+  const del = async m => {
+    const ok = await Ask.twice([
+      { title: 'Take ' + m + ' out of the register?',
+        body: 'The register is what decides which technologies this radio carries on every site in the batch.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Anything ticked by hand for it goes.',
+        body: 'Reading the batch again brings the model back, but only with what the sheet says – not what you corrected.',
+        no: 'No, keep it', yes: 'Remove ' + m }
+    ]);
+    if (!ok) return;
     delete REG[m]; saveReg(); buildTabs(); render(); toast(m + ' removed'); };
   [...document.querySelectorAll('[data-del]')].forEach(b => b.onclick = () => del(b.dataset.del));
   const am = $('addModel');
@@ -699,9 +709,17 @@ function wire(){
     saveReg(); buildTabs(); render(); toast(name + ' added - now tick what it carries');
   };
   const rr = $('regReset');
-  if (rr) rr.onclick = () => {
+  if (rr) rr.onclick = async () => {
     if (!SITES.length){ toast('Read a workbook first'); return; }
-    if (!confirm('Read every radio from the batch again?\n\nAnything you have ticked by hand is replaced by what the sheet says.')) return;
+    const ok = await Ask.twice([
+      { title: 'Read every radio from the batch again?',
+        body: 'The register is rebuilt from what the sheet says, model by model.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Your corrections are replaced.',
+        body: 'Anything you have ticked by hand is replaced by what the sheet says, for every model at once. There is no undo.',
+        no: 'No, keep mine', yes: 'Read it again' }
+    ]);
+    if (!ok) return;
     REG = DesignParser.buildRegister(SITES); saveReg(); buildTabs(); render(); toast('Register read from the batch');
   };
 

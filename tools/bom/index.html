@@ -193,6 +193,7 @@
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 </head>
 <body>
 <header class="hdr">
@@ -761,9 +762,17 @@ function wire(){
     const it = CAT[+el.dataset.ref];
     it.ref.model = el.value.trim(); keep();
   });
-  [...document.querySelectorAll('[data-delmat]')].forEach(b => b.onclick = () => {
+  [...document.querySelectorAll('[data-delmat]')].forEach(b => b.onclick = async () => {
     const it = CAT[+b.dataset.delmat];
-    if (!confirm('Take ' + it.name + ' off every BOM?\n\nThe rules behind it go with it. Back to the reference sheet brings it all back.')) return;
+    const ok = await Ask.twice([
+      { title: 'Take ' + it.name + ' off every BOM?',
+        body: 'It stops appearing on every site, in the order and in every export.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'The rules behind it go with it.',
+        body: 'Back to the reference sheet brings it all back, but any rule you changed for it is lost.',
+        no: 'No, keep it', yes: 'Remove it' }
+    ]);
+    if (!ok) return;
     CAT.splice(+b.dataset.delmat, 1); OPEN = ''; saveCat(); rebuild(); buildTabs(); render(); toast(it.name + ' removed');
   });
   const am = $('addMat');
@@ -778,8 +787,16 @@ function wire(){
     toast(name + ' added - now say how many');
   };
   const cr = $('catReset');
-  if (cr) cr.onclick = () => {
-    if (!confirm('Put the catalogue back to the July Target sheet?\n\nEvery rule you have changed and every material you have added goes. The quantities you typed on individual sites stay.')) return;
+  if (cr) cr.onclick = async () => {
+    const ok = await Ask.twice([
+      { title: 'Put the catalogue back to the July Target sheet?',
+        body: 'The quantities you typed on individual sites stay as they are.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Every rule you changed goes.',
+        body: 'So does every material you added by hand. There is no undo.',
+        no: 'No, keep mine', yes: 'Reset the catalogue' }
+    ]);
+    if (!ok) return;
     CAT = BomEngine.freshCatalogue();
     const added = BomEngine.growCatalogue(CAT, SITES);
     OPEN = ''; saveCat(); rebuild(); buildTabs(); render();

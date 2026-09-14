@@ -31,6 +31,7 @@
 <script src="tools/_lib/db.js" defer></script>
 <script src="tools/_lib/access-config.js" defer></script>
 <script src="tools/_lib/access.js" defer></script>
+<script src="tools/_lib/ask.js?v=1" defer></script>
 <script src="./support.js" defer></script>
 </head>
 <body>
@@ -2661,7 +2662,14 @@ class Component extends DCLogic {
     const ownerBar = window.IS_OWNER ? React.createElement('div',{key:'ob',
       style:{display:'flex',gap:'9px',flexWrap:'wrap',justifyContent:'center',padding:'26px 4px 8px'}},
       React.createElement('button',{onClick:()=>this.openWords(), style:this.boardBtn()},'Edit words'),
-      this.hasWords() ? React.createElement('button',{onClick:()=>this.clearWords(), style:this.boardBtn(),
+      this.hasWords() ? React.createElement('button',{onClick:()=>this.askTwice([
+          { title:'Use the lyrics file instead?',
+            body:'The words you typed for this song are forgotten and media/audio/lyrics/'+t.slug+'.lrc is read again.',
+            no:'Cancel', yes:'Yes, go on' },
+          { title:'Your typed words and their timings go.',
+            body:'They are only kept in this browser and are not in the repository yet, so nothing else has a copy.',
+            no:'No, keep them', yes:'Use the file' }
+        ]).then(ok=>{ if(ok) this.clearWords(); }), style:this.boardBtn(),
         title:'Forget what is typed here and read media/audio/lyrics/'+t.slug+'.lrc again'},'Use the file instead') : null,
       React.createElement('span',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11px',color:'var(--mute)',alignSelf:'center'}},
         this.hasWords() ? 'your words · not in the repo yet' : 'from ' + t.slug + '.lrc')) : null;
@@ -2793,13 +2801,33 @@ class Component extends DCLogic {
   /* Six questions in one round trip each, asked only when the Owner page is
      actually open. Every one of them refuses anybody but the owner on the
      server, so this is convenience rather than the lock. */
+  /* Two questions before anything is lost - tools/_lib/ask.js, the same box
+     the tools use. confirm() only if that file never arrived. */
+  askTwice(steps){
+    return window.Ask ? window.Ask.twice(steps)
+      : Promise.resolve(window.confirm(steps.map(s => s.title).join('\n\n')));
+  }
+
   /* The owner leaves the note; the machine acts on it when it next loads. */
   async signOutDevice(d, lift){
     const who = d.who || 'that machine';
-    if (!confirm(lift
-      ? 'Let ' + who + ' sign in again on this machine?'
-      : 'Sign ' + who + ' out on this machine?\n\nIt reads the note the next time it loads a page '
-        + 'and signs itself out then \u2013 not this second.')) return;
+    const what = [d.platform, d.device, d.browser].filter(Boolean).join(' \u00b7 ');
+    const ok = await this.askTwice(lift
+      ? [{ title: 'Let ' + who + ' sign in again?',
+           body: 'This lifts the sign-out note on that machine' + (what ? ' (' + what + ')' : '') + '.',
+           no: 'Cancel', yes: 'Yes, go on' },
+         { title: 'It can sign straight back in.',
+           body: 'Whoever has that browser can use the account again the next time they sign in.',
+           no: 'No, keep it out', yes: 'Let it back in', tone: 'go' }]
+      : [{ title: 'Sign ' + who + ' out on that machine?',
+           body: (what ? what + ' \u2013 ' : '') + 'it reads the note the next time it loads a page and '
+                 + 'signs itself out then, not this second.',
+           no: 'Cancel', yes: 'Yes, go on' },
+         { title: 'It stays out until you let it back in.',
+           body: 'Signing in again on that browser does not stick while the note is there. If the device '
+                 + 'is lost, change that account\u2019s password as well.',
+           no: 'No, leave it signed in', yes: 'Sign it out' }]);
+    if (!ok) return;
     try {
       await (lift ? DB.unrevokeDevice(d.visitor) : DB.revokeDevice(d.visitor));
       await this.loadInsight();
@@ -3363,8 +3391,18 @@ class Component extends DCLogic {
         React.createElement('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap'}},
           btn(this.state.syncCopied?'Copied ✓':'Copy LRC', ()=>this.syncCopy()),
           btn('Download .lrc', ()=>this.syncDownload()),
-          btn('Clear all', ()=>this.clearAllTimes(),'danger'),
-          this.hasDraft()? btn('Revert to file', ()=>this.discardDraft(),'danger') : null
+          btn('Clear all', ()=>this.askTwice([
+            { title:'Clear every line time?', body:'The words stay; every timing for this song is emptied.',
+              no:'Cancel', yes:'Yes, go on' },
+            { title:'Only this browser had them.', body:'Copy or download the LRC first if you want to keep what is set now.',
+              no:'No, keep them', yes:'Clear all' }
+          ]).then(ok=>{ if(ok) this.clearAllTimes(); }),'danger'),
+          this.hasDraft()? btn('Revert to file', ()=>this.askTwice([
+            { title:'Go back to the timings in the file?', body:'Every time you set here for this song is dropped.',
+              no:'Cancel', yes:'Yes, go on' },
+            { title:'Your edits are not kept anywhere else.', body:'Copy or download the LRC first if you might want them.',
+              no:'No, keep my edits', yes:'Revert to file' }
+          ]).then(ok=>{ if(ok) this.discardDraft(); }),'danger') : null
         ),
         React.createElement('div',{style:{fontSize:'11px',color:'var(--faint)',lineHeight:1.55}},
           'Play the song and press Space on each line. Arrows nudge ±0.1s / ±1s, ▶ replays a line, and the page behind updates live. Your edits are kept in this browser – Copy or Download when done, then paste into media/audio/lyrics/'+t.slug+'.lrc.')

@@ -780,7 +780,9 @@
        orphan is worse than a directory missing one line */
     (p.data || []).forEach(r => { if (by[r.team_id]) by[r.team_id].people.push({
       id: r.id, name: r.name || '', mobile: r.mobile || '', nic: r.nic || '',
-      company: r.company || '', role: r.role || '' }); });
+      company: r.company || '', role: r.role || '',
+      /* absent until migration 028 is run, and read as "not verified" then */
+      verifiedAt: r.verified_at || null, verifiedName: r.verified_name || '' }); });
     (v.data || []).forEach(r => { if (by[r.team_id]) by[r.team_id].vehicles.push({
       id: r.id, reg: r.reg || '', kind: r.kind || '', driver: r.driver || '' }); });
     return { teams, error: null };
@@ -833,6 +835,23 @@
     const c = await tc();
     const { error } = await c.from(TPEOPLE).delete().eq('id', id);
     if (error) teamErr(error);
+  }
+
+  /* The verified mark goes through team_verify() in migration 028, which asks
+     the role on the server and records who and when. Editing the record takes
+     the mark off again there, not here. */
+  async function teamVerify(id, on){
+    const c = await tc();
+    const { error } = await c.rpc('team_verify', { p_id: id, p_on: !!on });
+    if (!error) return;
+    const m = String(error.message || '');
+    if (/does not exist|schema cache|could not find/i.test(m))
+      throw new Error('team_verify() is not in the database – run migration 028.');
+    if (/only the owner or an office admin/i.test(m))
+      throw new Error('Only the owner or an office admin can verify a record.');
+    if (/not in the directory/i.test(m))
+      throw new Error('That person is not in the directory any more.');
+    teamErr(error);
   }
 
   async function teamSaveVehicle(v){
@@ -1458,7 +1477,7 @@
                 attendClearPhoto, attendDropRecord, attendClearBefore,
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
-                teamSavePerson, teamDeletePerson, teamSaveVehicle, teamDeleteVehicle,
+                teamSavePerson, teamDeletePerson, teamVerify, teamSaveVehicle, teamDeleteVehicle,
                 teamSubscribe, teamNextSort: nextSort, teamApplyImport,
                 gateGet, gateSet,
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,

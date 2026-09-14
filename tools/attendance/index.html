@@ -220,6 +220,7 @@
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 </head>
 <body>
 <header class="hdr" id="hdr"></header>
@@ -785,6 +786,17 @@ function wireOffice(sheet, late){
   };
   document.querySelectorAll('[data-lvdrop]').forEach(b => b.onclick = async () => {
     const parts = b.dataset.lvdrop.split('|');
+    const lname = (PEOPLE.find(p => p.id === parts[0]) || {}).name || 'this person';
+    const ndays = parts[1] ? parts[1].split(',').length : 0;
+    const ok = await ask([
+      { title: 'Take ' + lname + '’s leave off?',
+        body: plural(ndays, 'day') + ' of leave are recorded here.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Those days count as absent again.',
+        body: 'Unless a photograph or a typed time covers them, the sheet shows ' + lname + ' as not there.',
+        no: 'No, keep the leave', yes: 'Take it off' }
+    ]);
+    if (!ok) return;
     try { await window.DB.attendClearLeaveRange(parts[1].split(','), parts[0]);
       await refresh(); toast('Leave taken off'); }
     catch (e){ toast(e.message, 5000); }
@@ -808,13 +820,20 @@ function wireOffice(sheet, late){
       await refresh(); toast(p.name + ' – ' + kind + ' at ' + at); }
     catch (e){ toast(e.message, 5000); }
   });
-  /* and undoing one. A typed entry is a decision somebody made, so taking it
-     back is one question rather than two - it is not evidence being deleted. */
+  /* and undoing one. Asked twice either way: a typed entry is not evidence,
+     but taking it off still changes somebody's day on the sheet. */
   document.querySelectorAll('[data-untime]').forEach(b => b.onclick = async () => {
     const rec = RECS.find(r => r.id === b.dataset.untime);
     const typed = rec && /^M:/.test(rec.ref || '');
     const ok = typed
-      ? confirm('Take this entry off the sheet?\n\nIt was typed by the office, not photographed.')
+      ? await ask([
+          { title: 'Take this entry off the sheet?',
+            body: 'It was typed by the office, not photographed.',
+            no: 'Cancel', yes: 'Yes, go on' },
+          { title: 'The sheet recounts without it.',
+            body: 'The day, the late mark and the hours for this person change straight away. It can be typed in again.',
+            no: 'No, keep it', yes: 'Take it off' }
+        ])
       : await ask([
           { title: 'This stamp came from a photograph.',
             body: 'Removing it here would delete the record and take every name ticked on that ' +
@@ -919,6 +938,18 @@ function wireOffice(sheet, late){
   });
   document.querySelectorAll('[data-clear]').forEach(b => b.onclick = async () => {
     const rec = RECS.find(r => r.id === b.dataset.clear); if (!rec) return;
+    const nticked = (rec.members || []).length;
+    if (nticked){
+      const ok = await ask([
+        { title: 'Untick everybody on this photo?',
+          body: plural(nticked, 'name is', 'names are') + ' ticked on it now.',
+          no: 'Cancel', yes: 'Yes, go on' },
+        { title: 'They lose this stamp on the sheet.',
+          body: 'The photograph stays. Each face has to be ticked again by hand to count.',
+          no: 'No, leave them ticked', yes: 'Untick all' }
+      ]);
+      if (!ok) return;
+    }
     const next = Object.assign({}, rec, { members: [] });
     RECS = RECS.map(r => r.id === rec.id ? next : r); paint();
     try { await window.DB.attendName(rec.id, []); }
@@ -934,6 +965,18 @@ function wireOffice(sheet, late){
   };
   document.querySelectorAll('[data-lv]').forEach(b => b.onclick = async () => {
     const on = b.dataset.on !== '1';
+    if (!on){
+      const who = (PEOPLE.find(p => p.id === b.dataset.lv) || {}).name || 'this person';
+      const ok = await ask([
+        { title: 'Take ' + who + ' off leave for this day?',
+          body: 'The leave mark and its note are removed.',
+          no: 'Cancel', yes: 'Yes, go on' },
+        { title: 'The day counts as absent again.',
+          body: 'Unless a photograph or a typed time covers it, the sheet shows ' + who + ' as not there.',
+          no: 'No, keep the leave', yes: 'Take it off' }
+      ]);
+      if (!ok) return;
+    }
     const note = on ? (prompt('A note, if there is one (optional)') || '') : '';
     try { await window.DB.attendSetLeave(DAY, b.dataset.lv, on, note); await refresh();
       toast(on ? 'Marked on leave' : 'Leave taken off'); }

@@ -190,6 +190,7 @@
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 </head>
 <body>
 <header class="hdr">
@@ -872,16 +873,33 @@ function stampWord(){
 
 /* Clearing the word times leaves the line times alone - the lines are the
    slow part to redo, and it is the words you get wrong on a first pass. */
-function clearWordTimes(){
+async function clearWordTimes(){
   const any = LINES.some(l => (l.wordTimes || []).some(t => t != null));
   if (!any){ toast('No word times to clear'); return; }
+  const ok = await Ask.twice([
+    { title: 'Clear every word time?',
+      body: 'The line times and the words stay; only the beat each word lights on is emptied.',
+      no: 'Cancel', yes: 'Yes, go on' },
+    { title: 'Each word has to be stamped again.',
+      body: 'There is no undo, and the video will light whole lines until the words are timed again.',
+      no: 'No, keep them', yes: 'Clear word times' }
+  ]);
+  if (!ok) return;
   LINES.forEach(l => { l.wordTimes = (l.wordTimes || []).map(() => null); });
   writeLines();
   toast('Word times cleared');
 }
-function clearAllTimes(){
+async function clearAllTimes(){
   if (!LINES.length) return;
-  if (!confirm('Clear every line and word time? The words stay.')) return;
+  const ok = await Ask.twice([
+    { title: 'Clear every line and word time?',
+      body: 'The words stay exactly as they are typed. Every time stamped against them is emptied.',
+      no: 'Cancel', yes: 'Yes, go on' },
+    { title: 'The whole song has to be timed again.',
+      body: 'There is no undo. Save or export first if you want to keep the timing as it is now.',
+      no: 'No, keep them', yes: 'Clear all times' }
+  ]);
+  if (!ok) return;
   $('lyrics').value = LINES.map(l => l.text || '').join('\n');
   S.lyrics = $('lyrics').value;
   save(); readLyrics(); paintWords();
@@ -1058,7 +1076,16 @@ async function listProjects(){
   [...box.querySelectorAll('[data-del]')].forEach(b => b.onclick = async e => {
     e.stopPropagation();
     const row = rows.find(r => r.id === b.dataset.del);
-    if (!confirm('Delete “' + (row ? row.name : 'this project') + '”? This cannot be undone.')) return;
+    const name = row ? row.name : 'this project';
+    const ok = await Ask.twice([
+      { title: 'Delete “' + name + '”?',
+        body: 'The project is removed for every device you open this tool on.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Its artwork and audio go with it.',
+        body: 'The words, every time stamped against them and both uploaded files are deleted. This cannot be undone.',
+        no: 'No, keep it', yes: 'Delete the project' }
+    ]);
+    if (!ok) return;
     try {
       await DB.lyricDelete(b.dataset.del, [row && row.art_path, row && row.audio_path]);
       if (PROJ.id === b.dataset.del) newProject({ silent:true });
@@ -1068,7 +1095,14 @@ async function listProjects(){
 }
 
 async function openProject(id){
-  if (DIRTY && !confirm('This project has changes that are not saved. Open another anyway?')) return;
+  if (DIRTY && !(await Ask.twice([
+    { title: 'This project has changes that are not saved.',
+      body: 'Opening another one now leaves them behind.',
+      no: 'Cancel', yes: 'Yes, go on' },
+    { title: 'The unsaved changes are lost.',
+      body: 'Nothing else holds a copy of them. Save first if you want to keep them.',
+      no: 'No, stay here', yes: 'Open it anyway' }
+  ]))) return;
   const r = await DB.lyricGet(id);
   if (!r){ toast('Could not open that one'); return; }
   clearTimeout(SAVE_T); DIRTY = false; RESTORING = true;
@@ -1116,9 +1150,18 @@ async function openProject(id){
   toast('Opened “' + r.name + '”');
 }
 
-function newProject(opt){
+/* async so it can ask - and silent calls never reach the question, so they
+   still run straight through as they always did */
+async function newProject(opt){
   const o = opt || {};
-  if (!o.silent && DIRTY && !confirm('This project has changes that are not saved. Start a new one anyway?')) return;
+  if (!o.silent && DIRTY && !(await Ask.twice([
+    { title: 'This project has changes that are not saved.',
+      body: 'Starting a new one now leaves them behind.',
+      no: 'Cancel', yes: 'Yes, go on' },
+    { title: 'The unsaved changes are lost.',
+      body: 'Nothing else holds a copy of them. Save first if you want to keep them.',
+      no: 'No, stay here', yes: 'Start a new one' }
+  ]))) return;
   clearTimeout(SAVE_T); DIRTY = false;
   PROJ = { id:null, name:'', status:'draft', artPath:null, audioPath:null, audioName:null };
   PENDING = { art:null, audio:null };

@@ -9,8 +9,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../_lib/theme.css">
-<script src="../_lib/theme.js" defer></script>
+<link rel="stylesheet" href="../_lib/skins/aurora.css?v=3">
+<script src="../_lib/skins/aurora.js?v=3" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 <script src="../_lib/owner-config.js"></script>
 <script src="../_lib/owner.js"></script>
 <script src="../_lib/supabase-config.js"></script>
@@ -146,13 +147,19 @@
   .chip.on{background:var(--accent);border-color:transparent;color:var(--accent-ink);font-weight:700}
 
   /* ------------------------------------------------------------- the table */
-  .scroll{overflow-x:auto;margin-top:8px}
-  table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
-  th{text-align:left;font-family:'Space Mono',monospace;font-size:9.5px;font-weight:700;
-    letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
-    padding:9px 8px;border-bottom:1px solid var(--line3);white-space:nowrap}
-  td{padding:0;border-bottom:1px solid var(--line)}
-  tbody tr:hover{background:var(--zebra)}
+  .scroll{overflow-x:auto;overflow-y:auto;max-height:min(72vh,860px);margin-top:8px;
+    border:1px solid var(--line3);border-radius:11px;background:var(--card)}
+  table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px;min-width:800px}
+  th{position:sticky;top:0;z-index:2;text-align:left;font-family:'Space Mono',monospace;
+    font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);background:var(--card-2);padding:10px 8px;
+    border-bottom:1px solid var(--line3);border-right:1px solid var(--line);white-space:nowrap}
+  th:last-child{border-right:0}
+  td{padding:0;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+  td:last-child{border-right:0}
+  tbody tr:nth-child(even){background:var(--zebra)}
+  tbody tr:hover{background:var(--glowSoft)}
+  tbody tr:last-child td{border-bottom:0}
   .num{padding:7px 8px;font-family:'Space Mono',monospace;font-size:11.5px;
     color:var(--muted);width:38px}
   .meta{padding:7px 8px;font-size:12.5px;color:var(--muted)}
@@ -176,6 +183,18 @@
   /* an ID number that is not an ID number shape - marked, never refused */
   .flag{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warn);
     flex:none;margin-right:2px}
+  /* Verified is a mark somebody made - an owner or an office admin, on a date -
+     not a guess the page makes from what is filled in. The tick is theirs; the
+     button is only drawn for the two roles that may press it. */
+  .ok{display:flex;align-items:center;justify-content:center;padding:5px 6px;min-height:34px}
+  .ok svg{flex:none}
+  .ok.yes{color:var(--accent)}
+  .ok.no{color:var(--muted);opacity:.5}
+  button.ok{width:100%;background:none;border:0;cursor:pointer;font:inherit}
+  button.ok:hover{background:var(--glowSoft)}
+  .mini.vb{color:var(--accent);border-color:var(--accent)}
+  .mini.vb:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .mini.vb.gap{border-style:dashed}
   .none{padding:30px 4px;font-size:14px;color:var(--muted)}
   .warnBox{margin-top:14px;border:1px solid var(--line3);border-left:3px solid var(--warn);
     border-radius:9px;padding:11px 14px;font-size:13px;color:var(--muted);background:var(--card-2)}
@@ -242,8 +261,6 @@
     h1{font-size:25px}
   }
 </style>
-<link rel="stylesheet" href="../_lib/motion.css?v=1">
-<script src="../_lib/motion.js?v=1" defer></script>
 </head>
 <body>
 
@@ -274,11 +291,15 @@
       <button class="btn" id="addPerson" type="button" hidden>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Add member</button>
+      <button class="btn" id="dlBtn" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 21h16"/></svg>
+        Download</button>
       <button class="btn go" id="copyAll" type="button">Copy all</button>
     </div>
 
     <div class="bar">
       <span>Click any value to copy it · a row copies as the sheet's own five columns</span>
+      <span id="okTally" style="margin-left:auto"></span>
     </div>
 
     <!-- the sheet's own columns, in the sheet's own order, so a row copied out
@@ -288,7 +309,8 @@
         <thead><tr>
           <th class="num">#</th><th>Name</th><th style="width:140px">Mobile Number</th>
           <th style="width:150px">ID No</th><th style="width:200px">Company Name</th>
-          <th style="width:130px">Role</th><th style="width:120px">Row</th>
+          <th style="width:130px">Role</th><th style="width:96px;text-align:center">Verified</th>
+          <th style="width:120px">Row</th>
         </tr></thead>
         <tbody id="people"></tbody>
       </table>
@@ -350,6 +372,14 @@
   };
 
   var $ = function(id){ return document.getElementById(id); };
+
+  /* Two questions before anything is lost or vouched for - tools/_lib/ask.js,
+     the same box every tool and the site use. confirm() only if that file
+     never arrived, so a button is never simply dead. */
+  var twice = function(steps){
+    return window.Ask ? window.Ask.twice(steps)
+      : Promise.resolve(window.confirm(steps.map(function(s){ return s.title; }).join('\n\n')));
+  };
   var esc = function(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
       return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; });
@@ -463,6 +493,49 @@
   }
 
   function shown(){ return T.view(S.teams, S.active, S.q); }
+
+  /* What is missing or wrong about one person, in the words somebody would
+     use to fix it. It does not decide the mark - a person does - but it is
+     what the second question says out loud before they make it. */
+  function missing(p){
+    var out = [];
+    if (!String(p.name || '').trim()) out.push('no name');
+    if (!T.phone(p.mobile)) out.push('no mobile number');
+    if (!String(p.nic || '').trim()) out.push('no ID number');
+    else if (T.nicNote(p.nic)) out.push(T.nicNote(p.nic).toLowerCase());
+    if (!String(p.company || '').trim()) out.push('no company');
+    if (!String(p.role || '').trim()) out.push('no role');
+    return out;
+  }
+  var TICK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="m4.5 12.5 5 5 10-11"/></svg>';
+  var DASH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12"/></svg>';
+  var day = function(iso){
+    return iso ? new Date(iso).toLocaleDateString(undefined,
+      { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  };
+  var whoWhen = function(p){
+    return 'Verified' + (p.verifiedName ? ' by ' + p.verifiedName : '') + ' on ' + day(p.verifiedAt);
+  };
+  function okMark(p){
+    var gaps = missing(p);
+    if (p.verifiedAt){
+      return mine()
+        ? '<button class="ok yes" data-unverify="' + esc(p.id) + '" type="button" title="' +
+            esc(whoWhen(p) + ' – click to take the mark off') + '">' + TICK + '</button>'
+        : '<div class="ok yes" title="' + esc(whoWhen(p)) + '">' + TICK + '</div>';
+    }
+    if (mine()){
+      return '<div class="ok"><button class="mini vb' + (gaps.length ? ' gap' : '') + '" data-verify="' +
+        esc(p.id) + '" type="button" title="' +
+        esc(gaps.length ? 'Not complete – ' + gaps.join(', ') : 'Mark this record checked') +
+        '">Verify</button></div>';
+    }
+    return '<div class="ok no" title="' +
+      esc(gaps.length ? 'Not verified – ' + gaps.join(', ') : 'Not verified yet') + '">' + DASH + '</div>';
+  }
   var teamTitle = function(name){ return T.titleOf(name); };
 
   function paintPeople(){
@@ -475,6 +548,7 @@
       : team ? teamTitle(team.team) : 'All team members';
     $('copyAll').textContent = 'Copy all ' + rows.length;
     $('copyAll').disabled = !rows.length;
+    $('dlBtn').disabled = !rows.length;
 
     /* The five columns are the sheet's own, always, so a row copied out and
        pasted back lands where it came from. Which team somebody is in is not
@@ -500,12 +574,16 @@
           '<span>' + (p.company ? esc(p.company) : '—') + '</span>' + COPY_ICON + '</button></td>' +
         '<td><button class="cell" data-copy="' + esc(p.role) + '" data-what="role" type="button">' +
           '<span>' + (p.role ? esc(p.role) : '—') + '</span>' + COPY_ICON + '</button></td>' +
+        '<td>' + okMark(p) + '</td>' +
         '<td><div class="acts">' +
           '<button class="mini" data-row="' + esc(p.id) + '" type="button">Copy</button>' +
           (mine() ? '<button class="mini" data-edit="' + esc(p.id) + '" type="button">Edit</button>' +
                     '<button class="mini bad" data-delp="' + esc(p.id) + '" type="button">×</button>' : '') +
         '</div></td></tr>';
     }).join('');
+
+    var good = rows.filter(function(p){ return !!p.verifiedAt; }).length;
+    $('okTally').textContent = rows.length ? good + ' of ' + rows.length + ' verified' : '';
 
     var empty = $('noPeople');
     empty.hidden = !!rows.length;
@@ -678,9 +756,17 @@
       paint();
     });
   }
+  /* the password says it is you; the two questions say it is what you meant */
   function confirmDelete(what, run){
-    if (!confirm('Remove ' + what + '?\n\nThis takes it off everybody’s copy.')) return;
-    run();
+    twice([
+      { title: 'Remove ' + what + '?',
+        body: 'This takes it off everybody’s copy of the directory, on every device at once.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'There is no undo.',
+        body: 'Nothing keeps a copy. To bring it back it has to be typed in again, or come back ' +
+              'with the next workbook.',
+        no: 'No, keep it', yes: 'Remove it' }
+    ]).then(function(ok){ if (ok) run(); });
   }
 
   async function tryGate(){
@@ -937,7 +1023,8 @@
   document.addEventListener('click', function(e){
     var el = e.target.closest ? e.target.closest('[data-team],[data-drop],[data-copy],' +
       '[data-row],[data-vrow],[data-edit],[data-vedit],[data-delp],[data-delv],' +
-      '#addTeam,#addPerson,#addVehicle,#importBtn,#copyAll,#copyVeh,' +
+      '#addTeam,#addPerson,#addVehicle,#importBtn,#copyAll,#copyVeh,#dlBtn,' +
+      '[data-verify],[data-unverify],' +
       '#mClose,#mCancel,#mGo,#mDrop,#themeBtn') : null;
     if (!el) return;
     var d = el.dataset || {};
@@ -963,6 +1050,83 @@
     if (el.id === 'copyVeh'){
       var vr = shown().vehicles;
       return copy(T.sheet(vr, T.vehicleText), 'Copied ' + vr.length + ' vehicle rows');
+    }
+
+    /* What is on screen, as a file: the sheet's columns, the team, and whether
+       each row has been checked and by whom. */
+    if (el.id === 'dlBtn'){
+      var dv = shown(), dr = dv.people;
+      if (!dr.length) return say('Nothing on screen to download.', true);
+      var head = ['#','Name','Team','Mobile Number','ID No','Company Name','Role',
+                  'Verified','Verified by','Verified on'];
+      var body = dr.map(function(p, i){
+        return [String(i + 1), p.name || '', p.team || '', T.phone(p.mobile) || '',
+                p.nic || '', p.company || '', p.role || '',
+                p.verifiedAt ? 'Yes' : 'No', p.verifiedAt ? (p.verifiedName || '') : '',
+                p.verifiedAt ? String(p.verifiedAt).slice(0, 10) : ''];
+      });
+      var when = new Date().toISOString().slice(0, 10);
+      var stem = 'team-directory-' +
+        (dv.scope === 'team' ? T.titleOf((S.teams.filter(function(t){ return t.id === S.active; })[0] || {}).team || 'team')
+          .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+         : dv.scope === 'search' ? 'search' : 'all') + '-' + when;
+      /* xlsx when the reader is up - it is already here for imports - and a
+         CSV when it is not, so the button never simply does nothing */
+      if (typeof XLSX !== 'undefined'){
+        var wb2 = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb2, XLSX.utils.aoa_to_sheet([head].concat(body)), 'Team');
+        XLSX.writeFile(wb2, stem + '.xlsx');
+        return say('Downloaded ' + dr.length + ' rows – ' + stem + '.xlsx');
+      }
+      var qt = function(s){ return '"' + String(s).replace(/"/g, '""') + '"'; };
+      var csv = '﻿' + [head].concat(body).map(function(r){ return r.map(qt).join(','); }).join('\r\n');
+      var url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      var a = document.createElement('a');
+      a.href = url; a.download = stem + '.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      return say('Downloaded ' + dr.length + ' rows – ' + stem + '.csv');
+    }
+
+    /* Verifying is asked twice like deleting is: it is a statement that goes
+       out under your name to everybody who opens the directory. */
+    if (d.verify){
+      var vp = find(d.verify); if (!vp || !mine()) return;
+      var gaps = missing(vp);
+      return twice([
+        { title: 'Mark ' + vp.name + ' as verified?',
+          body: 'This says the name, mobile number, ID number, company and role have been checked ' +
+                'against the person or their papers. Everyone who opens the directory sees the mark.',
+          no: 'Cancel', yes: 'Yes, go on' },
+        gaps.length
+          ? { title: 'Not everything is there.',
+              body: vp.name + ' has ' + gaps.join(', ') + '. Verify anyway only if that is genuinely ' +
+                    'how the record should stand.',
+              no: 'No, fix it first', yes: 'Verify anyway', tone: 'go' }
+          : { title: 'It will carry your name and today’s date.',
+              body: 'Changing any of the five columns later takes the mark off again, so it only ' +
+                    'ever vouches for what was actually checked.',
+              no: 'No, not yet', yes: 'Mark verified', tone: 'go' }
+      ]).then(function(ok){
+        if (!ok) return;
+        work(function(){ return DB.teamVerify(vp.id, true); },
+             function(){ say('Verified – ' + vp.name); });
+      });
+    }
+    if (d.unverify){
+      var up = find(d.unverify); if (!up || !mine()) return;
+      return twice([
+        { title: 'Take the verified mark off ' + up.name + '?',
+          body: whoWhen(up) + '. The record itself is not touched.',
+          no: 'Cancel', yes: 'Yes, go on' },
+        { title: 'The mark goes for everyone.',
+          body: 'It only comes back when somebody checks the record again and verifies it.',
+          no: 'No, keep it', yes: 'Remove the mark' }
+      ]).then(function(ok){
+        if (!ok) return;
+        work(function(){ return DB.teamVerify(up.id, false); },
+             function(){ say('No longer verified – ' + up.name); });
+      });
     }
 
     if (el.id === 'addTeam')    return open('team', { name:'' });

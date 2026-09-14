@@ -153,6 +153,7 @@
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 </head>
 <body>
 <header class="hdr">
@@ -327,6 +328,16 @@ $('file').addEventListener('change', async e => {
       toast(plan.unchanged.toLocaleString() + ' materials, all already right', 5000);
       return;
     }
+    const okUp = await Ask.twice([
+      { title: 'Save ' + plan.write.length.toLocaleString() + ' materials?',
+        body: plan.added.toLocaleString() + ' are new and ' + plan.changed.toLocaleString() + ' are corrected. ' +
+              'The other ' + plan.unchanged.toLocaleString() + ' already match and are not touched.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Corrections overwrite what is there.',
+        body: 'A corrected description replaces the old one for everybody who searches the codes. Nothing is deleted by an upload.',
+        no: 'No, leave it', yes: 'Save them' }
+    ]);
+    if (!okUp){ toast('Nothing was saved'); return; }
     toast('Saving ' + plan.write.length.toLocaleString() + ' of ' + plan.total.toLocaleString() + '…', 60000);
     await window.DB.materialsSave(plan.write, (done, total) => {
       if (done < total) toast('Saving… ' + done.toLocaleString() + ' of ' + total.toLocaleString(), 60000);

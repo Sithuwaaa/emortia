@@ -209,6 +209,11 @@ function mergeUpload(arr){
   }
   return {updated,added,seen};
 }
+/* two questions before publishing over the list everybody reads - ask.js,
+   with confirm() behind it only if that file never loaded */
+const askTwice=steps=>window.Ask?window.Ask.twice(steps)
+  :Promise.resolve(window.confirm(steps.map(s=>s.title).join('\n\n')));
+
 $('file').addEventListener('change', async e=>{
   const f=e.target.files[0]; e.target.value=''; if(!f) return;
   toast('Reading '+f.name+'…');
@@ -249,9 +254,32 @@ $('file').addEventListener('change', async e=>{
         toast('That sheet has a heading and no rows. Nothing was published',6000);
         return;
       }
+      const live=ROWS.length;
+      const okRep=await askTwice([
+        {title:'Replace every '+C.unitSingular+' with this file?',
+         body:f.name+' has '+rows.length.toLocaleString()+' '+C.unit+'. It is a full sheet, so it takes the place of the whole list rather than adding to it.',
+         no:'Cancel',yes:'Yes, go on'},
+        {title:'Every device sees the new list at once.',
+         body:(live?'The '+live.toLocaleString()+' '+C.unit+' there now are replaced':'Nothing is published yet, so this becomes the list')+
+           '. A '+C.unitSingular+' that is not in this file is gone from the lookup until a sheet with it is uploaded again.',
+         no:'No, leave it',yes:'Replace the list'}
+      ]);
+      if(!okRep){toast('Nothing was published');return}
       await publishDataset(cols,rows,'Replaced');
     }else{
       const res=mergeUpload(arr);
+      /* mergeUpload has already folded the file into the rows on screen, so a
+         "no" has to read the published list back rather than leave the
+         unpublished merge sitting there looking live */
+      const okMer=await askTwice([
+        {title:'Merge '+f.name+' into the list?',
+         body:res.updated.toLocaleString()+' '+C.unit+' change and '+res.added.toLocaleString()+' are added. Blank cells never wipe what is already there.',
+         no:'Cancel',yes:'Yes, go on'},
+        {title:'The changes go to every device.',
+         body:'Values in the file overwrite the ones on the list for those '+C.unit+'. The only undo is uploading the old values again.',
+         no:'No, leave it',yes:'Publish the changes'}
+      ]);
+      if(!okMer){await loadData();toast('Nothing was published');return}
       ROWS.forEach(r=>{delete r.__blob});
       const merged=ROWS.map(r=>r.slice(0,COLS.length));
       await publishDataset(COLS,merged,'Merged · '+res.updated+' updated · '+res.added+' added');

@@ -231,6 +231,7 @@
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 </head>
 <body>
 <header class="hdr">
@@ -811,11 +812,18 @@ function wire(){
     Object.assign(d, E.blank(), { uid: d.uid, files: {} });
     saveDrafts(); render();
   });
-  [...document.querySelectorAll('[data-drop]')].forEach(b => b.onclick = () => {
+  [...document.querySelectorAll('[data-drop]')].forEach(b => b.onclick = async () => {
     const i = DRAFTS.findIndex(x => x.uid === b.dataset.drop);
     if (i < 0) return;
     const d = DRAFTS[i];
-    if (!d.saved && (d.siteId || Object.keys(d.files).length) && !confirm('Remove this one? What is typed here goes with it.')) return;
+    if (!d.saved && (d.siteId || Object.keys(d.files).length) && !(await Ask.twice([
+      { title: 'Remove this one' + (d.siteId ? ' – ' + d.siteId : '') + '?',
+        body: 'It has not been filed yet, so it only exists on this page.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'What is typed here goes with it.',
+        body: 'The site, the serials and any print screens pasted in are thrown away. There is no undo.',
+        no: 'No, keep it', yes: 'Remove it' }
+    ]))) return;
     ['esn','full','om'].forEach(k => { if (d.files[k] && d.files[k].url) URL.revokeObjectURL(d.files[k].url); });
     DRAFTS.splice(i, 1);
     if (!DRAFTS.length) DRAFTS = [newDraft()];
@@ -878,9 +886,16 @@ function wire(){
   [...document.querySelectorAll('[data-del]')].forEach(b => b.onclick = async () => {
     const r = FILED.find(x => x.id === b.dataset.del); if (!r) return;
     const shots = E.pathsOf(r).length;
-    const ok = confirm('Delete ' + r.siteId + (r.siteName ? ' - ' + r.siteName : '') + '?\n\n' +
-      'This removes the record and ' + (shots === 1 ? 'its screenshot' : 'all ' + shots + ' screenshots') +
-      ' from the store.\n\nIt cannot be undone.');
+    const ok = await Ask.twice([
+      { title: 'Delete ' + r.siteId + (r.siteName ? ' – ' + r.siteName : '') + '?',
+        body: 'This removes the filed record for everybody, not just from this list.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: shots === 0 ? 'The record goes for good.'
+             : shots === 1 ? 'Its screenshot goes with it.'
+             : 'All ' + shots + ' screenshots go with it.',
+        body: (shots ? 'They are deleted from the store as well. ' : '') + 'None of it can be undone.',
+        no: 'No, keep it', yes: 'Delete the record' }
+    ]);
     if (!ok) return;
     b.disabled = true; b.textContent = 'Deleting…';
     try {

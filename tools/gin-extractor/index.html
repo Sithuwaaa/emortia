@@ -157,6 +157,7 @@
 <script>Access.protect({ feature: 'tool:gin-extractor' });</script>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
+<script src="../_lib/ask.js?v=1" defer></script>
 </head>
 <body>
 <header class="hdr">
@@ -256,8 +257,16 @@ input.addEventListener('change', () => { handleFiles(input.files); input.value =
 ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
 
-clearBtn.addEventListener('click', () => {
-  if (!confirm('Clear all extracted materials?')) return;
+clearBtn.addEventListener('click', async () => {
+  const ok = await Ask.twice([
+    { title: 'Clear every extracted material?',
+      body: 'This empties the table and forgets which GIN notes have already been read, so the same PDFs can be dropped in again.',
+      no: 'Cancel', yes: 'Yes, go on' },
+    { title: 'It is only kept in this browser.',
+      body: 'There is no copy anywhere else. Export the Excel first if you still need these lines.',
+      no: 'No, keep them', yes: 'Clear the table' }
+  ]);
+  if (!ok) return;
   rows = []; seenGIN.clear(); filelog.innerHTML = ''; save(); render();
 });
 exportBtn.addEventListener('click', exportExcel);
