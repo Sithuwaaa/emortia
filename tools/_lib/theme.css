@@ -142,8 +142,6 @@ footer a{color:var(--accentB);}
   animation:tPulse 1.6s ease-in-out infinite;}
 @keyframes tPulse{ 0%,100%{box-shadow:0 0 0 3px var(--glowSoft),0 0 22px 5px var(--glow);}
                    50%{box-shadow:0 0 0 5px var(--glowSoft),0 0 34px 9px var(--glow);} }
-.hint{background:var(--navy-2) !important;color:var(--muted) !important;
-  border:1px solid var(--line3);font-family:'Space Mono',ui-monospace,monospace;}
 
 /* --- gin-extractor specifics --- */
 #drop{transition:border-color .2s ease,background .2s ease;position:relative;overflow:hidden;}

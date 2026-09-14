@@ -377,6 +377,15 @@ function renderHead(){
       (n ? '<span class="badge">' + n + '</span>' : '') + '</button>' +
     '<button class="theme" id="themeBtn" title="Light / dark">☾</button>';
   const b = $('bell'); if (b) b.onclick = () => { BELL = !BELL; paint(); };
+  /* The saved choice was only ever read by the button's click, so the page
+     opened with no theme at all - dark colours under a button that said light.
+     It is applied here, on the first draw, the way the other tools do it. */
+  const root = document.documentElement;
+  if (!root.dataset.theme){
+    let saved = null;
+    try { saved = localStorage.getItem('office_tool_theme'); } catch(e){}
+    root.dataset.theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
   const t = $('themeBtn');
   if (t){ t.textContent = document.documentElement.dataset.theme === 'dark' ? '☀' : '☾';
     t.onclick = () => { const to = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';

@@ -372,6 +372,26 @@ addEventListener('keydown', e => {
   if (e.key === 'Escape' && PICKED){ PICKED = null; route(); }
 });
 
+/* ------------------------------------------------------------------- theme
+   The button was drawn with nothing behind it, so this page could only ever be
+   dark. Same key as every other tool, so light chosen anywhere is light here,
+   and the glyph is what pressing it will give you. */
+const THEME_KEY = 'office_tool_theme';
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  $('themeBtn').textContent = t === 'dark' ? '☀' : '☾';
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta) meta.setAttribute('content', t === 'dark' ? '#0c1619' : '#eef5f6');
+}
+let savedTheme = null;
+try { savedTheme = localStorage.getItem(THEME_KEY); } catch(e){}
+applyTheme(savedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+$('themeBtn').onclick = () => {
+  const to = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, to); } catch(e){}
+  applyTheme(to);
+};
+
 load();
 })();
 </script>
