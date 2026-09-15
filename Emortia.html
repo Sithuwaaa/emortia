@@ -1310,6 +1310,16 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
     </section>
     </sc-if>
 
+    <!-- ============ DASHBOARD ============ -->
+    <sc-if value="{{ isDashPage }}" hint-placeholder-val="{{ false }}">
+    <section style="animation:fadeUp 0.5s ease;padding:40px 0 60px;">
+      <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;">Owner only</div>
+      <h2 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(40px,6vw,68px);letter-spacing:-0.03em;margin:6px 0 6px;">Dashboard</h2>
+      <p style="color:var(--dim);font-size:15px;line-height:1.6;max-width:640px;margin:0 0 4px;">Who has been here, on what, and which tools are actually opened. Nothing is fetched until this page is, and nothing here is readable by anybody else – the database refuses it, not the page.</p>
+      <div>{{ dashPanel }}</div>
+    </section>
+    </sc-if>
+
     <!-- ============ OWNER ============ -->
     <sc-if value="{{ isOwnerPage }}" hint-placeholder-val="{{ false }}">
     <section style="animation:fadeUp 0.5s ease;padding:40px 0 60px;">
@@ -1535,9 +1545,10 @@ class Component extends DCLogic {
       /* which sleeve the front page is offering, and the one it was offering
          a moment ago, which stays underneath for the crossfade */
       shuf:0, shufPrev:null, queue:[], rowMenu:null,
-      /* the Insight panel: nothing is fetched until the Owner page is opened */
-      insDays:30, insSum:null, insDaily:[], insPaths:[], insDev:[], insWho:[],
-      insTz:[], insDevices:[], insBusy:false, insErr:'', insLoaded:false,
+      /* the owner dashboard. Nothing is fetched until the page is opened, and
+         then all of it is - a dashboard behind a button is one you stop checking. */
+      dRange:30, dSum:null, dDaily:[], dPaths:[], dDevice:[], dBrowser:[],
+      dTz:[], dWho:[], dSignIns:[], dBusy:false, dErr:'', dLoaded:false,
       playing:false, idx:0, picked:false, progress:0, volume:pp.volume, muted:pp.muted, shuffle:pp.shuffle, repeat:pp.repeat,
       /* the queue and the words share one drawer, so one flag says which face
          of it is showing: '' shut, 'queue', or 'lyrics' */
@@ -1888,7 +1899,8 @@ class Component extends DCLogic {
       ['tools',   '/tools/'],
       ['about',   '/about'],
       ['contact', '/contact'],
-      ['owner',   '/owner']
+      ['owner',   '/owner'],
+      ['dash',    '/dashboard']
     ];
   }
   pathFor(p){
@@ -1918,6 +1930,7 @@ class Component extends DCLogic {
     /* A tab is a page here - the address changes and so does everything on
        screen - so moving between them is a page view like any other. */
     if (window.DB && DB.trackVisit && p !== this.state.page) DB.trackVisit('/' + p);
+    if (p === 'dash' && this.state.isOwner && !this.state.dLoaded && !this.state.dBusy) this.loadDash();
     const path = this.pathFor(p);
     if (location.pathname !== path){
       try { history[replace ? 'replaceState' : 'pushState']({ page:p }, '', path); } catch(e){}
@@ -2831,173 +2844,315 @@ class Component extends DCLogic {
     if (!ok) return;
     try {
       await (lift ? DB.unrevokeDevice(d.visitor) : DB.revokeDevice(d.visitor));
-      await this.loadInsight();
-    } catch(e){ this.setState({ insErr: e.message }); }
+      await this.loadDash(this.state.dRange);
+    } catch(e){ this.setState({ dErr: e.message }); }
   }
 
-  async loadInsight(days){
-    const d = days || this.state.insDays;
-    this.setState({ insBusy:true, insErr:'', insDays:d });
-    try {
-      const [sum, daily, paths, dev, who, tz, devices] = await Promise.all([
-        DB.insightSummary(d), DB.insightDaily(d <= 31 ? d : 30),
-        DB.insightBy('path', d, 10), DB.insightBy('device', d, 6),
-        DB.insightBy('who', d, 10), DB.insightBy('tz', d, 8),
-        DB.insightDevices(90)
-      ]);
-      this.setState({ insSum:sum, insDaily:daily, insPaths:paths, insDev:dev,
-        insWho:who.filter(r => r.label !== '(none)'), insTz:tz,
-        insDevices:devices, insBusy:false, insLoaded:true });
-    } catch(e){ this.setState({ insBusy:false, insErr:e.message, insLoaded:true }); }
-  }
+  /* ---- the owner dashboard ----
 
-  /* ---------------------------------------------------------- the panel
+     One page that answers, without being asked twice: who has been here, on
+     what, from what, which tools are actually used, and which machines have
+     signed in - with the switch to sign one out. It loads itself on the way in.
 
-     Five blocks: the totals, a bar per day, what they looked at, what they
-     looked at it on, and the machines that have signed in.
-
-     One thing this cannot show, and says so rather than pretending: Supabase
-     will not let a browser list live auth sessions, so "signed in devices" is
-     every device that has signed in and when it was last seen - a history,
-     not a list of who is logged in this second. */
-  renderInsight(){
-    const s = this.state;
-    const box = (children, span) => React.createElement('div',{
-      style:{background:'var(--panelS)',border:'1px solid var(--line2)',borderRadius:'14px',
-        padding:'18px 20px',gridColumn: span || 'auto'}}, children);
-    const head = (t, sub) => React.createElement('div',{key:'h'},
-      React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",
-        fontWeight:700,fontSize:'17px'}}, t),
-      sub ? React.createElement('p',{style:{color:'var(--dim)',fontSize:'13px',
-        lineHeight:1.6,margin:'5px 0 14px'}}, sub) : null);
-    const mono = {fontFamily:"'Space Mono',monospace",fontSize:'10.5px',letterSpacing:'.14em',
-      textTransform:'uppercase',color:'var(--mute)'};
-
-    if (!s.insLoaded && !s.insBusy){
-      return box([head('Who is visiting', 'Page views, sittings and the machines they came on. Nothing is fetched until you ask.'),
-        React.createElement('button',{key:'go', onClick:()=>this.loadInsight(30),
-          style:{background:'var(--accent)',color:'#fff',border:'none',borderRadius:'10px',
-            padding:'10px 16px',cursor:'pointer',font:'inherit',fontWeight:600}}, 'Show me')], '1 / -1');
+     Everything it reads comes back from security-definer functions that each
+     check is_owner() for themselves, so this is not a page hiding numbers from
+     people - the numbers are genuinely out of reach. None of it counts the
+     owner (migration 027). */
+  async loadDash(days){
+    const d = days || this.state.dRange || 30;
+    if (!(window.DB && window.DB.insightSummary)){
+      this.setState({ dErr:'Insight is not switched on in this build.', dLoaded:true });
+      return;
     }
-    if (s.insBusy && !s.insSum) return box([head('Who is visiting'), this.waveLoader('Counting', true)], '1 / -1');
-    if (s.insErr) return box([head('Who is visiting'),
-      React.createElement('p',{key:'e',style:{color:'var(--accent)',fontSize:'13.5px',margin:0}}, s.insErr)], '1 / -1');
+    this.setState({ dBusy:true, dErr:'', dRange:d });
+    try {
+      const [sum, daily, paths, dev, bro, tz, who, signIns] = await Promise.all([
+        DB.insightSummary(d), DB.insightDaily(d),
+        DB.insightBy('path', d, 40), DB.insightBy('device', d, 6),
+        DB.insightBy('browser', d, 8), DB.insightBy('tz', d, 8),
+        DB.insightBy('who', d, 12), DB.insightDevices(90)
+      ]);
+      this.setState({ dSum:sum||{}, dDaily:daily||[], dPaths:paths||[],
+        dDevice:dev||[], dBrowser:bro||[], dTz:tz||[], dWho:who||[],
+        dSignIns:signIns||[], dBusy:false, dLoaded:true });
+    } catch(e){ this.setState({ dBusy:false, dErr:e.message||String(e), dLoaded:true }); }
+  }
 
-    const n = s.insSum || {};
-    const tile = (k, v, tone) => React.createElement('div',{key:k,
-      style:{border:'1px solid var(--line)',borderRadius:'12px',padding:'13px 15px',background:'var(--surface2)'}},
-      React.createElement('div',{style:mono}, k),
-      React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",fontWeight:800,
-        fontSize:'28px',lineHeight:1.05,marginTop:'4px',color:tone||'var(--text)'}}, String(v)));
+  /* /tools/<slug>/ said the way the Tools page says it. A slug with no name
+     here is still shown, under its slug - better a row you have to read than
+     a tool quietly missing from its own usage list. */
+  dashToolName(path){
+    const m = /^\/?tools\/([a-z0-9-]+)/i.exec(String(path||''));
+    if (!m) return null;
+    return ({ 'design-extractor':'Design Extractor', 'materials':'Material Codes',
+      'bom':'BOM Builder', 'lyric-video':'Video & Artwork', 'attendance':'Daily Attendance',
+      'esn':'ESN Sharing', 'whattodo':'What To Do', 'project-update':'Project Update',
+      'site-access':'Site Access Lookup', 'site-data':'Site Data Lookup',
+      'gin-extractor':'GIN Extractor', 'field-config':'Field Config',
+      'team':'Team Directory', 'rf-jumper':'RF Jumper Codes' })[m[1].toLowerCase()] || m[1];
+  }
+  dashPageName(path){
+    const p = String(path||'/').replace(/\/+$/,'') || '/';
+    const k = p.replace(/^\//,'').toLowerCase();
+    return ({ '':'Home', 'index.html':'Home', 'home':'Home', 'music':'Music', 'poetry':'Poetry',
+      'tools':'Tools', 'about':'About', 'contact':'Contact', 'owner':'Owner', 'dash':'Dashboard',
+      'dashboard':'Dashboard' })[k] || p;
+  }
 
-    /* the days, as bars. Scaled to the busiest day so the shape reads even
-       when the numbers are small, which they will be at first. */
-    const peak = Math.max(1, ...s.insDaily.map(d => Number(d.visits)));
-    const bars = React.createElement('div',{key:'bars',
-      style:{display:'flex',alignItems:'flex-end',gap:'3px',height:'110px',marginTop:'6px'}},
-      s.insDaily.map((d,i) => React.createElement('div',{key:i,
-        title: d.day + ' – ' + d.visits + ' views, ' + d.visitors + ' browsers',
-        style:{flex:'1 1 0',minWidth:0,display:'flex',flexDirection:'column',justifyContent:'flex-end',height:'100%'}},
-        React.createElement('div',{style:{
-          height: Math.max(2, Math.round(Number(d.visits) / peak * 100)) + '%',
-          background: Number(d.visits) ? 'linear-gradient(180deg,var(--accentB),var(--accent))' : 'var(--line2)',
-          borderRadius:'3px 3px 2px 2px'}}))));
+  /* one card. Every block on this page is one of these, so the page has a
+     single border, a single radius and a single inner padding. */
+  dashCard(title, note, body, style){
+    return React.createElement('section',{key:title||undefined,
+      style:Object.assign({background:'var(--panelS)',border:'1px solid var(--line2)',
+        borderRadius:'16px',padding:'17px 19px 19px',minWidth:0},style||{})},
+      title ? React.createElement('div',{style:{display:'flex',alignItems:'baseline',
+        justifyContent:'space-between',gap:'12px',flexWrap:'wrap',marginBottom:'13px'}},
+        React.createElement('h3',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",
+          fontWeight:700,fontSize:'16px',letterSpacing:'-.01em',margin:0}}, title),
+        note ? React.createElement('span',{style:{fontFamily:"'Space Mono',monospace",
+          fontSize:'10px',letterSpacing:'.14em',textTransform:'uppercase',
+          color:'var(--mute)'}}, note) : null) : null,
+      body);
+  }
 
-    const rows = (list, unit) => list.length
-      ? list.map((r,i) => React.createElement('div',{key:i,
-          style:{display:'flex',alignItems:'center',gap:'10px',padding:'7px 0',
-            borderTop: i ? '1px solid var(--line)' : 'none',fontSize:'13.5px'}},
-          React.createElement('span',{style:{flex:1,minWidth:0,overflow:'hidden',
-            textOverflow:'ellipsis',whiteSpace:'nowrap'}}, r.label),
-          React.createElement('span',{style:{fontFamily:"'Space Mono',monospace",fontSize:'12px',
-            color:'var(--dim)'}}, r.visitors + ' \u00b7 '),
-          React.createElement('b',{style:{fontFamily:"'Space Mono',monospace",fontSize:'13px'}}, String(r.visits))))
-      : React.createElement('p',{style:{color:'var(--mute)',fontSize:'13px',margin:0}},
-          'Nothing yet' + (unit ? ' \u2013 ' + unit : '') + '.');
+  /* a ranked list as bars. The number is the point, so it is set beside the
+     name rather than inside the bar where a short bar would hide it. */
+  dashBars(rows, opts){
+    const o = opts || {};
+    if (!rows || !rows.length) return React.createElement('p',
+      {style:{color:'var(--mute)',fontSize:'13px',margin:0}}, o.empty || 'Nothing yet.');
+    const max = Math.max.apply(null, rows.map(r => Number(r.visits)||0)) || 1;
+    return React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:'9px'}},
+      rows.map((r,i) => {
+        const v = Number(r.visits)||0, u = Number(r.visitors)||0;
+        const pct = Math.max(2, Math.round(v / max * 100));
+        return React.createElement('div',{key:(r.label||i)+'-'+i,
+          style:{display:'grid',gridTemplateColumns:'1fr auto',gap:'4px 12px',alignItems:'baseline'}},
+          React.createElement('div',{style:{fontSize:'13.5px',fontWeight:600,minWidth:0,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, r.label),
+          React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'12px',
+            color:'var(--dim)',whiteSpace:'nowrap'}},
+            v + ' view' + (v===1?'':'s') + ' · ' + u + (u===1?' browser':' browsers')),
+          React.createElement('div',{style:{gridColumn:'1 / -1',height:'7px',borderRadius:'99px',
+            background:'var(--panel2)',overflow:'hidden'}},
+            React.createElement('div',{style:{width:pct+'%',height:'100%',borderRadius:'99px',
+              background:i===0 ? 'var(--accent)' : 'linear-gradient(90deg,var(--accent),rgba(209,88,115,.35))',
+              opacity: i===0 ? 1 : Math.max(.45, 1 - i*0.08)}})));
+      }));
+  }
 
-    const ago = t => {
-      if (!t) return 'never';
-      const m = Math.round((Date.now() - new Date(t).getTime()) / 60000);
-      if (m < 2) return 'just now';
-      if (m < 60) return m + ' min ago';
-      if (m < 60*24) return Math.round(m/60) + 'h ago';
-      return Math.round(m/60/24) + ' days ago';
+  renderDashboard(){
+    if(!(this.state.page==='dash' && this.state.isOwner))
+      return React.createElement('div',{style:{display:'none'}});
+    const s = this.state, A = window.Access;
+    /* however the page was reached - a tab, the back button, a reload on
+       /dashboard - it fetches once on the way in */
+    if (!s.dLoaded && !s.dBusy && !this._dashAsked){
+      this._dashAsked = true;
+      setTimeout(()=>this.loadDash(), 0);
+    }
+    const n = s.dSum || {};
+    const num = v => { const x = Number(v)||0; return x >= 10000 ? x.toLocaleString() : String(x); };
+
+    /* ---- who you are, and the window everything below is counted over ---- */
+    const who = A ? A.currentUser() : '—';
+    const left = A && A.daysLeft()!=null ? A.daysLeft() : null;
+    const ranges = [7,30,90].map(d => React.createElement('button',{key:d, type:'button',
+      onClick:()=>this.loadDash(d), disabled:s.dBusy,
+      'aria-pressed': s.dRange===d ? 'true' : 'false',
+      style:{border:'none',borderRadius:'8px',padding:'7px 13px',fontFamily:'inherit',
+        fontSize:'12.5px',fontWeight:600,whiteSpace:'nowrap',
+        cursor: s.dBusy ? 'default' : 'pointer',
+        background: s.dRange===d ? 'var(--accent)' : 'transparent',
+        color: s.dRange===d ? '#fff' : 'var(--dim)',
+        transition:'background .16s ease,color .16s ease'}}, d + ' days'));
+
+    const header = React.createElement('div',{key:'hd',
+      style:{display:'flex',alignItems:'center',gap:'16px',flexWrap:'wrap',
+        background:'var(--panelS)',border:'1px solid var(--line2)',borderRadius:'16px',
+        padding:'15px 18px'}},
+      React.createElement('div',{style:{width:'44px',height:'44px',flex:'none',borderRadius:'13px',
+        background:'var(--accent)',color:'#fff',display:'flex',alignItems:'center',
+        justifyContent:'center',fontFamily:"'Bricolage Grotesque',sans-serif",
+        fontWeight:800,fontSize:'20px'}}, String(who||'?').slice(0,1).toUpperCase()),
+      React.createElement('div',{style:{minWidth:0,flex:'1 1 200px'}},
+        React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",
+          fontWeight:700,fontSize:'17px',letterSpacing:'-.01em'}}, who),
+        React.createElement('div',{style:{color:'var(--dim)',fontSize:'12.5px',marginTop:'2px'}},
+          'Owner mode' + (left!=null ? ' · ' + left + ' more day' + (left===1?'':'s') + ' on this device' : ''))),
+      React.createElement('div',{style:{display:'flex',gap:'2px',padding:'3px',borderRadius:'11px',
+        background:'var(--panel2)',border:'1px solid var(--line3)',opacity: s.dBusy ? .6 : 1}}, ranges),
+      React.createElement('button',{type:'button', onClick:()=>this.loadDash(s.dRange), disabled:s.dBusy,
+        style:{border:'1px solid var(--line3)',background:'none',color:'var(--dim)',
+          borderRadius:'10px',padding:'9px 14px',fontFamily:'inherit',fontSize:'12.5px',
+          fontWeight:600,cursor: s.dBusy ? 'default' : 'pointer'}}, s.dBusy ? 'Counting…' : 'Refresh'));
+
+    /* ---- the six counts ---- */
+    const tiles = [
+      ['Page views', num(n.visits), 'in ' + (n.days || s.dRange) + ' days'],
+      ['Browsers', num(n.visitors), 'machines that have been here'],
+      ['Sittings', num(n.sittings), 'one visit, open to close'],
+      ['Came back', num(n.returning), 'here on more than one day', true],
+      ['Signed in', num(n.signed), 'views with an account'],
+      ['Today', num(n.today), 'so far']
+    ].map(([label, value, sub, hot]) => React.createElement('div',{key:label,
+      style:{background:'var(--panelS)',border:'1px solid ' + (hot ? 'rgba(209,88,115,.34)' : 'var(--line2)'),
+        borderRadius:'14px',padding:'14px 15px 15px',minWidth:0}},
+      React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",fontSize:'9.5px',
+        letterSpacing:'.14em',textTransform:'uppercase',color:'var(--mute)'}}, label),
+      React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",
+        fontWeight:800,fontSize:'31px',lineHeight:1.1,letterSpacing:'-.03em',marginTop:'4px',
+        color: hot ? 'var(--accent)' : 'var(--text)'}}, value),
+      React.createElement('div',{style:{color:'var(--dim)',fontSize:'11.5px',marginTop:'3px'}}, sub)));
+
+    const kpis = React.createElement('div',{key:'kpi',
+      style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'12px'}}, tiles);
+
+    /* ---- views a day ---- */
+    const daily = s.dDaily || [];
+    const dmax = Math.max.apply(null, daily.map(d => Number(d.visits)||0).concat([1]));
+    const chart = this.dashCard('Views a day', (n.days || s.dRange) + ' days · peak ' + dmax,
+      React.createElement('div',null,
+        React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:'3px',
+          height:'170px',padding:'2px 0 0'}},
+          daily.length ? daily.map((d,i) => {
+            const v = Number(d.visits)||0, u = Number(d.visitors)||0;
+            const h = v ? Math.max(3, Math.round(v / dmax * 100)) : 1.5;
+            return React.createElement('div',{key:d.day||i,
+              title: d.day + ' · ' + v + ' view' + (v===1?'':'s') + ', ' + u + (u===1?' browser':' browsers'),
+              style:{flex:1,minWidth:0,height:h+'%',borderRadius:'4px 4px 2px 2px',
+                background: v ? 'linear-gradient(180deg,var(--accent),rgba(209,88,115,.55))' : 'var(--line2)',
+                boxShadow: v===dmax ? '0 0 0 1px rgba(209,88,115,.5)' : 'none'}});
+          }) : React.createElement('p',{style:{color:'var(--mute)',fontSize:'13px',margin:'auto'}},
+            'No views counted in this window.')),
+        daily.length ? React.createElement('div',{style:{display:'flex',
+          justifyContent:'space-between',marginTop:'9px',fontFamily:"'Space Mono',monospace",
+          fontSize:'10px',letterSpacing:'.1em',color:'var(--mute)'}},
+          React.createElement('span',null, daily[0].day),
+          React.createElement('span',null, daily[daily.length-1].day)) : null));
+
+    /* ---- the tools, by how much they are actually opened ---- */
+    const paths = s.dPaths || [];
+    /* One page answers to several paths - '/', '/index.html' and '/home' are
+       all the home page, and a tool is reached with and without its trailing
+       slash. Grouping by name rather than by path is what stops the same thing
+       appearing three times with its views split between the rows. Views add
+       up; browsers cannot (one browser is behind several paths), so the
+       largest is reported rather than a wrong sum. */
+    const byName = rows => {
+      const seen = {}, out = [];
+      rows.forEach(r => {
+        if (!seen[r.label]){ seen[r.label] = { label:r.label, visits:0, visitors:0 }; out.push(seen[r.label]); }
+        seen[r.label].visits += Number(r.visits)||0;
+        seen[r.label].visitors = Math.max(seen[r.label].visitors, Number(r.visitors)||0);
+      });
+      return out.sort((a,b) => b.visits - a.visits);
     };
+    const toolRows = byName(paths.map(r => ({ r, name: this.dashToolName(r.label) }))
+      .filter(x => x.name)
+      .map(x => ({ label:x.name, visits:x.r.visits, visitors:x.r.visitors })));
+    const toolViews = toolRows.reduce((a,r) => a + (Number(r.visits)||0), 0);
+    const pageRows = byName(paths.filter(r => !this.dashToolName(r.label))
+      .map(r => ({ label:this.dashPageName(r.label), visits:r.visits, visitors:r.visitors })));
 
-    const range = [7,30,90].map(d => React.createElement('button',{key:d,
-      onClick:()=>this.loadInsight(d), disabled: s.insBusy,
-      style:{border:'1px solid ' + (s.insDays===d ? 'var(--accent)' : 'var(--line3)'),
-        background: s.insDays===d ? 'var(--accent)' : 'none',
-        color: s.insDays===d ? '#fff' : 'var(--dim)',borderRadius:'8px',padding:'5px 11px',
-        font:'inherit',fontSize:'12.5px',cursor:'pointer'}}, d + ' days'));
+    const toolCard = this.dashCard('Tools, by views',
+      toolViews + ' view' + (toolViews===1?'':'s') + ' · ' + toolRows.length + ' opened',
+      this.dashBars(toolRows, { empty:'No tool has been opened in this window.' }),
+      { flex:'1 1 420px' });
+    const pageCard = this.dashCard('Pages, by views', pageRows.length + ' pages',
+      this.dashBars(pageRows, { empty:'Nothing yet.' }), { flex:'1 1 300px' });
 
-    return React.createElement(React.Fragment,{key:'insight'},
-      box([
-        React.createElement('div',{key:'top',style:{display:'flex',alignItems:'baseline',
-          justifyContent:'space-between',gap:'12px',flexWrap:'wrap',marginBottom:'12px'}},
-          React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",
-            fontWeight:700,fontSize:'17px'}}, 'Who is visiting'),
-          React.createElement('div',{style:{display:'flex',gap:'6px'}}, range)),
-        React.createElement('div',{key:'tiles',style:{display:'grid',
-          gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:'10px'}},
-          tile('Page views', n.visits || 0),
-          tile('Browsers', n.visitors || 0),
-          tile('Sittings', n.sittings || 0),
-          tile('Came back', n.returning || 0, 'var(--accentB)'),
-          tile('Signed in', n.signed || 0, 'var(--ok)'),
-          tile('Today', n.today || 0)),
-        React.createElement('div',{key:'lab',style:{...mono,marginTop:'18px'}},
-          'Views a day \u00b7 ' + (s.insDaily.length) + ' days'),
-        bars,
-        React.createElement('p',{key:'note',style:{color:'var(--mute)',fontSize:'12px',
-          lineHeight:1.6,margin:'12px 0 0'}},
-          'A browser is one machine that has been here, counted by a random id kept in ' +
-          'its own storage \u2013 no addresses are recorded, and clearing site data makes it ' +
-          'a new one. A sitting is one visit from opening the site to closing it.')
-      ], '1 / -1'),
-      box([head('What they opened'), rows(s.insPaths, 'nobody has been here yet')]),
-      box([head('What they came on'), rows(s.insDev),
-        React.createElement('div',{key:'tz',style:{...mono,margin:'16px 0 4px'}}, 'By clock'),
-        rows(s.insTz)]),
-      box([head('Signed in', 'Views by people with an account, and every machine that has signed in. ' +
-        'Supabase will not let a browser list live sessions, so this is a history of sign-ins and when ' +
-        'each machine was last seen \u2013 not who is logged in this second.'),
-        rows(s.insWho, 'nobody has signed in'),
-        React.createElement('div',{key:'dl',style:{...mono,margin:'18px 0 4px'}}, 'Machines'),
-        s.insDevices.length
-          ? s.insDevices.map((d,i) => {
-              const cut = d.cut_at ? new Date(d.cut_at) : null;
-              return React.createElement('div',{key:i,
-                style:{display:'flex',alignItems:'center',gap:'10px',padding:'9px 0',
-                  borderTop: i ? '1px solid var(--line)' : 'none',fontSize:'13.5px',
-                  flexWrap:'wrap',opacity: cut ? .55 : 1}},
-                React.createElement('span',{style:{flex:1,minWidth:'170px'}},
-                  React.createElement('b',null, d.who || 'unnamed'),
-                  React.createElement('span',{style:{color:'var(--dim)'}},
-                    ' \u00b7 ' + [d.platform, d.device, d.browser].filter(Boolean).join(' \u00b7 ')),
-                  cut ? React.createElement('div',{style:{fontFamily:"'Space Mono',monospace",
-                    fontSize:'10.5px',letterSpacing:'.12em',textTransform:'uppercase',
-                    color:'var(--accent)',marginTop:'3px'}},
-                    'Signed out ' + ago(d.cut_at)) : null),
-                React.createElement('span',{style:{fontFamily:"'Space Mono',monospace",fontSize:'11.5px',
-                  color:'var(--mute)',whiteSpace:'nowrap'}},
-                  d.sign_ins + '\u00d7 \u00b7 ' + ago(d.last_seen || d.last_at)),
-                React.createElement('button',{
-                  onClick: ()=>this.signOutDevice(d, !!cut),
+    /* ---- the machines, and roughly where they are ---- */
+    const small = [
+      ['What they are on', s.dDevice, 'phone, tablet or desktop'],
+      ['Browsers', s.dBrowser, 'as the browser names itself'],
+      ['Where, roughly', s.dTz, 'timezone · never an address']
+    ].map(([t, rows, note]) => this.dashCard(t, note,
+      this.dashBars(rows, { empty:'Nothing yet.' }), { flex:'1 1 240px' }));
+
+    /* ---- accounts, and the machines they signed in on ---- */
+    const signedRows = (s.dWho||[]).filter(r => r.label && r.label !== '(none)');
+    const accounts = this.dashCard('Signed in as', signedRows.length + ' accounts',
+      this.dashBars(signedRows, { empty:'Only signed-out views in this window.' }),
+      { flex:'1 1 300px' });
+
+    /* The machines keep what the Owner page had and the design's table did
+       not: the platform, so two phones on Chrome can be told apart, and the
+       switch to sign one out - or let it back in. */
+    const devs = s.dSignIns || [];
+    const when = t => { if(!t) return '—';
+      const d = new Date(t); if (isNaN(d)) return '—';
+      return d.toLocaleDateString(undefined,{day:'numeric',month:'short'}) + ' ' +
+             d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); };
+    const th = (l, right) => React.createElement('th',{key:l||'act',
+      style:{textAlign: right ? 'right' : 'left',
+        fontFamily:"'Space Mono',monospace",fontSize:'9.5px',letterSpacing:'.12em',
+        textTransform:'uppercase',color:'var(--mute)',fontWeight:700,
+        padding:'0 10px 9px 0',whiteSpace:'nowrap'}}, l);
+    const td = (key, v, extra) => React.createElement('td',{key,
+      style:Object.assign({padding:'9px 10px 9px 0',borderTop:'1px solid var(--line)',
+        fontSize:'13px',color:'var(--dim)',verticalAlign:'middle'}, extra||{})}, v);
+    const deviceCard = this.dashCard('Machines that have signed in', 'last 90 days',
+      devs.length ? React.createElement('div',null,
+        React.createElement('div',{style:{overflowX:'auto',overflowY:'hidden'}},
+          React.createElement('table',{style:{width:'100%',borderCollapse:'collapse',minWidth:'540px'}},
+            React.createElement('thead',null, React.createElement('tr',null,
+              th('Who'), th('On'), th('Sign-ins', true), th('Last seen'), th('', true))),
+            React.createElement('tbody',null, devs.slice(0,12).map((d,i) => {
+              const cut = !!d.cut_at;
+              return React.createElement('tr',{key:(d.visitor||i)+'-'+i, style:{opacity: cut ? .6 : 1}},
+                td('w', React.createElement('span',null,
+                  React.createElement('b',{style:{color:'var(--text)',fontWeight:600}}, d.who || 'unnamed'),
+                  cut ? React.createElement('span',{style:{display:'block',fontFamily:"'Space Mono',monospace",
+                    fontSize:'9.5px',letterSpacing:'.12em',textTransform:'uppercase',
+                    color:'var(--accent)',marginTop:'2px'}}, 'Signed out ' + when(d.cut_at)) : null)),
+                td('o', [d.platform, d.device, d.browser].filter(Boolean).join(' · ') || '—'),
+                td('n', String(d.sign_ins||0), {textAlign:'right',fontFamily:"'Space Mono',monospace"}),
+                td('l', when(d.last_seen || d.last_at), {fontFamily:"'Space Mono',monospace",whiteSpace:'nowrap'}),
+                td('a', React.createElement('button',{type:'button', onClick:()=>this.signOutDevice(d, cut),
                   style:{background:'none',border:'1px solid var(--line3)',borderRadius:'8px',
                     padding:'5px 11px',color: cut ? 'var(--dim)' : 'var(--accent)',
                     font:'inherit',fontSize:'12px',cursor:'pointer',whiteSpace:'nowrap'}},
-                  cut ? 'Let it back in' : 'Sign it out'));
-            })
-          : React.createElement('p',{style:{color:'var(--mute)',fontSize:'13px',margin:0}},
-              'No sign-ins recorded yet.'),
-        React.createElement('p',{key:'sonote',style:{color:'var(--mute)',fontSize:'12px',
-          lineHeight:1.6,margin:'12px 0 0'}},
-          'Signing a machine out leaves a note it reads the next time it loads a page, and it ' +
-          'signs itself out then \u2013 not this second. Supabase will not let one browser end ' +
-          'another\u2019s session; that needs a key this site cannot hold without handing it to ' +
-          'everyone who views the source. If a phone is genuinely lost, change that account\u2019s ' +
-          'password in Supabase \u2013 that ends every session it has, everywhere, at once.')], '1 / -1'));
+                  cut ? 'Let it back in' : 'Sign it out'), {textAlign:'right',paddingRight:0}));
+            })))),
+        React.createElement('p',{style:{color:'var(--mute)',fontSize:'12px',lineHeight:1.6,margin:'12px 0 0'}},
+          'Signing a machine out leaves a note it reads the next time it loads a page, and it signs ' +
+          'itself out then – not this second. If a phone is genuinely lost, change that ' +
+          'account’s password in Supabase as well.'))
+        : React.createElement('p',{style:{color:'var(--mute)',fontSize:'13px',margin:0}},
+            'Nobody has signed in yet.'),
+      { flex:'1 1 540px' });
+
+    /* ---- what this counts, said plainly ---- */
+    const note = React.createElement('p',{key:'note',
+      style:{color:'var(--mute)',fontSize:'12.5px',lineHeight:1.65,margin:'2px 0 0',
+        maxWidth:'96ch'}},
+      'A browser is one machine that has been here, counted by a random id kept in its own ' +
+      'storage – no addresses are recorded, and clearing site data makes it a new one. ' +
+      'A sitting is one visit from opening the site to closing it. Timezone is how "where" ' +
+      'is answered, because it answers it without identifying anybody.');
+
+    const row = (key, kids) => React.createElement('div',{key,
+      style:{display:'flex',gap:'14px',flexWrap:'wrap',alignItems:'stretch'}}, kids);
+
+    const body = s.dErr
+      ? [this.dashCard('Who is visiting', null, React.createElement('p',
+          {style:{color:'var(--accent)',fontSize:'13.5px',margin:0}}, s.dErr))]
+      : (!s.dLoaded)
+      ? [React.createElement('div',{key:'load',
+          style:{background:'var(--panelS)',border:'1px solid var(--line2)',borderRadius:'16px',
+            padding:'26px 19px'}}, this.waveLoader('Counting', true))]
+      : [kpis, chart,
+         row('r1',[toolCard, pageCard]),
+         row('r2', small),
+         React.createElement('div',{key:'r3',
+           style:{display:'flex',gap:'14px',flexWrap:'wrap',alignItems:'flex-start'}},
+           accounts, deviceCard),
+         note];
+
+    return React.createElement('div',{style:{display:'flex',flexDirection:'column',
+        gap:'14px',marginTop:'26px'}},
+      header, ...body);
   }
 
   renderOwnerPage(){
@@ -3029,7 +3184,9 @@ class Component extends DCLogic {
       card('The tools',
         'Everything on the Tools tab is open to you here, and to anyone else who has signed up. Owner mode only adds the editing.',
         btn('Open Tools', this.go('tools'))),
-      this.renderInsight(),
+      card('The dashboard',
+        'Who has been here, on what, which tools are actually opened, and every machine that has signed in – with the switch to sign one out.',
+        btn('Open the dashboard', this.go('dash'), true)),
       this.renderLockPanel());
   }
 
@@ -3515,7 +3672,7 @@ class Component extends DCLogic {
     const navDefs = [['home','Home'],['music','Music']]
       .concat(may('journal') ? [['poetry','Poetry']] : [])
       .concat([['tools','Tools'],['about','About'],['contact','Contact']])
-      .concat(s.isOwner ? [['owner','Owner']] : []);
+      .concat(s.isOwner ? [['dash','Dashboard'],['owner','Owner']] : []);
 
     return {
       isHome:s.page==='home' || (s.page==='poetry' && !may('journal')),
@@ -3524,6 +3681,8 @@ class Component extends DCLogic {
       isMusic:s.page==='music', isTools:s.page==='tools', isAbout:s.page==='about', isContact:s.page==='contact',
       isOwnerPage: s.page==='owner' && s.isOwner,
       ownerPanel: this.renderOwnerPage(),
+      isDashPage: s.page==='dash' && s.isOwner,
+      dashPanel: this.renderDashboard(),
       /* The cards are written in the order they were built; what comes out is
          grouped and alphabetical. Both come off Access.FEATURES, which is
          also what the Owner switches read, so a tool added there arrives in
