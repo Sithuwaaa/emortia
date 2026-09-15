@@ -762,6 +762,8 @@
       what:'The site list – depot, contact, permissions.' },
     { key:'tool:site-data', name:'Site Data Lookup', tier:'tooway', group:'Site reference',
       what:'The technical profile for every site.' },
+    { key:'tool:rf-jumper', name:'RF Jumper Codes', tier:'tooway', group:'Site reference',
+      what:'The jumper colour code for every band combination, and the labelling scenarios, from the Huawei SOP.' },
     { key:'tool:gin-extractor', name:'GIN Extractor', tier:'tooway', group:'Design & materials',
       what:'Pulling material lines out of SAP notes.' }
   ];
