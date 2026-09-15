@@ -213,7 +213,7 @@
 </header>
 
 <main>
-  <div class="kick" id="src">Huawei SOP 2024 · v6.0 · pp. 88–89</div>
+  <div class="kick">Site reference</div>
   <h2 class="ttl">RF Jumpers Label Narration</h2>
   <p class="lede">The colour code for every band combination in the chart, sector by sector, and the four
     labelling scenarios. Pick the bands a site carries – or type them – and the grid for it comes up.</p>
@@ -393,8 +393,7 @@
           return '<button class="combo' + (v.exact(c) ? ' exact' : '') + '" data-i="' + c.i + '" type="button" ' +
             'style="animation-delay:' + Math.min(k * 25, 300) + 'ms" aria-label="' + esc(c.name) + '">' +
             '<div class="cname">' + esc(c.name) + '</div>' + gridHtml(c) +
-            '<div class="cmeta"><span>' + c.rows.length + ' rows</span>' +
-            (v.exact(c) ? '<span class="ex">exact</span>' : '<span>p. ' + c.page + '</span>') + '</div></button>';
+            (v.exact(c) ? '<div class="cmeta"><span class="ex">exact match</span></div>' : '') + '</button>';
         }).join('') + '</div></div>';
     }).join('');
   }
@@ -417,8 +416,7 @@
     OPEN = c;
     $('modalHost').innerHTML = '<div class="veil" id="veil"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="dT">' +
       '<div class="head"><div style="margin-right:auto"><h2 id="dT">' + esc(c.name) + '</h2>' +
-        '<div class="sub">' + c.bands.length + (c.bands.length === 1 ? ' band' : ' bands') + ' · ' +
-        c.rows.length + ' rows · page ' + c.page + '</div></div>' +
+        '<div class="sub">' + c.bands.length + (c.bands.length === 1 ? ' band' : ' bands') + '</div></div>' +
         '<button class="mini" id="dClose" type="button">Close</button></div>' +
       gridHtml(c, true) +
       '<div class="read">' + sectors(c).map(function(list, s){
@@ -519,7 +517,7 @@
      black lines, white headings - so a saved image can go straight into a
      message or a report. */
   function drawCombos(list, perRow){
-    var CW = 64, CH = 20, HH = 20, TH = 28, PAD = 26, GX = 30, GY = 24, FOOT = 26, SC = 2;
+    var CW = 64, CH = 20, HH = 20, TH = 28, PAD = 26, GX = 30, GY = 24, FOOT = 0, SC = 2;
     var cols = Math.max(1, Math.min(perRow, list.length)), lines = Math.ceil(list.length / cols);
     var lineH = [];
     for (var l = 0; l < lines; l++){
@@ -559,8 +557,6 @@
       });
       y += lineH[li] + GY;
     }
-    x.fillStyle = 'rgba(0,0,0,.6)'; x.font = '11px Arial, Helvetica, sans-serif'; x.textAlign = 'left';
-    x.fillText(D.source, PAD, H - PAD / 2 - 4);
     return cv;
   }
 
@@ -623,7 +619,7 @@
   }
 
   function downloadScenarios(){
-    var SC = 2, cellW = 184, cellH = 336, PAD = 26, GX = 26, TH = 46, FOOT = 26;
+    var SC = 2, cellW = 184, cellH = 336, PAD = 26, GX = 26, TH = 46, FOOT = 0;
     var W = PAD * 2 + SCEN.length * cellW + (SCEN.length - 1) * GX, H = PAD * 2 + TH + cellH + FOOT;
     var cv = document.createElement('canvas');
     cv.width = W * SC; cv.height = H * SC;
@@ -637,8 +633,6 @@
       img.onload = function(){
         x.drawImage(img, PAD + i * (cellW + GX), PAD + TH, cellW, cellH);
         if (++done === SCEN.length){
-          x.fillStyle = 'rgba(0,0,0,.6)'; x.font = '11px Arial, Helvetica, sans-serif'; x.textAlign = 'left';
-          x.fillText(D.source, PAD, H - PAD / 2 - 4);
           cv.toBlob(function(b){
             if (!b) return say('This browser would not make the image.', true);
             var name = 'rf-jumper-labelling-scenarios-' + stamp() + '.png';
@@ -715,8 +709,6 @@
     }
   });
 
-  $('src').textContent = 'Huawei SOP 2024 · v6.0 · pages 88–89';
-  $('foot').textContent = D.source + ' · rebuilt cell by cell from the chart';
   $('pill').innerHTML = '<b>' + combos.length + '</b> combinations · <b>' + SCEN.length + '</b> scenarios';
   paintBands();
   paint();
