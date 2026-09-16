@@ -174,8 +174,8 @@
 <main>
   <div class="card card-pad">
     <div id="drop" tabindex="0" role="button" aria-label="Add PDF files">
-      <div class="big">Drop GIN PDFs here</div>
-      <div class="hint">or tap to browse · multiple files supported · nothing is uploaded anywhere</div>
+      <div class="big">Drop SAP PDFs here</div>
+      <div class="hint">Good Issue Notes and Activity Reports – each file is recognised on its own · multiple files supported · nothing is uploaded anywhere</div>
       <input type="file" id="fileInput" accept="application/pdf" multiple>
     </div>
     <div class="filelog" id="filelog"></div>
@@ -183,9 +183,9 @@
 
   <div class="card">
     <div class="bar">
-      <h2>Materials</h2>
+      <h2>Good Issue Notes</h2>
       <span class="count" id="count">0 rows</span>
-      <button class="btn ghost" id="clearBtn" disabled>Clear all</button>
+      <button class="btn ghost" id="clearBtn" disabled>Clear</button>
       <button class="btn primary" id="exportBtn" disabled>Download Excel</button>
     </div>
     <div class="tablebox">
@@ -201,7 +201,28 @@
     </div>
   </div>
 
-  <footer>Runs entirely on your device · Dialog Axiata SAP GIN format · data persists offline</footer>
+  <div class="card">
+    <div class="bar">
+      <h2>Equipment / Asset Movement</h2>
+      <span class="count" id="mCount">0 rows</span>
+      <button class="btn ghost" id="mClearBtn" disabled>Clear</button>
+      <button class="btn primary" id="mExportBtn" disabled>Download Excel</button>
+    </div>
+    <div class="tablebox">
+      <table aria-label="Extracted asset movements">
+        <thead>
+          <tr>
+            <th>Report No</th><th>Created On</th><th>Status</th><th>#</th>
+            <th>Equipment No</th><th>Code</th><th>Material</th><th>Mat. Desc.</th>
+            <th>UoM</th><th>Serial Number</th><th>From</th><th>To</th><th>Source File</th>
+          </tr>
+        </thead>
+        <tbody id="mTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Runs entirely on your device · Dialog Axiata SAP Good Issue Notes and Activity Reports · data persists offline</footer>
 </main>
 
 <script>
@@ -217,15 +238,25 @@ function readyPdfjs(){
   PDF_WORKER_SET = true;
 }
 
-/* ---------- persistence (v3 schema: one row per material) ---------- */
+/* ---------- persistence (one row per material, one row per equipment) ----------
+   The two documents are kept apart. A Good Issue Note says what left the store;
+   an Activity Report says where a piece of kit went. They share a drop zone
+   because the person holding them has both, and nothing else. */
 const STORE_KEY = 'gin_rows_v4';
+const MOVE_KEY  = 'gin_moves_v1';
 const THEME_KEY = 'gin_theme';
 let rows = [];
-try { rows = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { rows = []; }
+let moves = [];
+try { rows  = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { rows  = []; }
+try { moves = JSON.parse(localStorage.getItem(MOVE_KEY))  || []; } catch (e) { moves = []; }
 const seenGIN = new Set(rows.map(r => r.gin).filter(Boolean));
+const seenRep = new Set(moves.map(r => r.rep).filter(Boolean));
 
 function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(rows)); } catch (e) { /* quota */ }
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(rows));
+    localStorage.setItem(MOVE_KEY, JSON.stringify(moves));
+  } catch (e) { /* quota */ }
 }
 
 /* ---------- theme ---------- */
@@ -249,6 +280,10 @@ const countEl = document.getElementById('count');
 const pill = document.getElementById('pill');
 const exportBtn = document.getElementById('exportBtn');
 const clearBtn = document.getElementById('clearBtn');
+const mTbody = document.getElementById('mTbody');
+const mCountEl = document.getElementById('mCount');
+const mExportBtn = document.getElementById('mExportBtn');
+const mClearBtn = document.getElementById('mClearBtn');
 
 drop.addEventListener('click', () => input.click());
 drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
@@ -260,16 +295,29 @@ drop.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
 clearBtn.addEventListener('click', async () => {
   const ok = await Ask.twice([
     { title: 'Clear every extracted material?',
-      body: 'This empties the table and forgets which GIN notes have already been read, so the same PDFs can be dropped in again.',
+      body: 'This empties the Good Issue Notes table and forgets which notes have already been read, so the same PDFs can be dropped in again.',
       no: 'Cancel', yes: 'Yes, go on' },
     { title: 'It is only kept in this browser.',
-      body: 'There is no copy anywhere else. Export the Excel first if you still need these lines.',
+      body: 'There is no copy anywhere else. Download the Excel first if you still need these lines.',
       no: 'No, keep them', yes: 'Clear the table' }
   ]);
   if (!ok) return;
   rows = []; seenGIN.clear(); filelog.innerHTML = ''; save(); render();
 });
+mClearBtn.addEventListener('click', async () => {
+  const ok = await Ask.twice([
+    { title: 'Clear every extracted movement?',
+      body: 'This empties the Equipment / Asset Movement table and forgets which Activity Reports have already been read, so the same PDFs can be dropped in again.',
+      no: 'Cancel', yes: 'Yes, go on' },
+    { title: 'It is only kept in this browser.',
+      body: 'There is no copy anywhere else. Download the Excel first if you still need these lines.',
+      no: 'No, keep them', yes: 'Clear the table' }
+  ]);
+  if (!ok) return;
+  moves = []; seenRep.clear(); filelog.innerHTML = ''; save(); render();
+});
 exportBtn.addEventListener('click', exportExcel);
+mExportBtn.addEventListener('click', exportMoveExcel);
 
 /* ---------- file intake ---------- */
 async function handleFiles(fileList) {
@@ -278,8 +326,37 @@ async function handleFiles(fileList) {
     const entry = logRow(file.name, 'reading…', 'busy');
     try {
       const doc = await parsePDF(file);
+
+      if (doc.kind === 'move') {
+        if (!doc.rep && doc.items.length === 0) {
+          setStatus(entry, 'an Activity Report, but no equipment found', 'err');
+          continue;
+        }
+        const dupR = doc.rep && seenRep.has(doc.rep);
+        if (doc.rep) seenRep.add(doc.rep);
+        for (const it of doc.items) {
+          moves.push({
+            rep: doc.rep, createdBy: doc.createdBy, createdOn: doc.createdOn,
+            changedBy: doc.changedBy, changedOn: doc.changedOn,
+            reportedBy: doc.reportedBy, status: doc.status, plant: doc.plant,
+            issuedTo: doc.issuedTo, remarks: doc.remarks, descr: doc.descr,
+            sendLoc: doc.sendLoc, sendDesc: doc.sendDesc,
+            recvLoc: doc.recvLoc, recvDesc: doc.recvDesc,
+            vendorCode: doc.vendorCode, vendorName: doc.vendorName,
+            num: it.num, equip: it.equip, code: it.code, material: it.material,
+            mdesc: it.desc, uom: it.uom, sn: it.sn,
+            file: file.name
+          });
+        }
+        setStatus(entry,
+          (dupR ? 'duplicate report · ' : '') +
+          `asset movement · ${doc.items.length} equipment · report ${doc.rep || '—'}`,
+          dupR ? 'dup' : 'ok');
+        continue;
+      }
+
       if (!doc.giNumber && doc.items.length === 0) {
-        setStatus(entry, 'not a GIN? no data found', 'err');
+        setStatus(entry, 'not a GIN or an Activity Report? no data found', 'err');
         continue;
       }
       const dup = doc.giNumber && seenGIN.has(doc.giNumber);
@@ -337,24 +414,37 @@ function setStatus(entry, status, cls) {
 const SKIP_RE = /^-{3,}$|^Date\s*:?$|^(Issued by|Checked By|Received by|Checked By-Security Officer)$/i;
 const JUNK_RE = /^Page\s*No\b|^\d{2}\.\d{2}\.\d{4}\s*\/\s*\d{2}:\d{2}|^GIN\s*:/i;
 
+/* The pages are read once and handed to whichever parser the document turns
+   out to want. Nobody is asked which kind they dropped: the paper says so
+   itself, and a person carrying thirty of them should not have to sort them. */
 async function parsePDF(file) {
   const buf = await file.arrayBuffer();
   readyPdfjs();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
 
+  const pages = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    pages.push(tc.items
+      .filter(it => it.str.trim())
+      .map(it => ({ x: it.transform[4], y: it.transform[5], s: it.str })));
+  }
+
   const allLines = [];
+  for (const frags of pages) allLines.push(...groupIntoLines(frags));
+
+  const movement = allLines.some(l =>
+    /Equipment\s*\/\s*Asset\s*Movement/i.test(l) || /Activity\s*Report\s*No/i.test(l));
+  return movement ? parseMovement(pages, allLines) : parseGIN(pages, allLines);
+}
+
+function parseGIN(pages, allLines) {
   const allItems = [];
   let prevCols = null;
   let open = null;   // an item still being built when a page ends (spans the break)
 
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p);
-    const tc = await page.getTextContent();
-    const frags = tc.items
-      .filter(it => it.str.trim())
-      .map(it => ({ x: it.transform[4], y: it.transform[5], s: it.str }));
-
-    allLines.push(...groupIntoLines(frags));
+  for (const frags of pages) {
     const res = parsePageItems(frags, prevCols, open);
     allItems.push(...res.items);
     open = res.open;                 // carry the unfinished item into the next page
@@ -363,6 +453,7 @@ async function parsePDF(file) {
   if (open) allItems.push(open);     // flush the final item
 
   const d = extractHeaderFields(allLines);
+  d.kind = 'gin';
   d.items = allItems.map(finalizeItem);
   return d;
 }
@@ -439,8 +530,10 @@ function findHeader(frags) {
   return null;
 }
 
-function assignColumn(x, cols) {
-  const order = ['num','code','desc','uom','qty','sn','loc'];
+const GIN_ORDER  = ['num','code','desc','uom','qty','sn','loc'];
+const MOVE_ORDER = ['no','equip','code','mat','desc','uom','sn'];
+
+function assignColumn(x, cols, order) {
   const xs = order.map(k => cols[k]);
   let col = order[0];
   for (let i = 1; i < order.length; i++) {
@@ -502,7 +595,7 @@ function parsePageItems(frags, prevCols, carryItem) {
       // strip a trailing "GIN : 12345" tag SAP glues onto the last cell of a page
       const t = f.s.trim().replace(/\s*GIN\s*:?\s*\d+\s*$/i, '').trim();
       if (!t) continue;
-      const colKey = assignColumn(f.x, cols);
+      const colKey = assignColumn(f.x, cols, GIN_ORDER);
       if (colKey === 'num') {
         const m = t.match(/^(\d{1,3})\s+(\d{8,12})(?:\s+(.*))?$/);
         if (m) {
@@ -530,37 +623,237 @@ function parsePageItems(frags, prevCols, carryItem) {
   return { items, cols, open: cur };
 }
 
+/* ==================================================================
+   ACTIVITY REPORT - Equipment / Asset Movement.
+
+   The same idea as above, against a different sheet of paper. Three
+   things about this one need saying:
+
+   - Every page repeats the whole header block, so a field is looked up
+     once and the first page that answers wins.
+   - A serial number is wrapped mid-token by SAP: "R4875GDUMMY000000"
+     on one line and "4" on the next. The pieces are joined with nothing
+     between them, because they were one word before the column was too
+     narrow for it.
+   - An equipment row can begin on one page and finish on the next -
+     item 6 of this report carries its serial over the break - so the
+     unfinished row is handed to the next page rather than closed.
+   ================================================================== */
+
+const MOVE_SKIP_RE =
+  /^_{3,}$|^Number$|^Date\s*:?$|^Issued by$|^Received by$|^Checked by\b|^Page\s*:|^User\s*:|^Prited\b|^Printed\b/i;
+
+const MOVE_FIELDS = [
+  ['rep',        'Activity Report No.'],
+  ['createdBy',  'Created By'],
+  ['createdOn',  'Created On'],
+  ['changedBy',  'Last Change By'],
+  ['changedOn',  'Last Change On'],
+  ['reportedBy', 'Reported By'],
+  ['status',     'Status'],
+  ['plant',      'Maintenance Plant'],
+  ['issuedTo',   'Issued To'],
+  ['remarks',    'Remarks'],
+  ['descr',      'Description'],
+  ['sendLoc',    'Sending Func. Location'],
+  ['sendDesc',   'Sending Func. Loc. Desc.'],
+  ['recvLoc',    'Receiving Func. Location'],
+  ['recvDesc',   'Receiving Func. Loc. Desc.'],
+  ['vendorCode', 'Vendor Code'],
+  ['vendorName', 'Vendor Name'],
+  ['address',    'Address']
+];
+
+const labelKey = s => s.trim().replace(/\s+/g, ' ').replace(/[.:]+$/, '').toLowerCase();
+
+function bucketRows(frags) {
+  const out = [];
+  for (const f of frags) {
+    let b = out.find(b => Math.abs(b.y - f.y) < 3);
+    if (!b) { b = { y: f.y, frags: [] }; out.push(b); }
+    b.frags.push(f);
+  }
+  out.sort((a, b) => b.y - a.y);
+  for (const r of out) r.frags.sort((a, b) => a.x - b.x);
+  return out;
+}
+
+/* label on the left, value in its own column to the right, on the same
+   line - near enough, since SAP sets the two a few points apart */
+function moveField(frags, label) {
+  const want = labelKey(label);
+  const lab = frags.find(f => labelKey(f.s) === want);
+  if (!lab) return '';
+  const val = frags
+    .filter(f => f.x > lab.x + 30 && Math.abs(f.y - lab.y) <= 7)
+    .sort((a, b) => a.x - b.x)
+    .map(f => f.s.trim())
+    .join(' ')
+    .replace(/^:\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return /^[,;\-\s]*$/.test(val) ? '' : val;   // ":," is an empty address
+}
+
+function moveHeader(frags) {
+  for (const line of bucketRows(frags)) {
+    const at = re => { const f = line.frags.find(g => re.test(g.s.trim())); return f ? f.x : null; };
+    const desc = at(/^Mat\.?\s*Desc/i);
+    const code = at(/^Code$/i);
+    const mat  = at(/^Material$/i);
+    if (desc === null || code === null || mat === null) continue;
+    // "No. Equipment" is one fragment and "Number" wraps below it, so the
+    // equipment column is placed from the left edge rather than found
+    const no  = at(/^No\.(\s|$)/) ?? 28;
+    const uom = at(/^UoM\b/i) ?? 414;
+    return { y: line.y, cols: { no, equip: no + 23, code, mat, desc, uom, sn: uom + 25 } };
+  }
+  return null;
+}
+
+function parseMovePage(frags, prevCols, carry) {
+  const hdr = moveHeader(frags);
+  const cols = hdr ? hdr.cols : prevCols;
+  if (!cols) return { items: [], cols: null, open: carry || null };
+  const topY = hdr ? hdr.y : Infinity;
+
+  const items = [];
+  let cur = carry || null;
+
+  for (const line of bucketRows(frags)) {
+    if (line.y >= topY - 1) continue;          // the header block and above
+    const cells = { no:[], equip:[], code:[], mat:[], desc:[], uom:[], sn:[] };
+    let any = false;
+    for (const f of line.frags) {
+      const t = f.s.trim();
+      if (!t || MOVE_SKIP_RE.test(t)) continue;
+      cells[assignColumn(f.x, cols, MOVE_ORDER)].push(t);
+      any = true;
+    }
+    if (!any) continue;
+
+    const noTok = cells.no.join('').trim();
+    if (/^\d{1,4}$/.test(noTok) && cells.equip.length) {
+      if (cur) items.push(cur);
+      cur = { num: noTok, equip:'', code:'', material:'', descLines:[], uom:'', snToks:[] };
+    }
+    if (!cur) continue;
+    if (cells.equip.length) cur.equip += cells.equip.join('');
+    if (cells.code.length && !cur.code) cur.code = cells.code.join('');
+    if (cells.mat.length)  cur.material += cells.mat.join('');
+    if (cells.desc.length) cur.descLines.push(cells.desc.join(' '));
+    if (cells.uom.length && !cur.uom) cur.uom = cells.uom.join('');
+    if (cells.sn.length)   cur.snToks.push(cells.sn.join(''));
+  }
+  return { items, cols, open: cur };
+}
+
+function finalizeMove(it) {
+  return {
+    num:      it.num,
+    equip:    it.equip.replace(/\s+/g, ''),
+    code:     it.code.replace(/\s+/g, ''),
+    material: it.material.replace(/\s+/g, ''),
+    desc:     joinDescLines(it.descLines),
+    uom:      it.uom.toUpperCase(),
+    sn:       it.snToks.join('').replace(/\s+/g, '')
+  };
+}
+
+function parseMovement(pages, allLines) {
+  const d = { kind: 'move' };
+  for (const [key] of MOVE_FIELDS) d[key] = '';
+  for (const frags of pages) {
+    for (const [key, label] of MOVE_FIELDS) {
+      if (d[key]) continue;
+      const v = moveField(frags, label);
+      if (v) d[key] = v;
+    }
+  }
+  d.rep = (d.rep.match(/\d+/) || [''])[0];
+
+  const items = [];
+  let prevCols = null, open = null;
+  for (const frags of pages) {
+    const res = parseMovePage(frags, prevCols, open);
+    items.push(...res.items);
+    open = res.open;
+    if (res.cols) prevCols = res.cols;
+  }
+  if (open) items.push(open);
+
+  d.items = items.map(finalizeMove);
+  return d;
+}
+
 /* ---------- render + export ---------- */
 function render() {
+  renderGIN();
+  renderMoves();
+  const total = rows.length + moves.length;
+  pill.innerHTML = `<b>${total}</b> row${total === 1 ? '' : 's'} saved`;
+}
+
+function fillRow(tbodyEl, classes, values) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = classes.map(c => `<td class="${c}"></td>`).join('');
+  const cells = tr.children;
+  values.forEach((v, i) => cells[i].textContent = v ?? '');
+  tbodyEl.appendChild(tr);
+}
+
+function renderGIN() {
   countEl.textContent = rows.length + ' row' + (rows.length === 1 ? '' : 's');
-  pill.innerHTML = `<b>${rows.length}</b> material${rows.length === 1 ? '' : 's'} saved`;
   exportBtn.disabled = clearBtn.disabled = rows.length === 0;
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty">No data yet - add some GIN PDFs above.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">Nothing yet - drop a Good Issue Note above.</td></tr>';
     return;
   }
   tbody.innerHTML = '';
-  for (const r of rows) {
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      `<td class="mono"></td><td class="mono"></td><td class="mono"></td><td></td>` +
-      `<td class="mono"></td><td class="num"></td><td class="mono"></td><td class="mono"></td><td class="mono"></td>`;
-    const cells = tr.children;
-    [r.gin, r.resNo, r.code, r.desc, r.uom, r.qty, r.sn, r.loc, r.file]
-      .forEach((v, i) => cells[i].textContent = v ?? '');
-    tbody.appendChild(tr);
+  const cls = ['mono','mono','mono','','mono','num','mono','mono','mono'];
+  for (const r of rows)
+    fillRow(tbody, cls, [r.gin, r.resNo, r.code, r.desc, r.uom, r.qty, r.sn, r.loc, r.file]);
+}
+
+function renderMoves() {
+  mCountEl.textContent = moves.length + ' row' + (moves.length === 1 ? '' : 's');
+  mExportBtn.disabled = mClearBtn.disabled = moves.length === 0;
+  if (!moves.length) {
+    mTbody.innerHTML = '<tr><td colspan="13" class="empty">Nothing yet - drop an Activity Report above.</td></tr>';
+    return;
   }
+  mTbody.innerHTML = '';
+  const cls = ['mono','mono','','num','mono','mono','mono','','mono','mono','mono','mono','mono'];
+  for (const r of moves)
+    fillRow(mTbody, cls, [r.rep, r.createdOn, r.status, r.num, r.equip, r.code,
+                          r.material, r.mdesc, r.uom, r.sn, r.sendLoc, r.recvLoc, r.file]);
+}
+
+function saveBook(ws, widths, sheetName, fileStem) {
+  ws['!cols'] = widths.map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, `${fileStem}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 function exportExcel() {
   const header = ['GI Number','Reservation No','Item Code','Description','UOM','Qty','S/N','Location','Source File'];
   const data = rows.map(r => [r.gin, r.resNo, r.code, r.desc, r.uom, r.qty, r.sn, r.loc, r.file]);
-  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
-  ws['!cols'] = [12,13,12,42,6,7,22,26,16].map(w => ({ wch: w }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'GIN Materials');
-  const stamp = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `GIN_Materials_${stamp}.xlsx`);
+  saveBook(XLSX.utils.aoa_to_sheet([header, ...data]),
+    [12,13,12,42,6,7,22,26,16], 'GIN Materials', 'GIN_Materials');
+}
+
+function exportMoveExcel() {
+  const header = ['Report No','Created By','Created On','Reported By','Status','Maintenance Plant',
+    'Description','Sending Func. Location','Sending Func. Loc. Desc.',
+    'Receiving Func. Location','Receiving Func. Loc. Desc.',
+    '#','Equipment Number','Code','Material','Mat. Desc.','UoM','Serial Number','Source File'];
+  const data = moves.map(r => [r.rep, r.createdBy, r.createdOn, r.reportedBy, r.status, r.plant,
+    r.descr, r.sendLoc, r.sendDesc, r.recvLoc, r.recvDesc,
+    r.num, r.equip, r.code, r.material, r.mdesc, r.uom, r.sn, r.file]);
+  saveBook(XLSX.utils.aoa_to_sheet([header, ...data]),
+    [12,14,12,12,22,10,26,20,22,20,28,5,15,8,12,30,6,22,16],
+    'Asset Movement', 'Asset_Movement');
 }
 
 render();
