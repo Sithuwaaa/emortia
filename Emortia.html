@@ -2322,12 +2322,18 @@ class Component extends DCLogic {
         const TITLE = 58, TLINE = 66, VERSE = 25, VLINE = 54;
         const x0 = RAIL + PAD;
 
-        /* measure first: the poem decides how tall the picture has to be */
+        /* Measure first. The poem decides how tall the picture has to be, and
+           how wide its pane is - a box drawn to a fixed width leaves a short
+           poem sitting in a field of glass, so it is cut to the longest line
+           the poem actually has. */
         const m = document.createElement('canvas').getContext('2d');
         m.font = "400 " + TITLE + "px 'UN-Agni', serif";
         const titleLines = this.ppWrap(m, p.title, MAXW);
+        let widest = 0;
+        titleLines.forEach(t => { widest = Math.max(widest, m.measureText(t).width); });
         m.font = "400 " + VERSE + "px 'UN-Alakamanda', serif";
         const verse = String(p.body || '').split(/\r?\n/);
+        verse.forEach(t => { widest = Math.max(widest, m.measureText(t).width); });
         const block = titleLines.length * TLINE + 20 + 3 + 28 + verse.length * VLINE + 34 + 14;
         const H = Math.max(900, Math.ceil((block + 260) / 2) * 2);
 
@@ -2367,32 +2373,42 @@ class Component extends DCLogic {
 
         /* where the poem sits, and the pane of frosted glass under it */
         const blockTop = (H - block) / 2;
-        const fr = { x: x0 - 34, y: blockTop - 30, w: MAXW + 72, h: block + 60 };
+        const PADX = 58, PADY = 50, RAD = 28;
+        const boxW = Math.min(MAXW, Math.ceil(widest)) + PADX * 2;
+        const fr = { x: x0 - PADX, y: blockTop - PADY, w: boxW, h: block + PADY * 2 };
+
+        const round = (g, x, y, w, h, r) => {
+          g.beginPath();
+          g.moveTo(x + r, y);
+          g.arcTo(x + w, y,     x + w, y + h, r);
+          g.arcTo(x + w, y + h, x,     y + h, r);
+          g.arcTo(x,     y + h, x,     y,     r);
+          g.arcTo(x,     y,     x + w, y,     r);
+          g.closePath();
+        };
 
         const fc = document.createElement('canvas');
         fc.width = W; fc.height = H;
         const fx = fc.getContext('2d');
-        try{ fx.filter = 'blur(18px)'; }catch(e){}
+        try{ fx.filter = 'blur(20px)'; }catch(e){}
         paintArt(fx);
         try{ fx.filter = 'none'; }catch(e){}
-        fx.fillStyle = 'rgba(10,6,8,.52)';
+        fx.fillStyle = 'rgba(10,6,8,.56)';
         fx.fillRect(0, 0, W, H);
-        /* faded out at its edges, so it softens the picture rather than
-           sitting on it as a card */
+        /* the glass is a box with corners, not a smudge: everything outside
+           the rounded rectangle is cut away, and a hairline is drawn round
+           what is left so the edge is somewhere rather than nowhere */
         fx.globalCompositeOperation = 'destination-in';
-        const rx = fr.w * 0.76, ry = fr.h * 0.80;
-        fx.save();
-        fx.translate(fr.x + fr.w * 0.40, fr.y + fr.h * 0.5);
-        fx.scale(1, ry / rx);
-        const mask = fx.createRadialGradient(0, 0, 0, 0, 0, rx);
-        mask.addColorStop(0,   'rgba(0,0,0,1)');
-        mask.addColorStop(.46, 'rgba(0,0,0,1)');
-        mask.addColorStop(.74, 'rgba(0,0,0,.5)');
-        mask.addColorStop(1,   'rgba(0,0,0,0)');
-        fx.fillStyle = mask;
-        fx.beginPath(); fx.arc(0, 0, rx, 0, Math.PI * 2); fx.fill();
-        fx.restore();
+        fx.fillStyle = '#000';
+        round(fx, fr.x, fr.y, fr.w, fr.h, RAD);
+        fx.fill();
         ctx.drawImage(fc, 0, 0);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(247,237,240,.11)';
+        ctx.lineWidth = 1;
+        round(ctx, fr.x + 0.5, fr.y + 0.5, fr.w - 1, fr.h - 1, RAD);
+        ctx.stroke();
+        ctx.restore();
 
         /* the year, enormous and almost invisible, the way a plate number is */
         ctx.save();
@@ -2423,22 +2439,16 @@ class Component extends DCLogic {
           ctx.fillText(text, 0, 6);
           ctx.restore();
         };
-        upright((when.month + ' ' + when.day).trim(), H * 0.40,
+        /* The date, the year and the mark, and nothing else. The ticks and the
+           "1 of 14" are how you get about the book - they mean something while
+           you are standing in it and nothing at all in a picture somebody has
+           saved, where there is no next poem to go to. */
+        upright((when.month + ' ' + when.day).trim(), H * 0.44,
           "400 21px 'UN-Agni', serif", '#f2c3ce');
-        upright(when.year || '', H * 0.40 + 150,
+        upright(when.year || '', H * 0.44 + 132,
           "400 11px 'Space Mono', monospace", '#8d6a75');
-        upright('No ' + (i + 1) + '/' + n, H - 168,
-          "400 9px 'Space Mono', monospace", '#c9788d');
         upright('E M O R T I A', H - 30,
           "400 7px 'Space Mono', monospace", 'rgba(141,106,117,.9)');
-
-        /* a tick for every poem in the book, the one being read twice as long */
-        const tickTop = H * 0.40 + 210;
-        for(let k = 0; k < n; k++){
-          const w = k === i ? 20 : 10;
-          ctx.fillStyle = k === i ? '#f2c3ce' : 'rgba(227,203,210,.3)';
-          ctx.fillRect(RAIL / 2 - w / 2, tickTop + k * 9, w, 2);
-        }
 
         /* and the poem */
         ctx.textAlign = 'left';
