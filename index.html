@@ -109,7 +109,13 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 html{scrollbar-gutter:stable;}
-:root{--pageBot:132px;}
+:root{--pageBot:132px;
+  /* One gap for the whole front page. Every tile on it - the three features,
+     the random record, the card, the links, the count - is this far from the
+     next one, and it is the same distance the three features are from each
+     other. They were 34, 34, 44 and 16 apart, which is four decisions where
+     there should be one. */
+  --tileGap:16px;}
 body{background:var(--bg);}
 ::selection{background:var(--accent);color:var(--bg);}
 @keyframes eq{0%,100%{transform:scaleY(0.5);}50%{transform:scaleY(1);}}
@@ -682,7 +688,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 /* auto-fit rather than three fixed columns: with the tool card hidden from a
    signed-out visitor, three columns left a third of the row empty. */
 .hm-feat3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:16px;margin-top:34px;}
+  gap:var(--tileGap);margin-top:var(--tileGap);}
 .hm-feat{position:relative;border-radius:16px;overflow:hidden;min-height:390px;
   display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer;
   box-shadow:0 30px 70px -40px rgba(0,0,0,.9);
@@ -698,7 +704,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .hm-veil{position:absolute;inset:0;background:linear-gradient(178deg,rgba(23,13,16,.18) 0%,rgba(23,13,16,.52) 52%,rgba(23,13,16,.92) 100%);}
 
 /* One at random: two sleeves crossfading behind a title that changes with them. */
-.hm-shuf{position:relative;margin:34px 0 34px calc(50% - 50vw);width:100vw;
+.hm-shuf{position:relative;margin:var(--tileGap) 0 var(--tileGap) calc(50% - 50vw);width:100vw;
   border:0;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;border-radius:0;
   overflow:hidden;min-height:min(82vh,760px);
   display:flex;flex-direction:column;justify-content:center;}
@@ -711,7 +717,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    ground continues under the player rather than stopping short of it - the
    page ends here, and it should look as though it does. The padding it adds
    back inside is what keeps the words themselves clear of the transport. */
-.hm-sum{margin:44px 0 calc(-1 * var(--pageBot)) calc(50% - 50vw);width:100vw;
+.hm-sum{margin:var(--tileGap) 0 calc(-1 * var(--pageBot)) calc(50% - 50vw);width:100vw;
   background:var(--surface2);border-top:1px solid var(--line);
   padding:clamp(28px,3.4vw,40px) 0 calc(var(--pageBot) + 10px);}
 /* Equal columns made the boxes even and the page look lopsided: each
@@ -770,10 +776,16 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    middle of the band - the ground, and then suddenly a photograph. A mask
    belongs to the picture, so it ends where the picture ends however wide the
    window is, and the two meet in a fade rather than an edge. */
-.hm-shuf .sleeve{position:absolute;top:0;right:0;left:auto;
-  height:100%;width:auto;max-width:none;object-fit:cover;
-  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.2) 10%,rgba(0,0,0,.72) 24%,#000 42%);
-  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.2) 10%,rgba(0,0,0,.72) 24%,#000 42%);}
+/* Both pictures live in here - the one showing and the one it faded up from -
+   and it fills the band edge to edge, the way the music tab fills the screen.
+   The picture used to be a square held against the right, which left its own
+   left edge standing in the middle of the band with the ground on one side of
+   it and a photograph on the other. Filling the band means there is no edge
+   to hide: the wash over it is the only thing that fades, and it fades into
+   the picture rather than into a join. */
+.hm-shuf .sleeves{position:absolute;inset:0;}
+.hm-shuf .sleeve{position:absolute;inset:0;width:100%;height:100%;max-width:none;
+  object-fit:cover;object-position:50% 42%;}
 /* the panel the words are read on, fading out across the picture's left edge
    so there is no seam between the two */
 .hm-shuf .shuf-veil{position:absolute;inset:0;
@@ -784,9 +796,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    underneath, on a wash coming up from the floor. */
 @media (max-width:760px){
   .hm-shuf{min-height:min(72vh,560px);justify-content:flex-end;}
-  /* the picture is the whole tile here, so there is no edge to blend away */
-  .hm-shuf .sleeve{left:0;right:0;width:100%;height:100%;object-position:50% 22%;
-    -webkit-mask-image:none;mask-image:none;}
+  .hm-shuf .sleeve{object-position:50% 22%;}
   .hm-shuf .shuf-veil{background:linear-gradient(180deg,rgba(16,8,9,.18) 0%,
     rgba(16,8,9,.52) 50%,rgba(16,8,9,.95) 100%);}
   .hm-shuf .in{padding:0 28px clamp(24px,3.4vw,38px);}
@@ -806,7 +816,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   text-shadow:0 8px 40px rgba(0,0,0,.7);text-wrap:balance;}
 
 /* The about card and the social band, folded into one thing. */
-.hm-about{margin:34px 0 0 calc(50% - 50vw);width:100vw;position:relative;
+.hm-about{margin:var(--tileGap) 0 0 calc(50% - 50vw);width:100vw;position:relative;
   border:0;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;border-radius:0;
   overflow:hidden;background:#1d1014;
   display:grid;grid-template-columns:minmax(0,1fr);min-height:420px;}
@@ -832,22 +842,27 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    never run to the edge of the screen because something was standing there.
    Two things, one under the other - the card gets the whole width and the
    links get a line to themselves. */
-/* the page's own gap between two tiles, so they read as a pair rather than
-   one slab with a line ruled across it */
-.hm-else{position:relative;overflow:hidden;margin:16px 0 0 calc(50% - 50vw);width:100vw;
+.hm-else{position:relative;overflow:hidden;margin:var(--tileGap) 0 0 calc(50% - 50vw);width:100vw;
   background:#1d1014;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;}
-/* The covers run along the band, cropped to a strip - texture rather than a
-   gallery. They are the same records the page is about, and the band would
-   otherwise be a bare shelf holding five buttons. Faded out at both ends so it
-   starts and stops nowhere in particular. */
-.hm-else .wall{position:absolute;inset:0;display:flex;pointer-events:none;
-  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16%,#000 84%,transparent 100%);
-  mask-image:linear-gradient(90deg,transparent 0,#000 16%,#000 84%,transparent 100%);}
-.hm-else .wall img{flex:1 1 0;min-width:0;width:100%;height:100%;display:block;
-  object-fit:cover;object-position:50% 34%;}
-/* and a wash over them, because the words come first */
-.hm-else .scrim{position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(29,16,20,.9) 0%,rgba(29,16,20,.74) 50%,rgba(29,16,20,.92) 100%);}
+/* The mark at the far end of it, watermarked. The band is the last thing on
+   the page before the count, and the page signs itself rather than trailing
+   off - the links at one end, the name at the other, and the length of the
+   screen between them. */
+.hm-else .mark{position:absolute;top:50%;transform:translateY(-50%);
+  right:max(28px,calc((100vw - 1180px)/2 + 28px));
+  display:flex;align-items:center;gap:11px;pointer-events:none;}
+.hm-else .mark .lg{width:30px;height:30px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;gap:2.6px;
+  border:1px solid rgba(247,237,240,.13);}
+.hm-else .mark .lg i{display:block;width:2.6px;border-radius:2px;background:rgba(209,88,115,.38);}
+.hm-else .mark .lg i:nth-child(1){height:7px;}
+.hm-else .mark .lg i:nth-child(2){height:12px;}
+.hm-else .mark .lg i:nth-child(3){height:9px;}
+.hm-else .mark .lg i:nth-child(4){height:13px;}
+.hm-else .mark b{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+  font-size:22px;letter-spacing:-.02em;color:rgba(247,237,240,.13);}
+/* narrow: the links take the middle, and there is no end left to sign */
+@media (max-width:860px){ .hm-else .mark{display:none;} }
 .hm-else .row{position:relative;max-width:1180px;margin:0 auto;min-height:96px;
   padding:18px max(28px,calc((100vw - 1180px)/2 + 28px));
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
@@ -1240,8 +1255,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
       <!-- 7a · one at random. A different sleeve every visit, because a
            catalogue this size is easier to enter sideways than from the top. -->
       <div class="hm-shuf">
-        {{ shufBackShot }}
-        {{ shufShot }}
+        <div class="sleeves" aria-hidden="true">{{ shufBackShot }}{{ shufShot }}</div>
         <div class="shuf-veil"></div>
         <div class="in">
           <div class="kick" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#e87a94;">One at random</div>
@@ -1275,11 +1289,13 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
       <!-- 7b · everywhere else to find it. Its own band, under the card rather
            than cut into the side of it. -->
       <div class="hm-else">
-        <div class="wall" aria-hidden="true">{{ elseWall }}</div>
-        <div class="scrim" aria-hidden="true"></div>
         <div class="row">
           <span class="lab">Elsewhere</span>
           {{ socialRail }}
+        </div>
+        <div class="mark" aria-hidden="true">
+          <span class="lg"><i></i><i></i><i></i><i></i></span>
+          <b>Emortia</b>
         </div>
       </div>
 
@@ -4220,12 +4236,6 @@ class Component extends DCLogic {
       hmNewShot: this.artImg(this.big((this.tracks[this.tracks.length-1]||{}).img),
         {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 16%'}, true),
       socialRail: this.socials(true, true),
-      /* every cover there is, laid along the Elsewhere band. The small webp,
-         not the 2x: it is a strip a hundred pixels tall. */
-      elseWall: React.createElement(React.Fragment, null,
-        this.tracks.filter(x => x.img).map(x => React.createElement('img', {
-          key: 'ew' + x.i, src: x.img, alt: '', width: 900, height: 900,
-          loading: 'lazy', decoding: 'async' }))),
       heroWordmark: this.renderWordmark(),
       /* what the front page is playing, or that it is not */
       nowSpinning: s.picked ? (t.t + ' · ' + t.a) : 'Nothing playing',
@@ -4343,13 +4353,18 @@ class Component extends DCLogic {
         const prev = this.tracks[this.state.shufPrev];
         return {
           shufTitle: cur ? cur.t : '—',
-          shufShot: (cur && cur.img) ? React.createElement('img', {
-            key:'shuf' + this.state.shuf, className:'sleeve', src:this.big(cur.img), alt:'',
-            width:1800, height:1800, decoding:'async',
+          /* The song's own artwork - the wide one with its name written on it,
+             the same picture the music tab puts behind a track while it plays,
+             not the square sleeve. A record held up across the whole band
+             should be the picture that was made for that, and it already
+             carries the title, so the band and the artwork agree. */
+          shufShot: (cur && (cur.bg || cur.img)) ? React.createElement('img', {
+            key:'shuf' + this.state.shuf, className:'sleeve', src:(cur.bg || this.big(cur.img)),
+            alt:'', decoding:'async',
             style:{animation:'shufIn .7s ease both'}}) : null,
-          shufBackShot: (prev && prev.img) ? React.createElement('img', {
-            key:'back' + this.state.shufPrev, className:'sleeve', src:this.big(prev.img),
-            alt:'', width:1800, height:1800, decoding:'async'}) : null,
+          shufBackShot: (prev && (prev.bg || prev.img)) ? React.createElement('img', {
+            key:'back' + this.state.shufPrev, className:'sleeve',
+            src:(prev.bg || this.big(prev.img)), alt:'', decoding:'async'}) : null,
           shufPlay: cur ? this.play(cur.i) : (()=>{}),
           shufAgain: ()=>this.rollShuffle(),
           /* The counter, the line about the shuffle and the row of the whole
