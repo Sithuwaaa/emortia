@@ -577,6 +577,8 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   transition:top .5s cubic-bezier(.2,.8,.3,1);}
 .pp-steps{position:absolute;bottom:26px;right:60px;z-index:5;display:flex;align-items:center;gap:10px;}
 .pp-hintx{font-size:8px;letter-spacing:.28em;text-transform:uppercase;color:rgba(238,228,208,.45);}
+.pp-hinty{display:none;font-size:8px;letter-spacing:.28em;text-transform:uppercase;
+  color:rgba(238,228,208,.45);}
 .pp-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;
   border:1px solid rgba(247,237,240,.22);background:rgba(11,6,8,.5);backdrop-filter:blur(8px);
   font-size:12px;cursor:pointer;transition:border-color .2s ease,background .2s ease;}
@@ -628,6 +630,8 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
      down out of its way rather than sitting on the date */
   .pp-acts{top:auto;bottom:62px;right:18px;}
   .pp-hintx{display:none;}
+  /* the wheel and the arrow keys are not there; the thumb is */
+  .pp-hinty{display:inline;}
   .pp-frost{left:-18px;right:-18px;}
 }
 @media (prefers-reduced-motion:reduce){
@@ -2360,8 +2364,59 @@ class Component extends DCLogic {
       this._ppCool = now;
       this.ppStep(d);
     };
+    /* ---- a thumb, on a phone ----
+
+       The same rule as the wheel, with a finger: a swipe scrolls the poem
+       while there is poem left to scroll, and turns to the next one when
+       there is not. Swiping up carries you forward, the way it does
+       everywhere else.
+
+       Whether the poem was already read to its end is decided when the finger
+       lands, not when it lifts. A quick flick can reach the bottom and lift in
+       one movement, and that is one thing the reader asked for - a scroll -
+       not a scroll and a page turn on top of it. Momentum keeps running after
+       the finger has gone, too, so the position at the end of a gesture is
+       not a reliable account of what the gesture was.
+
+       Nothing is preventDefault'd and both listeners are passive: the poem
+       column has to keep scrolling normally underneath, and this only decides
+       what a swipe means once it is over. */
+    this._ppTouch = null;
+    this._ppDown = (e) => {
+      this._ppTouch = null;
+      if(this.state.page !== 'poetry') return;
+      if(!e.touches || e.touches.length !== 1) return;
+      const t = e.target;
+      if(!this._ppStage || !t || !this._ppStage.contains(t)) return;
+      /* the rail, the arrows and the pills are things to press, not to swipe */
+      if(t.closest && t.closest('.pp-rail,.pp-btn,.pp-hear,.pp-dl,button,a')) return;
+      const p = e.touches[0];
+      this._ppTouch = { x:p.clientX, y:p.clientY, at:Date.now(),
+                        fwd:this.ppAtEnd(1), back:this.ppAtEnd(-1) };
+    };
+    this._ppUp = (e) => {
+      const s = this._ppTouch;
+      this._ppTouch = null;
+      if(!s || this.state.page !== 'poetry') return;
+      const p = e.changedTouches && e.changedTouches[0];
+      if(!p) return;
+      const dy = p.clientY - s.y, dx = p.clientX - s.x;
+      /* a swipe rather than a tap, and up or down rather than across */
+      if(Math.abs(dy) < 56 || Math.abs(dy) < Math.abs(dx) * 1.4) return;
+      /* a long slow drag is somebody reading, not somebody turning a page */
+      if(Date.now() - s.at > 900) return;
+      const d = dy < 0 ? 1 : -1;
+      if(!(d > 0 ? s.fwd : s.back)) return;
+      const now = Date.now();
+      if(now - this._ppCool < 620) return;
+      this._ppCool = now;
+      this.ppStep(d);
+    };
+
     window.addEventListener('keydown', this._ppKey);
     window.addEventListener('wheel', this._ppWheel, { passive: true });
+    window.addEventListener('touchstart', this._ppDown, { passive: true });
+    window.addEventListener('touchend', this._ppUp, { passive: true });
   }
   /* ================= a poem, as a picture =================
 
@@ -2748,6 +2803,8 @@ class Component extends DCLogic {
         React.createElement('b',{style:{top:pct.toFixed(1) + '%'}})),
       React.createElement('div',{key:'steps', className:'pp-steps'},
         React.createElement('span',{className:'pp-hintx'},'Scroll or ← →'),
+        /* the same sentence for a thumb, and only where there is one */
+        React.createElement('span',{className:'pp-hinty'},'Swipe ↑ ↓'),
         React.createElement('span',{className:'pp-btn', title:'Previous poem',
           onClick:()=>this.ppStep(-1),
           style:{color: i > 0 ? '#f2c3ce' : 'rgba(242,195,206,.25)'}},'←'),
