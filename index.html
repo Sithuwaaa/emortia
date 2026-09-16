@@ -403,8 +403,60 @@ img.zoomable:focus-visible{outline:2px solid var(--accentB);outline-offset:4px;}
 .term-card:hover::after{opacity:1;}
 .term-card>*{position:relative;z-index:1;}
 
+/* ---- the ground ----
+
+   One continuous ground behind the whole site: the mark, oversized and
+   outlined, bleeding off the right edge, with the name running down beside it.
+   Held to the right and kept faint so every section still reads on its own - a
+   watermark, not an illustration, and the left two-thirds stays clean.
+
+   It is fixed at z-index 0 and main is z-index 1, so it can only ever show
+   where nothing else is drawn. It never comes over the covers on the front
+   page or a poem or a tool card; it fills the room those leave. */
+.ground{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.ground .g-sky{position:absolute;inset:0;
+  background:radial-gradient(112% 82% at 50% 2%,#26141a 0%,#1b1013 46%,#150c0f 82%);}
+.ground .g-halo{position:absolute;right:-14vmin;top:50%;transform:translateY(-50%);
+  width:90vmin;height:90vmin;border-radius:50%;filter:blur(70px);
+  background:radial-gradient(circle,rgba(176,58,86,.30),transparent 64%);}
+.ground .g-mark{position:absolute;right:calc(clamp(16px,2.4vw,34px) + 11vmin);top:50%;
+  width:76vmin;height:76vmin;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;gap:3.4vmin;
+  border:1px solid rgba(247,237,240,.07);
+  animation:groundBreathe 60s ease-in-out infinite alternate;}
+.ground .g-mark i{display:block;width:4.2vmin;border-radius:2.1vmin;background:rgba(209,88,115,.13);}
+@keyframes groundBreathe{from{transform:translateY(-50%) scale(1);}to{transform:translateY(-50%) scale(1.05);}}
+.ground .g-name{position:absolute;right:calc(clamp(16px,2.4vw,34px));top:96px;bottom:104px;
+  display:flex;flex-direction:column;justify-content:space-between;align-items:center;
+  font-family:'Hanken Grotesk',sans-serif;font-weight:700;
+  font-size:min(9vmin,10.5vh);line-height:1;letter-spacing:-.01em;text-transform:uppercase;
+  color:rgba(247,237,240,.085);}
+.ground .g-name b{display:block;font-weight:700;}
+.ground .g-fade{position:absolute;inset:0;
+  background:linear-gradient(90deg,#160c10 0%,rgba(22,12,16,.88) 28%,rgba(22,12,16,.24) 60%,rgba(22,12,16,.22) 100%);}
+.ground .g-vig{position:absolute;inset:0;
+  background:radial-gradient(130% 98% at 50% 36%,transparent 48%,rgba(0,0,0,.26) 86%,rgba(0,0,0,.44) 100%);}
+/* Poetry is a book - no name behind it. Music keeps the name until the playing
+   background takes the screen, and then the ground steps out of the way. */
+[data-section="poetry"] .ground .g-name{opacity:0;}
+[data-section="poetry"] .ground .g-halo,
+[data-section="poetry"] .ground .g-mark{opacity:.45;}
+.ground .g-halo,.ground .g-mark,.ground .g-name{transition:opacity .8s ease;}
+body.music-playing .ground .g-halo,
+body.music-playing .ground .g-mark,
+body.music-playing .ground .g-name,
+[data-bg="music-bg on"] .ground .g-halo,
+[data-bg="music-bg on"] .ground .g-mark,
+[data-bg="music-bg on"] .ground .g-name{opacity:0;}
+@media (max-width:900px){
+  .ground .g-mark{right:-30vmin;opacity:.5;}
+  .ground .g-name{font-size:min(11vmin,9vh);color:rgba(247,237,240,.07);right:12px;}
+  .ground .g-fade{background:linear-gradient(180deg,rgba(22,12,16,.62),rgba(22,12,16,.84) 46%,#160c10);}
+}
+@media (prefers-reduced-motion:reduce){ .ground .g-mark{animation:none;} }
+
 /* ---- the front page ---- */
-.hero{position:relative;overflow:hidden;
+.hero{position:relative;z-index:1;overflow:hidden;
   background:radial-gradient(130% 100% at 18% -12%,var(--bg2),var(--bg) 66%);
   /* svh, not vh: on a phone vh is the tallest the viewport ever gets, so the
      browser chrome eats the bottom of the hero until you scroll. */
@@ -1003,9 +1055,26 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 </style>
 </helmet>
 
-<div data-theme="burgundy" data-section="{{ page }}" style="min-height:100vh;background:radial-gradient(120% 80% at 80% -10%,var(--bg2) 0%,var(--bg) 60%);color:var(--text);font-family:'Hanken Grotesk',system-ui,sans-serif;padding-bottom:var(--pageBot);">
+<div data-theme="burgundy" data-section="{{ page }}" data-bg="{{ musicBgClass }}" style="min-height:100vh;overflow-x:clip;background:linear-gradient(180deg,#291519 0%,#1e1014 18%,#170d10 44%,#140b0e 72%,#100809 100%) top/100% 1600px no-repeat,#100809;color:var(--text);font-family:'Hanken Grotesk',system-ui,sans-serif;padding-bottom:var(--pageBot);">
 
   <div class="{{ musicBgClass }}" aria-hidden="true">{{ musicScene }}</div>
+
+  <!-- The watermark. It sits under everything the page draws, so it shows in
+       the room the page leaves and nowhere else. -->
+  <div class="ground" aria-hidden="true">
+    <div class="g-sky"></div>
+    <div class="g-halo"></div>
+    <div class="g-name"><b>E</b><b>M</b><b>O</b><b>R</b><b>T</b><b>I</b><b>A</b></div>
+    <div class="g-mark">
+      <i style="height:15vmin;"></i>
+      <i style="height:29vmin;"></i>
+      <i style="height:42vmin;"></i>
+      <i style="height:24vmin;"></i>
+      <i style="height:13vmin;"></i>
+    </div>
+    <div class="g-fade"></div>
+    <div class="g-vig"></div>
+  </div>
 
   <div class="dust-layer" aria-hidden="true">{{ dustField }}</div>
 
