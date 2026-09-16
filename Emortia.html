@@ -758,27 +758,22 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    panel that has none. */
 .hm-shuf .in{border-left:2px solid transparent;
   border-image:linear-gradient(180deg,var(--accent),rgba(209,88,115,0)) 1;}
-.hm-shuf .pos{color:var(--mute);letter-spacing:.16em;margin-left:10px;}
-.hm-shuf .sub{font-family:'EB Garamond',serif;font-style:italic;font-size:17.5px;
-  line-height:1.55;color:var(--dim);max-width:44ch;}
 .hm-shuf .btns{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-/* the rest of the catalogue, small, for when the shuffle chose badly */
-.hm-shuf .picks{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px;}
-.hm-shuf .picks .lab{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--mute);margin-right:4px;}
-.hm-shuf .pick{width:54px;height:54px;border-radius:9px;overflow:hidden;flex-shrink:0;
-  border:1px solid var(--line2);background:var(--surface2);padding:0;cursor:pointer;
-  opacity:.72;transition:opacity .18s ease,transform .18s ease,border-color .18s ease;}
-.hm-shuf .pick img{width:100%;height:100%;object-fit:cover;display:block;}
-.hm-shuf .pick:hover{opacity:1;transform:translateY(-2px);border-color:var(--accent);}
-@media (max-width:760px){
-  .hm-shuf .pick{width:44px;height:44px;}
-  .hm-shuf .sub{font-size:16px;}
-}
 
-/* the record itself, whole, held to the right edge */
+/* The record itself, whole, held to the right edge - and faded out along its
+   own left edge.
+
+   The veil under it is a wash across the whole band, so how much of it is
+   still there where the picture begins depends on the width of the window:
+   the picture is as wide as the band is tall, and on a wide screen it starts
+   well past the point where the wash has run out. That left a seam down the
+   middle of the band - the ground, and then suddenly a photograph. A mask
+   belongs to the picture, so it ends where the picture ends however wide the
+   window is, and the two meet in a fade rather than an edge. */
 .hm-shuf .sleeve{position:absolute;top:0;right:0;left:auto;
-  height:100%;width:auto;max-width:none;object-fit:cover;}
+  height:100%;width:auto;max-width:none;object-fit:cover;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.2) 10%,rgba(0,0,0,.72) 24%,#000 42%);
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.2) 10%,rgba(0,0,0,.72) 24%,#000 42%);}
 /* the panel the words are read on, fading out across the picture's left edge
    so there is no seam between the two */
 .hm-shuf .shuf-veil{position:absolute;inset:0;
@@ -789,14 +784,20 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    underneath, on a wash coming up from the floor. */
 @media (max-width:760px){
   .hm-shuf{min-height:min(72vh,560px);justify-content:flex-end;}
-  .hm-shuf .sleeve{left:0;right:0;width:100%;height:100%;object-position:50% 22%;}
+  /* the picture is the whole tile here, so there is no edge to blend away */
+  .hm-shuf .sleeve{left:0;right:0;width:100%;height:100%;object-position:50% 22%;
+    -webkit-mask-image:none;mask-image:none;}
   .hm-shuf .shuf-veil{background:linear-gradient(180deg,rgba(16,8,9,.18) 0%,
     rgba(16,8,9,.52) 50%,rgba(16,8,9,.95) 100%);}
   .hm-shuf .in{padding:0 28px clamp(24px,3.4vw,38px);}
 }
 /* the text keeps the page's column even though the picture does not */
+/* Three lines and two buttons, kept together. With the counter, the caption
+   and the row of sleeves gone there was less to hold them apart, so the gap
+   opens a little - enough that the block is not a huddle, not so much that
+   the three stop reading as one thing. */
 .hm-shuf .in{position:relative;width:100%;max-width:1180px;margin:0 auto;
-  display:flex;flex-direction:column;gap:14px;
+  display:flex;flex-direction:column;gap:22px;
   padding:clamp(24px,3.4vw,38px) 28px;}
 /* the words never run under the record */
 @media (min-width:761px){ .hm-shuf .in > *{max-width:min(52%,560px);} }
@@ -808,7 +809,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .hm-about{margin:34px 0 0 calc(50% - 50vw);width:100vw;position:relative;
   border:0;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;border-radius:0;
   overflow:hidden;background:#1d1014;
-  display:grid;grid-template-columns:minmax(0,1fr) 168px;min-height:420px;}
+  display:grid;grid-template-columns:minmax(0,1fr);min-height:420px;}
 .hm-about .say{padding-left:max(28px,calc((100vw - 1180px)/2 + 28px)) !important;}
 .hm-about .go{transition:background .2s ease,border-color .2s ease,color .2s ease,
   box-shadow .25s ease,transform .2s ease;}
@@ -824,17 +825,43 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .social-rail:hover .sp-mono{opacity:0;}
 .social-rail .sp-mark{position:relative;display:block;width:20px;height:20px;color:var(--dim);}
 .social-rail .sp-mono{transition:opacity .18s ease;}
-.hm-about .rail{position:relative;border-left:1px solid #3a2028;
-  padding:28px 0;display:flex;flex-direction:column;align-items:center;gap:14px;}
+/* Everywhere else to find it, on a band of its own under the card.
+
+   It was a 168px column cut out of the right-hand side of the portrait: the
+   picture gave up a strip of itself to hold five buttons, and the card could
+   never run to the edge of the screen because something was standing there.
+   Two things, one under the other - the card gets the whole width and the
+   links get a line to themselves. */
+/* the page's own gap between two tiles, so they read as a pair rather than
+   one slab with a line ruled across it */
+.hm-else{position:relative;overflow:hidden;margin:16px 0 0 calc(50% - 50vw);width:100vw;
+  background:#1d1014;border-top:1px solid #4a2632;border-bottom:1px solid #4a2632;}
+/* The covers run along the band, cropped to a strip - texture rather than a
+   gallery. They are the same records the page is about, and the band would
+   otherwise be a bare shelf holding five buttons. Faded out at both ends so it
+   starts and stops nowhere in particular. */
+.hm-else .wall{position:absolute;inset:0;display:flex;pointer-events:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 16%,#000 84%,transparent 100%);}
+.hm-else .wall img{flex:1 1 0;min-width:0;width:100%;height:100%;display:block;
+  object-fit:cover;object-position:50% 34%;}
+/* and a wash over them, because the words come first */
+.hm-else .scrim{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(29,16,20,.9) 0%,rgba(29,16,20,.74) 50%,rgba(29,16,20,.92) 100%);}
+.hm-else .row{position:relative;max-width:1180px;margin:0 auto;min-height:96px;
+  padding:18px max(28px,calc((100vw - 1180px)/2 + 28px));
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+/* the links are drawn as a column for the old side rail; this band is a line */
+.hm-else .row > div{flex-direction:row !important;}
+.hm-else .lab{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:#8d6a75;margin-right:6px;}
 @media (max-width:860px){
   .hm-feat3{grid-template-columns:1fr;}
   .hm-feat{min-height:300px;}
   .hm-shuf{min-height:400px;}
-  .hm-about{grid-template-columns:1fr;}
   .hm-about{min-height:0;}
   .hm-about .say{padding-left:28px !important;}
-  .hm-about .rail{border-left:none;border-top:1px solid #3a2028;flex-direction:row;flex-wrap:wrap;
-    justify-content:center;padding:20px;}
+  .hm-else .row{padding:16px 28px;justify-content:center;}
 }
 @media (prefers-reduced-motion:reduce){
   .hm-shot,.hm-swap{animation:none !important;}
@@ -1217,9 +1244,8 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         {{ shufShot }}
         <div class="shuf-veil"></div>
         <div class="in">
-          <div class="kick" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#e87a94;">One at random<span class="pos">{{ shufNo }} / {{ shufOf }}</span></div>
+          <div class="kick" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#e87a94;">One at random</div>
           <div class="ttl">{{ shufTitle }}</div>
-          <div class="sub">Nothing chose this for you &ndash; the shuffle did.<br>{{ shufDur }}</div>
           <div class="btns">
             <button onClick="{{ shufPlay }}" style="display:inline-flex;align-items:center;gap:9px;background:var(--accent);color:#f7edf0;border:none;font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="opacity:.88;">
               <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="7,4 20,12 7,20" fill="currentColor"></polygon></svg> Play this one
@@ -1228,15 +1254,11 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
               Shuffle again <span style="display:inline-block;animation:turn 3.4s linear infinite;">&#8635;</span>
             </button>
           </div>
-          <div class="picks">
-            <span class="lab">Or pick one</span>
-            {{ shufPicks }}
-          </div>
         </div>
       </div>
 
-      <!-- 7a · who is behind it, with everywhere else to find it. Two stacked
-           slabs in the old page; one thing here. -->
+      <!-- 7a · who is behind it. The picture runs the whole width now; the
+           links that used to stand in a column at its right are below. -->
       <div class="hm-about">
         <div style="position:relative;overflow:hidden;">
           <img src="media/portrait.webp" alt="Sithara Perera" width="760" height="950" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:62% 28%;animation:kb 28s ease-in-out infinite alternate;"></img>
@@ -1248,8 +1270,15 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
             <button class="go" onClick="{{ nav.about }}" style="width:fit-content;display:inline-flex;align-items:center;gap:9px;border:1px solid #51313c;background:rgba(23,13,16,.6);color:var(--text);font-weight:700;font-size:14.5px;padding:12px 22px;border-radius:999px;white-space:nowrap;margin-top:4px;cursor:pointer;font-family:'Hanken Grotesk',sans-serif;" style-hover="background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 14px 34px -12px var(--glow);">More about me &#8594;</button>
           </div>
         </div>
-        <div class="rail">
-          <div style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#8d6a75;">Elsewhere</div>
+      </div>
+
+      <!-- 7b · everywhere else to find it. Its own band, under the card rather
+           than cut into the side of it. -->
+      <div class="hm-else">
+        <div class="wall" aria-hidden="true">{{ elseWall }}</div>
+        <div class="scrim" aria-hidden="true"></div>
+        <div class="row">
+          <span class="lab">Elsewhere</span>
           {{ socialRail }}
         </div>
       </div>
@@ -4191,6 +4220,12 @@ class Component extends DCLogic {
       hmNewShot: this.artImg(this.big((this.tracks[this.tracks.length-1]||{}).img),
         {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 16%'}, true),
       socialRail: this.socials(true, true),
+      /* every cover there is, laid along the Elsewhere band. The small webp,
+         not the 2x: it is a strip a hundred pixels tall. */
+      elseWall: React.createElement(React.Fragment, null,
+        this.tracks.filter(x => x.img).map(x => React.createElement('img', {
+          key: 'ew' + x.i, src: x.img, alt: '', width: 900, height: 900,
+          loading: 'lazy', decoding: 'async' }))),
       heroWordmark: this.renderWordmark(),
       /* what the front page is playing, or that it is not */
       nowSpinning: s.picked ? (t.t + ' · ' + t.a) : 'Nothing playing',
@@ -4317,20 +4352,11 @@ class Component extends DCLogic {
             alt:'', width:1800, height:1800, decoding:'async'}) : null,
           shufPlay: cur ? this.play(cur.i) : (()=>{}),
           shufAgain: ()=>this.rollShuffle(),
-          /* where this one sits in the catalogue, padded so the pair does not
-             change width as the shuffle moves through it */
-          shufNo: cur ? String(withArt.indexOf(cur) + 1).padStart(2,'0') : '00',
-          shufOf: String(withArt.length).padStart(2,'0'),
-          shufDur: cur && cur.durLabel ? cur.durLabel + ' long.' : '',
-          /* the others, in catalogue order, for when the shuffle chose badly.
-             Picking one stops it being random, so the timer is left alone and
-             the next turn carries on from whatever was chosen. */
-          shufPicks: React.createElement(React.Fragment, null,
-            withArt.filter(x => x !== cur).map(x => React.createElement('button', {
-              key: 'pk' + x.i, className: 'pick', title: x.t, 'aria-label': x.t,
-              onClick: () => this.setState({ shuf: x.i, shufPrev: this.state.shuf })
-            }, React.createElement('img', { src: x.img, alt: '', width: 900, height: 900,
-              loading: 'lazy', decoding: 'async' })))),
+          /* The counter, the line about the shuffle and the row of the whole
+             catalogue underneath have gone. The band is one record held up and
+             two things to do with it; everything else was the band explaining
+             itself, and a picture this size does not need a caption saying it
+             was picked at random. The catalogue is a tab away. */
         };
       })(),
       playerWave: this.wave({ n:26, maxH:26, barW:3, gap:2 }),
