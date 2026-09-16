@@ -4232,15 +4232,23 @@ class Component extends DCLogic {
       /* The number on the front page counts what this visitor can open.
          Counted off the same table the cards are filtered by, so adding a
          tool or throwing a switch moves it without anyone remembering to. */
-      /* The newest tool this visitor can open, newest first. A list rather
-         than a date on each feature: there are thirteen of them and exactly
-         one line has to change when the fourteenth ships. Signed out, every
-         entry fails may() and the card is not drawn at all. */
+      /* The newest tool this visitor can open - which is not the same question
+         for two people. A staff account and an office admin reach different
+         sets, so each is told what is new to them rather than what is new to
+         me; a tool somebody cannot open is not news.
+
+         Asked of the switch table, which now carries the day each tool
+         arrived. It used to be a list of keys written out here by hand, and
+         three tools shipped without anyone adding a line to it - the front
+         page was still offering Daily Attendance long after RF Jumper Codes
+         had landed. There is one place to write it down now, and it is the
+         same line that makes the tool exist.
+
+         Signed out, nothing passes may() and the card is not drawn at all. */
       ...(()=>{
-        const NEWEST = ['tool:attendance','tool:materials','tool:team','tool:field-config',
-                        'tool:esn','tool:bom','tool:design-extractor'];
-        const key = NEWEST.find(k => may(k));
-        const f = key && ((window.Access && Access.FEATURES) || []).find(x => x.key === key);
+        const f = ((window.Access && Access.FEATURES) || [])
+          .filter(x => String(x.key).indexOf('tool:') === 0 && may(x.key))
+          .sort((a, b) => String(b.since || '').localeCompare(String(a.since || '')))[0];
         return { hmToolShow: !!f, hmToolName: f ? f.name : '', hmToolGo: this.go('tools') };
       })(),
       showJournal: may('journal'),

@@ -732,39 +732,47 @@
   /* Every switch carries the group it belongs to. Nothing else decides where
      a tool appears: the Tools page and the Owner switches both read this
      table and both sort it the same way, so adding a line here is the whole
-     job of adding a tool - it lands in its group, in its place, in both. */
+     job of adding a tool - it lands in its group, in its place, in both.
+
+     It carries the day the tool arrived as well. The front page says what is
+     newest, and what is newest depends on who is asking - the answer has to be
+     the newest thing that account can actually open, not the newest thing
+     there is. That used to be a second list written out by hand beside this
+     one, which is a promise nobody kept: three tools shipped without it, so
+     the front page went on advertising a tool from three weeks earlier.
+     Adding a line here is still the whole job. */
   var FEATURES = [
     /* the key is 'journal' because that is what the database has stored
        against it since 015; the name is what it has actually been for months */
     { key:'journal', name:'Poetry', tier:'public', group:'Emortia',
       what:'The poems. Reading only – writing stays mine.' },
-    { key:'tool:lyric-video', name:'Video & Artwork', tier:'mine', group:'Emortia',
+    { key:'tool:lyric-video', name:'Video & Artwork', since:'2026-08-19', tier:'mine', group:'Emortia',
       what:'The lyric video and the cover art tool.' },
-    { key:'tool:whattodo', name:'What To Do', tier:'mine', group:'Field & team',
+    { key:'tool:whattodo', name:'What To Do', since:'2026-08-06', tier:'mine', group:'Field & team',
       what:'The job list. Whoever can open it can tick things off.' },
-    { key:'tool:project-update', name:'Project Update', tier:'tooway', group:'Field & team',
+    { key:'tool:project-update', name:'Project Update', since:'2026-07-29', tier:'tooway', group:'Field & team',
       what:'The rollout figures.' },
-    { key:'tool:team', name:'Team Directory', tier:'tooway', group:'Field & team',
+    { key:'tool:team', name:'Team Directory', since:'2026-08-27', tier:'tooway', group:'Field & team',
       what:'Names, mobiles, NIC numbers and vehicles. Opening it lets the team read and copy; adding and removing stays mine.' },
-    { key:'tool:field-config', name:'Field Config', tier:'tooway', group:'Site reference',
+    { key:'tool:field-config', name:'Field Config', since:'2026-08-27', tier:'tooway', group:'Site reference',
       what:'Vendor commands, logins and UMPT passwords. Opening it lets the team read and copy; editing stays mine.' },
-    { key:'tool:attendance', name:'Daily Attendance', tier:'tooway', group:'Field & team',
+    { key:'tool:attendance', name:'Daily Attendance', since:'2026-09-05', tier:'tooway', group:'Field & team',
       what:'Who was on site, from a photo at each end of the shift. Anyone who can open it can clock in and name faces; the roster is mine.' },
-    { key:'tool:esn', name:'ESN Sharing', tier:'tooway', group:'Field & team',
+    { key:'tool:esn', name:'ESN Sharing', since:'2026-08-17', tier:'tooway', group:'Field & team',
       what:'Filing an ESN from the field.' },
-    { key:'tool:design-extractor', name:'Design Extractor', tier:'tooway', group:'Design & materials',
+    { key:'tool:design-extractor', name:'Design Extractor', since:'2026-08-13', tier:'tooway', group:'Design & materials',
       what:'Reading the design workbooks.' },
-    { key:'tool:materials', name:'Material Codes', tier:'tooway', group:'Design & materials',
+    { key:'tool:materials', name:'Material Codes', since:'2026-09-04', tier:'tooway', group:'Design & materials',
       what:'Every material code and what it is. Reading and copying only; uploading stays mine.' },
-    { key:'tool:bom', name:'BOM Builder', tier:'tooway', group:'Design & materials',
+    { key:'tool:bom', name:'BOM Builder', since:'2026-08-12', tier:'tooway', group:'Design & materials',
       what:'Turning a design into an order.' },
-    { key:'tool:site-access', name:'Site Access Lookup', tier:'tooway', group:'Site reference',
+    { key:'tool:site-access', name:'Site Access Lookup', since:'2026-07-26', tier:'tooway', group:'Site reference',
       what:'The site list – depot, contact, permissions.' },
-    { key:'tool:site-data', name:'Site Data Lookup', tier:'tooway', group:'Site reference',
+    { key:'tool:site-data', name:'Site Data Lookup', since:'2026-07-26', tier:'tooway', group:'Site reference',
       what:'The technical profile for every site.' },
-    { key:'tool:rf-jumper', name:'RF Jumper Codes', tier:'tooway', group:'Site reference',
+    { key:'tool:rf-jumper', name:'RF Jumper Codes', since:'2026-09-15', tier:'tooway', group:'Site reference',
       what:'The jumper colour code for every band combination, and the labelling scenarios, from the Huawei SOP.' },
-    { key:'tool:gin-extractor', name:'GIN Extractor', tier:'tooway', group:'Design & materials',
+    { key:'tool:gin-extractor', name:'GIN Extractor', since:'2026-07-26', tier:'tooway', group:'Design & materials',
       what:'Pulling material lines out of SAP notes.' }
   ];
   var BY_KEY = {};
