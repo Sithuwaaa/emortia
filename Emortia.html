@@ -2418,37 +2418,71 @@ class Component extends DCLogic {
         ctx.fillText(when.year || '', W - 54, H - 96);
         ctx.restore();
 
-        /* the spine */
+        /* ---- the spine ----
+
+           The date, the year and the mark, and nothing else. The ticks and the
+           "1 of 14" are how you get about the book: they mean something while
+           you are standing in it and nothing at all in a picture somebody has
+           saved, where there is no next poem to go to.
+
+           What is left is spread down the strip at one interval rather than
+           pinned to the two ends - four things at fixed heights left a hole
+           through the middle of it, and the taller the picture the bigger the
+           hole. Each rule stays with the thing it divides. */
         ctx.fillStyle = 'rgba(8,5,6,.78)';
         ctx.fillRect(0, 0, RAIL, H);
         ctx.fillStyle = 'rgba(247,237,240,.09)';
         ctx.fillRect(RAIL - 1, 0, 1, H);
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#f7edf0';
-        ctx.font = "400 17px 'UN-Agni', serif";
-        ctx.fillText('කවිය', RAIL / 2, 40);
-        ctx.fillStyle = 'rgba(247,237,240,.18)';
-        ctx.fillRect(RAIL / 2 - 8, 58, 16, 1);
-        ctx.fillRect(RAIL / 2 - 8, H - 118, 16, 1);
 
-        const upright = (text, y, font, fill) => {
+        const upright = (text, mid, font, fill) => {
           ctx.save();
-          ctx.translate(RAIL / 2, y);
+          ctx.translate(RAIL / 2, mid);
           ctx.rotate(-Math.PI / 2);
           ctx.font = font; ctx.fillStyle = fill;
           ctx.fillText(text, 0, 6);
           ctx.restore();
         };
-        /* The date, the year and the mark, and nothing else. The ticks and the
-           "1 of 14" are how you get about the book - they mean something while
-           you are standing in it and nothing at all in a picture somebody has
-           saved, where there is no next poem to go to. */
-        upright((when.month + ' ' + when.day).trim(), H * 0.44,
-          "400 21px 'UN-Agni', serif", '#f2c3ce');
-        upright(when.year || '', H * 0.44 + 132,
-          "400 11px 'Space Mono', monospace", '#8d6a75');
-        upright('E M O R T I A', H - 30,
-          "400 7px 'Space Mono', monospace", 'rgba(141,106,117,.9)');
+        const rule = (y) => {
+          ctx.fillStyle = 'rgba(247,237,240,.18)';
+          ctx.fillRect(RAIL / 2 - 8, y, 16, 1);
+        };
+        /* how long a line of upright text runs down the rail */
+        const runs = (text, font) => {
+          ctx.save(); ctx.font = font;
+          const w = ctx.measureText(text).width;
+          ctx.restore(); return w;
+        };
+
+        const F_HEAD = "400 17px 'UN-Agni', serif";
+        const F_DATE = "400 21px 'UN-Agni', serif";
+        const F_YEAR = "400 11px 'Space Mono', monospace";
+        const F_MARK = "400 7px 'Space Mono', monospace";
+        const dateTxt = (when.month + ' ' + when.day).trim();
+        const yearTxt = when.year || '';
+        const markTxt = 'E M O R T I A';
+        const dateRun = runs(dateTxt, F_DATE);
+        const yearRun = runs(yearTxt, F_YEAR);
+        const markRun = runs(markTxt, F_MARK);
+
+        const spine = [
+          { h: 28, draw: y => {
+              ctx.font = F_HEAD; ctx.fillStyle = '#f7edf0';
+              ctx.fillText('කවිය', RAIL / 2, y + 14);
+              rule(y + 27);
+            } },
+          { h: dateRun, draw: y => upright(dateTxt, y + dateRun / 2, F_DATE, '#f2c3ce') },
+          { h: yearRun, draw: y => upright(yearTxt, y + yearRun / 2, F_YEAR, '#8d6a75') },
+          { h: 30 + markRun, draw: y => {
+              rule(y);
+              upright(markTxt, y + 30 + markRun / 2, F_MARK, 'rgba(141,106,117,.9)');
+            } }
+        ];
+        const edge = 34;
+        const used = spine.reduce((a, b) => a + b.h, 0);
+        const step = (H - edge * 2 - used) / (spine.length - 1);
+        let ry = edge;
+        spine.forEach(it => { it.draw(ry); ry += it.h + step; });
 
         /* and the poem */
         ctx.textAlign = 'left';
