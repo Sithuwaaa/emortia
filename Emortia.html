@@ -530,6 +530,15 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   text-transform:uppercase;color:#f2c3ce;cursor:pointer;
   transition:border-color .2s ease,background .2s ease,color .2s ease;}
 .pp-hear:hover{border-color:#d15873;background:rgba(40,16,24,.7);color:#fff;}
+/* the corner both of them live in, so neither has to know about the other */
+.pp-acts{position:absolute;top:20px;right:26px;z-index:5;
+  display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.pp-acts .pp-hear{position:static;top:auto;right:auto;}
+.pp-dl{display:flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:999px;
+  border:1px solid rgba(247,237,240,.26);background:rgba(11,6,8,.55);backdrop-filter:blur(8px);
+  font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#f7edf0;cursor:pointer;
+  white-space:nowrap;transition:border-color .2s ease,background .2s ease,color .2s ease;}
+.pp-dl:hover{border-color:rgba(242,195,206,.6);background:rgba(30,14,20,.7);color:#fff;}
 @keyframes ppDrift{0%,100%{transform:scale(1.03) translate(0,0);}50%{transform:scale(1.1) translate(-1.8%,-1.4%);}}
 @keyframes ppGlow{0%,100%{opacity:.35;transform:scale(1);}50%{opacity:.7;transform:scale(1.09);}}
 @keyframes ppRail{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:none;}}
@@ -557,6 +566,9 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   .pp-year{right:18px;bottom:66px;}
   .pp-prog{display:none;}
   .pp-steps{right:18px;bottom:16px;}
+  /* the spine lies across the top on a narrow screen, so the two pills come
+     down out of its way rather than sitting on the date */
+  .pp-acts{top:auto;bottom:62px;right:18px;}
   .pp-hintx{display:none;}
   .pp-frost{left:-18px;right:-18px;}
 }
@@ -2237,6 +2249,247 @@ class Component extends DCLogic {
     window.addEventListener('keydown', this._ppKey);
     window.addEventListener('wheel', this._ppWheel, { passive: true });
   }
+  /* ================= a poem, as a picture =================
+
+     The page is the poem's setting - the photograph behind it, the frosted
+     pane it is written on, the rail down the side. Handing somebody the words
+     alone would be handing them half of it, so what saves is what they are
+     looking at.
+
+     It is drawn again on a canvas rather than screenshotted. A screenshot
+     carries the browser's furniture and whatever size the window happened to
+     be; this is always 1600x900, at the same proportions whoever asks for it.
+     Every piece of it - the art, both Sinhala faces, the fonts - is the
+     site's own file, so the canvas is never tainted and the picture saves
+     with no server anywhere in it. */
+
+  ppImage(url){
+    return new Promise(res => {
+      if(!url){ res(null); return; }
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => res(null);
+      im.src = url;
+    });
+  }
+
+  /* A canvas will silently fall back to a default face for a font the
+     document has not actually pulled down yet, which for Sinhala means the
+     poem comes out in the wrong hand. So they are asked for by name first. */
+  async ppFonts(){
+    if(!document.fonts) return;
+    try{
+      await Promise.all([
+        document.fonts.load("400 58px 'UN-Agni'"),
+        document.fonts.load("400 25px 'UN-Alakamanda'"),
+        document.fonts.load("700 110px 'Bricolage Grotesque'"),
+        document.fonts.load("400 12px 'Space Mono'")
+      ]);
+      await document.fonts.ready;
+    }catch(e){ /* draw with what there is */ }
+  }
+
+  ppWrap(ctx, text, maxW){
+    const words = String(text == null ? '' : text).split(/\s+/).filter(Boolean);
+    if(!words.length) return [''];
+    const out = []; let line = words[0];
+    for(let k = 1; k < words.length; k++){
+      const t = line + ' ' + words[k];
+      if(ctx.measureText(t).width <= maxW) line = t; else { out.push(line); line = words[k]; }
+    }
+    out.push(line);
+    return out;
+  }
+
+  /* The title is Sinhala and belongs in the name of the file - it is what the
+     person saving it will look for. Only the characters a file system refuses
+     are taken out. */
+  ppFileName(p, i){
+    const t = String((p && p.title) || '').replace(/[\\/:*?"<>|]+/g,'').trim();
+    return (t ? t + ' - Emortia' : 'Emortia poem ' + (i + 1)) + '.png';
+  }
+
+  ppCardBlob(){
+    const L = this.ppList(), i = this.ppIdx(), p = L[i], n = L.length;
+    if(!p) return Promise.reject(new Error('no poem'));
+    const when = this.ppWhen(p);
+
+    return this.ppFonts()
+      .then(() => this.ppImage(this.ppArt(i)))
+      .then(art => new Promise((resolve, reject) => {
+        const W = 1600;
+        const RAIL = 72, PAD = 78, MAXW = 640;
+        const TITLE = 58, TLINE = 66, VERSE = 25, VLINE = 54;
+        const x0 = RAIL + PAD;
+
+        /* measure first: the poem decides how tall the picture has to be */
+        const m = document.createElement('canvas').getContext('2d');
+        m.font = "400 " + TITLE + "px 'UN-Agni', serif";
+        const titleLines = this.ppWrap(m, p.title, MAXW);
+        m.font = "400 " + VERSE + "px 'UN-Alakamanda', serif";
+        const verse = String(p.body || '').split(/\r?\n/);
+        const block = titleLines.length * TLINE + 20 + 3 + 28 + verse.length * VLINE + 34 + 14;
+        const H = Math.max(900, Math.ceil((block + 260) / 2) * 2);
+
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        const ctx = c.getContext('2d');
+        ctx.textBaseline = 'alphabetic';
+
+        /* the photograph, filling the frame the way the page does - covered,
+           and held a little above centre so a face is not cropped at the chin */
+        const paintArt = (g) => {
+          if(!art){ g.fillStyle = '#170d10'; g.fillRect(0,0,W,H); return; }
+          const ar = art.width / art.height, cr = W / H;
+          let dw, dh;
+          if(ar > cr){ dh = H; dw = H * ar; } else { dw = W; dh = W / ar; }
+          g.drawImage(art, (W - dw) * 0.5, (H - dh) * 0.40, dw, dh);
+        };
+        paintArt(ctx);
+
+        const scrim = ctx.createLinearGradient(0, 0, W, H * 0.12);
+        scrim.addColorStop(0,   'rgba(9,5,7,.86)');
+        scrim.addColorStop(.26, 'rgba(11,6,8,.58)');
+        scrim.addColorStop(.62, 'rgba(20,9,13,.2)');
+        scrim.addColorStop(1,   'rgba(28,12,17,.06)');
+        ctx.fillStyle = scrim; ctx.fillRect(0, 0, W, H);
+
+        /* the warm bloom behind the words */
+        ctx.save();
+        ctx.translate(W * 0.38, H * 0.54);
+        ctx.scale(1, (H * 0.44) / (W * 0.48));
+        const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.24);
+        glow.addColorStop(0, 'rgba(176,58,86,.22)');
+        glow.addColorStop(1, 'rgba(176,58,86,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(0, 0, W * 0.24, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+
+        /* where the poem sits, and the pane of frosted glass under it */
+        const blockTop = (H - block) / 2;
+        const fr = { x: x0 - 34, y: blockTop - 30, w: MAXW + 72, h: block + 60 };
+
+        const fc = document.createElement('canvas');
+        fc.width = W; fc.height = H;
+        const fx = fc.getContext('2d');
+        try{ fx.filter = 'blur(18px)'; }catch(e){}
+        paintArt(fx);
+        try{ fx.filter = 'none'; }catch(e){}
+        fx.fillStyle = 'rgba(10,6,8,.52)';
+        fx.fillRect(0, 0, W, H);
+        /* faded out at its edges, so it softens the picture rather than
+           sitting on it as a card */
+        fx.globalCompositeOperation = 'destination-in';
+        const rx = fr.w * 0.76, ry = fr.h * 0.80;
+        fx.save();
+        fx.translate(fr.x + fr.w * 0.40, fr.y + fr.h * 0.5);
+        fx.scale(1, ry / rx);
+        const mask = fx.createRadialGradient(0, 0, 0, 0, 0, rx);
+        mask.addColorStop(0,   'rgba(0,0,0,1)');
+        mask.addColorStop(.46, 'rgba(0,0,0,1)');
+        mask.addColorStop(.74, 'rgba(0,0,0,.5)');
+        mask.addColorStop(1,   'rgba(0,0,0,0)');
+        fx.fillStyle = mask;
+        fx.beginPath(); fx.arc(0, 0, rx, 0, Math.PI * 2); fx.fill();
+        fx.restore();
+        ctx.drawImage(fc, 0, 0);
+
+        /* the year, enormous and almost invisible, the way a plate number is */
+        ctx.save();
+        ctx.font = "700 118px 'Bricolage Grotesque', sans-serif";
+        ctx.fillStyle = 'rgba(247,237,240,.07)';
+        ctx.textAlign = 'right';
+        ctx.fillText(when.year || '', W - 54, H - 96);
+        ctx.restore();
+
+        /* the spine */
+        ctx.fillStyle = 'rgba(8,5,6,.78)';
+        ctx.fillRect(0, 0, RAIL, H);
+        ctx.fillStyle = 'rgba(247,237,240,.09)';
+        ctx.fillRect(RAIL - 1, 0, 1, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#f7edf0';
+        ctx.font = "400 17px 'UN-Agni', serif";
+        ctx.fillText('කවිය', RAIL / 2, 40);
+        ctx.fillStyle = 'rgba(247,237,240,.18)';
+        ctx.fillRect(RAIL / 2 - 8, 58, 16, 1);
+        ctx.fillRect(RAIL / 2 - 8, H - 118, 16, 1);
+
+        const upright = (text, y, font, fill) => {
+          ctx.save();
+          ctx.translate(RAIL / 2, y);
+          ctx.rotate(-Math.PI / 2);
+          ctx.font = font; ctx.fillStyle = fill;
+          ctx.fillText(text, 0, 6);
+          ctx.restore();
+        };
+        upright((when.month + ' ' + when.day).trim(), H * 0.40,
+          "400 21px 'UN-Agni', serif", '#f2c3ce');
+        upright(when.year || '', H * 0.40 + 150,
+          "400 11px 'Space Mono', monospace", '#8d6a75');
+        upright('No ' + (i + 1) + '/' + n, H - 168,
+          "400 9px 'Space Mono', monospace", '#c9788d');
+        upright('E M O R T I A', H - 30,
+          "400 7px 'Space Mono', monospace", 'rgba(141,106,117,.9)');
+
+        /* a tick for every poem in the book, the one being read twice as long */
+        const tickTop = H * 0.40 + 210;
+        for(let k = 0; k < n; k++){
+          const w = k === i ? 20 : 10;
+          ctx.fillStyle = k === i ? '#f2c3ce' : 'rgba(227,203,210,.3)';
+          ctx.fillRect(RAIL / 2 - w / 2, tickTop + k * 9, w, 2);
+        }
+
+        /* and the poem */
+        ctx.textAlign = 'left';
+        ctx.shadowColor = 'rgba(0,0,0,.8)';
+        ctx.shadowBlur = 34;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = "400 " + TITLE + "px 'UN-Agni', serif";
+        let y = blockTop + TITLE;
+        titleLines.forEach(t => { ctx.fillText(t, x0, y); y += TLINE; });
+
+        y = y - TLINE + TITLE * 0.28 + 20;
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#b03a56';
+        ctx.fillRect(x0, y, 86, 3);
+
+        y += 3 + 28 + VERSE;
+        ctx.shadowColor = 'rgba(0,0,0,.72)';
+        ctx.shadowBlur = 22;
+        ctx.fillStyle = '#f6efec';
+        ctx.font = "400 " + VERSE + "px 'UN-Alakamanda', serif";
+        verse.forEach(t => { if(t.trim()) ctx.fillText(t, x0, y); y += VLINE; });
+
+        y += 34 - VLINE + 14;
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = 'rgba(196,166,176,.95)';
+        ctx.font = "400 11px 'Space Mono', monospace";
+        ctx.fillText('E M O R T I A', x0, y);
+        ctx.shadowBlur = 0;
+
+        c.toBlob(b => b ? resolve(b) : reject(new Error('the picture could not be made')), 'image/png');
+      }));
+  }
+
+  ppDownload(){
+    if(this.state.ppSaving) return;
+    const L = this.ppList(), i = this.ppIdx(), p = L[i];
+    if(!p) return;
+    this.setState({ ppSaving: true });
+    this.ppCardBlob().then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = this.ppFileName(p, i);
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 6000);
+      this.setState({ ppSaving: false });
+    }).catch(err => {
+      console.error(err);
+      this.setState({ ppSaving: false });
+    });
+  }
+
   renderPoetry(){
     const s = this.state;
     if(!s.poemsLoaded) return this.waveLoader('Poetry · loading poems');
@@ -2317,11 +2570,21 @@ class Component extends DCLogic {
       rail,
       read,
       React.createElement('div',{key:'year', className:'pp-year', style:{animationName:'ppYear' + A}}, when.year),
-      tk ? React.createElement('div',{key:'hear', className:'pp-hear', title:'Play the song this poem became',
-        onClick:()=>this.loadTrack(tk.i, true)},
-        React.createElement('svg',{width:8,height:8,viewBox:'0 0 24 24'},
-          React.createElement('polygon',{points:'7,4 20,12 7,20',fill:'currentColor'})),
-        React.createElement('span',null,'Hear ' + tk.t)) : null,
+      /* The two things that can be done with a poem, stacked in one corner:
+         hear what it became, or take it away with you. */
+      React.createElement('div',{key:'acts', className:'pp-acts'},
+        tk ? React.createElement('div',{key:'hear', className:'pp-hear', title:'Play the song this poem became',
+          onClick:()=>this.loadTrack(tk.i, true)},
+          React.createElement('svg',{width:8,height:8,viewBox:'0 0 24 24'},
+            React.createElement('polygon',{points:'7,4 20,12 7,20',fill:'currentColor'})),
+          React.createElement('span',null,'Hear ' + tk.t)) : null,
+        React.createElement('div',{key:'dl', className:'pp-dl',
+          title:'Save this poem as a picture, with its artwork',
+          onClick:()=>this.ppDownload()},
+          React.createElement('svg',{width:9,height:9,viewBox:'0 0 24 24'},
+            React.createElement('path',{d:'M10 2h4v9h5l-7 8-7-8h5z',fill:'currentColor'}),
+            React.createElement('path',{d:'M3 21h18v2H3z',fill:'currentColor'})),
+          React.createElement('span',null, s.ppSaving ? 'Saving…' : 'Download'))),
       React.createElement('div',{key:'prog', className:'pp-prog'},
         React.createElement('i',{style:{height:pct.toFixed(1) + '%'}}),
         React.createElement('b',{style:{top:pct.toFixed(1) + '%'}})),
