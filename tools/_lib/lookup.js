@@ -116,8 +116,57 @@ function pickName(){
   return (bits.join(' · ') || 'All ' + C.unit);
 }
 
+/* Four rows of chips is most of a screen, and on a list this size the chips
+   are not the tool - they are how you put a question to it once. So the panel
+   is shut to begin with and remembers how it was left; what is chosen stays on
+   the bar while it is shut, with a cross on it, because a filter you cannot
+   see is a filter you cannot turn off. */
+const OPEN_KEY = 'lookup_facets_open_' + (C.syncKey || 'x');
+let OPEN = false;
+try{ OPEN = localStorage.getItem(OPEN_KEY) === '1'; }catch(e){}
+
 function renderFacets(){
   if(!FACETS.length || !ROWS.length){ fbox.className=''; fbox.innerHTML=''; return; }
+  const chosen = FACETS.filter(f => PICK[fkey(f)]);
+  const n = visible().length;
+
+  let html = '<div class="fhead">' +
+    '<button class="ftog' + (OPEN ? ' open' : '') + '" id="ftog" aria-expanded="' + OPEN + '">' +
+      '<span class="cv">&#9656;</span>Filters' +
+      (chosen.length ? '<b>' + chosen.length + '</b>' : '') + '</button>';
+  if(!OPEN) html += chosen.map(f =>
+    '<button class="chip on" data-off="' + esc(fkey(f)) + '" title="Remove this filter">' +
+    esc(f.label || fkey(f)) + ': ' + esc(PICK[fkey(f)]) + ' &#215;</button>').join('');
+  if(chosen.length){
+    html += '<span class="n">' + n.toLocaleString() + ' ' + (n === 1 ? C.unitSingular : C.unit) + '</span>' +
+      (MAPPABLE ? '<button class="fbtn" id="fkml">Open these on a map</button>' : '') +
+      '<button class="fbtn" id="fclr">Clear</button>';
+  }
+  html += '</div>';
+
+  if(OPEN) html += '<div class="fbody">' + facetRowsHtml() + '</div>';
+
+  fbox.className = 'facets';
+  fbox.innerHTML = html;
+
+  $('ftog').onclick = () => {
+    OPEN = !OPEN;
+    try{ localStorage.setItem(OPEN_KEY, OPEN ? '1' : '0'); }catch(e){}
+    renderFacets();
+  };
+  [...fbox.querySelectorAll('.chip[data-off]')].forEach(b => b.onclick = () => {
+    PICK[b.dataset.off] = ''; route();
+  });
+  [...fbox.querySelectorAll('.chip[data-k]')].forEach(b => b.onclick = () => {
+    PICK[b.dataset.k] = b.dataset.v || ''; route();
+  });
+  [...fbox.querySelectorAll('.chip[data-more]')].forEach(b => b.onclick = () => { MORE[b.dataset.more] = true; renderFacets(); });
+  [...fbox.querySelectorAll('.chip[data-less]')].forEach(b => b.onclick = () => { MORE[b.dataset.less] = false; renderFacets(); });
+  const kb = $('fkml'); if(kb) kb.onclick = () => saveKml(visible(), pickName());
+  const cb = $('fclr'); if(cb) cb.onclick = () => { PICK = {}; MORE = {}; route(); };
+}
+
+function facetRowsHtml(){
   let html = '';
   for(const f of FACETS){
     const k = fkey(f), cur = PICK[k] || '';
@@ -145,23 +194,7 @@ function renderFacets(){
       (MORE[k] && items.length > FACE_CAP ? '<button class="chip more" data-less="' + esc(k) + '">fewer</button>' : '') +
       '</div>';
   }
-  if(anyPick()){
-    const n = visible().length;
-    html += '<div class="fbar"><span class="n">' + n.toLocaleString() + ' ' +
-      (n === 1 ? C.unitSingular : C.unit) + ' selected</span>' +
-      (MAPPABLE ? '<button class="fbtn" id="fkml">Open these on a map</button>' : '') +
-      '<button class="fbtn" id="fclr">Clear filters</button></div>';
-  }
-  fbox.className = html ? 'facets' : '';
-  fbox.innerHTML = html;
-
-  [...fbox.querySelectorAll('.chip[data-k]')].forEach(b => b.onclick = () => {
-    PICK[b.dataset.k] = b.dataset.v || ''; route();
-  });
-  [...fbox.querySelectorAll('.chip[data-more]')].forEach(b => b.onclick = () => { MORE[b.dataset.more] = true; renderFacets(); });
-  [...fbox.querySelectorAll('.chip[data-less]')].forEach(b => b.onclick = () => { MORE[b.dataset.less] = false; renderFacets(); });
-  const kb = $('fkml'); if(kb) kb.onclick = () => saveKml(visible(), pickName());
-  const cb = $('fclr'); if(cb) cb.onclick = () => { PICK = {}; MORE = {}; route(); };
+  return html;
 }
 
 /* ---- coordinates ---- */

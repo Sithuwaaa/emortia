@@ -50,9 +50,19 @@ main{max-width:920px;margin:0 auto;
 .chip.on b{opacity:.85}
 .chip.more{border-style:dashed;color:var(--muted)}
 
-/* what you can do with a set once you have picked one out */
-.fbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:2px}
-.fbar .n{color:var(--muted);font-size:12.5px;margin-right:auto}
+/* The bar the panel hangs from: the handle, whatever is chosen while it is
+   shut, and what you can do with the set once you have one. */
+.fhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ftog{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:12.5px;font-weight:600;
+  border:1px solid var(--line);background:var(--card);color:var(--text);
+  border-radius:999px;padding:6px 13px;cursor:pointer}
+.ftog:hover{border-color:var(--accent)}
+.ftog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ftog .cv{display:inline-block;font-size:10px;color:var(--muted);transition:transform .16s ease}
+.ftog.open .cv{transform:rotate(90deg)}
+.ftog b{font-weight:700;color:var(--accent)}
+.fhead .n{color:var(--muted);font-size:12.5px;margin-left:auto}
+.fbody{display:flex;flex-direction:column;gap:8px;padding-top:3px}
 .fbtn{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;
   border:1px solid var(--line);background:var(--card-2);color:var(--text);
   border-radius:9px;padding:7px 12px;cursor:pointer}
