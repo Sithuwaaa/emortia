@@ -42,6 +42,10 @@ function buildIndex(){
 const SYNCED = !!(C.syncKey && window.DB);
 function applyDataset(ds){
   COLS=ds.cols||[]; ROWS=(ds.rows||[]).map(r=>r.slice()); savedAt=ds.savedAt||'';
+  /* The rows are new objects, so anything holding on to the old ones is
+     holding on to nothing - the measured pair especially, which is two
+     references and would quietly stop matching anything in the list. */
+  PAIR=[]; PICK={}; MORE={};
   buildIndex();
   /* An empty tool has to say why it is empty, or it reads as broken. There is
      no local copy to fall back on any more, so "nothing here yet" is the
@@ -71,22 +75,217 @@ async function loadData(){
     applyDataset(fresh); toast('Updated from another device');
   });
 }
-function search(term){
-  term=term.trim().toLowerCase(); if(!term) return [];
-  const out=[], seen=new Set();
-  if(IDX.byId[term]){out.push(IDX.byId[term]);seen.add(IDX.byId[term])}
-  const parts=term.split(/\s+/);
-  for(const r of ROWS){ if(seen.has(r))continue; if(parts.every(p=>r.__blob.includes(p))){out.push(r);if(out.length>=60)break} }
+/* ================= narrowing, mapping, measuring =================
+
+   Searching answers "where is this site". These answer the other question
+   the same list gets asked - everything CM, everything in Kurunegala,
+   everything this depot holds - and then what you do with the answer once
+   you have it.
+
+   A tool gets all of it by naming its own columns in LOOKUP_CONFIG.facets
+   and nothing else. */
+const FACETS = C.facets || [];
+const MAPPABLE = !!(C.latCol && C.lngCol);
+const FACE_CAP = 16, LIST_CAP = 300;
+const fkey = f => f.key || f.col;
+const fval = (f,r) => String((f.of ? f.of(r, fieldVal) : fieldVal(r, f.col)) || '').trim();
+let PICK = {}, MORE = {}, PAIR = [];
+
+const fbox = document.createElement('div');
+const tray = document.createElement('div');
+hint.parentNode.insertBefore(fbox, hint);
+hint.parentNode.insertBefore(tray, hint);
+
+const anyPick = () => FACETS.some(f => PICK[fkey(f)]);
+/* Every row still standing, optionally ignoring one facet's own choice - which
+   is how a chip can say how many rows it would leave rather than how many it
+   has left. */
+function rowsBy(exceptKey){
+  if(!anyPick()) return ROWS;
+  return ROWS.filter(r => FACETS.every(f => {
+    const k = fkey(f);
+    return k === exceptKey || !PICK[k] || fval(f,r) === PICK[k];
+  }));
+}
+const visible = () => rowsBy(null);
+const rawId = r => String(fieldVal(r, C.idCol) || fieldVal(r, C.nameCol) || '').trim();
+
+/* the name of what is on screen, for the top of a file */
+function pickName(){
+  const bits = FACETS.filter(f => PICK[fkey(f)]).map(f => PICK[fkey(f)]);
+  return (bits.join(' · ') || 'All ' + C.unit);
+}
+
+function renderFacets(){
+  if(!FACETS.length || !ROWS.length){ fbox.className=''; fbox.innerHTML=''; return; }
+  let html = '';
+  for(const f of FACETS){
+    const k = fkey(f), cur = PICK[k] || '';
+    const counts = new Map();
+    for(const r of rowsBy(k)){
+      const v = fval(f,r);
+      if(!v || blank(v)) continue;
+      counts.set(v, (counts.get(v) || 0) + 1);
+    }
+    let items = [...counts.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0]));
+    if(!items.length) continue;
+    const cap = MORE[k] ? items.length : FACE_CAP;
+    const shown = items.slice(0, cap);
+    /* whatever is chosen stays on screen even if it is not in the busiest
+       sixteen - a chip you cannot see is a filter you cannot turn off */
+    if(cur && !shown.some(i => i[0] === cur)){
+      const hit = items.find(i => i[0] === cur);
+      if(hit) shown.unshift(hit);
+    }
+    html += '<div class="frow"><span class="flabel">' + esc(f.label || k) + '</span>' +
+      '<button class="chip' + (cur ? '' : ' on') + '" data-k="' + esc(k) + '" data-v="">All</button>' +
+      shown.map(([v,n]) => '<button class="chip' + (cur === v ? ' on' : '') + '" data-k="' + esc(k) +
+        '" data-v="' + esc(v) + '">' + esc(v) + '<b>' + n.toLocaleString() + '</b></button>').join('') +
+      (items.length > cap ? '<button class="chip more" data-more="' + esc(k) + '">+' + (items.length - cap) + ' more</button>' : '') +
+      (MORE[k] && items.length > FACE_CAP ? '<button class="chip more" data-less="' + esc(k) + '">fewer</button>' : '') +
+      '</div>';
+  }
+  if(anyPick()){
+    const n = visible().length;
+    html += '<div class="fbar"><span class="n">' + n.toLocaleString() + ' ' +
+      (n === 1 ? C.unitSingular : C.unit) + ' selected</span>' +
+      (MAPPABLE ? '<button class="fbtn" id="fkml">Open these on a map</button>' : '') +
+      '<button class="fbtn" id="fclr">Clear filters</button></div>';
+  }
+  fbox.className = html ? 'facets' : '';
+  fbox.innerHTML = html;
+
+  [...fbox.querySelectorAll('.chip[data-k]')].forEach(b => b.onclick = () => {
+    PICK[b.dataset.k] = b.dataset.v || ''; route();
+  });
+  [...fbox.querySelectorAll('.chip[data-more]')].forEach(b => b.onclick = () => { MORE[b.dataset.more] = true; renderFacets(); });
+  [...fbox.querySelectorAll('.chip[data-less]')].forEach(b => b.onclick = () => { MORE[b.dataset.less] = false; renderFacets(); });
+  const kb = $('fkml'); if(kb) kb.onclick = () => saveKml(visible(), pickName());
+  const cb = $('fclr'); if(cb) cb.onclick = () => { PICK = {}; MORE = {}; route(); };
+}
+
+/* ---- coordinates ---- */
+function coordOf(r){
+  if(!MAPPABLE) return null;
+  const num = s => parseFloat(String(s).replace(/[^\d.\-]/g,''));
+  const la = num(fieldVal(r, C.latCol)), ln = num(fieldVal(r, C.lngCol));
+  if(!isFinite(la) || !isFinite(ln)) return null;
+  if(Math.abs(la) > 90 || Math.abs(ln) > 180) return null;
+  if(la === 0 && ln === 0) return null;
+  return { la, ln };
+}
+/* the great circle, which is what a microwave hop actually is - a road map
+   would answer a different question and answer it longer */
+function airKm(a,b){
+  const R = 6371.0088, rad = Math.PI/180;
+  const dLa = (b.la-a.la)*rad, dLn = (b.ln-a.ln)*rad;
+  const s = Math.sin(dLa/2)**2 + Math.cos(a.la*rad)*Math.cos(b.la*rad)*Math.sin(dLn/2)**2;
+  return 2*R*Math.asin(Math.min(1, Math.sqrt(s)));
+}
+function bearing(a,b){
+  const rad = Math.PI/180;
+  const y = Math.sin((b.ln-a.ln)*rad)*Math.cos(b.la*rad);
+  const x = Math.cos(a.la*rad)*Math.sin(b.la*rad) -
+            Math.sin(a.la*rad)*Math.cos(b.la*rad)*Math.cos((b.ln-a.ln)*rad);
+  return (Math.atan2(y,x)/rad + 360) % 360;
+}
+
+/* ---- the map ----
+
+   KML, because there is no address you can type at Google Maps that plots
+   four hundred markers - its URLs carry one place, or a route down roads.
+   A KML is the file both Google Earth and My Maps are waiting for, it opens
+   offline, and it keeps the site IDs on the pins. */
+const xes = s => String(s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+function saveKml(rows, name, hop){
+  const marks = [];
+  let missed = 0;
+  for(const r of rows){
+    const c = coordOf(r);
+    if(!c){ missed++; continue; }
+    const sub = [fieldVal(r, C.nameCol), C.metaCol ? fieldVal(r, C.metaCol) : ''].filter(Boolean).join(' · ');
+    marks.push('<Placemark><name>' + xes(rawId(r) || 'site') + '</name>' +
+      '<description>' + xes(sub) + '</description>' +
+      '<Point><coordinates>' + c.ln + ',' + c.la + ',0</coordinates></Point></Placemark>');
+  }
+  if(!marks.length){ toast('Nothing in that selection has coordinates'); return; }
+  let line = '';
+  if(hop && hop.length === 2){
+    const a = coordOf(hop[0]), b = coordOf(hop[1]);
+    if(a && b) line = '<Placemark><name>' + xes(rawId(hop[0]) + ' to ' + rawId(hop[1]) + ' · ' +
+      airKm(a,b).toFixed(2) + ' km') + '</name><LineString><tessellate>0</tessellate>' +
+      '<altitudeMode>clampToGround</altitudeMode><coordinates>' +
+      a.ln + ',' + a.la + ',0 ' + b.ln + ',' + b.la + ',0</coordinates></LineString></Placemark>';
+  }
+  const kml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>' + xes(name) + '</name>' +
+    marks.join('') + line + '</Document></kml>';
+  const url = URL.createObjectURL(new Blob([kml], { type:'application/vnd.google-earth.kml+xml' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = String(name).replace(/[\\/:*?"<>|]+/g,'').trim().slice(0,60) + '.kml';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 6000);
+  toast(marks.length.toLocaleString() + ' on the map' +
+    (missed ? ' · ' + missed.toLocaleString() + ' had no coordinates' : ''), 3600);
+}
+
+/* ---- the tape measure ---- */
+function renderTray(){
+  if(!PAIR.length){ tray.className = ''; tray.innerHTML = ''; return; }
+  tray.className = 'tray';
+  const lbl = r => esc(rawId(r) || '—');
+  if(PAIR.length === 1){
+    tray.innerHTML = '<span class="leg">' + lbl(PAIR[0]) + '</span>' +
+      '<span class="brg">pick a second site and the hop is measured</span>' +
+      '<span class="sp"><button class="fbtn" id="tclr">Clear</button></span>';
+  }else{
+    const a = coordOf(PAIR[0]), b = coordOf(PAIR[1]);
+    const km = airKm(a,b);
+    tray.innerHTML = '<span class="leg">' + lbl(PAIR[0]) + ' → ' + lbl(PAIR[1]) + '</span>' +
+      '<span class="km">' + km.toFixed(2) + ' km</span>' +
+      '<span class="brg">' + bearing(a,b).toFixed(1) + '° out · ' + bearing(b,a).toFixed(1) + '° back</span>' +
+      '<span class="sp"><button class="fbtn" id="thop">The hop as KML</button>' +
+      '<button class="fbtn" id="tclr">Clear</button></span>';
+  }
+  const c = $('tclr'); if(c) c.onclick = () => { PAIR = []; route(); };
+  const k = $('thop'); if(k) k.onclick = () =>
+    saveKml(PAIR, rawId(PAIR[0]) + ' to ' + rawId(PAIR[1]), PAIR);
+}
+
+function search(term, base){
+  term = term.trim().toLowerCase(); if(!term) return [];
+  const pool = base || ROWS;
+  const out = [], seen = new Set();
+  const hit = IDX.byId[term];
+  if(hit && pool.indexOf(hit) >= 0){ out.push(hit); seen.add(hit); }
+  const parts = term.split(/\s+/);
+  for(const r of pool){ if(seen.has(r))continue; if(parts.every(p=>r.__blob.includes(p))){out.push(r);if(out.length>=60)break} }
   return out;
 }
 function route(){
-  const term=q.value; $('clr').style.display=term?'block':'none';
-  if(!term.trim()){renderHome();return}
-  const res=search(term);
-  hint.textContent=res.length?(res.length>=60?'showing first 60 matches':res.length+' match'+(res.length===1?'':'es')):'';
-  if(res.length===1){renderDetail(res[0]);return}
-  if(!res.length){view.innerHTML='<div class="empty"><div class="big">🔍</div>No '+C.unitSingular+' matches “'+esc(term)+'”.</div>';return}
-  renderList(res,term);
+  const term = q.value.trim();
+  $('clr').style.display = q.value ? 'block' : 'none';
+  renderFacets(); renderTray();
+  if(!ROWS.length){ renderHome(); return; }
+  const picked = anyPick();
+  if(!term && !picked){ renderHome(); return; }
+  const base = visible();
+  const res = term ? search(term, base) : base;
+  if(!res.length){
+    hint.textContent = '';
+    view.innerHTML = '<div class="empty"><div class="big">🔍</div>No ' + C.unitSingular +
+      (term ? ' matches “' + esc(term) + '”' : ' here') + '.</div>';
+    return;
+  }
+  hint.textContent = term
+    ? (res.length >= 60 ? 'showing first 60 matches' : res.length + ' match' + (res.length === 1 ? '' : 'es'))
+    : (res.length > LIST_CAP
+        ? 'showing the first ' + LIST_CAP.toLocaleString() + ' of ' + res.length.toLocaleString()
+        : res.length.toLocaleString() + ' ' + (res.length === 1 ? C.unitSingular : C.unit));
+  if(res.length === 1 && term){ renderDetail(res[0]); return; }
+  renderList(res.slice(0, term ? 60 : LIST_CAP), term);
 }
 function renderHome(){
   hint.textContent='';
@@ -94,11 +293,25 @@ function renderHome(){
 }
 function renderList(res,term){
   const idc=ci(C.idCol), nc=ci(C.nameCol), mc=ci(C.metaCol);
-  view.innerHTML='<div class="results">'+res.map((r,i)=>
-    '<div class="rrow" data-i="'+i+'"><span class="id">'+hl(String(r[idc]||'—'),term)+
-    '</span><span class="nm">'+hl(String(r[nc]||''),term)+'</span><span class="meta">'+esc(String(r[mc]||''))+'</span></div>'
-  ).join('')+'</div>';
-  [...view.querySelectorAll('.rrow')].forEach(el=>el.onclick=()=>renderDetail(res[+el.dataset.i]));
+  view.innerHTML='<div class="results">'+res.map((r,i)=>{
+    const on = PAIR.indexOf(r) >= 0;
+    const can = !!coordOf(r);
+    return '<div class="rrow" data-i="'+i+'"><span class="id">'+hl(String(r[idc]||'—'),term)+
+      '</span><span class="nm">'+hl(String(r[nc]||''),term)+'</span><span class="meta">'+esc(String(r[mc]||''))+'</span>'+
+      (can ? '<button class="pin'+(on?' on':'')+'" data-p="'+i+'" title="Measure the hop from here" aria-label="Measure from this site">&#8596;</button>' : '')+
+      '</div>';
+  }).join('')+'</div>';
+  [...view.querySelectorAll('.rrow')].forEach(el=>el.onclick=e=>{
+    if(e.target.closest && e.target.closest('.pin')) return;
+    renderDetail(res[+el.dataset.i]);
+  });
+  [...view.querySelectorAll('.pin')].forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const r = res[+b.dataset.p], at = PAIR.indexOf(r);
+    if(at >= 0) PAIR.splice(at,1);
+    else { if(PAIR.length >= 2) PAIR.shift(); PAIR.push(r); }
+    route();
+  });
 }
 function renderDetail(r){
   const id=fieldVal(r,C.idCol), nm=fieldVal(r,C.nameCol);
@@ -113,6 +326,11 @@ function renderDetail(r){
   h+='<div class="actions">';
   if(lat&&lng&&!blank(lat)&&!blank(lng)) h+='<a class="act primary" target="_blank" rel="noopener" href="https://www.google.com/maps?q='+encodeURIComponent(lat+','+lng)+'">📍 Open in Maps</a>';
   if(tel&&!blank(tel)) h+='<a class="act" href="tel:'+esc(String(tel).replace(/[^0-9+]/g,''))+'">📞 Call</a>';
+  /* A search that lands on one site comes straight here, so the measure has to
+     be startable from here too - otherwise the only way to pick an end of a
+     hop is to search badly enough to get a list. */
+  if(coordOf(r)) h+='<button class="act" id="measBtn">&#8596; '+
+    (PAIR.indexOf(r)>=0 ? 'Picked for the hop' : 'Measure from here')+'</button>';
   h+='<button class="act" id="copyBtn">⧉ Copy details</button></div></div><div class="groups">';
   for(const g of C.groups){
     const cells=g.f.map(name=>{
@@ -129,6 +347,13 @@ function renderDetail(r){
     h+='<div class="group"><h3>'+esc(g.h)+'</h3><div class="fields">'+cells+'</div></div>';
   }
   h+='</div></div>'; view.innerHTML=h;
+  const mb=$('measBtn');
+  if(mb) mb.onclick=()=>{
+    const at=PAIR.indexOf(r);
+    if(at>=0) PAIR.splice(at,1);
+    else { if(PAIR.length>=2) PAIR.shift(); PAIR.push(r); }
+    renderTray(); renderDetail(r);
+  };
   $('copyBtn').onclick=()=>{
     const text=C.copyText
       ? C.copyText(r,fieldVal)

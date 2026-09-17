@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0c1619">
 <title>Site Access Lookup</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
-<link rel="stylesheet" href="../_lib/lookup.css">
+<link rel="stylesheet" href="../_lib/lookup.css?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -99,6 +99,15 @@ window.LOOKUP_CONFIG = {
   idCol:'Site_ID', nameCol:'Site_Name', metaCol:'District',
   latCol:'Latitude', lngCol:'Longitude', telCol:'Depot_Contact',
   searchCols:['Site_ID','Other_Site_IDS','Site_Name','District','New_Region','Depot','Additional_data-Site_Address'],
+  /* The four ways somebody asks for a set rather than a site. The code is not
+     a column - it is the letters a site ID opens with, CM, GM, KU - so it is
+     read off the ID rather than stored twice. */
+  facets:[
+    {key:'code', label:'Code', of:(r,v)=>(String(v(r,'Site_ID')).match(/^[A-Za-z]+/)||[''])[0].toUpperCase()},
+    {label:'Region',   col:'New_Region'},
+    {label:'District', col:'District'},
+    {label:'Depot',    col:'Depot'}
+  ],
   labels:{
     Site_ID:'Site ID', Other_Site_IDS:'Other IDs', Site_Name:'Site name',
     New_Region:'Region', District:'District', Depot:'Depot',
@@ -153,6 +162,6 @@ window.LOOKUP_CONFIG = {
   }
 };
 </script>
-<script src="../_lib/lookup.js"></script>
+<script src="../_lib/lookup.js?v=2"></script>
 </body>
 </html>
