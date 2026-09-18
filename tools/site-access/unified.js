@@ -155,13 +155,15 @@ function draw(){
   drawFresh(); drawBar(); drawPanel(); drawTray(); drawBody();
 }
 
+/* the pill in the tools' own header, worded the way every other tool words it */
 function drawFresh(){
+  const pill = $('pill'); if (!pill) return;
   const n = SITES.length;
-  const when = A.savedAt ? ' · updated ' + A.savedAt : '';
-  $('freshTxt').textContent = n
-    ? n.toLocaleString() + ' sites' + when
-    : (A.connected() ? 'nothing published yet' : 'not connected');
-  $('fresh').classList.toggle('off', !n);
+  pill.innerHTML = n
+    ? '<b>' + n.toLocaleString() + '</b> sites' +
+      (A.savedAt ? ' · updated ' + esc(A.savedAt) : '') +
+      (A.source === 'server' ? ' · synced' : '')
+    : '<b>0</b> sites · ' + (A.connected() ? 'nothing published yet' : 'not connected');
 }
 
 function drawBar(){
