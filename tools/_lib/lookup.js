@@ -1,15 +1,28 @@
 /* Shared site-lookup engine. Each tool defines window.LOOKUP_CONFIG before loading this. */
 (function(){
 const C = window.LOOKUP_CONFIG;
-let COLS=[], ROWS=[], IDX={}, savedAt='';
+let COLS=[], ROWS=[], IDX={}, savedAt='', SOURCE='';
 const $=id=>document.getElementById(id);
 const view=$('view'), q=$('q'), hint=$('hint'), pill=$('pill');
 
+/* ---- headless ----
+
+   A tool can draw itself. If its config carries render(api), this file keeps
+   the parts that are not about drawing - reading the database, following it
+   live, the owner's upload and the two questions before a publish, the footer
+   - and hands the rows over every time they change instead of painting its
+   own search and list. Site Access draws its own; Site Data still uses the
+   page below. One engine, so there is still one place that talks to the
+   database and one upload that knows how to merge a partial sheet. */
+const HEADLESS = typeof C.render === 'function';
+
 /* theme */
 const THEME_KEY='office_tool_theme';
-function applyTheme(t){document.documentElement.dataset.theme=t;$('themeBtn').textContent=t==='dark'?'☀':'☾';try{localStorage.setItem(THEME_KEY,t)}catch(e){}}
-applyTheme(localStorage.getItem(THEME_KEY)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
-$('themeBtn').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+if($('themeBtn')){
+  function applyTheme(t){document.documentElement.dataset.theme=t;$('themeBtn').textContent=t==='dark'?'☀':'☾';try{localStorage.setItem(THEME_KEY,t)}catch(e){}}
+  applyTheme(localStorage.getItem(THEME_KEY)||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
+  $('themeBtn').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+}
 
 /* toast */
 let tt;function toast(m,ms){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),ms||1800)}
@@ -47,6 +60,8 @@ function applyDataset(ds){
      references and would quietly stop matching anything in the list. */
   PAIR=[]; PICK={}; MORE={};
   buildIndex();
+  SOURCE = ds.source || '';
+  if(HEADLESS){ C.render(API); return; }
   /* An empty tool has to say why it is empty, or it reads as broken. There is
      no local copy to fall back on any more, so "nothing here yet" is the
      literal truth and the way out of it is an upload. */
@@ -93,8 +108,10 @@ let PICK = {}, MORE = {}, PAIR = [];
 
 const fbox = document.createElement('div');
 const tray = document.createElement('div');
-hint.parentNode.insertBefore(fbox, hint);
-hint.parentNode.insertBefore(tray, hint);
+if(!HEADLESS && hint){
+  hint.parentNode.insertBefore(fbox, hint);
+  hint.parentNode.insertBefore(tray, hint);
+}
 
 const anyPick = () => FACETS.some(f => PICK[fkey(f)]);
 /* Every row still standing, optionally ignoring one facet's own choice - which
@@ -563,10 +580,24 @@ async function publishDataset(cols,rows,what){
   toast(what+' · '+rows.length.toLocaleString()+' '+C.unit+' · every device sees this now',5000);
 }
 
-/* events */
-let dq; q.addEventListener('input',()=>{clearTimeout(dq);dq=setTimeout(route,120)});
-$('clr').onclick=()=>{q.value='';q.focus();route()};
-addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==q){e.preventDefault();q.focus()}});
+/* what a page that draws itself is handed - the rows, and the few helpers it
+   would otherwise have to write again and get subtly different */
+const API = {
+  get cols(){ return COLS; }, get rows(){ return ROWS; },
+  get savedAt(){ return savedAt; }, get source(){ return SOURCE; },
+  ci, fieldVal, blank, esc, toast,
+  /* the map and the tape measure, so a page that draws itself keeps them
+     without a second copy of the maths to drift from the first */
+  coordOf, airKm, bearing, saveKml,
+  connected: () => !!(window.DB && window.DB.configured && window.DB.configured())
+};
+
+/* events - the page's own, when it has them */
+if(!HEADLESS){
+  let dq; q.addEventListener('input',()=>{clearTimeout(dq);dq=setTimeout(route,120)});
+  $('clr').onclick=()=>{q.value='';q.focus();route()};
+  addEventListener('keydown',e=>{if(e.key==='/'&&document.activeElement!==q){e.preventDefault();q.focus()}});
+}
 
 /* footer - the data-editing links show only in owner mode (see _lib/owner.js) */
 const editLinks = window.IS_OWNER

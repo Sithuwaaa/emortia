@@ -3,59 +3,192 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0c1619">
+<meta name="theme-color" content="#0a1729">
 <title>Site Access Lookup</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
-<link rel="stylesheet" href="../_lib/lookup.css?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../_lib/skins/aurora.css?v=3">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  /* Site Access - azure. Access & permissions. */
-  :root,html[data-theme="dark"]{--accent:#2f8fd4;--accentB:#5fb0ea;--accentD:#1f6ba6;--accent-ink:#03151f;
-    --glow:rgba(47,143,212,.5);--glowSoft:rgba(47,143,212,.28)}
-  html[data-theme="light"]{--accent:#1d6fae;--accentB:#2f8fd4;--accentD:#155585;--accent-ink:#ffffff;
-    --glow:rgba(29,111,174,.4);--glowSoft:rgba(29,111,174,.22)}
+  /* Site Access · unified. One look, a deep navy, because this is the tool that
+     gets opened in a car at night on the way to a site - a white page is a
+     torch in the driver's face. */
+  :root{
+    --bg:#071324; --bar:#0a1729; --card:#0d1e35; --cardOn:#0f2340;
+    --line:#1a3358; --line2:#274a7a; --acc:#3f7fd8; --accL:#7fb4ff;
+    --ink:#e4eeff; --soft:#c8d9f2; --mute:#8098bd; --accInk:#04101f;
+    --ok:#4fc39a; --okBg:rgba(79,195,154,.14); --warn:#e0a23c; --warnBg:rgba(224,162,60,.15);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.45}
+  a{color:var(--accL)}
+  ::selection{background:rgba(63,127,216,.4)}
+  [hidden]{display:none !important}
+  button{font:inherit;color:inherit}
+  code{font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--card);
+    border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin:2px 2px;display:inline-block}
 
-  /* the site's mark, and the way back to it */
-  .hdr .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;
-    background:linear-gradient(150deg,#d15873,#87213c) !important;
-    display:flex;align-items:center;justify-content:center;gap:2.4px;
-    box-shadow:0 0 16px rgba(176,58,86,.45) !important;text-decoration:none;font-size:0;
-    padding:0;border:none;cursor:pointer;
-    transition:transform .18s ease,box-shadow .18s ease}
-  .hdr .logo:hover{transform:scale(1.09);box-shadow:0 0 24px rgba(176,58,86,.75)}
-  .hdr .logo:focus-visible{outline:2px solid #f7edf0;outline-offset:3px}
-  .hdr .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
-  .hdr .logo i:nth-child(1){height:7px}
-  .hdr .logo i:nth-child(2){height:12px}
-  .hdr .logo i:nth-child(3){height:9px}
-  .hdr .logo i:nth-child(4){height:13px}
-  @media (prefers-reduced-motion:reduce){.hdr .logo{transition:none}}
+  /* ---- the bar across the top ---- */
+  .hdr{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+    padding:calc(env(safe-area-inset-top) + 0px) 16px 0;height:calc(env(safe-area-inset-top) + 56px);
+    background:var(--bar);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;flex-shrink:0}
+  .brand:hover{opacity:.86}
+  .brand:focus-visible{outline:2px solid var(--accL);outline-offset:4px;border-radius:10px}
+  .logo{width:26px;height:26px;border-radius:50%;flex-shrink:0;
+    background:linear-gradient(150deg,#d15873,#87213c);display:flex;align-items:center;
+    justify-content:center;gap:2.2px;box-shadow:0 0 14px rgba(176,58,86,.4)}
+  .logo i{width:2.4px;border-radius:2px;background:#170d10;display:block}
+  .logo i:nth-child(1){height:6px}.logo i:nth-child(2){height:11px}
+  .logo i:nth-child(3){height:8px}.logo i:nth-child(4){height:12px}
+  .bname{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;letter-spacing:-.02em}
+  .hsep{width:1px;height:18px;background:var(--line2);flex-shrink:0}
+  .hdr h1{font-size:14px;font-weight:700;white-space:nowrap}
+  .hdr .sp{flex:1}
+  .fresh{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mute);white-space:nowrap;
+    min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .fresh i{width:6px;height:6px;border-radius:999px;background:var(--ok);flex:0 0 auto}
+  .fresh.off i{background:var(--warn)}
+  @media (max-width:820px){ .bname,.hsep{display:none} }
+  @media (max-width:560px){ .fresh{display:none} }
 
-  /* the site's name beside its mark, both leading home */
-  .hdr .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;
-    flex-shrink:0;transition:opacity .18s ease}
-  .hdr .brand:hover{opacity:.86}
-  .hdr .brand:focus-visible{outline:2px solid #f7edf0;outline-offset:4px;border-radius:10px}
-  .hdr .bname{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;
-    letter-spacing:-0.02em;color:#fff;white-space:nowrap}
-  /* the site's name and the tool's are different things, so they are kept apart */
-  .hdr .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0;margin:0 1px}
-  /* the mark is inside the link now, so the lift belongs to the whole brand */
-  .hdr .brand:hover .logo{transform:scale(1.06)}
-  /* on a narrow screen the tool's own name is the one worth keeping */
+  /* ---- search, and what sits under it ---- */
+  .top{padding:14px 16px 0}
+  .wrap{max-width:760px;margin:0 auto}
+  .search{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line2);
+    border-radius:12px;padding:0 14px;height:50px;transition:border-color .15s ease}
+  .search.on,.search:focus-within{border-color:var(--acc)}
+  .search .ic{color:var(--mute);font-size:17px;flex:0 0 auto}
+  #q{flex:1;min-width:0;font:inherit;font-size:15px;background:none;border:none;outline:none;color:var(--ink)}
+  #q::placeholder{color:#5e77a0}
+  #q::-webkit-search-cancel-button{display:none}
+  #qClr{font-size:17px;border:none;background:none;color:var(--mute);cursor:pointer;padding:4px 2px;flex:0 0 auto}
+  #qClr:hover{color:var(--ink)}
 
-  /* What a cramped header gives up, and in what order. The status pill is the
-     most expendable thing in it - it was taking half the bar and squeezing the
-     tool name down to "Site Ac…" long before the site name joined it. */
-  .hdr h1{flex:0 1 auto;min-width:7ch}
-  .hdr .pill{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
-  @media (max-width:820px){ .hdr .bname,.hdr .hsep{display:none} }
-  @media (max-width:700px){ .hdr .pill{display:none} }
+  .bar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:11px}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;
+    border:1px solid var(--line2);background:var(--card);color:var(--soft);border-radius:999px;
+    padding:8px 13px;cursor:pointer;flex:0 0 auto;transition:border-color .15s ease,background .15s ease}
+  .pill:hover{border-color:var(--acc)}
+  .pill.on{border-color:var(--acc);background:rgba(63,127,216,.14);color:var(--ink)}
+  .pill .gl{color:var(--mute);font-size:13px}
+  .pill b{background:var(--acc);color:var(--accInk);font-size:10.5px;min-width:17px;height:17px;
+    border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+  .pill:focus-visible,.tok:focus-visible,.opt:focus-visible,.ghost:focus-visible{outline:2px solid var(--accL);outline-offset:2px}
+  #tokens{display:contents}
+  .tok{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;
+    border:1px solid var(--acc);background:rgba(63,127,216,.14);color:var(--ink);border-radius:999px;
+    padding:7px 9px 7px 12px;cursor:pointer;flex:0 0 auto}
+  .tok span{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700}
+  .tok i{font-style:normal;color:var(--mute);font-size:14px;line-height:1}
+  .bar .sp{flex:1}
+  #count{font-size:12.5px;color:var(--mute);white-space:nowrap}
+
+  .ghost{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+    border:1px solid var(--line2);background:var(--card);color:var(--ink);border-radius:9px;
+    padding:8px 12px;cursor:pointer}
+  .ghost:hover{border-color:var(--acc)}
+  .ghost.sm{padding:6px 11px;font-size:12px}
+  .ghost.on{border-color:var(--acc);background:rgba(63,127,216,.14)}
+
+  /* the panel of choices, for when you would rather tap than type */
+  #fPanel{margin-top:11px;background:var(--bar);border:1px solid var(--line);border-radius:13px;
+    padding:14px;display:flex;flex-direction:column;gap:14px}
+  .dim{display:flex;flex-direction:column;gap:7px;min-width:0}
+  .dl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:700}
+  .dv{display:flex;flex-wrap:wrap;gap:6px}
+  .opt{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;
+    padding:6px 10px;cursor:pointer}
+  .opt:hover{border-color:var(--acc)}
+  .opt.on{background:var(--acc);border-color:var(--acc);color:var(--accInk);font-weight:700}
+  .opt b{font-size:11px;font-weight:700;opacity:.72}
+  .more{font-size:12.5px;border:none;background:none;color:var(--mute);cursor:pointer;
+    text-decoration:underline;padding:6px 4px}
+  .more:hover{color:var(--ink)}
+
+  /* the measured hop */
+  #tray{margin-top:11px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--bar);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  #tray .leg{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600}
+  #tray .km{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--accL)}
+  #tray .brg{color:var(--mute);font-size:12.5px}
+  #tray .sp{flex:1}
+
+  /* ---- the list and the site ---- */
+  .body{display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px;
+    padding:18px 16px calc(env(safe-area-inset-bottom) + 20px);max-width:1240px;margin:0 auto;width:100%}
+  #list{flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:8px}
+  .ll{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:700;padding:0 2px 4px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;
+    cursor:pointer;display:flex;flex-direction:column;gap:10px;transition:border-color .12s ease}
+  .card:hover{border-color:var(--acc)}
+  .card:focus-visible{outline:2px solid var(--accL);outline-offset:2px}
+  .card.on{background:var(--cardOn);border-color:var(--acc)}
+  .ct{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .cl{min-width:0}
+  .cid{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--accL);margin-bottom:4px}
+  .cnm{font-size:15px;font-weight:700;line-height:1.3;letter-spacing:-.01em}
+  .csub{font-size:12px;color:var(--mute);margin-top:4px}
+  .ckm{text-align:right;flex:0 0 auto}
+  .ckm b{display:block;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600}
+  .ckm span{font-size:10px;color:var(--mute);letter-spacing:.06em}
+  .cb{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .cb .sp{flex:1}
+  .tone{font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:7px;white-space:nowrap}
+  .t-open{background:var(--okBg);color:var(--ok)}
+  .t-warn{background:var(--warnBg);color:var(--warn)}
+  .t-none{background:var(--bar);color:var(--mute);border:1px solid var(--line)}
+  .tw{font-size:11.5px;padding:5px 10px;border-radius:7px;background:var(--bar);color:var(--mute);
+    border:1px solid var(--line);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .navb{font-size:12.5px;font-weight:700;border:none;background:rgba(63,127,216,.16);color:var(--accL);
+    border-radius:9px;height:38px;padding:0 15px;display:inline-flex;align-items:center;text-decoration:none;flex:0 0 auto}
+  .navb:hover{background:rgba(63,127,216,.3)}
+  .moreRows{align-self:center;margin-top:6px}
+  .blank{padding:34px 18px;text-align:center;color:var(--mute);font-size:13.5px;line-height:1.7;
+    background:var(--card);border:1px dashed var(--line2);border-radius:12px}
+  .blank b{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}
+
+  #detail{flex:1 1 340px;min-width:0;background:var(--bar);border:1px solid var(--line);border-radius:14px;
+    padding:18px;display:flex;flex-direction:column;gap:16px;position:sticky;top:74px}
+  .back{font-size:12.5px;font-weight:600;border:none;background:none;color:var(--accL);cursor:pointer;
+    text-align:left;align-self:flex-start;padding:0}
+  .did{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accL);font-weight:600;margin-bottom:5px}
+  .dnm{font-size:19px;font-weight:700;line-height:1.25;letter-spacing:-.01em;text-wrap:pretty}
+  .dad{font-size:12.5px;color:var(--mute);margin-top:6px;line-height:1.5}
+  .dtags{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .dtags .tw{background:var(--card)}
+  .dacts{display:flex;gap:8px}
+  .bp,.bs{flex:1;font-size:13px;border-radius:10px;height:44px;display:inline-flex;align-items:center;
+    justify-content:center;text-decoration:none;cursor:pointer;text-align:center;padding:0 8px}
+  .bp{font-weight:700;background:var(--acc);color:var(--accInk)}
+  .bp:hover{background:var(--accL)}
+  .bs{font-weight:600;border:1px solid var(--line2);background:var(--card);color:var(--ink)}
+  .bs:hover{border-color:var(--acc)}
+  .bp.dis,.bs.dis{opacity:.4;cursor:not-allowed;pointer-events:none}
+  .dmini{display:flex;gap:8px;flex-wrap:wrap;margin-top:-6px}
+  .sec{display:flex;flex-direction:column;gap:11px}
+  .sec.rule{padding-top:14px;border-top:1px solid var(--line)}
+  .sh{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:700}
+  .fr{display:flex;gap:12px;align-items:baseline}
+  .fk{font-size:11.5px;color:var(--mute);flex:0 0 104px}
+  .fv{font-size:12.5px;font-weight:500;line-height:1.5;min-width:0;text-wrap:pretty;word-break:break-word}
+  .fv.mono{font-family:'IBM Plex Mono',monospace}
+  @media (max-width:760px){ #detail{position:static} }
+
+  /* what lookup.js still puts on the page */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);opacity:0;
+    background:var(--cardOn);border:1px solid var(--line2);color:var(--ink);padding:10px 18px;border-radius:10px;
+    font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:.25s;pointer-events:none;z-index:40}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  footer{color:var(--mute);font-size:12px;text-align:center;padding:10px 16px 26px;line-height:1.7}
+  footer a{color:var(--accL);text-decoration:none}
+  #file{display:none}
+  /* the account chip is put in front of the first .theme in the header */
+  .hdr .theme{display:none}
 </style>
-<script src="../_lib/skins/aurora.js?v=3" defer></script>
 <script src="../_lib/owner-config.js"></script>
 <script src="../_lib/owner.js"></script>
 <script src="../_lib/supabase-config.js"></script>
@@ -70,70 +203,61 @@
 <body>
 <header class="hdr">
   <a class="brand" href="../../" title="Emortia · back to the site" aria-label="Emortia · back to the site">
-    <span class="logo"><i></i><i></i><i></i><i></i></span>
-    <span class="bname">Emortia</span>
+    <span class="logo"><i></i><i></i><i></i><i></i></span><span class="bname">Emortia</span>
   </a>
   <span class="hsep" aria-hidden="true"></span>
-  <h1>Site Access Lookup</h1>
-  <span class="pill" id="pill">loading…</span>
-  <button class="theme" id="themeBtn" aria-label="Toggle theme">☾</button>
+  <h1>Site Access</h1>
+  <span class="sp"></span>
+  <span class="fresh" id="fresh"><i></i><span id="freshTxt">loading…</span></span>
+  <span class="theme" aria-hidden="true"></span>
 </header>
+
 <main>
-  <div class="searchwrap">
-    <span class="ic">⌕</span>
-    <input id="q" type="search" autocomplete="off" spellcheck="false"
-      placeholder="Search site ID, name, district…" aria-label="Search sites">
-    <button class="clr" id="clr" aria-label="Clear">×</button>
+  <div class="top"><div class="wrap">
+    <div class="search" id="search">
+      <span class="ic" aria-hidden="true">⌕</span>
+      <input id="q" type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
+        placeholder="Site ID, name, district – or district:kandy, depot:negombo, 24h"
+        aria-label="Search sites, or type a filter">
+      <button id="qClr" type="button" aria-label="Clear the search" hidden>×</button>
+    </div>
+
+    <div class="bar">
+      <button class="pill" id="fBtn" type="button" aria-expanded="false" aria-controls="fPanel">
+        <span class="gl" aria-hidden="true">⊶</span>Filter<b id="fN" hidden></b>
+      </button>
+      <button class="pill" id="nearBtn" type="button" aria-pressed="false">◎ Near me</button>
+      <span id="tokens"></span>
+      <span class="sp"></span>
+      <button class="ghost sm" id="mapBtn" type="button" hidden title="Save these sites as a KML for Google Earth or My Maps">Map these</button>
+      <span id="count"></span>
+    </div>
+
+    <div id="fPanel" hidden></div>
+    <div id="tray" hidden></div>
+  </div></div>
+
+  <div class="body">
+    <section id="list" aria-label="Sites"></section>
+    <aside id="detail" aria-label="The site" hidden></aside>
   </div>
-  <div class="hint" id="hint"></div>
-  <div id="view"></div>
 </main>
+
 <div class="toast" id="toast"></div>
 <input type="file" id="file" accept=".xlsx,.xls">
+
+<script src="unified.js?v=1"></script>
 <script>
 window.LOOKUP_CONFIG = {
   sheetName:'Sheet1',
   syncKey:'site_access',          // shared through Supabase; see tools/_lib/db.js
   unit:'sites', unitSingular:'site', source:'DNS Operational Site list · Sheet1',
-  homeIcon:'📡', homeText:n=>'Search '+n.toLocaleString()+' Dialog sites by ID, name, district or address.<br>The same data on every device.',
   idCol:'Site_ID', nameCol:'Site_Name', metaCol:'District',
   latCol:'Latitude', lngCol:'Longitude', telCol:'Depot_Contact',
   searchCols:['Site_ID','Other_Site_IDS','Site_Name','District','New_Region','Depot','Additional_data-Site_Address'],
-  /* The four ways somebody asks for a set rather than a site. The code is not
-     a column - it is the letters a site ID opens with, CM, GM, KU - so it is
-     read off the ID rather than stored twice. */
-  facets:[
-    {key:'code', label:'Code', of:(r,v)=>(String(v(r,'Site_ID')).match(/^[A-Za-z]+/)||[''])[0].toUpperCase()},
-    {label:'Region',   col:'New_Region'},
-    {label:'District', col:'District'},
-    {label:'Depot',    col:'Depot'}
-  ],
-  labels:{
-    Site_ID:'Site ID', Other_Site_IDS:'Other IDs', Site_Name:'Site name',
-    New_Region:'Region', District:'District', Depot:'Depot',
-    'Depot_officer(FME_ID)':'Depot officer', Depot_Contact:'Depot contact',
-    Latitude:'Latitude', Longitude:'Longitude',
-    Tower_Category:'Tower category', Tower_Type:'Tower type',
-    Access_Permission_providing_Party:'Permission from', Tower_Owner:'Tower owner',
-    Permission_arrangement_final:'Permission arrangement', Time_restricted_reason:'Restriction reason',
-    Week_Days_Access_Restricted_time:'Weekday restricted', 'Week_ends/Holydays_Access_Restricted_time':'Weekend / holiday restricted',
-    Time_Restrictions_final:'Time restrictions', 'Additional_data-Site_Address':'Site address'
-  },
-  groups:[
-    {h:'Identity', f:['Site_ID','Other_Site_IDS','Site_Name']},
-    {h:'Location', f:['New_Region','District','Latitude','Longitude','Additional_data-Site_Address']},
-    {h:'Depot & contact', f:['Depot','Depot_officer(FME_ID)','Depot_Contact']},
-    {h:'Tower', f:['Tower_Category','Tower_Type','Tower_Owner']},
-    {h:'Access & permission', f:['Access_Permission_providing_Party','Permission_arrangement_final','Time_restricted_reason','Time_Restrictions_final','Week_Days_Access_Restricted_time','Week_ends/Holydays_Access_Restricted_time']}
-  ],
-  full:['Site_Name','Additional_data-Site_Address','Permission_arrangement_final','Time_restricted_reason','Time_Restrictions_final'],
-  mono:['Site_ID','Other_Site_IDS','Latitude','Longitude','Depot_Contact','Depot_officer(FME_ID)'],
-  badges:(r,v)=>{
-    const t=v(r,'Time_Restrictions_final');
-    if(!t) return [];
-    return /no\s*(time\s*)?restrict/i.test(t) ? [{text:'✓ '+t,kind:'ok'}] : [{text:'⏱ '+t,kind:'warn'}];
-  },
-  subBits:(r,v)=>{ const o=v(r,'Other_Site_IDS'), id=v(r,'Site_ID'); return [ (o&&o!==id)?'also '+o:'', v(r,'New_Region'), v(r,'District') ]; },
+  /* This page draws itself - unified.js. lookup.js keeps the reading, the live
+     updates and the upload, and hands the rows over each time they change. */
+  render: api => window.SiteAccessUI.render(api),
   merge:{
     officerFrom:'Depot', officerCol:'Depot_officer(FME_ID)', contactCol:'Depot_Contact',
     aliases:{
@@ -162,6 +286,6 @@ window.LOOKUP_CONFIG = {
   }
 };
 </script>
-<script src="../_lib/lookup.js?v=3"></script>
+<script src="../_lib/lookup.js?v=4"></script>
 </body>
 </html>
