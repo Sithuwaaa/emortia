@@ -286,6 +286,9 @@
          filed before names were kept */
       createdName: row.created_name || (row.created_email || '').split('@')[0] || '',
       createdEmail: row.created_email || '',
+      /* the account, not the name - how the page tells a record somebody else
+         filed from one it filed itself */
+      createdBy: row.created_by || '',
       createdAt: row.created_at || '', savedAt: row.updated_at || row.created_at || ''
     };
   }

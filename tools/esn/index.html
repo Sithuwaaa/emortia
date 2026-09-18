@@ -18,7 +18,7 @@
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
 <script>Access.protect({ feature: 'tool:esn' });</script>
-<script src="esn.js"></script>
+<script src="esn.js?v=2"></script>
 <style>
   :root{
     /* terracotta - the warm one none of the other tools had taken */
@@ -67,6 +67,9 @@
   .theme:hover{border-color:var(--accentB);transform:scale(1.06)}
   @media (max-width:900px){.hdr .bname,.hdr .hsep{display:none}}
   @media (max-width:760px){.hdr .pill{display:none}}
+  /* the bell is only drawn for the people it rings for; hidden has to win over
+     whatever display the header's buttons are given */
+  #bellBtn[hidden]{display:none !important}
 
   .tabs{position:sticky;top:55px;z-index:25;display:flex;gap:4px;overflow-x:auto;padding:10px 14px;
     background:var(--bg);border-bottom:1px solid var(--line);scrollbar-width:none}
@@ -240,6 +243,7 @@
   <span class="hsep" aria-hidden="true"></span>
   <h1>ESN Sharing</h1>
   <span class="pill" id="pill">loading</span>
+  <button class="theme" id="bellBtn" aria-label="Sound for new ESNs" aria-pressed="true" hidden>🔔</button>
   <button class="theme" id="themeBtn" aria-label="Toggle theme">☾</button>
 </header>
 <div class="tabs" id="tabs"></div>
@@ -363,8 +367,9 @@ let SIGNED_IN = true;
 async function loadFiled(){
   try { SIGNED_IN = !!(await window.DB.session()); } catch(e){ SIGNED_IN = false; }
   const r = await window.DB.esnList(500);
-  if (r.error){ LOAD_ERR = r.error; FILED = []; return; }
+  if (r.error){ LOAD_ERR = r.error; FILED = []; return false; }
   FILED = (r.rows || []).map(E.fromRow);
+  return true;
 }
 async function linkFor(path){
   if (!path) return null;
@@ -993,15 +998,105 @@ $('lightDl').onclick = async e => {
 };
 addEventListener('keydown', e => { if (e.key === 'Escape') $('lightbox').classList.remove('on'); });
 
+/* ---------- the bell ----------
+
+   When somebody else files an ESN, the people it is filed for hear about it:
+   a chime and "New ESN received", from new-esn.wav beside this page. A file
+   rather than the browser's own speech, because speech is a different voice
+   on every machine and no voice at all on some of them.
+
+   It is for the owner and the office admins. The team files ESNs; they do not
+   need a bell every time a colleague does. A record you filed yourself never
+   rings either - you know, you pressed Save.
+
+   Only arrivals ring. The live channel fires on every change to the table -
+   an edit, a delete, a record filed an hour ago being corrected - so what is
+   new is worked out by comparing ids with what was already on the list, and
+   the first list the page reads is taken as already known: nothing that was
+   filed before you opened the tab is news. A read that failed is not an empty
+   list either, or the next good read would make every record look new and
+   ring for all of them. */
+const BELL_KEY = 'esn_bell_on';
+const BELL = new Audio('new-esn.wav');
+BELL.preload = 'auto';
+let BELL_ON = true;
+try { BELL_ON = localStorage.getItem(BELL_KEY) !== '0'; } catch(e){}
+let ME = '', KNOWN = null;
+
+const hearsBell = () => !!(window.Access &&
+  (Access.isOwner() || (typeof Access.isAdmin === 'function' && Access.isAdmin())));
+
+function ring(force){
+  if (!force && (!BELL_ON || !hearsBell())) return;
+  try {
+    BELL.currentTime = 0;
+    const p = BELL.play();
+    if (p && p.catch) p.catch(() => {});   // not yet allowed to make a sound - the toast still says it
+  } catch(e){}
+}
+
+function paintBell(){
+  const b = $('bellBtn'); if (!b) return;
+  b.hidden = !hearsBell();
+  b.textContent = BELL_ON ? '🔔' : '🔕';
+  b.setAttribute('aria-pressed', String(BELL_ON));
+  b.title = BELL_ON ? 'A sound plays when a new ESN arrives · click to mute'
+                    : 'Muted · click to hear new ESNs again';
+}
+$('bellBtn').onclick = () => {
+  BELL_ON = !BELL_ON;
+  try { localStorage.setItem(BELL_KEY, BELL_ON ? '1' : '0'); } catch(e){}
+  paintBell();
+  if (BELL_ON) ring(true);                  // turning it on plays it, so you know it works
+};
+
+/* A browser will not make a sound until the page has been touched, and iOS
+   will not let this element play at all until it has once been played inside
+   a tap. The first tap anywhere plays it silently and stops it, so that when
+   an ESN arrives later with nobody touching anything, it is allowed to ring. */
+function unlockBell(){
+  removeEventListener('pointerdown', unlockBell);
+  removeEventListener('keydown', unlockBell);
+  try {
+    BELL.muted = true;
+    const p = BELL.play();
+    const done = () => { BELL.pause(); BELL.currentTime = 0; BELL.muted = false; };
+    if (p && p.then) p.then(done).catch(() => { BELL.muted = false; }); else done();
+  } catch(e){ BELL.muted = false; }
+}
+addEventListener('pointerdown', unlockBell);
+addEventListener('keydown', unlockBell);
+
+function arrivals(ok){
+  if (!ok) return [];
+  const ids = FILED.map(r => r.id).filter(Boolean);
+  if (KNOWN === null){ KNOWN = new Set(ids); return []; }
+  const fresh = FILED.filter(r => r.id && !KNOWN.has(r.id));
+  ids.forEach(id => KNOWN.add(id));
+  return fresh.filter(r => !ME || r.createdBy !== ME);
+}
+
 /* ---------- boot ---------- */
 (async function(){
   loadDrafts();
   buildTabs(); render();
   await loadSites();
   render();
-  await loadFiled();
+  const ok = await loadFiled();
+  try { const s = await window.DB.session(); ME = (s && s.user && s.user.id) || ''; } catch(e){}
+  arrivals(ok);                             // what is already here is not news
+  paintBell();
   buildTabs(); render();
-  try { window.DB.esnSubscribe(async () => { await loadFiled(); buildTabs(); if (ACTIVE === 'Filed') render(); }); } catch(e){}
+  try { window.DB.esnSubscribe(async () => {
+    const good = await loadFiled();
+    const fresh = arrivals(good);
+    buildTabs(); if (ACTIVE === 'Filed') render();
+    if (fresh.length && hearsBell()){
+      ring();
+      const who = fresh[0].createdName ? ' · from ' + fresh[0].createdName : '';
+      toast('New ESN · ' + fresh.map(r => E.upper(r.siteId)).join(', ') + who, 6000);
+    }
+  }); } catch(e){}
 })();
 </script>
 </body>
