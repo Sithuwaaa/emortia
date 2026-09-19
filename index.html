@@ -422,17 +422,38 @@ img.zoomable:focus-visible{outline:2px solid var(--accentB);outline-offset:4px;}
 .ground{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
 .ground .g-sky{position:absolute;inset:0;
   background:radial-gradient(112% 82% at 50% 2%,#26141a 0%,#1b1013 46%,#150c0f 82%);}
-.ground .g-halo{position:absolute;right:-14vmin;top:50%;transform:translateY(-50%);
+/* The room the mark has is not the window. The header is always across the
+   top and the player always across the bottom, and they are not the same
+   height - so a mark centred on the window sat low, ran under both bars, and
+   had its ring cut by each by a different amount. It is centred in the room
+   between them now, with the same gap to each, and is never bigger than that
+   room allows. The two heights are the ones the poetry stage already
+   measures, --ppTop and --ppBot. */
+.ground{--gGap:28px;--gVh:100vh;
+  --gBand:calc(var(--gVh) - var(--ppTop,64px) - var(--ppBot,0px));
+  --gMid:calc(var(--ppTop,64px) + var(--gBand) / 2);}
+@supports (height:100dvh){ .ground{--gVh:100dvh;} }
+.ground .g-halo{position:absolute;right:-14vmin;top:var(--gMid);transform:translateY(-50%);
   width:90vmin;height:90vmin;border-radius:50%;filter:blur(70px);
   background:radial-gradient(circle,rgba(176,58,86,.30),transparent 64%);}
-.ground .g-mark{position:absolute;right:calc(clamp(16px,2.4vw,34px) + 11vmin);top:50%;
-  width:76vmin;height:76vmin;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;gap:3.4vmin;
+.ground .g-mark{--d:min(76vmin, calc(var(--gBand) - 2 * var(--gGap)));
+  position:absolute;right:calc(clamp(16px,2.4vw,34px) + 11vmin);top:var(--gMid);
+  /* centred here as well as in the breathing, so it stays centred for anyone
+     whose system asks for no motion and the breathing never runs */
+  transform:translateY(-50%);
+  width:var(--d);height:var(--d);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;gap:4.5%;
   border:1px solid rgba(247,237,240,.07);
   animation:groundBreathe 60s ease-in-out infinite alternate;}
-.ground .g-mark i{display:block;width:4.2vmin;border-radius:2.1vmin;background:rgba(209,88,115,.13);}
-@keyframes groundBreathe{from{transform:translateY(-50%) scale(1);}to{transform:translateY(-50%) scale(1.05);}}
-.ground .g-name{position:absolute;right:calc(clamp(16px,2.4vw,34px));top:96px;bottom:104px;
+/* The bars are sized against the ring, so they shrink with it when the room
+   is short, and they mirror about the middle one. They were 15, 29, 42, 24
+   and 13 - a waveform leaning left, which in a circle reads as off-centre
+   even when it is not. */
+.ground .g-mark i{display:block;width:5.5%;border-radius:999px;background:rgba(209,88,115,.13);}
+/* breathes by 4%, which the gap above and below has room for */
+@keyframes groundBreathe{from{transform:translateY(-50%) scale(1);}to{transform:translateY(-50%) scale(1.04);}}
+.ground .g-name{position:absolute;right:calc(clamp(16px,2.4vw,34px));
+  top:calc(var(--ppTop,64px) + var(--gGap));bottom:calc(var(--ppBot,0px) + var(--gGap));
   display:flex;flex-direction:column;justify-content:space-between;align-items:center;
   font-family:'Hanken Grotesk',sans-serif;font-weight:700;
   font-size:min(9vmin,10.5vh);line-height:1;letter-spacing:-.01em;text-transform:uppercase;
@@ -1112,11 +1133,11 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
     <div class="g-halo"></div>
     <div class="g-name"><b>E</b><b>M</b><b>O</b><b>R</b><b>T</b><b>I</b><b>A</b></div>
     <div class="g-mark">
-      <i style="height:15vmin;"></i>
-      <i style="height:29vmin;"></i>
-      <i style="height:42vmin;"></i>
-      <i style="height:24vmin;"></i>
-      <i style="height:13vmin;"></i>
+      <i style="height:20%;"></i>
+      <i style="height:37%;"></i>
+      <i style="height:55%;"></i>
+      <i style="height:37%;"></i>
+      <i style="height:20%;"></i>
     </div>
     <div class="g-fade"></div>
     <div class="g-vig"></div>
@@ -2017,6 +2038,16 @@ class Component extends DCLogic {
     this._onPpResize = () => { clearTimeout(this._ppFitT); this._ppFitT = setTimeout(this._ppFit, 80); };
     window.addEventListener('resize', this._onPpResize);
     this._ppFit();
+    /* The mark on the ground is placed between the same two bars, on every
+       page, so the heights have to stay right when the bars change without the
+       window changing - a font arriving late, the header wrapping, the player
+       growing a second row. Watched rather than polled. */
+    if ('ResizeObserver' in window){
+      this._ppRO = new ResizeObserver(() => this._ppFit());
+      const hh = document.querySelector('header'), ff = document.querySelector('footer');
+      if (hh) this._ppRO.observe(hh);
+      if (ff) this._ppRO.observe(ff);
+    }
     fetch('media/poems/poems.txt').then(r=>r.ok?r.text():Promise.reject()).then(t=>{
       this.setState({poems:this.parsePoems(t), poemsLoaded:true});
     }).catch(()=>this.setState({poems:[], poemsLoaded:true}));
@@ -2032,6 +2063,7 @@ class Component extends DCLogic {
     clearInterval(this._shufT);
     this.audio.pause();
     if(this._onPpResize) window.removeEventListener('resize', this._onPpResize);
+    if(this._ppRO) this._ppRO.disconnect();
     clearTimeout(this._ppFitT);
     if(this._onKey) window.removeEventListener('keydown', this._onKey);
     if(this._checkHash) window.removeEventListener('hashchange', this._checkHash);
