@@ -35,6 +35,201 @@
 <script src="./support.js" defer></script>
 </head>
 <body>
+<!-- ============ SPLASH ============
+     The front door. Somebody who arrives at emortia.com sees the name first,
+     edge to edge, lit up a letter at a time - and a scroll, a swipe, a tap or a
+     key takes them through it into the home page, the name coming apart and
+     the page rising up behind it as one movement.
+
+     Only at the front door. Opening /music or /tools, or a refresh that comes
+     back through 404.html, goes straight to what was asked for: a splash in
+     front of a page somebody linked you to is a door in front of a room you
+     are already standing in. It starts hidden, so a page whose script never
+     ran is never stuck behind it. -->
+<style>
+/* above the boot layer (9999): on the front door the name is the loading cover */
+#splash{position:fixed;inset:0;z-index:10000;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;outline:none;}
+/* the ground: the site's own dark burgundy, with a vignette holding the edges */
+.sp-sheet{position:absolute;inset:0;transform-origin:50% 45%;will-change:transform,opacity;
+  background:radial-gradient(120% 92% at 50% 42%,#2c1219 0%,#1c0e13 48%,#120a0d 100%);}
+.sp-sheet::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(112% 82% at 50% 44%,transparent 38%,rgba(18,6,10,.55) 100%);}
+/* the name, edge to edge */
+.sp-word{position:relative;display:flex;align-items:center;justify-content:space-between;
+  width:100%;padding:0 2vw;box-sizing:border-box;
+  font-family:'Bricolage Grotesque','Hanken Grotesk',system-ui,sans-serif;font-weight:800;
+  font-size:15.5vw;line-height:.86;letter-spacing:-.02em;color:#fff;white-space:nowrap;
+  will-change:transform,opacity,filter;}
+.sp-word span{display:block;will-change:transform,opacity;}
+/* the letters simply arrive - no slide, no bounce, light coming up, 110ms
+   apart so the name spells itself left to right */
+.sp-word span{animation:spIn 1.6s cubic-bezier(.22,.61,.36,1) both;}
+.sp-word span:nth-child(2){animation-delay:.11s}
+.sp-word span:nth-child(3){animation-delay:.22s}
+.sp-word span:nth-child(4){animation-delay:.33s}
+.sp-word span:nth-child(5){animation-delay:.44s}
+.sp-word span:nth-child(6){animation-delay:.55s}
+.sp-word span:nth-child(7){animation-delay:.66s}
+@keyframes spIn{from{opacity:0;transform:scale(.985);filter:blur(6px)}
+  to{opacity:1;transform:none;filter:blur(0)}}
+/* the hint, held back until the name has settled */
+.sp-hint{position:absolute;left:0;right:0;bottom:clamp(26px,5vh,58px);
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.3em;
+  text-transform:uppercase;color:rgba(255,255,255,.62);pointer-events:none;
+  animation:spHint 1s ease 1.4s both;}
+.sp-hint i{display:block;width:1px;height:34px;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),transparent);
+  animation:spRun 2.4s ease-in-out infinite;}
+@keyframes spHint{from{opacity:0}to{opacity:1}}
+@keyframes spRun{0%,100%{transform:scaleY(.4);opacity:.35;transform-origin:top}
+  50%{transform:scaleY(1);opacity:.9;transform-origin:top}}
+html.sp-lock,html.sp-lock body{overflow:hidden !important;}
+@media (prefers-reduced-motion:reduce){
+  .sp-word span,.sp-hint,.sp-hint i{animation:none !important;}
+  #splash{transition:opacity .5s ease;}
+}
+</style>
+<div id="splash" role="button" tabindex="0" aria-label="Emortia – enter the site" hidden>
+  <div class="sp-sheet"></div>
+  <div class="sp-word" id="spWord" aria-hidden="true">
+    <span>E</span><span>M</span><span>O</span><span>R</span><span>T</span><span>I</span><span>A</span>
+  </div>
+  <div class="sp-hint" id="spHint" aria-hidden="true"><span id="spHintTxt">Scroll</span><i></i></div>
+</div>
+<script>
+(function () {
+  var sp = document.getElementById('splash');
+  if (!sp) return;
+
+  /* the front door only - see the note above the markup. 404.html leaves the
+     route it was asked for in sessionStorage and the app reads it on boot, so
+     at this point it is still there to be seen. */
+  var path = location.pathname.replace(/\/+$/, '') || '/';
+  var home = path === '/' || /\/(index|Emortia)\.html$/i.test(path);
+  var bounced = false;
+  try { bounced = !!sessionStorage.getItem('emortia_route'); } catch (e) {}
+  if (!home || bounced) { sp.parentNode.removeChild(sp); return; }
+
+  sp.hidden = false;
+  var root = document.documentElement;
+  root.classList.add('sp-lock');
+
+  var reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var touch = matchMedia('(pointer:coarse)').matches;
+  document.getElementById('spHintTxt').textContent = touch ? 'Swipe up' : 'Scroll';
+
+  var word = document.getElementById('spWord');
+  var sheet = sp.querySelector('.sp-sheet');
+  var letters = [].slice.call(word.children);
+  var hint = document.getElementById('spHint');
+
+  /* The page underneath arrives as the sheet leaves: the whole of it fades
+     up, and the content grows into place. Only the content - a transform on
+     the page wrapper would make the header, the player and the ground, which
+     are all position:fixed, measure themselves against the page instead of
+     the screen for the length of the move, and the player would drop to the
+     foot of a very long page and jump back. Opacity does not do that. */
+  var stage = null, content = null;
+  function findStage() {
+    if (!stage) stage = document.querySelector('div[data-theme][data-section]');
+    if (stage && !content) {
+      content = stage.querySelector('main');
+      if (content) { content.style.transformOrigin = '50% 40vh'; content.style.willChange = 'transform'; }
+    }
+    return stage;
+  }
+
+  var done = false;
+  function finish() {
+    if (done) return; done = true;
+    root.classList.remove('sp-lock');
+    if (stage) stage.style.opacity = '';
+    if (content) { content.style.transform = ''; content.style.transformOrigin = ''; content.style.willChange = ''; }
+    removeEventListener('wheel', onWheel, { passive: false });
+    removeEventListener('touchmove', onTouch, { passive: false });
+    removeEventListener('touchstart', onTouchStart);
+    removeEventListener('keydown', onKey, true);
+    if (sp.parentNode) sp.parentNode.removeChild(sp);
+  }
+
+  var target = 0, cur = 0, raf = 0;
+
+  /* Nothing here moves by CSS transition: a transition restarts on every new
+     event and the move would stutter under a trackpad. Everything on screen is
+     a function of one progress value, eased a frame at a time. */
+  function paint() {
+    var p = cur, e = p * p * (3 - 2 * p);                  /* smoothstep: no hard start */
+    word.style.transform = 'translate3d(0,' + (-24 * e).toFixed(2) + 'vh,0)';
+    word.style.opacity = Math.max(0, 1 - e * 1.45).toFixed(3);
+    word.style.filter = 'blur(' + (9 * e).toFixed(2) + 'px)';
+    /* the letters do not leave together - the outer ones go further and
+       sooner, which is the parallax: one word, several depths */
+    for (var i = 0; i < letters.length; i++) {
+      var d = Math.abs(i - 3);                             /* distance from the middle R */
+      letters[i].style.transform = 'translate3d(' + ((i - 3) * 9 * e).toFixed(2) +
+        'vw,' + (-d * 5.2 * e).toFixed(2) + 'vh,0)';
+      letters[i].style.opacity = Math.max(0, 1 - e * (1.1 + d * 0.16)).toFixed(3);
+    }
+    sheet.style.transform = 'scale(' + (1 + 0.16 * e).toFixed(4) + ')';
+    sheet.style.opacity = Math.max(0, 1 - e * 1.08).toFixed(3);
+    hint.style.opacity = Math.max(0, 1 - e * 3.4).toFixed(3);
+    if (findStage()) {
+      stage.style.opacity = (0.35 + 0.65 * e).toFixed(3);
+      if (content) content.style.transform = 'scale(' + (0.94 + 0.06 * e).toFixed(4) + ')';
+    }
+  }
+
+  function loop() {
+    raf = 0;
+    cur += (target - cur) * 0.09;                          /* the easing, one frame at a time */
+    if (Math.abs(target - cur) < 0.0015) cur = target;
+    paint();
+    if (cur !== target) raf = requestAnimationFrame(loop);
+    else if (cur >= 1) setTimeout(finish, 60);
+  }
+  function kick() { if (!raf) raf = requestAnimationFrame(loop); }
+  function push(by) { target = Math.max(0, Math.min(1, target + by)); kick(); }
+
+  /* with less motion asked for, there is no parallax to scrub: any gesture
+     simply fades the door away */
+  function enter() {
+    if (reduce) { sp.style.opacity = '0'; setTimeout(finish, 520); return; }
+    target = 1; kick();
+  }
+
+  function onWheel(e) { e.preventDefault(); if (reduce) { enter(); return; } push(e.deltaY / 900); }
+  /* Caught before anything else on the page hears them - the site has keys of
+     its own, and the Space that opens the door must not also start a song. */
+  function onKey(e) {
+    var k = e.key;
+    if (k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Spacebar' ||
+        k === 'Enter' || k === 'Escape') {
+      e.preventDefault(); e.stopImmediatePropagation(); enter();
+    } else if (k === 'ArrowUp' || k === 'PageUp') {
+      e.preventDefault(); e.stopImmediatePropagation(); if (!reduce) push(-0.3);
+    }
+  }
+  var y0 = 0;
+  function onTouchStart(e) { y0 = e.touches[0].clientY; }
+  function onTouch(e) {
+    var y = e.touches[0].clientY;
+    if (e.cancelable) e.preventDefault();
+    if (reduce) { if (y0 - y > 24) enter(); return; }
+    push((y0 - y) / 420); y0 = y;
+  }
+  sp.addEventListener('click', enter);                      /* a tap is the whole gesture on a phone */
+
+  addEventListener('wheel', onWheel, { passive: false });
+  addEventListener('keydown', onKey, true);
+  addEventListener('touchstart', onTouchStart, { passive: true });
+  addEventListener('touchmove', onTouch, { passive: false });
+
+  paint();
+})();
+</script>
 <!-- ============ BOOT ============
      The app is drawn by support.js, which is deferred, so between the HTML
      arriving and the first paint there is a moment of empty page. This fills
