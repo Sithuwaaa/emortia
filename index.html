@@ -115,6 +115,121 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   </div>
   <div class="sp-hint" id="spHint" aria-hidden="true"><span id="spHintTxt">Scroll</span><i></i></div>
 </div>
+
+<!-- ============ THE GATE ============
+     What the splash hands over to: who is coming in. Four ways in, and three
+     of them are real accounts. Choosing Sithara, Admin or Tooway asks for that
+     account's username and password - the same sign-in the Tools page uses -
+     and what the person can then open is decided by the account, by what the
+     owner has given that role, not by which picture was pressed. Picking
+     Owner and signing in with a team account gets a team account.
+
+     The design this came from held three passcodes in the page. The page is a
+     public file - anyone can read a passcode written into it - so a check
+     here could only ever look like a lock. The database is what refuses.
+
+     Somebody already signed in has answered this, and goes straight through. -->
+<style>
+#gate{position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;
+  overflow-y:auto;padding:24px 0;
+  background:radial-gradient(120% 92% at 50% 40%,#2c1219 0%,#1c0e13 48%,#120a0d 100%);
+  transition:opacity .5s ease;}
+#gate[hidden]{display:none;}
+#gate.gt-leave{opacity:0;pointer-events:none;}
+.gt-inner{width:min(1040px,92vw);text-align:center;margin:auto;}
+.gt-ask{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;
+  font-size:clamp(30px,4.4vw,56px);letter-spacing:-.03em;margin:0 0 clamp(28px,4vh,48px);color:#f7edf0;}
+.gt-row{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(18px,3vw,40px);}
+.gt-p{display:flex;flex-direction:column;align-items:center;gap:12px;
+  background:none;border:none;padding:6px;cursor:pointer;font:inherit;color:inherit;
+  transition:transform .22s cubic-bezier(.22,.61,.36,1);}
+.gt-p:hover,.gt-p:focus-visible,.gt-p.gt-on{transform:translateY(-6px);outline:none;}
+.gt-av{width:clamp(96px,11vw,132px);height:clamp(96px,11vw,132px);border-radius:26px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  background:linear-gradient(150deg,var(--c1),var(--c2));
+  border:1px solid rgba(247,237,240,.08);
+  transition:box-shadow .22s ease,border-color .22s ease;}
+.gt-p:hover .gt-av,.gt-p:focus-visible .gt-av{border-color:rgba(247,237,240,.3);}
+.gt-p.gt-on .gt-av{border-color:rgba(247,237,240,.7);box-shadow:0 0 0 3px rgba(247,237,240,.12);}
+.gt-av i{display:block;width:6px;border-radius:3px;background:rgba(18,10,13,.82);
+  transform-origin:center;animation:gtEq .9s ease-in-out infinite;animation-play-state:paused;}
+.gt-av.gt-open i{background:rgba(247,237,240,.45);}
+.gt-p:hover .gt-av i,.gt-p:focus-visible .gt-av i,.gt-p.gt-on .gt-av i{animation-play-state:running;}
+.gt-av i:nth-child(1){height:20%;animation-delay:0s}
+.gt-av i:nth-child(2){height:38%;animation-delay:.18s}
+.gt-av i:nth-child(3){height:27%;animation-delay:.36s}
+.gt-av i:nth-child(4){height:42%;animation-delay:.1s}
+@keyframes gtEq{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
+.gt-nm{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:17px;
+  color:#e3cbd2;transition:color .2s ease;}
+.gt-p:hover .gt-nm,.gt-p:focus-visible .gt-nm,.gt-p.gt-on .gt-nm{color:#fff;}
+.gt-rl{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;
+  text-transform:uppercase;color:#8d6a75;}
+/* the sign-in only opens once a locked profile is chosen */
+.gt-key{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .35s ease;}
+.gt-key.gt-show{max-height:260px;opacity:1;margin-top:clamp(26px,4vh,44px);}
+.gt-kl{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.22em;
+  text-transform:uppercase;color:#a07f8a;margin-bottom:12px;}
+.gt-kr{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;}
+.gt-in{width:min(220px,80vw);padding:13px 16px;border-radius:12px;box-sizing:border-box;
+  background:rgba(43,23,30,.7);border:1px solid #412730;color:#f7edf0;
+  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:15px;outline:none;
+  transition:border-color .2s ease;}
+.gt-in::placeholder{color:#7d5d67;}
+.gt-in:focus{border-color:#b03a56;}
+.gt-go{padding:13px 24px;border-radius:12px;border:1px solid #b03a56;cursor:pointer;
+  background:#b03a56;color:#fff;font-family:'Bricolage Grotesque',system-ui,sans-serif;
+  font-weight:700;font-size:14.5px;transition:background .2s ease;}
+.gt-go:hover{background:#c74767;}
+.gt-go:disabled{opacity:.6;cursor:progress;}
+.gt-err{min-height:18px;margin-top:10px;font-family:'Space Mono',monospace;font-size:12px;
+  line-height:1.6;color:#e0788f;}
+.gt-err.gt-note{color:#c9a3ae;}
+.gt-skip{display:block;margin:clamp(30px,5vh,52px) auto 0;padding:11px 22px;border-radius:999px;
+  background:none;border:1px solid #352027;color:#8d6a75;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.14em;
+  transition:color .2s ease,border-color .2s ease;}
+.gt-skip:hover,.gt-skip:focus-visible{color:#e3cbd2;border-color:#51313c;outline:none;}
+@media (prefers-reduced-motion:reduce){
+  #gate,.gt-p,.gt-key{transition:none !important;}
+  .gt-av i{animation:none !important;}
+}
+</style>
+<div id="gate" role="dialog" aria-modal="true" aria-labelledby="gtAsk" hidden>
+  <div class="gt-inner">
+    <h2 class="gt-ask" id="gtAsk">Who's coming in?</h2>
+    <div class="gt-row">
+      <button class="gt-p" type="button" data-who="owner" data-name="Sithara">
+        <span class="gt-av" style="--c1:#d15873;--c2:#87213c;"><i></i><i></i><i></i><i></i></span>
+        <span class="gt-nm">Sithara</span><span class="gt-rl">Owner</span>
+      </button>
+      <button class="gt-p" type="button" data-who="admin" data-name="Admin">
+        <span class="gt-av" style="--c1:#8a7cf0;--c2:#4a3cb8;"><i></i><i></i><i></i><i></i></span>
+        <span class="gt-nm">Admin</span><span class="gt-rl">Office tools</span>
+      </button>
+      <button class="gt-p" type="button" data-who="staff" data-name="Tooway">
+        <span class="gt-av" style="--c1:#3fbdd0;--c2:#12707e;"><i></i><i></i><i></i><i></i></span>
+        <span class="gt-nm">Tooway</span><span class="gt-rl">Team tools</span>
+      </button>
+      <button class="gt-p" type="button" data-who="guest" data-name="Guest">
+        <span class="gt-av gt-open" style="--c1:#40282f;--c2:#241419;"><i></i><i></i><i></i><i></i></span>
+        <span class="gt-nm">Guest</span><span class="gt-rl">Music &amp; poetry</span>
+      </button>
+    </div>
+    <form class="gt-key" id="gtKey">
+      <label class="gt-kl" id="gtKl" for="gtUser">Sign in</label>
+      <div class="gt-kr">
+        <input class="gt-in" id="gtUser" name="username" autocomplete="username" autocapitalize="none"
+          spellcheck="false" placeholder="Username" aria-label="Username">
+        <input class="gt-in" id="gtPass" name="password" type="password" autocomplete="current-password"
+          placeholder="Password" aria-label="Password">
+        <button class="gt-go" id="gtGo" type="submit">Enter</button>
+      </div>
+      <div class="gt-err" id="gtErr" role="alert"></div>
+    </form>
+    <button class="gt-skip" id="gtSkip" type="button">Just looking – continue as Guest</button>
+  </div>
+</div>
 <script>
 (function () {
   var sp = document.getElementById('splash');
@@ -127,7 +242,12 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var home = path === '/' || /\/(index|Emortia)\.html$/i.test(path);
   var bounced = false;
   try { bounced = !!sessionStorage.getItem('emortia_route'); } catch (e) {}
-  if (!home || bounced) { sp.parentNode.removeChild(sp); return; }
+  if (!home || bounced) {
+    var g0 = document.getElementById('gate');
+    if (g0) g0.parentNode.removeChild(g0);
+    sp.parentNode.removeChild(sp);
+    return;
+  }
 
   sp.hidden = false;
   var root = document.documentElement;
@@ -143,6 +263,73 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var hint = document.getElementById('spHint');
   var startedAt = Date.now();
 
+  /* ---- the gate the splash hands over to ----
+     Decided at the first gesture rather than on load: access.js is deferred,
+     so on load it may not be there yet to say whether somebody is signed in.
+     When a gate is coming it is put up underneath the splash, so the sheet
+     leaving uncovers the gate rather than the page - name, then the question,
+     then the site, with no flash of the site in between. */
+  var gate = document.getElementById('gate');
+  var gateWanted = false, gateDecided = false;
+  function decideGate() {
+    if (gateDecided) return;
+    gateDecided = true;
+    var A = window.Access;
+    gateWanted = !!gate && !(A && A.signedIn && A.signedIn());
+    if (gateWanted) gate.hidden = false;
+    else if (gate && gate.parentNode) gate.parentNode.removeChild(gate);
+  }
+
+  if (gate) {
+    var gKey = document.getElementById('gtKey'), gUser = document.getElementById('gtUser'),
+        gPass = document.getElementById('gtPass'), gKl = document.getElementById('gtKl'),
+        gErr = document.getElementById('gtErr'), gGo = document.getElementById('gtGo');
+    var picked = null;
+    var say = function (msg, note) { gErr.textContent = msg || ''; gErr.classList.toggle('gt-note', !!note); };
+    var comeIn = function () {
+      gate.classList.add('gt-leave');
+      root.classList.remove('sp-lock');
+      setTimeout(function () { if (gate.parentNode) gate.parentNode.removeChild(gate); }, 520);
+    };
+    [].forEach.call(gate.querySelectorAll('.gt-p'), function (b) {
+      b.addEventListener('click', function () {
+        [].forEach.call(gate.querySelectorAll('.gt-p'), function (x) { x.classList.toggle('gt-on', x === b); });
+        if (b.getAttribute('data-who') === 'guest') { comeIn(); return; }
+        picked = b;
+        say('');
+        gKl.textContent = 'Sign in as ' + b.getAttribute('data-name');
+        gKey.classList.add('gt-show');
+        gPass.value = '';
+        setTimeout(function () { gUser.focus(); }, 60);
+      });
+    });
+    /* The account decides, not the tile. Signing in on the Owner tile with a
+       team account is a team account - said so, briefly, and then let in. */
+    gKey.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var A = window.Access;
+      if (!A || !A.signIn) { say('The sign-in has not loaded yet – give it a moment and try again.'); return; }
+      gGo.disabled = true; say('');
+      A.signIn(gUser.value, gPass.value).then(function (r) {
+        gGo.disabled = false;
+        if (!r || !r.ok) { say((r && r.error) || 'That did not work.'); gPass.value = ''; gPass.focus(); return; }
+        document.dispatchEvent(new CustomEvent('emortia:signedin'));
+        var role = A.isOwner() ? 'owner' : ((A.myRole && A.myRole()) || '');
+        var asked = picked ? picked.getAttribute('data-who') : role;
+        if (role && role !== asked) {
+          var names = { owner: 'the owner', admin: 'an office admin', staff: 'the Tooway team' };
+          say('Signed in as ' + r.user + ' – an account for ' + (names[role] || 'the team') +
+              '. What it opens comes with the account.', true);
+          setTimeout(comeIn, 1900);
+        } else comeIn();
+      }, function () {
+        gGo.disabled = false;
+        say('That did not work – check the connection and try again.');
+      });
+    });
+    document.getElementById('gtSkip').addEventListener('click', comeIn);
+  }
+
   /* The entrance is a CSS animation with fill-mode both, and a finished
      animation still outranks the inline styles written below - left on, the
      letters could never leave on their own and the hint would never fade.
@@ -156,6 +343,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     hintGone = Date.now() - startedAt < 1400;   /* never flash a hint that had not appeared yet */
     letters.forEach(function (l) { l.style.animation = 'none'; });
     hint.style.animation = 'none';
+    decideGate();
   }
 
   /* The page underneath arrives as the sheet leaves: the whole of it fades
@@ -177,14 +365,20 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var done = false;
   function finish() {
     if (done) return; done = true;
-    root.classList.remove('sp-lock');
-    if (stage) stage.style.opacity = '';
-    if (content) { content.style.transform = ''; content.style.transformOrigin = ''; content.style.willChange = ''; }
     removeEventListener('wheel', onWheel, { passive: false });
     removeEventListener('touchmove', onTouch, { passive: false });
     removeEventListener('touchstart', onTouchStart);
     removeEventListener('keydown', onKey, true);
     if (sp.parentNode) sp.parentNode.removeChild(sp);
+    /* the gate keeps the page shut until somebody has chosen a way in */
+    if (gateWanted) {
+      var ask = document.getElementById('gtAsk');
+      if (ask) { ask.setAttribute('tabindex', '-1'); try { ask.focus({ preventScroll: true }); } catch (e) {} }
+      return;
+    }
+    root.classList.remove('sp-lock');
+    if (stage) stage.style.opacity = '';
+    if (content) { content.style.transform = ''; content.style.transformOrigin = ''; content.style.willChange = ''; }
   }
 
   var target = 0, cur = 0, raf = 0;
@@ -209,7 +403,8 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     sheet.style.transform = 'scale(' + (1 + 0.16 * e).toFixed(4) + ')';
     sheet.style.opacity = Math.max(0, 1 - e * 1.08).toFixed(3);
     hint.style.opacity = hintGone ? '0' : Math.max(0, 1 - e * 3.4).toFixed(3);
-    if (findStage()) {
+    /* with a gate coming, what rises behind the name is the gate, not the page */
+    if (!gateWanted && findStage()) {
       stage.style.opacity = (0.35 + 0.65 * e).toFixed(3);
       if (content) content.style.transform = 'scale(' + (0.94 + 0.06 * e).toFixed(4) + ')';
     }
@@ -229,7 +424,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   /* with less motion asked for, there is nothing to scrub: any gesture
      simply fades it away */
   function enter() {
-    if (reduce) { sp.style.opacity = '0'; setTimeout(finish, 520); return; }
+    if (reduce) { decideGate(); sp.style.opacity = '0'; setTimeout(finish, 520); return; }
     settle(); target = 1; kick();
   }
 
@@ -2274,6 +2469,15 @@ class Component extends DCLogic {
       if (hh) this._ppRO.observe(hh);
       if (ff) this._ppRO.observe(ff);
     }
+    /* Somebody signed in at the front-door gate, which lives outside this
+       component. The same two steps the Tools card takes after its own sign-in,
+       so the page knows who is here without being reloaded. */
+    this._onGateIn = () => {
+      const A = window.Access; if (!A) return;
+      try { A.applyOwner(); } catch (e) {}
+      this.setState({ toolsIn: A.signedIn(), isOwner: A.isOwner(), accErr: '', accBusy: false });
+    };
+    document.addEventListener('emortia:signedin', this._onGateIn);
     fetch('media/poems/poems.txt').then(r=>r.ok?r.text():Promise.reject()).then(t=>{
       this.setState({poems:this.parsePoems(t), poemsLoaded:true});
     }).catch(()=>this.setState({poems:[], poemsLoaded:true}));
@@ -2290,6 +2494,7 @@ class Component extends DCLogic {
     this.audio.pause();
     if(this._onPpResize) window.removeEventListener('resize', this._onPpResize);
     if(this._ppRO) this._ppRO.disconnect();
+    if(this._onGateIn) document.removeEventListener('emortia:signedin', this._onGateIn);
     clearTimeout(this._ppFitT);
     if(this._onKey) window.removeEventListener('keydown', this._onKey);
     if(this._checkHash) window.removeEventListener('hashchange', this._checkHash);
