@@ -86,14 +86,36 @@
 @keyframes spHint{from{opacity:0}to{opacity:1}}
 @keyframes spRun{0%,100%{transform:scaleY(.4);opacity:.35;transform-origin:top}
   50%{transform:scaleY(1);opacity:.9;transform-origin:top}}
+/* The mark in the corner, where a streaming service puts its name on the
+   screen before you choose: the same playing logo and name the nav bar
+   carries, so the first thing and the thing that stays are one thing. */
+.sp-brand{position:absolute;z-index:2;left:clamp(20px,3.2vw,60px);top:clamp(18px,4.2vh,46px);
+  display:flex;align-items:center;gap:12px;pointer-events:none;
+  animation:spHint 1s ease .2s both;}
+.sp-logo{width:40px;height:40px;border-radius:50%;flex:none;
+  background:linear-gradient(150deg,#d15873,#87213c);display:flex;align-items:center;
+  justify-content:center;gap:3px;box-shadow:0 0 22px rgba(176,58,86,.5);}
+.sp-logo i{display:block;width:3.2px;border-radius:2px;background:#170d10;transform-origin:center;
+  animation:eq .85s ease-in-out infinite;}
+.sp-logo i:nth-child(1){height:9px}
+.sp-logo i:nth-child(2){height:16px;animation-delay:.18s}
+.sp-logo i:nth-child(3){height:12px;animation-delay:.36s}
+.sp-logo i:nth-child(4){height:17px;animation-delay:.1s}
+.sp-brand b{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+  font-size:clamp(20px,1.7vw,26px);letter-spacing:-.02em;color:#f7edf0;}
+/* the O opens about its own middle */
+.sp-word span:nth-child(3){transform-origin:50% 52%;}
 html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 @media (prefers-reduced-motion:reduce){
-  .sp-word span,.sp-hint,.sp-hint i{animation:none !important;}
+  .sp-word span,.sp-hint,.sp-hint i,.sp-brand,.sp-logo i{animation:none !important;}
   #splash{transition:opacity .5s ease;}
 }
 </style>
 <div id="splash" role="button" tabindex="0" aria-label="Emortia – enter the site" hidden>
   <div class="sp-sheet"></div>
+  <div class="sp-brand" id="spBrand" aria-hidden="true">
+    <span class="sp-logo"><i></i><i></i><i></i><i></i></span><b>Emortia</b>
+  </div>
   <div class="sp-word" id="spWord" aria-hidden="true">
     <span>E</span><span>M</span><span>O</span><span>R</span><span>T</span><span>I</span><span>A</span>
   </div>
@@ -125,6 +147,43 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var sheet = sp.querySelector('.sp-sheet');
   var letters = [].slice.call(word.children);
   var hint = document.getElementById('spHint');
+  var brand = document.getElementById('spBrand');
+  var startedAt = Date.now();
+
+  /* ---- the doorway ----
+
+     The six letters round the O leave; the O stays, finds the middle of the
+     screen and opens, and the home page is what is on the other side of it.
+     The sheet has a hole cut in it exactly where the O's own hole is, the
+     same size and growing with it, so what shows through the letter is the
+     page and not more burgundy - you go through the name, not past it. */
+  var O_AT = 2;                  /* E M O ... */
+  var HOLE = 0.19;               /* the O's counter, as a share of its width */
+  var geo = null;
+  function measure() {
+    var o = letters[O_AT], keep = o.style.transform;
+    o.style.transform = 'none';
+    var r = o.getBoundingClientRect();
+    o.style.transform = keep;
+    geo = { cx: r.left + r.width / 2, cy: r.top + r.height * 0.52, hole: r.width * HOLE };
+  }
+  function onResize() { geo = null; paint(); }
+
+  /* The entrance is a CSS animation with fill-mode both, and a finished
+     animation still outranks the inline styles written below - so without
+     this the letters could never move on their own and the hint and the logo
+     would never fade on the way out. Taken off at the first gesture, by
+     which time it has almost always finished. */
+  var settled = false, hintGone = false;
+  function settle() {
+    if (settled) return;
+    settled = true;
+    hintGone = Date.now() - startedAt < 1400;   /* never flash a hint that had not appeared yet */
+    letters.forEach(function (l) { l.style.animation = 'none'; });
+    hint.style.animation = 'none';
+    brand.style.animation = 'none';
+    measure();
+  }
 
   /* The page underneath arrives as the sheet leaves: the whole of it fades
      up, and the content grows into place. Only the content - a transform on
@@ -152,6 +211,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     removeEventListener('touchmove', onTouch, { passive: false });
     removeEventListener('touchstart', onTouchStart);
     removeEventListener('keydown', onKey, true);
+    removeEventListener('resize', onResize);
     if (sp.parentNode) sp.parentNode.removeChild(sp);
   }
 
@@ -162,20 +222,44 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
      a function of one progress value, eased a frame at a time. */
   function paint() {
     var p = cur, e = p * p * (3 - 2 * p);                  /* smoothstep: no hard start */
-    word.style.transform = 'translate3d(0,' + (-24 * e).toFixed(2) + 'vh,0)';
-    word.style.opacity = Math.max(0, 1 - e * 1.45).toFixed(3);
-    word.style.filter = 'blur(' + (9 * e).toFixed(2) + 'px)';
-    /* the letters do not leave together - the outer ones go further and
-       sooner, which is the parallax: one word, several depths */
+    if (!settled) return;                                   /* nothing has been asked of it yet */
+    if (!geo) measure();
+    var W = innerWidth, H = innerHeight;
+
+    /* the letters round the O leave outward and upward - the far ones
+       further and sooner, which is the parallax: one word, several depths */
     for (var i = 0; i < letters.length; i++) {
-      var d = Math.abs(i - 3);                             /* distance from the middle R */
-      letters[i].style.transform = 'translate3d(' + ((i - 3) * 9 * e).toFixed(2) +
-        'vw,' + (-d * 5.2 * e).toFixed(2) + 'vh,0)';
-      letters[i].style.opacity = Math.max(0, 1 - e * (1.1 + d * 0.16)).toFixed(3);
+      if (i === O_AT) continue;
+      var d = Math.abs(i - O_AT), side = i < O_AT ? -1 : 1;
+      letters[i].style.transform = 'translate3d(' + (side * (7 + d * 6) * e).toFixed(2) +
+        'vw,' + (-(6 + d * 4) * e).toFixed(2) + 'vh,0)';
+      letters[i].style.opacity = Math.max(0, 1 - e * (1.7 + d * 0.18)).toFixed(3);
+      letters[i].style.filter = e ? 'blur(' + (10 * e).toFixed(2) + 'px)' : '';
     }
-    sheet.style.transform = 'scale(' + (1 + 0.16 * e).toFixed(4) + ')';
-    sheet.style.opacity = Math.max(0, 1 - e * 1.08).toFixed(3);
-    hint.style.opacity = Math.max(0, 1 - e * 3.4).toFixed(3);
+
+    /* the O finds the middle of the screen early, then opens - slowly at
+       first and then all at once, which is what passing through feels like */
+    var o = letters[O_AT];
+    var pull = Math.min(1, e * 1.6);
+    var dx = (W / 2 - geo.cx) * pull, dy = (H / 2 - geo.cy) * pull;
+    var s = 1 + 64 * e * e * e;
+    o.style.transform = 'translate3d(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px,0) scale(' + s.toFixed(3) + ')';
+    o.style.opacity = e > 0.82 ? Math.max(0, 1 - (e - 0.82) / 0.18).toFixed(3) : '';
+
+    /* the hole in the sheet, where the O's hole is */
+    if (e > 0) {
+      /* an oval, like the O's own hole - a circle left burgundy showing
+         above and below it inside the letter */
+      var rx = geo.hole * s, ry = rx * 1.28, hx = geo.cx + dx, hy = geo.cy + dy;
+      var m = 'radial-gradient(ellipse ' + rx.toFixed(1) + 'px ' + ry.toFixed(1) + 'px at ' +
+        hx.toFixed(1) + 'px ' + hy.toFixed(1) + 'px, transparent 97%, #000 100%)';
+      sheet.style.webkitMaskImage = m; sheet.style.maskImage = m;
+    } else {
+      sheet.style.webkitMaskImage = ''; sheet.style.maskImage = '';
+    }
+    sheet.style.opacity = e > 0.9 ? Math.max(0, 1 - (e - 0.9) / 0.1).toFixed(3) : '';
+    hint.style.opacity = hintGone ? '0' : Math.max(0, 1 - e * 3.4).toFixed(3);
+    brand.style.opacity = Math.max(0, 1 - e * 2.4).toFixed(3);
     if (findStage()) {
       stage.style.opacity = (0.35 + 0.65 * e).toFixed(3);
       if (content) content.style.transform = 'scale(' + (0.94 + 0.06 * e).toFixed(4) + ')';
@@ -191,13 +275,13 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     else if (cur >= 1) setTimeout(finish, 60);
   }
   function kick() { if (!raf) raf = requestAnimationFrame(loop); }
-  function push(by) { target = Math.max(0, Math.min(1, target + by)); kick(); }
+  function push(by) { settle(); target = Math.max(0, Math.min(1, target + by)); kick(); }
 
-  /* with less motion asked for, there is no parallax to scrub: any gesture
-     simply fades the door away */
+  /* with less motion asked for, there is no doorway to scrub: any gesture
+     simply fades it away */
   function enter() {
     if (reduce) { sp.style.opacity = '0'; setTimeout(finish, 520); return; }
-    target = 1; kick();
+    settle(); target = 1; kick();
   }
 
   function onWheel(e) { e.preventDefault(); if (reduce) { enter(); return; } push(e.deltaY / 900); }
@@ -226,6 +310,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   addEventListener('keydown', onKey, true);
   addEventListener('touchstart', onTouchStart, { passive: true });
   addEventListener('touchmove', onTouch, { passive: false });
+  addEventListener('resize', onResize);
 
   paint();
 })();
