@@ -42,14 +42,16 @@
      swipe, a tap or a key takes them through it into the home page - the name
      lifts and comes apart while the page rises up behind it, as one movement.
 
-     Only at the front door. Opening /music or /tools, or a refresh that comes
-     back through 404.html, goes straight to what was asked for: a splash in
-     front of a page somebody linked you to is a door in front of a room you
-     are already standing in. It starts hidden, so a page whose script never
-     ran is never stuck behind it. -->
+     Every address, not only the short one. Somebody who was sent straight to
+     /music or /tools, or who lands back on one through 404.html, is arriving
+     at the site just as much as somebody who typed the name - so the door is
+     the same door. It is a sheet over the page, not a page of its own, so
+     nothing loads twice and the back button never sees it, and it starts
+     hidden, so a page whose script never ran is never stuck behind it. -->
 <style>
-/* above the boot layer (9999): on the front door the name is the loading cover */
-#splash{position:fixed;inset:0;z-index:10000;overflow:hidden;
+/* above the boot layer (9999) and above the gate: while the name is up it is
+   the loading cover, and the gate is what it uncovers */
+#splash{position:fixed;inset:0;z-index:10010;overflow:hidden;
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   -webkit-tap-highlight-color:transparent;outline:none;}
 /* the ground: the site's own dark burgundy, with a vignette holding the edges */
@@ -128,9 +130,12 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
      public file - anyone can read a passcode written into it - so a check
      here could only ever look like a lock. The database is what refuses.
 
-     Somebody already signed in has answered this, and goes straight through. -->
+     Somebody already signed in is asked all the same - the order is always
+     name, gate, page - but there is nothing left to ask them: their own card
+     says whose it is, every card is a door rather than a form, and whichever
+     one they press they come in on the account they are already on. -->
 <style>
-#gate{position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;
+#gate{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
   overflow-y:auto;padding:24px 0;
   background:radial-gradient(120% 92% at 50% 40%,#2c1219 0%,#1c0e13 48%,#120a0d 100%);
   transition:opacity .5s ease;}
@@ -138,9 +143,15 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 #gate.gt-leave{opacity:0;pointer-events:none;}
 .gt-inner{width:min(1040px,92vw);text-align:center;margin:auto;}
 .gt-ask{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;
-  font-size:clamp(30px,4.4vw,56px);letter-spacing:-.03em;margin:0 0 clamp(28px,4vh,48px);color:#f7edf0;}
+  font-size:clamp(30px,4.4vw,56px);letter-spacing:-.03em;margin:0;color:#f7edf0;}
+/* it is given focus so a reader is taken to the question, not framed by it */
+.gt-ask:focus{outline:none;}
+/* who the page thinks you are, said before you are asked to choose */
+.gt-sub{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.06em;line-height:1.7;
+  color:#a07f8a;margin:12px 0 clamp(28px,4vh,48px);min-height:20px;}
+.gt-sub b{color:#e3cbd2;font-weight:400;}
 .gt-row{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(18px,3vw,40px);}
-.gt-p{display:flex;flex-direction:column;align-items:center;gap:12px;
+.gt-p{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;
   background:none;border:none;padding:6px;cursor:pointer;font:inherit;color:inherit;
   transition:transform .22s cubic-bezier(.22,.61,.36,1);}
 .gt-p:hover,.gt-p:focus-visible,.gt-p.gt-on{transform:translateY(-6px);outline:none;}
@@ -165,6 +176,17 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 .gt-p:hover .gt-nm,.gt-p:focus-visible .gt-nm,.gt-p.gt-on .gt-nm{color:#fff;}
 .gt-rl{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;
   text-transform:uppercase;color:#8d6a75;}
+/* the little word on the corner of a card: what pressing it is going to do */
+.gt-chip{position:absolute;top:0;right:0;padding:3px 8px;border-radius:999px;
+  border:1px solid #412730;background:rgba(18,10,13,.72);color:#a07f8a;
+  font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  transition:color .2s ease,border-color .2s ease;}
+.gt-chip.gt-free{border-color:#2f4a3c;color:#8fbfa4;}
+/* the card belonging to the account already signed in */
+.gt-p.gt-here .gt-av{border-color:rgba(247,237,240,.55);box-shadow:0 0 0 3px rgba(176,58,86,.24);}
+.gt-p.gt-here .gt-nm{color:#fff;}
+.gt-p.gt-here .gt-chip{border-color:#b03a56;color:#e87a94;}
+.gt-p.gt-here .gt-av i{animation-play-state:running;}
 /* the sign-in only opens once a locked profile is chosen */
 .gt-key{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .35s ease;}
 .gt-key.gt-show{max-height:260px;opacity:1;margin-top:clamp(26px,4vh,44px);}
@@ -190,6 +212,8 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.14em;
   transition:color .2s ease,border-color .2s ease;}
 .gt-skip:hover,.gt-skip:focus-visible{color:#e3cbd2;border-color:#51313c;outline:none;}
+/* display:block above would otherwise outrank the hidden attribute */
+.gt-skip[hidden]{display:none;}
 @media (prefers-reduced-motion:reduce){
   #gate,.gt-p,.gt-key{transition:none !important;}
   .gt-av i{animation:none !important;}
@@ -198,22 +222,27 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gtAsk" hidden>
   <div class="gt-inner">
     <h2 class="gt-ask" id="gtAsk">Who's coming in?</h2>
+    <p class="gt-sub" id="gtSub">Pick a profile to open Emortia.</p>
     <div class="gt-row">
       <button class="gt-p" type="button" data-who="owner" data-name="Sithara">
         <span class="gt-av" style="--c1:#d15873;--c2:#87213c;"><i></i><i></i><i></i><i></i></span>
         <span class="gt-nm">Sithara</span><span class="gt-rl">Owner</span>
+        <span class="gt-chip">Sign in</span>
       </button>
       <button class="gt-p" type="button" data-who="admin" data-name="Admin">
         <span class="gt-av" style="--c1:#8a7cf0;--c2:#4a3cb8;"><i></i><i></i><i></i><i></i></span>
         <span class="gt-nm">Admin</span><span class="gt-rl">Office tools</span>
+        <span class="gt-chip">Sign in</span>
       </button>
       <button class="gt-p" type="button" data-who="staff" data-name="Tooway">
         <span class="gt-av" style="--c1:#3fbdd0;--c2:#12707e;"><i></i><i></i><i></i><i></i></span>
         <span class="gt-nm">Tooway</span><span class="gt-rl">Team tools</span>
+        <span class="gt-chip">Sign in</span>
       </button>
       <button class="gt-p" type="button" data-who="guest" data-name="Guest">
         <span class="gt-av gt-open" style="--c1:#40282f;--c2:#241419;"><i></i><i></i><i></i><i></i></span>
         <span class="gt-nm">Guest</span><span class="gt-rl">Music &amp; poetry</span>
+        <span class="gt-chip gt-free">No sign-in</span>
       </button>
     </div>
     <form class="gt-key" id="gtKey">
@@ -235,20 +264,11 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var sp = document.getElementById('splash');
   if (!sp) return;
 
-  /* the front door only - see the note above the markup. 404.html leaves the
-     route it was asked for in sessionStorage and the app reads it on boot, so
-     at this point it is still there to be seen. */
-  var path = location.pathname.replace(/\/+$/, '') || '/';
-  var home = path === '/' || /\/(index|Emortia)\.html$/i.test(path);
-  var bounced = false;
-  try { bounced = !!sessionStorage.getItem('emortia_route'); } catch (e) {}
-  if (!home || bounced) {
-    var g0 = document.getElementById('gate');
-    if (g0) g0.parentNode.removeChild(g0);
-    sp.parentNode.removeChild(sp);
-    return;
-  }
-
+  /* Every address this file answers to, which is all of them: /music, /poetry,
+     /tools and the rest are drawn by this same page, and a link straight to
+     one of them is still somebody arriving. The route asked for is waiting in
+     sessionStorage or in the address bar and the app picks it up on boot, so
+     what the name uncovers is the page that was asked for. */
   sp.hidden = false;
   var root = document.documentElement;
   root.classList.add('sp-lock');
@@ -264,37 +284,142 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var startedAt = Date.now();
 
   /* ---- the gate the splash hands over to ----
-     Decided at the first gesture rather than on load: access.js is deferred,
-     so on load it may not be there yet to say whether somebody is signed in.
-     When a gate is coming it is put up underneath the splash, so the sheet
-     leaving uncovers the gate rather than the page - name, then the question,
-     then the site, with no flash of the site in between. */
+     Put up at the first gesture rather than on load: access.js is deferred, so
+     on load it may not be there yet to say who is holding the page. It goes up
+     underneath the splash, so the sheet leaving uncovers the gate rather than
+     the page - name, then the question, then the site, with no flash of the
+     site in between.
+
+     It is asked every time, signed in or not. What changes when somebody is
+     already signed in is that there is nothing left to ask: their card is
+     named, every card becomes a door, and pressing any of them carries them in
+     on the account they are already on. */
   var gate = document.getElementById('gate');
-  var gateWanted = false, gateDecided = false;
+  var gateWanted = !!gate, gateDecided = false;
+  var signedInAlready = false;
   function decideGate() {
-    if (gateDecided) return;
+    if (gateDecided || !gate) return;
     gateDecided = true;
-    var A = window.Access;
-    gateWanted = !!gate && !(A && A.signedIn && A.signedIn());
-    if (gateWanted) gate.hidden = false;
-    else if (gate && gate.parentNode) gate.parentNode.removeChild(gate);
+    markSignedIn();
+    gate.hidden = false;
+    /* the session is read from storage, but access.js is deferred and the
+       first gesture can beat it in; asking again a moment later costs nothing
+       and means the question is never put to somebody it has an answer for */
+    setTimeout(markSignedIn, 500);
   }
+
+  function markSignedIn() {}                       /* replaced below when the gate exists */
 
   if (gate) {
     var gKey = document.getElementById('gtKey'), gUser = document.getElementById('gtUser'),
         gPass = document.getElementById('gtPass'), gKl = document.getElementById('gtKl'),
-        gErr = document.getElementById('gtErr'), gGo = document.getElementById('gtGo');
+        gErr = document.getElementById('gtErr'), gGo = document.getElementById('gtGo'),
+        gSub = document.getElementById('gtSub'), gSkip = document.getElementById('gtSkip');
+    var cards = [].slice.call(gate.querySelectorAll('.gt-p'));
     var picked = null;
     var say = function (msg, note) { gErr.textContent = msg || ''; gErr.classList.toggle('gt-note', !!note); };
-    var comeIn = function () {
-      gate.classList.add('gt-leave');
-      root.classList.remove('sp-lock');
-      setTimeout(function () { if (gate.parentNode) gate.parentNode.removeChild(gate); }, 520);
+    var esc = function (s) {
+      return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
+      });
     };
-    [].forEach.call(gate.querySelectorAll('.gt-p'), function (b) {
+
+    /* Which card is theirs is a question about the account, not about the
+       name typed into it: the role the owner gave it is what the site obeys
+       everywhere else, so it is what names the card here too. */
+    markSignedIn = function () {
+      var A = window.Access;
+      var now = !!(A && A.signedIn && A.signedIn());
+      signedInAlready = now;
+      if (!now) {
+        cards.forEach(function (c) {
+          c.classList.remove('gt-here');
+          var chip = c.querySelector('.gt-chip'), guest = c.getAttribute('data-who') === 'guest';
+          if (chip) { chip.textContent = guest ? 'No sign-in' : 'Sign in'; chip.classList.toggle('gt-free', guest); }
+        });
+        gSub.textContent = 'Pick a profile to open Emortia.';
+        if (gSkip) gSkip.hidden = false;
+        return;
+      }
+      var role = A.isOwner() ? 'owner' : ((A.myRole && A.myRole()) || '');
+      var mine = null;
+      cards.forEach(function (c) {
+        var chip = c.querySelector('.gt-chip'), ours = c.getAttribute('data-who') === role;
+        if (ours) mine = c;
+        c.classList.toggle('gt-here', ours);
+        if (chip) { chip.textContent = ours ? 'Signed in' : 'Enter'; chip.classList.remove('gt-free'); }
+      });
+      gSub.innerHTML = 'Signed in as <b>' + esc(A.currentUser() || '') + '</b>' +
+        (mine ? ' – ' + esc(mine.getAttribute('data-name')) + '. Tap a card to carry on.'
+              : ' – tap a card to carry on.');
+      gKey.classList.remove('gt-show');
+      if (gSkip) gSkip.hidden = true;
+    };
+
+    /* The page behind the gate rises as the gate goes: opacity on the wrapper
+       and scale on the content only. A transform on the wrapper would make the
+       header, the player and the ground - all of them fixed - measure
+       themselves against the page instead of the screen while it ran. */
+    function revealPage(delay) {
+      var st = findStage();
+      if (!st) return;
+      var E = 'cubic-bezier(.2,.8,.25,1)';
+      var clear = function () {
+        st.style.opacity = '';
+        if (content) { content.style.transform = ''; content.style.transformOrigin = ''; content.style.willChange = ''; }
+      };
+      if (!st.animate) { clear(); return; }
+      st.style.opacity = '0';
+      if (content) content.style.transform = 'scale(.94)';
+      var a = st.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: delay, easing: E, fill: 'both' });
+      var b = content && content.animate([{ transform: 'scale(.94)' }, { transform: 'none' }],
+        { duration: 700, delay: delay, easing: E, fill: 'both' });
+      var off = function () { clear(); try { a.cancel(); if (b) b.cancel(); } catch (e) {} };
+      if (a.finished) a.finished.then(off, function () {}); else setTimeout(off, delay + 760);
+    }
+
+    /* Leaving: the card that was pressed opens into the page. The others drop
+       away first, the chosen one grows past the edges of the screen, and the
+       page is already coming up behind it - one move, not two. */
+    var comeIn = function (card) {
+      root.classList.remove('sp-lock');
+      var away = function () { if (gate.parentNode) gate.parentNode.removeChild(gate); };
+      if (reduce || !card || !card.animate) {
+        gate.classList.add('gt-leave');
+        revealPage(0);
+        setTimeout(away, 520);
+        return;
+      }
+      var E = 'cubic-bezier(.2,.8,.25,1)';
+      var r = card.getBoundingClientRect();
+      var k = Math.max(innerWidth / r.width, innerHeight / r.height) * 2.2;
+      var dx = innerWidth / 2 - (r.left + r.width / 2);
+      var dy = innerHeight / 2 - (r.top + r.height / 2);
+      var n = 0;
+      cards.forEach(function (c) {
+        if (c === card) return;
+        c.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(16px) scale(.92)', opacity: 0 }],
+          { duration: 380, delay: (n++) * 45, easing: E, fill: 'both' });
+      });
+      [].forEach.call(gate.querySelectorAll('.gt-ask,.gt-sub,.gt-key,.gt-skip'), function (el) {
+        el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: E, fill: 'both' });
+      });
+      card.style.zIndex = '3';
+      card.animate([
+        { transform: 'none', opacity: 1 },
+        { transform: 'translate(' + dx * .25 + 'px,' + dy * .25 + 'px) scale(1.7)', opacity: .92, offset: .42 },
+        { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k.toFixed(2) + ')', opacity: 0 }
+      ], { duration: 900, delay: 180, easing: E, fill: 'both' });
+      gate.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 460, delay: 440, easing: E, fill: 'both' });
+      revealPage(380);
+      setTimeout(away, 1120);
+    };
+
+    cards.forEach(function (b) {
       b.addEventListener('click', function () {
-        [].forEach.call(gate.querySelectorAll('.gt-p'), function (x) { x.classList.toggle('gt-on', x === b); });
-        if (b.getAttribute('data-who') === 'guest') { comeIn(); return; }
+        cards.forEach(function (x) { x.classList.toggle('gt-on', x === b); });
+        /* already in, or the door that asks nothing */
+        if (signedInAlready || b.getAttribute('data-who') === 'guest') { comeIn(b); return; }
         picked = b;
         say('');
         gKl.textContent = 'Sign in as ' + b.getAttribute('data-name');
@@ -320,14 +445,18 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
           var names = { owner: 'the owner', admin: 'an office admin', staff: 'the Tooway team' };
           say('Signed in as ' + r.user + ' – an account for ' + (names[role] || 'the team') +
               '. What it opens comes with the account.', true);
-          setTimeout(comeIn, 1900);
-        } else comeIn();
+          setTimeout(function () { comeIn(picked); }, 1900);
+        } else comeIn(picked);
       }, function () {
         gGo.disabled = false;
         say('That did not work – check the connection and try again.');
       });
     });
-    document.getElementById('gtSkip').addEventListener('click', comeIn);
+    gSkip.addEventListener('click', function () {
+      var g = cards.filter(function (c) { return c.getAttribute('data-who') === 'guest'; })[0];
+      cards.forEach(function (x) { x.classList.toggle('gt-on', x === g); });
+      comeIn(g);
+    });
   }
 
   /* The entrance is a CSS animation with fill-mode both, and a finished
