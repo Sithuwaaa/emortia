@@ -395,6 +395,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     gateDecided = true;
     markSignedIn();
     gate.hidden = false;
+    seatBrand();                                 /* placed as the gate goes up, not on the first frame */
     /* the session is read from storage, but access.js is deferred and the
        first gesture can beat it in; asking again a moment later costs nothing
        and means the question is never put to somebody it has an answer for */
@@ -453,7 +454,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
        and scale on the content only. A transform on the wrapper would make the
        header, the player and the ground - all of them fixed - measure
        themselves against the page instead of the screen while it ran. */
-    function revealPage(delay) {
+    function revealPage(delay, dur) {
       var st = findStage();
       if (!st) return;
       var E = 'cubic-bezier(.2,.8,.25,1)';
@@ -464,16 +465,71 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       if (!st.animate) { clear(); return; }
       st.style.opacity = '0';
       if (content) content.style.transform = 'scale(.94)';
-      var a = st.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 510, delay: delay, easing: E, fill: 'both' });
+      var a = st.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur, delay: delay, easing: E, fill: 'both' });
       var b = content && content.animate([{ transform: 'scale(.94)' }, { transform: 'none' }],
-        { duration: 510, delay: delay, easing: E, fill: 'both' });
-      var off = function () { clear(); try { a.cancel(); if (b) b.cancel(); } catch (e) {} };
-      if (a.finished) a.finished.then(off, function () {}); else setTimeout(off, delay + 570);
+        { duration: dur, delay: delay, easing: E, fill: 'both' });
+      /* Cleared when it ends, and cleared on a timer whatever happens. An
+         animation in a tab nobody is looking at is paused, so its promise does
+         not settle - without the timer, somebody who taps a profile and
+         switches away comes back to a page still held at 94%. */
+      var offed = false;
+      var off = function () {
+        if (offed) return; offed = true;
+        clear(); try { a.cancel(); if (b) b.cancel(); } catch (e) {}
+      };
+      if (a.finished) a.finished.then(off, function () {});
+      setTimeout(off, delay + dur + 120);
     }
 
-    /* Leaving: the card that was pressed opens into the page. The others drop
-       away first, the chosen one grows past the edges of the screen, and the
-       page is already coming up behind it - one move, not two. */
+    /* ---- the face goes up to the bar ----
+       The answer to the first move. The name gave up its O to the header's
+       logo; the gate gives up the face that was pressed to the place the
+       header keeps who you are - the account chip, or the menu button when
+       there is no chip because nobody signed in. It travels as a copy lifted
+       out of the card on its own layer, so the gate can fade underneath it
+       without taking it along. */
+    function flyAvatar(card, dur) {
+      var av = card && card.querySelector('.gt-av');
+      if (!av || !av.animate) return;
+      var a = av.getBoundingClientRect();
+      if (!a.width) return;
+      var hdr = document.querySelector('header');
+      var to = document.querySelector('header .acct') ||
+               document.querySelector('header .nav-toggle');
+      var t = to && to.getBoundingClientRect();
+      if (!t || !t.width) {
+        var h = hdr ? hdr.getBoundingClientRect() : { right: innerWidth - 24, top: 0, height: 62 };
+        t = { left: h.right - 60, top: h.top + h.height / 2 - 14, width: 36, height: 28 };
+      }
+      var k = Math.max(0.12, Math.min(1, t.height / a.height));
+      var dx = (t.left + t.width / 2) - (a.left + a.width / 2);
+      var dy = (t.top + t.height / 2) - (a.top + a.height / 2);
+      var ghost = av.cloneNode(true);
+      ghost.style.position = 'fixed';
+      ghost.style.left = a.left + 'px';
+      ghost.style.top = a.top + 'px';
+      ghost.style.width = a.width + 'px';
+      ghost.style.height = a.height + 'px';
+      ghost.style.margin = '0';
+      ghost.style.zIndex = '10006';
+      ghost.style.pointerEvents = 'none';
+      ghost.style.willChange = 'transform,opacity';
+      document.body.appendChild(ghost);
+      av.style.visibility = 'hidden';
+      ghost.animate([
+        { transform: 'none', opacity: 1 },
+        { transform: 'translate(' + (dx * .42).toFixed(1) + 'px,' + (dy * .5).toFixed(1) +
+          'px) scale(' + (1 + (k - 1) * 0.55).toFixed(3) + ')', opacity: 1, offset: .5 },
+        { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) +
+          'px) scale(' + k.toFixed(3) + ')', opacity: 0 }
+      ], { duration: dur, easing: 'cubic-bezier(.5,0,.2,1)', fill: 'both' });
+      setTimeout(function () { if (ghost.parentNode) ghost.parentNode.removeChild(ghost); }, dur + 60);
+    }
+
+    /* Leaving: the cards drop away, the face that was pressed goes up to the
+       bar, and the page comes up behind - one move, not three. It runs for
+       exactly as long as the walk from the name to the question did, because
+       they are the two halves of one door. */
     var comeIn = function (card) {
       root.classList.remove('sp-lock');
       /* The logo does not travel a second time. It is already sitting where
@@ -485,39 +541,39 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
         if (brand && brand.parentNode) brand.parentNode.removeChild(brand);
         holdNavBreath(false);                    /* the header's mark breathes again */
       };
+      /* the same journey time as the name's walk to the question - one
+         number for the whole front door */
+      var T = TRIP;
       if (reduce || !card || !card.animate) {
         gate.classList.add('gt-leave');
-        revealPage(0);
-        setTimeout(away, 370);
+        revealPage(0, Math.round(T * .62));
+        setTimeout(away, Math.round(T * .46));
         return;
       }
       var E = 'cubic-bezier(.2,.8,.25,1)';
       if (brand && brand.animate) {
         brand.animate([{ opacity: 1, offset: .72 }, { opacity: 0 }],
-          { duration: 800, easing: 'linear', fill: 'both' });
+          { duration: T, easing: 'linear', fill: 'both' });
       }
-      var r = card.getBoundingClientRect();
-      var k = Math.max(innerWidth / r.width, innerHeight / r.height) * 2.2;
-      var dx = innerWidth / 2 - (r.left + r.width / 2);
-      var dy = innerHeight / 2 - (r.top + r.height / 2);
+      flyAvatar(card, T);
+      /* every card goes now, the chosen one included - what carries on is the
+         face lifted off it, not the card */
       var n = 0;
       cards.forEach(function (c) {
-        if (c === card) return;
-        c.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(16px) scale(.92)', opacity: 0 }],
-          { duration: 270, delay: (n++) * 34, easing: E, fill: 'both' });
+        var mine = c === card;
+        c.animate([{ transform: 'none', opacity: 1 },
+                   { transform: mine ? 'scale(.96)' : 'translateY(16px) scale(.92)', opacity: 0 }],
+          { duration: Math.round(T * (mine ? .3 : .34)),
+            delay: mine ? 0 : Math.round((n++) * T * .05), easing: E, fill: 'both' });
       });
       [].forEach.call(gate.querySelectorAll('.gt-ask,.gt-sub,.gt-key,.gt-skip'), function (el) {
-        el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 215, easing: E, fill: 'both' });
+        el.animate([{ opacity: 1 }, { opacity: 0 }],
+          { duration: Math.round(T * .27), easing: E, fill: 'both' });
       });
-      card.style.zIndex = '3';
-      card.animate([
-        { transform: 'none', opacity: 1 },
-        { transform: 'translate(' + dx * .25 + 'px,' + dy * .25 + 'px) scale(1.7)', opacity: .92, offset: .42 },
-        { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k.toFixed(2) + ')', opacity: 0 }
-      ], { duration: 650, delay: 130, easing: E, fill: 'both' });
-      gate.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 335, delay: 320, easing: E, fill: 'both' });
-      revealPage(280);
-      setTimeout(away, 800);
+      gate.animate([{ opacity: 1 }, { opacity: 0 }],
+        { duration: Math.round(T * .42), delay: Math.round(T * .34), easing: E, fill: 'both' });
+      revealPage(Math.round(T * .3), Math.round(T * .62));
+      setTimeout(away, T);
     };
 
     cards.forEach(function (b) {
