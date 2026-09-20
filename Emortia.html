@@ -77,18 +77,21 @@
 .sp-word span:nth-child(7){animation-delay:.66s}
 @keyframes spIn{from{opacity:0;transform:scale(.985);filter:blur(6px)}
   to{opacity:1;transform:none;filter:blur(0)}}
-/* the O is the mark itself: the disc from the header, bars playing. Sized in
-   em, so it is always the size of the letters round it. */
-.sp-word .sp-o{display:flex;align-items:center;justify-content:center;gap:.032em;
+/* The O is the mark itself: the disc from the header, bars playing. Sized in
+   em, so it is always the size of the letters round it - and drawn to the
+   header logo's own proportions (34px disc, 2.5px gap, 3px bars of 8, 14, 10
+   and 15), because it has to end the journey as that logo without the bars
+   changing thickness on the way. */
+.sp-word .sp-o{display:flex;align-items:center;justify-content:center;gap:.0588em;
   width:.8em;height:.8em;border-radius:50%;
   background:linear-gradient(150deg,#d15873,#87213c);
   animation:spFloat 4.5s ease-in-out 1.6s infinite;}
-.sp-word .sp-o i{display:block;width:.035em;border-radius:.02em;background:#170d10;
+.sp-word .sp-o i{display:block;width:.0706em;border-radius:.047em;background:#170d10;
   transform-origin:center;animation:spEq .85s ease-in-out infinite;}
-.sp-word .sp-o i:nth-child(1){height:.19em;animation-delay:0s}
-.sp-word .sp-o i:nth-child(2){height:.33em;animation-delay:.18s}
-.sp-word .sp-o i:nth-child(3){height:.24em;animation-delay:.36s}
-.sp-word .sp-o i:nth-child(4){height:.36em;animation-delay:.1s}
+.sp-word .sp-o i:nth-child(1){height:.1882em;animation-delay:0s}
+.sp-word .sp-o i:nth-child(2){height:.3294em;animation-delay:.18s}
+.sp-word .sp-o i:nth-child(3){height:.2353em;animation-delay:.36s}
+.sp-word .sp-o i:nth-child(4){height:.3529em;animation-delay:.1s}
 @keyframes spEq{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
 @keyframes spFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-.045em)}}
 /* the hint, held back until the name has settled */
@@ -135,11 +138,33 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
      says whose it is, every card is a door rather than a form, and whichever
      one they press they come in on the account they are already on. -->
 <style>
+/* the same ground as the splash sheet, to the percentage, so the sheet can
+   fade off it without a seam showing */
 #gate{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
-  overflow-y:auto;padding:24px 0;
-  background:radial-gradient(120% 92% at 50% 40%,#2c1219 0%,#1c0e13 48%,#120a0d 100%);
+  overflow-y:auto;padding:84px 0 24px;      /* the top is kept clear for the lockup */
+  background:radial-gradient(120% 92% at 50% 42%,#2c1219 0%,#1c0e13 48%,#120a0d 100%);
   transition:opacity .5s ease;}
 #gate[hidden]{display:none;}
+/* ---- the lockup the O flies to ----
+   Not part of the gate, and not a decoration: it is put exactly where the
+   header's own logo and name sit, measured off them, so that when the gate
+   goes the logo does not move at all - the site's header is already drawing
+   the same mark in the same place. It sits above the gate and below the
+   splash, so the sheet covers it until the name starts leaving. */
+#gtBrand{position:fixed;z-index:10005;display:flex;align-items:center;pointer-events:none;}
+#gtBrand[hidden]{display:none;}
+#gtBrand .gt-mark{flex:none;display:flex;align-items:center;justify-content:center;
+  width:1em;height:1em;border-radius:50%;gap:.0735em;
+  background:linear-gradient(150deg,#d15873,#87213c);box-shadow:0 0 20px rgba(209,88,115,.4);
+  opacity:0;}
+#gtBrand.gt-seated .gt-mark{opacity:1;}
+#gtBrand .gt-mark i{display:block;width:.0882em;border-radius:.0588em;background:#170d10;
+  transform-origin:center;animation:gtEq .85s ease-in-out infinite;}
+#gtBrand .gt-mark i:nth-child(1){height:.2353em;animation-delay:0s}
+#gtBrand .gt-mark i:nth-child(2){height:.4118em;animation-delay:.18s}
+#gtBrand .gt-mark i:nth-child(3){height:.2941em;animation-delay:.36s}
+#gtBrand .gt-mark i:nth-child(4){height:.4412em;animation-delay:.1s}
+#gtBrand .gt-bn{color:#f7edf0;white-space:nowrap;opacity:0;}
 #gate.gt-leave{opacity:0;pointer-events:none;}
 .gt-inner{width:min(1040px,92vw);text-align:center;margin:auto;}
 .gt-ask{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;
@@ -259,6 +284,10 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     <button class="gt-skip" id="gtSkip" type="button">Just looking – continue as Guest</button>
   </div>
 </div>
+<div id="gtBrand" aria-hidden="true" hidden>
+  <b class="gt-mark"><i></i><i></i><i></i><i></i></b>
+  <span class="gt-bn">Emortia</span>
+</div>
 <script>
 (function () {
   var sp = document.getElementById('splash');
@@ -282,6 +311,70 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var letters = [].slice.call(word.children);
   var hint = document.getElementById('spHint');
   var startedAt = Date.now();
+
+  /* ---- the O, and the seat it is heading for ----
+     The O is not a letter dressed as the logo, it is the logo: it leaves the
+     word and goes to the exact place the header keeps its mark, measured off
+     the header itself so the two are never a pixel apart. The flight is not a
+     canned animation played afterwards - it is on the same progress value as
+     everything else, so a slow scroll carries the logo across slowly and a
+     scroll back brings it home again. */
+  var oAt = letters.indexOf(word.querySelector('.sp-o').parentNode);
+  var disc = word.querySelector('.sp-o');
+  var brand = document.getElementById('gtBrand');
+  var brandName = brand && brand.querySelector('.gt-bn');
+  var gateInner = document.querySelector('#gate .gt-inner');
+  var seat = null;
+  if (gateInner) gateInner.style.opacity = '0';    /* it comes up with the name going, not before */
+
+  /* The header's mark breathes, three pixels, slowly, for ever. While the
+     copy is sitting over it that breath is held at rest - otherwise the two
+     are the same mark a couple of pixels out of step at the moment one is
+     handed to the other - and let go again on the way out. */
+  var navBreath = null;
+  function holdNavBreath(on) {
+    try {
+      if (!navBreath) {
+        var l = document.querySelector('[data-navlogo]');
+        navBreath = (l && l.getAnimations) ? l.getAnimations() : [];
+      }
+      navBreath.forEach(function (a) {
+        if (on) { a.currentTime = 0; a.pause(); } else a.play();
+      });
+    } catch (e) {}
+  }
+
+  /* Measured off the layout, not off the painted logo: a rect read mid-breath
+     would seat the whole lockup three pixels high. The lockup around the mark
+     does not move, and the mark is centred in it. */
+  function seatBrand() {
+    if (!brand || seat) return seat;
+    var lock = document.querySelector('[data-navlock]'),
+        logo = document.querySelector('[data-navlogo]');
+    if (!lock || !logo || !logo.offsetWidth) return null;
+    holdNavBreath(true);
+    var L = lock.getBoundingClientRect();
+    var W = logo.offsetWidth, cy = L.top + L.height / 2, cx = L.left + W / 2;
+    var name = logo.nextElementSibling;
+    brand.hidden = false;
+    brand.style.left = L.left + 'px';
+    brand.style.top = cy + 'px';
+    brand.style.transform = 'translateY(-50%)';
+    brand.style.fontSize = W + 'px';
+    brand.style.gap = (parseFloat(getComputedStyle(lock).columnGap) || 11) + 'px';
+    var bn = brand.querySelector('.gt-bn');
+    if (name) {
+      var cs = getComputedStyle(name);
+      bn.style.fontFamily = cs.fontFamily;
+      bn.style.fontWeight = cs.fontWeight;
+      bn.style.fontSize = cs.fontSize;
+      bn.style.letterSpacing = cs.letterSpacing;
+      bn.style.lineHeight = cs.lineHeight;
+    }
+    var a = disc.getBoundingClientRect();
+    seat = { dx: cx - (a.left + a.width / 2), dy: cy - (a.top + a.height / 2), k: W / a.width };
+    return seat;
+  }
 
   /* ---- the gate the splash hands over to ----
      Put up at the first gesture rather than on load: access.js is deferred, so
@@ -383,7 +476,15 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
        page is already coming up behind it - one move, not two. */
     var comeIn = function (card) {
       root.classList.remove('sp-lock');
-      var away = function () { if (gate.parentNode) gate.parentNode.removeChild(gate); };
+      /* The logo does not travel a second time. It is already sitting where
+         the header keeps it, and the header - drawing the same mark in the
+         same place - is coming up underneath. All this has to do is let go of
+         it once the page behind is properly there. */
+      var away = function () {
+        if (gate.parentNode) gate.parentNode.removeChild(gate);
+        if (brand && brand.parentNode) brand.parentNode.removeChild(brand);
+        holdNavBreath(false);                    /* the header's mark breathes again */
+      };
       if (reduce || !card || !card.animate) {
         gate.classList.add('gt-leave');
         revealPage(0);
@@ -391,6 +492,10 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
         return;
       }
       var E = 'cubic-bezier(.2,.8,.25,1)';
+      if (brand && brand.animate) {
+        brand.animate([{ opacity: 1, offset: .72 }, { opacity: 0 }],
+          { duration: 1100, easing: 'linear', fill: 'both' });
+      }
       var r = card.getBoundingClientRect();
       var k = Math.max(innerWidth / r.width, innerHeight / r.height) * 2.2;
       var dx = innerWidth / 2 - (r.left + r.width / 2);
@@ -463,16 +568,18 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
      animation still outranks the inline styles written below - left on, the
      letters could never leave on their own and the hint would never fade.
      Taken off at the first gesture, by which time it has almost always
-     finished. The disc's own bars and float are on the disc, not the letter,
-     so they keep playing all the way out. */
+     finished. The disc's slow float goes with them, because the flight is
+     written as a transform and a float still running would win; its bars are
+     on the bars, not on the disc, so they keep playing all the way across. */
   var settled = false, hintGone = false;
   function settle() {
     if (settled) return;
     settled = true;
     hintGone = Date.now() - startedAt < 1400;   /* never flash a hint that had not appeared yet */
     letters.forEach(function (l) { l.style.animation = 'none'; });
+    disc.style.animation = 'none';
     hint.style.animation = 'none';
-    decideGate();
+    decideGate();                                /* puts the gate up, and with it the seat */
   }
 
   /* The page underneath arrives as the sheet leaves: the whole of it fades
@@ -498,6 +605,9 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     removeEventListener('touchmove', onTouch, { passive: false });
     removeEventListener('touchstart', onTouchStart);
     removeEventListener('keydown', onKey, true);
+    /* The O has arrived. The seat takes over in the same frame the flying
+       copy is taken away, which is why nothing is seen to change hands. */
+    if (brand && seat) brand.classList.add('gt-seated');
     if (sp.parentNode) sp.parentNode.removeChild(sp);
     /* the gate keeps the page shut until somebody has chosen a way in */
     if (gateWanted) {
@@ -515,23 +625,40 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   /* Nothing here moves by CSS transition: a transition restarts on every new
      event and the move would stutter under a trackpad. Everything on screen is
      a function of one progress value, eased a frame at a time. */
+  var clamp = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
+  var ease = function (v) { return v * v * (3 - 2 * v); };
+
   function paint() {
     if (!settled) return;                                   /* nothing has been asked of it yet */
-    var p = cur, e = p * p * (3 - 2 * p);                  /* smoothstep: no hard start */
-    word.style.transform = 'translate3d(0,' + (-24 * e).toFixed(2) + 'vh,0)';
-    word.style.opacity = Math.max(0, 1 - e * 1.45).toFixed(3);
-    word.style.filter = 'blur(' + (9 * e).toFixed(2) + 'px)';
-    /* the letters do not leave together - the outer ones go further and
-       sooner, which is the parallax: one word, several depths */
+    var e = ease(cur);                                      /* smoothstep: no hard start */
+    if (!seat) seatBrand();                                 /* the header may still have been booting */
+    /* The name empties from the outside in - the A and the E go first and go
+       furthest - and the O is left standing, because it is not leaving. */
     for (var i = 0; i < letters.length; i++) {
-      var d = Math.abs(i - 3);
-      letters[i].style.transform = 'translate3d(' + ((i - 3) * 9 * e).toFixed(2) +
-        'vw,' + (-d * 5.2 * e).toFixed(2) + 'vh,0)';
-      letters[i].style.opacity = Math.max(0, 1 - e * (1.1 + d * 0.16)).toFixed(3);
+      if (i === oAt) continue;
+      var d = Math.abs(i - oAt);
+      var le = clamp(e * (1 + d * 0.26));
+      letters[i].style.transform = 'translate3d(' + ((i - oAt) * 7 * le).toFixed(2) +
+        'vw,' + (-d * 3.4 * le).toFixed(2) + 'vh,0)';
+      letters[i].style.opacity = (1 - clamp(le * 1.5)).toFixed(3);
+      letters[i].style.filter = 'blur(' + (7 * le).toFixed(2) + 'px)';
     }
-    sheet.style.transform = 'scale(' + (1 + 0.16 * e).toFixed(4) + ')';
-    sheet.style.opacity = Math.max(0, 1 - e * 1.08).toFixed(3);
-    hint.style.opacity = hintGone ? '0' : Math.max(0, 1 - e * 3.4).toFixed(3);
+    /* the O goes to its seat in the header - a shade behind the letters, so it
+       is seen to be left behind before it moves */
+    if (seat) {
+      var oe = ease(clamp((e - 0.1) / 0.9));
+      disc.style.transform = 'translate3d(' + (seat.dx * oe).toFixed(2) + 'px,' +
+        (seat.dy * oe).toFixed(2) + 'px,0) scale(' + (1 + (seat.k - 1) * oe).toFixed(4) + ')';
+    }
+    /* the ground under the name is the ground under the gate, to the
+       percentage, so this is a fade between two identical things */
+    sheet.style.opacity = (1 - ease(clamp((e - 0.42) / 0.58))).toFixed(3);
+    hint.style.opacity = hintGone ? '0' : (1 - clamp(e * 3.4)).toFixed(3);
+    /* the question comes up as the name goes, and the name beside the logo
+       with it */
+    var ge = ease(clamp((e - 0.46) / 0.54));
+    if (gateInner) gateInner.style.opacity = ge.toFixed(3);
+    if (brandName) brandName.style.opacity = ge.toFixed(3);
     /* with a gate coming, what rises behind the name is the gate, not the page */
     if (!gateWanted && findStage()) {
       stage.style.opacity = (0.35 + 0.65 * e).toFixed(3);
@@ -553,7 +680,15 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   /* with less motion asked for, there is nothing to scrub: any gesture
      simply fades it away */
   function enter() {
-    if (reduce) { decideGate(); sp.style.opacity = '0'; setTimeout(finish, 520); return; }
+    if (reduce) {
+      decideGate();
+      seatBrand();
+      if (gateInner) gateInner.style.opacity = '1';
+      if (brandName) brandName.style.opacity = '1';
+      sp.style.opacity = '0';
+      setTimeout(finish, 520);
+      return;
+    }
     settle(); target = 1; kick();
   }
 
@@ -1698,8 +1833,8 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
   <header style="position:sticky;top:0;z-index:40;backdrop-filter:blur(14px);background:var(--bar);border-bottom:1px solid var(--line);">
     <div class="hdr-inner" style="width:100%;margin:0;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
-      <div onClick="{{ nav.home }}" style="display:flex;align-items:center;gap:11px;cursor:pointer;">
-        <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(150deg,var(--accentB),var(--accentD));display:flex;align-items:center;justify-content:center;gap:2.5px;box-shadow:0 0 20px var(--glow);animation:logoFloat 4.5s ease-in-out infinite;">
+      <div data-navlock="1" onClick="{{ nav.home }}" style="display:flex;align-items:center;gap:11px;cursor:pointer;">
+        <div data-navlogo="1" style="width:34px;height:34px;border-radius:50%;background:linear-gradient(150deg,var(--accentB),var(--accentD));display:flex;align-items:center;justify-content:center;gap:2.5px;box-shadow:0 0 20px var(--glow);animation:logoFloat 4.5s ease-in-out infinite;">
           <span style="width:3px;height:8px;border-radius:2px;background:var(--bg);transform-origin:center;animation:eq 0.85s ease-in-out infinite;animation-delay:0s;animation-play-state:{{ spinState }};"></span>
           <span style="width:3px;height:14px;border-radius:2px;background:var(--bg);transform-origin:center;animation:eq 0.85s ease-in-out infinite;animation-delay:0.18s;animation-play-state:{{ spinState }};"></span>
           <span style="width:3px;height:10px;border-radius:2px;background:var(--bg);transform-origin:center;animation:eq 0.85s ease-in-out infinite;animation-delay:0.36s;animation-play-state:{{ spinState }};"></span>
