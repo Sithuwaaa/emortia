@@ -110,7 +110,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 @media (prefers-reduced-motion:reduce){
   .sp-word .sp-o,.sp-word .sp-o i,
   .sp-word span,.sp-hint,.sp-hint i{animation:none !important;}
-  #splash{transition:opacity .5s ease;}
+  #splash{transition:opacity .75s ease;}
 }
 </style>
 <div id="splash" role="button" tabindex="0" aria-label="Emortia – enter the site" hidden>
@@ -143,7 +143,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 #gate{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
   overflow-y:auto;padding:84px 0 24px;      /* the top is kept clear for the lockup */
   background:radial-gradient(120% 92% at 50% 42%,#2c1219 0%,#1c0e13 48%,#120a0d 100%);
-  transition:opacity .5s ease;}
+  transition:opacity .75s ease;}
 #gate[hidden]{display:none;}
 /* ---- the lockup the O flies to ----
    Not part of the gate, and not a decoration: it is put exactly where the
@@ -464,11 +464,11 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       if (!st.animate) { clear(); return; }
       st.style.opacity = '0';
       if (content) content.style.transform = 'scale(.94)';
-      var a = st.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: delay, easing: E, fill: 'both' });
+      var a = st.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1080, delay: delay, easing: E, fill: 'both' });
       var b = content && content.animate([{ transform: 'scale(.94)' }, { transform: 'none' }],
-        { duration: 700, delay: delay, easing: E, fill: 'both' });
+        { duration: 1080, delay: delay, easing: E, fill: 'both' });
       var off = function () { clear(); try { a.cancel(); if (b) b.cancel(); } catch (e) {} };
-      if (a.finished) a.finished.then(off, function () {}); else setTimeout(off, delay + 760);
+      if (a.finished) a.finished.then(off, function () {}); else setTimeout(off, delay + 1140);
     }
 
     /* Leaving: the card that was pressed opens into the page. The others drop
@@ -488,13 +488,13 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       if (reduce || !card || !card.animate) {
         gate.classList.add('gt-leave');
         revealPage(0);
-        setTimeout(away, 520);
+        setTimeout(away, 800);
         return;
       }
       var E = 'cubic-bezier(.2,.8,.25,1)';
       if (brand && brand.animate) {
         brand.animate([{ opacity: 1, offset: .72 }, { opacity: 0 }],
-          { duration: 1100, easing: 'linear', fill: 'both' });
+          { duration: 1760, easing: 'linear', fill: 'both' });
       }
       var r = card.getBoundingClientRect();
       var k = Math.max(innerWidth / r.width, innerHeight / r.height) * 2.2;
@@ -504,20 +504,20 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       cards.forEach(function (c) {
         if (c === card) return;
         c.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(16px) scale(.92)', opacity: 0 }],
-          { duration: 380, delay: (n++) * 45, easing: E, fill: 'both' });
+          { duration: 560, delay: (n++) * 70, easing: E, fill: 'both' });
       });
       [].forEach.call(gate.querySelectorAll('.gt-ask,.gt-sub,.gt-key,.gt-skip'), function (el) {
-        el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: E, fill: 'both' });
+        el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 460, easing: E, fill: 'both' });
       });
       card.style.zIndex = '3';
       card.animate([
         { transform: 'none', opacity: 1 },
         { transform: 'translate(' + dx * .25 + 'px,' + dy * .25 + 'px) scale(1.7)', opacity: .92, offset: .42 },
         { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k.toFixed(2) + ')', opacity: 0 }
-      ], { duration: 900, delay: 180, easing: E, fill: 'both' });
-      gate.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 460, delay: 440, easing: E, fill: 'both' });
-      revealPage(380);
-      setTimeout(away, 1120);
+      ], { duration: 1400, delay: 280, easing: E, fill: 'both' });
+      gate.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 720, delay: 700, easing: E, fill: 'both' });
+      revealPage(620);
+      setTimeout(away, 1760);
     };
 
     cards.forEach(function (b) {
@@ -646,17 +646,19 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     /* the O goes to its seat in the header - a shade behind the letters, so it
        is seen to be left behind before it moves */
     if (seat) {
-      var oe = ease(clamp((e - 0.1) / 0.9));
+      /* e is already eased; easing the window again on top of it would hold
+         the logo still for half a second after the tap and then hurry it */
+      var oe = clamp((e - 0.08) / 0.92);
       disc.style.transform = 'translate3d(' + (seat.dx * oe).toFixed(2) + 'px,' +
         (seat.dy * oe).toFixed(2) + 'px,0) scale(' + (1 + (seat.k - 1) * oe).toFixed(4) + ')';
     }
     /* the ground under the name is the ground under the gate, to the
        percentage, so this is a fade between two identical things */
-    sheet.style.opacity = (1 - ease(clamp((e - 0.42) / 0.58))).toFixed(3);
+    sheet.style.opacity = (1 - clamp((e - 0.4) / 0.6)).toFixed(3);
     hint.style.opacity = hintGone ? '0' : (1 - clamp(e * 3.4)).toFixed(3);
     /* the question comes up as the name goes, and the name beside the logo
        with it */
-    var ge = ease(clamp((e - 0.46) / 0.54));
+    var ge = clamp((e - 0.44) / 0.56);
     if (gateInner) gateInner.style.opacity = ge.toFixed(3);
     if (brandName) brandName.style.opacity = ge.toFixed(3);
     /* with a gate coming, what rises behind the name is the gate, not the page */
@@ -666,16 +668,59 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     }
   }
 
-  function loop() {
+  /* Two ways the shown value can reach the target, and the difference is the
+     whole feel of the thing.
+
+     While a hand is on it - a wheel, a dragging finger - it chases the target,
+     covering a share of what is left each frame. Measured against the clock
+     and not against frames, because written per frame it ran at whatever speed
+     the screen happened to be: the same journey took two and a half seconds on
+     a sixty hertz screen and a shade over one on a 144, which is why it felt
+     hurried on a fast monitor.
+
+     Once it has been committed to - a tap, a key, a scroll that carried all
+     the way - chasing is the wrong law: a share of what is left covers nine
+     tenths of the journey in the first third of the time and then crawls, so
+     the logo appears to arrive and the rest is dead waiting. From there it
+     runs on the clock instead, a fixed journey at an even pace, which paint()
+     eases in and out of. */
+  var RATE = 0.042, TRIP = 2200, last = 0, tween = null;
+  function commit() { if (!tween) { tween = { from: cur, t0: 0, dur: Math.max(900, TRIP * (1 - cur)) }; } }
+  function loop(ts) {
     raf = 0;
-    cur += (target - cur) * 0.09;                          /* the easing, one frame at a time */
-    if (Math.abs(target - cur) < 0.0015) cur = target;
+    var now = ts || (window.performance ? performance.now() : Date.now());
+    var dt = last ? Math.min(64, now - last) : 16.667;      /* a tab left alone must not jump */
+    last = now;
+    var running;
+    if (tween) {
+      if (!tween.t0) tween.t0 = now;
+      var p = Math.min(1, (now - tween.t0) / tween.dur);
+      cur = tween.from + (1 - tween.from) * p;
+      running = p < 1;
+      if (!running) { cur = 1; tween = null; }
+    } else {
+      cur += (target - cur) * (1 - Math.pow(1 - RATE, dt / 16.667));
+      if (Math.abs(target - cur) < 0.0015) cur = target;
+      running = cur !== target;
+    }
     paint();
-    if (cur !== target) raf = requestAnimationFrame(loop);
+    if (running) raf = requestAnimationFrame(loop);
     else if (cur >= 1) setTimeout(finish, 60);
   }
-  function kick() { if (!raf) raf = requestAnimationFrame(loop); }
-  function push(by) { settle(); target = Math.max(0, Math.min(1, target + by)); kick(); }
+  function kick() { if (!raf) { last = 0; raf = requestAnimationFrame(loop); } }
+  function push(by) {
+    settle();
+    if (tween) {
+      if (by >= 0) return;                                 /* already on its way in */
+      tween = null; target = cur;                          /* a scroll back takes it off again */
+    }
+    target = Math.max(0, Math.min(1, target + by));
+    /* past halfway it is a decision, not a drag: the rest of the journey comes
+       off the clock, so a few notches of a wheel do not have to be turned into
+       the whole distance by hand */
+    if (target >= 0.55) commit();
+    kick();
+  }
 
   /* with less motion asked for, there is nothing to scrub: any gesture
      simply fades it away */
@@ -686,13 +731,15 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       if (gateInner) gateInner.style.opacity = '1';
       if (brandName) brandName.style.opacity = '1';
       sp.style.opacity = '0';
-      setTimeout(finish, 520);
+      setTimeout(finish, 780);
       return;
     }
-    settle(); target = 1; kick();
+    settle(); target = 1; commit(); kick();
   }
 
-  function onWheel(e) { e.preventDefault(); if (reduce) { enter(); return; } push(e.deltaY / 900); }
+  /* A longer scroll for the same distance, so the logo is walked across
+     rather than flicked across by one notch of the wheel. */
+  function onWheel(e) { e.preventDefault(); if (reduce) { enter(); return; } push(e.deltaY / 1200); }
   /* Caught before anything else on the page hears them - the site has keys of
      its own, and the Space that opens the door must not also start a song. */
   function onKey(e) {
@@ -710,7 +757,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     var y = e.touches[0].clientY;
     if (e.cancelable) e.preventDefault();
     if (reduce) { if (y0 - y > 24) enter(); return; }
-    push((y0 - y) / 420); y0 = y;
+    push((y0 - y) / 720); y0 = y;
   }
   sp.addEventListener('click', enter);                      /* a tap is the whole gesture on a phone */
 
