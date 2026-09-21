@@ -1362,8 +1362,22 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   display:flex;flex-direction:column;gap:clamp(10px,1.8vh,20px);}
 .tl-grp{display:flex;align-items:baseline;gap:10px;padding-bottom:9px;
   border-bottom:1px solid var(--line);}
-/* the search sits at the far end of the group line, on the shelf itself */
-.tl-find{margin-left:auto;align-self:center;width:min(280px,42vw);box-sizing:border-box;
+/* the search sits at the far end of the group line, on the shelf itself;
+   the line is raised so the suggestions open over the cards, not under them */
+.tl-grp{position:relative;z-index:5;}
+.tl-findw{position:relative;margin-left:auto;align-self:center;width:min(280px,42vw);}
+.tl-sug{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:40;
+  display:flex;flex-direction:column;gap:2px;padding:6px;max-height:300px;overflow-y:auto;
+  background:rgba(23,13,16,.97);border:1px solid var(--line2);border-radius:14px;
+  box-shadow:0 22px 48px -18px rgba(0,0,0,.85);backdrop-filter:blur(10px);}
+.tl-sug button{display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;
+  padding:9px 11px;border-radius:9px;color:var(--dim);
+  font-family:'Bricolage Grotesque',sans-serif;font-size:14.5px;font-weight:600;letter-spacing:-.005em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:background .15s ease,color .15s ease;}
+.tl-sug button b{color:var(--accentB);font-weight:800;}
+.tl-sug button:hover,.tl-sug button.on{background:rgba(209,88,115,.14);color:var(--text);}
+.tl-find{width:100%;box-sizing:border-box;
   font-family:'Space Mono',monospace;font-size:12.5px;color:var(--text);
   background:rgba(23,13,16,.55);border:1px solid var(--line2);border-radius:999px;
   padding:8px 14px;outline:none;transition:border-color .2s ease,background .2s ease;}
@@ -1413,7 +1427,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   /* on a phone the search takes a line of its own above the group name,
      rather than squeezing the name into a corner */
   .tl-grp{flex-wrap:wrap;row-gap:10px;}
-  .tl-find{order:-1;width:100%;margin-left:0;}
+  .tl-findw{order:-1;width:100%;margin-left:0;}
 }
 .pp-art{position:absolute;inset:-6%;background-position:50% 40%;background-size:cover;
   background-repeat:no-repeat;animation:ppDrift 30s ease-in-out infinite;
@@ -2396,7 +2410,18 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         <div class="tl-grp">
           <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;">{{ tlName }}</span>
           <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);">{{ tlCount }}</span>
-          <input class="tl-find" type="search" value="{{ tlQuery }}" onInput="{{ tlOnFind }}" placeholder="Search tools" aria-label="Search tools" />
+          <div class="tl-findw">
+            <input class="tl-find" type="search" value="{{ tlQuery }}" onInput="{{ tlOnFind }}" onFocus="{{ tlOnFocus }}" onBlur="{{ tlOnBlur }}" placeholder="Search tools" aria-label="Search tools" autocomplete="off" spellcheck="false" />
+            <!-- the tools whose names match, as you type; the part you typed is
+                 the part in bold, and pressing one opens it -->
+            <sc-if value="{{ tlSugShow }}" hint-placeholder-val="{{ false }}">
+            <div class="tl-sug" role="listbox" aria-label="Matching tools">
+              <sc-for list="{{ tlSugs }}" as="g" hint-placeholder-count="3">
+                <button type="button" class="{{ g.cls }}" onMouseDown="{{ g.pick }}" role="option" aria-selected="{{ g.sel }}">{{ g.pre }}<b>{{ g.hit }}</b>{{ g.post }}</button>
+              </sc-for>
+            </div>
+            </sc-if>
+          </div>
         </div>
         <div class="{{ tlRowClass }}">
         <sc-for list="{{ tlCards }}" as="tool" hint-placeholder-count="3">
@@ -2671,7 +2696,7 @@ class Component extends DCLogic {
       ppIdx:0, ppDir:1, ppTick:0,
       /* which shelf of tools is showing, a tick to restart its arrival, and
          how many cards a shelf holds at this width */
-      tlIdx:0, tlTick:0, tlPer:Component.toolsPer(), tlQuery:'',
+      tlIdx:0, tlTick:0, tlPer:Component.toolsPer(), tlQuery:'', tlSugOpen:false, tlSugAt:0,
       /* which sleeve the front page is offering, and the one it was offering
          a moment ago, which stays underneath for the crossfade */
       shuf:0, shufPrev:null, queue:[], rowMenu:null,
@@ -3430,23 +3455,51 @@ class Component extends DCLogic {
        shelf, saying so - not the page falling back to a column */
     return this.state.page === 'tools' && !!this.state.toolsIn && (this._tlAllCount || 0) > 0;
   }
-  /* The search narrows the shelves rather than replacing them: the groups
-     stay, only the tools that match stay in them, and a group left empty
-     goes. Every word typed has to be somewhere in the tool - its name, its
-     tag, what it says it does, or the group it is filed under - so
-     "site excel" finds the site tools that export, not everything with
-     either word. */
+  /* The search is a search for a tool by its name, and nothing else. Looking
+     through the descriptions as well turned up tools for a word they only
+     mention in passing - "site" found half the shelf - when what was being
+     typed was the name of the one wanted. The groups stay, only the tools
+     whose names match stay in them, and a group left empty goes. Every word
+     typed has to be in the name, so "site data" is Site Data Lookup and not
+     Site Access as well. */
+  tlWords(q){ return String(q || '').toLowerCase().split(/\s+/).filter(Boolean); }
+  tlNameHit(name, words){
+    const n = String(name).toLowerCase();
+    return words.every(w => n.indexOf(w) > -1);
+  }
   tlFilter(groups, q){
-    const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+    const words = this.tlWords(q);
     if (!words.length) return groups;
     return groups.map(g => {
-      const tools = g.tools.filter(t => {
-        const hay = [t.name, t.tag, t.desc, g.name].join(' ').toLowerCase();
-        return words.every(w => hay.indexOf(w) > -1);
-      });
+      const tools = g.tools.filter(t => this.tlNameHit(t.name, words));
       return { name:g.name, tools, count: tools.length + (tools.length === 1 ? ' tool' : ' tools') };
     }).filter(g => g.tools.length);
   }
+  /* The suggestions: the names that match, best first - a name that starts
+     with what was typed, then one with a word that starts with it, then one
+     that merely contains it - and the typed part marked in each. */
+  tlSuggest(groups, q){
+    const words = this.tlWords(q);
+    if (!words.length) return [];
+    const first = words[0];
+    const all = [];
+    groups.forEach(g => g.tools.forEach(t => { if (this.tlNameHit(t.name, words)) all.push(t); }));
+    const rank = t => {
+      const n = t.name.toLowerCase();
+      if (n.indexOf(first) === 0) return 0;
+      if (n.split(/[\s\-&]+/).some(p => p.indexOf(first) === 0)) return 1;
+      return 2;
+    };
+    return all.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name)).slice(0, 7)
+      .map(t => {
+        const at = t.name.toLowerCase().indexOf(first);
+        return { name:t.name, href:t.href,
+          pre:t.name.slice(0, at), hit:t.name.slice(at, at + first.length), post:t.name.slice(at + first.length) };
+      });
+  }
+  /* against the page's base, like the cards' own links - the address may be
+     /tools/, and a bare "tools/bom/" would otherwise land on /tools/tools/bom/ */
+  tlOpen(href){ if (href) location.href = new URL(href, document.baseURI).href; }
   tlFind(q){
     const before = (this._tlShelves || [])[this._tlAt || 0];
     const after = this.tlShelves(this.tlFilter(this._tlAllGroups || [], q), this.state.tlPer || 3)[0];
@@ -3454,7 +3507,8 @@ class Component extends DCLogic {
     /* the cards pop in when what is on the shelf changes, not on every key -
        a spring restarting under each letter typed is a shelf that shivers */
     const moved = sig(before) !== sig(after);
-    this.setState({ tlQuery:q, tlIdx:0, tlTick:this.state.tlTick + (moved ? 1 : 0) });
+    this.setState({ tlQuery:q, tlIdx:0, tlSugOpen:true, tlSugAt:0,
+      tlTick:this.state.tlTick + (moved ? 1 : 0) });
   }
   /* Shelves are groups cut to the width: a group with more tools than one
      shelf holds takes as many shelves as it needs, and says which one this is. */
@@ -3497,9 +3551,21 @@ class Component extends DCLogic {
     this._tlKey = (e) => {
       if (!live()) return;
       const t = e.target;
-      /* in the search box the keys are for typing; Escape empties it */
+      /* In the search box the keys are for typing - apart from the ones that
+         work the suggestions: up and down move through them, Enter opens the
+         one marked, and Escape shuts them, then empties the box. */
       if (t && t.classList && t.classList.contains('tl-find')){
-        if (e.key === 'Escape' && this.state.tlQuery){ e.preventDefault(); this.tlFind(''); }
+        const sugs = this._tlSugs || [];
+        const open = this.state.tlSugOpen && sugs.length > 0;
+        const at = Math.min(this.state.tlSugAt || 0, Math.max(0, sugs.length - 1));
+        if (e.key === 'ArrowDown' && open){ e.preventDefault(); this.setState({ tlSugAt:(at + 1) % sugs.length }); }
+        else if (e.key === 'ArrowUp' && open){ e.preventDefault(); this.setState({ tlSugAt:(at - 1 + sugs.length) % sugs.length }); }
+        else if (e.key === 'ArrowDown' && sugs.length){ e.preventDefault(); this.setState({ tlSugOpen:true, tlSugAt:0 }); }
+        else if (e.key === 'Enter' && sugs.length){ e.preventDefault(); this.tlOpen(sugs[open ? at : 0].href); }
+        else if (e.key === 'Escape'){
+          if (open){ e.preventDefault(); this.setState({ tlSugOpen:false }); }
+          else if (this.state.tlQuery){ e.preventDefault(); this.tlFind(''); this.setState({ tlSugOpen:false }); }
+        }
         return;
       }
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
@@ -3518,7 +3584,7 @@ class Component extends DCLogic {
     /* the volume control keeps the wheel for itself, as it does everywhere */
     this._tlWheel = (e) => {
       if (!live()) return;
-      if (e.target && e.target.closest && e.target.closest('.player-vol,footer')) return;
+      if (e.target && e.target.closest && e.target.closest('.player-vol,footer,.tl-sug')) return;
       const dx = e.deltaX, dy = e.deltaY;
       const v = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
       if (Math.abs(v) < 12) return;
@@ -5364,9 +5430,20 @@ class Component extends DCLogic {
         const sh = shelves[i] || { name: q.trim() ? 'Nothing matches “' + q.trim() + '”' : '',
           count: q.trim() ? 'Esc to clear' : '', cards:[] };
         const last = Math.max(0, shelves.length - 1);
+        const sugs = this.tlSuggest(TOOLGROUPS, q);
+        this._tlSugs = sugs;
+        const sAt = Math.min(s.tlSugAt || 0, Math.max(0, sugs.length - 1));
         return {
           tlQuery: q,
           tlOnFind: (e) => this.tlFind(e && e.target ? e.target.value : ''),
+          tlOnFocus: () => { if (!s.tlSugOpen) this.setState({ tlSugOpen:true, tlSugAt:0 }); },
+          /* shut on the way out of the box - a suggestion is taken on the press,
+             before the box loses focus, so this never swallows a choice */
+          tlOnBlur: () => this.setState({ tlSugOpen:false }),
+          tlSugShow: !!s.tlSugOpen && sugs.length > 0,
+          tlSugs: sugs.map((g, k) => ({ ...g, sel: k === sAt ? 'true' : 'false',
+            cls: k === sAt ? 'on' : '',
+            pick: (e) => { if (e && e.preventDefault) e.preventDefault(); this.tlOpen(g.href); } })),
           isToolsPlain: s.page === 'tools' && !staged,
           isToolsStage: staged,
           tlName: sh.name,
