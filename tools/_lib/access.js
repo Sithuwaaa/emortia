@@ -748,7 +748,7 @@
       what:'The poems. Reading only – writing stays mine.' },
     { key:'tool:lyric-video', name:'Video & Artwork', since:'2026-08-19', tier:'mine', group:'Emortia',
       what:'The lyric video and the cover art tool.' },
-    { key:'tool:whattodo', name:'What To Do', since:'2026-08-06', tier:'mine', group:'Field & team',
+    { key:'tool:whattodo', name:'What To Do', since:'2026-08-06', tier:'mine', group:'Emortia',
       what:'The job list. Whoever can open it can tick things off.' },
     { key:'tool:project-update', name:'Project Update', since:'2026-07-29', tier:'tooway', group:'Field & team',
       what:'The rollout figures.' },
