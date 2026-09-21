@@ -297,7 +297,28 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
      /tools and the rest are drawn by this same page, and a link straight to
      one of them is still somebody arriving. The route asked for is waiting in
      sessionStorage or in the address bar and the app picks it up on boot, so
-     what the name uncovers is the page that was asked for. */
+     what the name uncovers is the page that was asked for.
+
+     The one exception is coming back rather than coming in. The tools open
+     in this tab, so Back from one - or a tool's own link home - reloads this
+     page, and somebody who was only out of the room for a minute does not
+     need the door again. A reload is still an arrival and still gets it. */
+  var returning = false;
+  try {
+    if (sessionStorage.getItem('emortia_return')) { returning = true; sessionStorage.removeItem('emortia_return'); }
+    var nav0 = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (nav0 && nav0.type === 'back_forward') returning = true;
+    var ref0 = document.referrer ? new URL(document.referrer) : null;
+    if (ref0 && ref0.origin === location.origin && /^\/tools\/[^\/]+/.test(ref0.pathname)) returning = true;
+  } catch (e) {}
+  if (returning) {
+    ['gate', 'gtBrand'].forEach(function (id) {
+      var n = document.getElementById(id);
+      if (n && n.parentNode) n.parentNode.removeChild(n);
+    });
+    sp.parentNode.removeChild(sp);
+    return;
+  }
   sp.hidden = false;
   var root = document.documentElement;
   root.classList.add('sp-lock');
@@ -1318,6 +1339,71 @@ html.pp-on main{padding:0 !important;max-width:none !important;}
    that padding were the whole of what the scrollbar was measuring. Inline
    styles, so it takes !important to answer them. */
 html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
+
+/* ---- tools: one shelf at a time ----
+   The same answer the poem page gives. The page itself does not scroll at
+   all; the wheel turns the shelf, and the cards arrive in the same places
+   every time rather than carrying the reader down a long column. A group
+   with more tools than fit on one shelf takes as many shelves as it needs. */
+html.tl-on,html.tl-on body{overflow:hidden;height:100%;}
+html.tl-on main{padding:0 !important;max-width:none !important;}
+html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
+/* Height written out as well as top/bottom: a transformed ancestor anywhere
+   above makes a fixed box measure against that ancestor instead of the
+   viewport, and the shelf then collapses to nothing. */
+.tl-stage{position:fixed;left:0;right:0;top:var(--ppTop,64px);bottom:var(--ppBot,0px);
+  height:calc(100vh - var(--ppTop,64px) - var(--ppBot,0px));
+  z-index:30;display:flex;overflow:hidden;}
+@supports (height:100dvh){
+  .tl-stage{height:calc(100dvh - var(--ppTop,64px) - var(--ppBot,0px));}
+}
+.tl-inner{flex:1;min-height:0;width:min(1180px,100%);margin:0 auto;box-sizing:border-box;
+  padding:clamp(12px,2.4vh,26px) 28px clamp(10px,1.6vh,18px);
+  display:flex;flex-direction:column;gap:clamp(10px,1.8vh,20px);}
+.tl-grp{display:flex;align-items:baseline;gap:10px;padding-bottom:9px;
+  border-bottom:1px solid var(--line);}
+.tl-row{flex:1;min-height:0;display:grid;gap:16px;
+  grid-template-columns:repeat(var(--tlPer,3),minmax(0,1fr));}
+.tl-row .term-card{height:100%;min-height:0;}
+/* The shelf gives each card whatever height is left, so the seven-line box
+   the grid uses is the wrong rule here. It takes the room it is given and
+   what does not fit fades out rather than being cut through a line. */
+.tl-row .tdesc{height:auto;flex:1;min-height:0;display:block;overflow:hidden;
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 76%,transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0%,#000 76%,transparent 100%);}
+/* Every card on the shelf pops in when the shelf turns - a small spring from
+   under size, a breath apart, so the row arrives as a row. */
+@keyframes tlPopA{0%{opacity:0;transform:scale(.88);}62%{opacity:1;transform:scale(1.025);}100%{opacity:1;transform:none;}}
+@keyframes tlPopB{0%{opacity:0;transform:scale(.88);}62%{opacity:1;transform:scale(1.025);}100%{opacity:1;transform:none;}}
+/* Two names for one movement. The row's class alternates every turn, and an
+   animation only starts again if its NAME changed - the same name on the same
+   node is the same animation, already finished. Backwards fill, not both, so
+   once it has played the card's own hover lift is free to move it again. */
+.tl-in-a .term-card{animation:tlPopA .62s cubic-bezier(.34,1.56,.64,1) backwards;}
+.tl-in-b .term-card{animation:tlPopB .62s cubic-bezier(.34,1.56,.64,1) backwards;}
+.tl-row .term-card:nth-child(2){animation-delay:.07s;}
+.tl-row .term-card:nth-child(3){animation-delay:.14s;}
+@media (prefers-reduced-motion:reduce){
+  .tl-in-a .term-card,.tl-in-b .term-card{animation:none;}
+}
+.tl-foot{display:flex;align-items:center;gap:14px;font-family:'Space Mono',monospace;}
+.tl-dots{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.tl-dot{width:9px;height:9px;padding:0;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(247,237,240,.30);background:transparent;
+  transition:background .25s ease,border-color .25s ease,transform .25s ease;}
+.tl-dot:hover{border-color:var(--accentB);}
+.tl-dot.on{background:var(--accent);border-color:var(--accent);transform:scale(1.25);}
+.tl-arw{width:34px;height:34px;border-radius:50%;cursor:pointer;flex:none;
+  border:1px solid var(--line2);background:rgba(23,13,16,.55);color:var(--dim);
+  font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;
+  transition:color .2s ease,border-color .2s ease,background .2s ease;}
+.tl-arw:hover{color:var(--text);border-color:var(--accent);background:rgba(23,13,16,.85);}
+.tl-arw.off{opacity:.3;cursor:default;pointer-events:none;}
+.tl-hint{margin-left:auto;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--mute);}
+@media (max-width:760px){
+  .tl-inner{padding:14px 18px 12px;}
+  .tl-hint{display:none;}
+}
 .pp-art{position:absolute;inset:-6%;background-position:50% 40%;background-size:cover;
   background-repeat:no-repeat;animation:ppDrift 30s ease-in-out infinite;
   transition:opacity .9s ease;}
@@ -2252,11 +2338,13 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
     </sc-if>
 
     <!-- ============ TOOLS ============ -->
-    <sc-if value="{{ isTools }}" hint-placeholder-val="{{ false }}">
+    <!-- Signed out, the page stays a page: the sign-in card needs the room,
+         and whatever is public is listed under it. Signed in, it is the shelf. -->
+    <sc-if value="{{ isToolsPlain }}" hint-placeholder-val="{{ false }}">
     <section style="animation:fadeUp 0.5s ease;padding:40px 0 60px;">
       <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;">The office side · things I built</div>
       <h2 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(40px,6vw,68px);letter-spacing:-0.03em;margin:6px 0 6px;">Tools</h2>
-      <p style="color:var(--dim);font-size:15px;line-height:1.6;max-width:560px;margin:0 0 34px;">Small web utilities I made for real work. Each one runs entirely in your browser – nothing is uploaded anywhere – and opens in its own tab.</p>
+      <p style="color:var(--dim);font-size:15px;line-height:1.6;max-width:560px;margin:0 0 34px;">Small web utilities I made for real work. Each one runs entirely in your browser – nothing is uploaded anywhere – and opens right here, in this tab.</p>
       <div>{{ toolsGate }}</div>
       <div class="{{ toolsGridClass }}">
       <sc-for list="{{ toolGroups }}" as="grp" hint-placeholder-count="1">
@@ -2267,7 +2355,7 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));grid-auto-rows:1fr;gap:16px;">
         <sc-for list="{{ grp.tools }}" as="tool" hint-placeholder-count="1">
-          <a href="{{ tool.href }}" target="_blank" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;height:100%;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
+          <a href="{{ tool.href }}" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;height:100%;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
             <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
               <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
@@ -2287,6 +2375,51 @@ html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
       </sc-for>
       </div>
     </section>
+    </sc-if>
+
+    <!-- The shelf. One group's cards at a time, in the same places, with the
+         wheel turning the shelf instead of scrolling the page. -->
+    <sc-if value="{{ isToolsStage }}" hint-placeholder-val="{{ false }}">
+    <div class="tl-stage">
+      <div class="tl-inner">
+        <div>
+          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;">The office side &middot; things I built</div>
+          <h2 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(28px,4.4vw,46px);letter-spacing:-0.03em;margin:2px 0 0;">Tools</h2>
+        </div>
+        <div class="tl-grp">
+          <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;">{{ tlName }}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);">{{ tlCount }}</span>
+        </div>
+        <div class="{{ tlRowClass }}">
+        <sc-for list="{{ tlCards }}" as="tool" hint-placeholder-count="3">
+          <a href="{{ tool.href }}" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
+            <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
+              <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
+              <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
+              <div style="position:relative;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;margin-top:5px;">{{ tool.name }}</div>
+            </div>
+            <div style="position:relative;padding:17px 18px 18px;display:flex;flex-direction:column;flex:1;min-height:0;">
+              <div class="tdesc">{{ tool.desc }}</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:16px;border-top:1px solid var(--line);">
+                <span style="font-size:13.5px;font-weight:600;color:var(--tcB);">Open tool &#8594;</span>
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--tc);animation:termLed 1.8s ease-in-out infinite;"></span>
+              </div>
+            </div>
+          </a>
+        </sc-for>
+        </div>
+        <div class="tl-foot">
+          <button class="{{ tlPrevCls }}" onClick="{{ tlPrev }}" aria-disabled="{{ tlAtStart }}" aria-label="Previous shelf">&#8592;</button>
+          <button class="{{ tlNextCls }}" onClick="{{ tlNext }}" aria-disabled="{{ tlAtEnd }}" aria-label="Next shelf">&#8594;</button>
+          <div class="tl-dots">
+            <sc-for list="{{ tlDots }}" as="d" hint-placeholder-count="5">
+              <button class="{{ d.cls }}" onClick="{{ d.go }}" title="{{ d.label }}" aria-label="{{ d.label }}"></button>
+            </sc-for>
+          </div>
+          <span class="tl-hint">Scroll or &#8592; &#8594;</span>
+        </div>
+      </div>
+    </div>
     </sc-if>
 
     <!-- ============ DASHBOARD ============ -->
@@ -2478,6 +2611,13 @@ const SORTS = [
   ['dur',    'Duration'],
 ];
 class Component extends DCLogic {
+  /* How many tool cards one shelf holds: three across where three read, two on
+     a tablet, one on a phone - where one card at a time, swiped through, is
+     better than three squeezed into a column. */
+  static toolsPer(){
+    const w = window.innerWidth || 1200;
+    return w >= 1000 ? 3 : w >= 640 ? 2 : 1;
+  }
   /* Owner mode belongs to the account, and signing in is the only way to get
      it on the real site. Off the real site - a local copy, a preview - there
      is no account to sign into, so "?owner=1" stands in for one, purely so
@@ -2521,6 +2661,9 @@ class Component extends DCLogic {
       /* Poetry: which poem, which way it was turned, and a counter that
          alternates the A/B animations so a turn always moves. */
       ppIdx:0, ppDir:1, ppTick:0,
+      /* which shelf of tools is showing, a tick to restart its arrival, and
+         how many cards a shelf holds at this width */
+      tlIdx:0, tlTick:0, tlPer:Component.toolsPer(),
       /* which sleeve the front page is offering, and the one it was offering
          a moment ago, which stays underneath for the crossfade */
       shuf:0, shufPrev:null, queue:[], rowMenu:null,
@@ -2850,6 +2993,7 @@ class Component extends DCLogic {
       this.setState({ toolsIn: A.signedIn(), isOwner: A.isOwner(), accErr: '', accBusy: false });
     };
     document.addEventListener('emortia:signedin', this._onGateIn);
+    this.tlBind();
     fetch('media/poems/poems.txt').then(r=>r.ok?r.text():Promise.reject()).then(t=>{
       this.setState({poems:this.parsePoems(t), poemsLoaded:true});
     }).catch(()=>this.setState({poems:[], poemsLoaded:true}));
@@ -2860,6 +3004,11 @@ class Component extends DCLogic {
     const on = (this.state.page === 'poetry');
     document.documentElement.classList.toggle('pp-on', on);
     if(on) this._ppFit();
+    /* The same for the tools shelf: the page holds still and the shelf turns. */
+    const tl = this.toolsStaged();
+    document.documentElement.classList.toggle('tl-on', tl);
+    if(tl){ this._ppFit();
+      document.documentElement.style.setProperty('--tlPer', String(this.state.tlPer || 3)); }
   }
   componentWillUnmount(){
     clearInterval(this._shufT);
@@ -2867,6 +3016,12 @@ class Component extends DCLogic {
     if(this._onPpResize) window.removeEventListener('resize', this._onPpResize);
     if(this._ppRO) this._ppRO.disconnect();
     if(this._onGateIn) document.removeEventListener('emortia:signedin', this._onGateIn);
+    if(this._tlKey) window.removeEventListener('keydown', this._tlKey);
+    if(this._tlWheel) window.removeEventListener('wheel', this._tlWheel);
+    if(this._tlDown) window.removeEventListener('touchstart', this._tlDown);
+    if(this._tlUp) window.removeEventListener('touchend', this._tlUp);
+    if(this._tlResize) window.removeEventListener('resize', this._tlResize);
+    document.documentElement.classList.remove('tl-on');
     clearTimeout(this._ppFitT);
     if(this._onKey) window.removeEventListener('keydown', this._onKey);
     if(this._checkHash) window.removeEventListener('hashchange', this._checkHash);
@@ -3252,6 +3407,113 @@ class Component extends DCLogic {
     window.addEventListener('wheel', this._ppWheel, { passive: true });
     window.addEventListener('touchstart', this._ppDown, { passive: true });
     window.addEventListener('touchend', this._ppUp, { passive: true });
+  }
+
+  /* ================= the tools shelf =================
+
+     Signed in, the tools page is a shelf rather than a column: one group's
+     cards at a time, in the same places, and the wheel turns the shelf
+     instead of scrolling the page. Signed out it stays a page, because the
+     sign-in card needs the room and a shelf of one sign-in card is not a
+     shelf. The rule lives here, once, and both the render and the page lock
+     ask it. */
+  toolsStaged(){
+    return this.state.page === 'tools' && !!this.state.toolsIn && (this._tlShelfCount || 0) > 0;
+  }
+  /* Shelves are groups cut to the width: a group with more tools than one
+     shelf holds takes as many shelves as it needs, and says which one this is. */
+  tlShelves(groups, per){
+    const out = [];
+    groups.forEach(g => {
+      const parts = Math.max(1, Math.ceil(g.tools.length / per));
+      for (let p = 0; p < parts; p++){
+        out.push({ name:g.name, cards:g.tools.slice(p * per, p * per + per),
+          count: g.count + (parts > 1 ? ' · ' + (p + 1) + ' of ' + parts : ''),
+          label: g.name + (parts > 1 ? ' ' + (p + 1) + ' of ' + parts : '') });
+      }
+    });
+    return out;
+  }
+  tlGo(i){
+    const n = this._tlShelfCount || 0;
+    if (!n) return;
+    const to = Math.max(0, Math.min(n - 1, i));
+    if (to === (this._tlAt != null ? this._tlAt : this.state.tlIdx)) return;
+    this.setState({ tlIdx:to, tlTick:this.state.tlTick + 1 });
+  }
+  /* from the shelf actually showing, which the render has clamped to the
+     shelves there are - not from a remembered index that may point past them */
+  tlStep(d){ this.tlGo((this._tlAt != null ? this._tlAt : this.state.tlIdx) + d); }
+  tlBind(){
+    if (this._tlBound) return;
+    this._tlBound = true;
+    this._tlCool = 0;
+    const live = () => this.toolsStaged();
+    /* One turn per gesture. A trackpad sends a long tail of small wheel events
+       for one flick; without the cooldown one flick would throw three shelves
+       past. */
+    const turn = (d) => {
+      const now = Date.now();
+      if (now - this._tlCool < 520) return;
+      this._tlCool = now;
+      this.tlStep(d);
+    };
+    this._tlKey = (e) => {
+      if (!live()) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const k = e.key;
+      if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){ e.preventDefault(); this.tlStep(1); }
+      else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){ e.preventDefault(); this.tlStep(-1); }
+      else if (k === 'Home'){ e.preventDefault(); this.tlGo(0); }
+      else if (k === 'End'){ e.preventDefault(); this.tlGo((this._tlShelfCount || 1) - 1); }
+    };
+    /* the volume control keeps the wheel for itself, as it does everywhere */
+    this._tlWheel = (e) => {
+      if (!live()) return;
+      if (e.target && e.target.closest && e.target.closest('.player-vol,footer')) return;
+      const dx = e.deltaX, dy = e.deltaY;
+      const v = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+      if (Math.abs(v) < 12) return;
+      turn(v > 0 ? 1 : -1);
+    };
+    /* a thumb: a swipe either way turns it - up or left for the next shelf,
+       the way a phone turns everything else */
+    this._tlTouch = null;
+    this._tlDown = (e) => {
+      this._tlTouch = null;
+      if (!live() || !e.touches || e.touches.length !== 1) return;
+      const t = e.target;
+      if (!t || !t.closest || !t.closest('.tl-stage') || t.closest('button')) return;
+      const p = e.touches[0];
+      this._tlTouch = { x:p.clientX, y:p.clientY, at:Date.now() };
+    };
+    this._tlUp = (e) => {
+      const s = this._tlTouch;
+      this._tlTouch = null;
+      if (!s || !live()) return;
+      const p = e.changedTouches && e.changedTouches[0];
+      if (!p || Date.now() - s.at > 900) return;
+      const dx = p.clientX - s.x, dy = p.clientY - s.y;
+      const v = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+      if (Math.abs(v) < 48) return;
+      turn(v < 0 ? 1 : -1);
+    };
+    /* the width decides how many cards a shelf holds; keep the reader on the
+       tools they were looking at when that changes */
+    this._tlResize = () => {
+      const per = Component.toolsPer();
+      if (per === this.state.tlPer) return;
+      const was = (this._tlShelves || [])[this.state.tlIdx];
+      const next = this.tlShelves(this._tlGroups || [], per);
+      const at = was ? next.findIndex(s => s.name === was.name) : 0;
+      this.setState({ tlPer:per, tlIdx:Math.max(0, at), tlTick:this.state.tlTick + 1 });
+    };
+    window.addEventListener('keydown', this._tlKey);
+    window.addEventListener('wheel', this._tlWheel, { passive: true });
+    window.addEventListener('touchstart', this._tlDown, { passive: true });
+    window.addEventListener('touchend', this._tlUp, { passive: true });
+    window.addEventListener('resize', this._tlResize);
   }
   /* ================= a poem, as a picture =================
 
@@ -5036,6 +5298,38 @@ class Component extends DCLogic {
          also what the Owner switches read, so a tool added there arrives in
          its place on both pages without either list being reordered by hand. */
       toolGroups: TOOLGROUPS,
+      ...(() => {
+        const per = s.tlPer || 3;
+        const shelves = this.tlShelves(TOOLGROUPS, per);
+        /* remembered for the handlers and the page lock, which ask outside a render */
+        this._tlGroups = TOOLGROUPS;
+        this._tlShelves = shelves;
+        this._tlShelfCount = shelves.length;
+        const staged = this.toolsStaged();
+        const i = Math.max(0, Math.min(shelves.length - 1, s.tlIdx || 0));
+        this._tlAt = i;
+        const sh = shelves[i] || { name:'', count:'', cards:[] };
+        const last = shelves.length - 1;
+        return {
+          isToolsPlain: s.page === 'tools' && !staged,
+          isToolsStage: staged,
+          tlName: sh.name,
+          tlCount: sh.count,
+          tlCards: sh.cards,
+          /* the class alternates every turn so the pop plays again */
+          tlRowClass: 'tl-row ' + ((s.tlTick || 0) % 2 ? 'tl-in-b' : 'tl-in-a'),
+          tlPrev: () => this.tlStep(-1),
+          tlNext: () => this.tlStep(1),
+          /* a class rather than the disabled attribute: a template writes an
+             attribute's value as text, and disabled="false" is still disabled */
+          tlAtStart: i <= 0 ? 'true' : 'false',
+          tlAtEnd: i >= last ? 'true' : 'false',
+          tlPrevCls: 'tl-arw' + (i <= 0 ? ' off' : ''),
+          tlNextCls: 'tl-arw' + (i >= last ? ' off' : ''),
+          tlDots: shelves.map((x, k) => ({ cls:'tl-dot' + (k === i ? ' on' : ''),
+            label:x.label, go:() => this.tlGo(k) }))
+        };
+      })(),
       page:s.page,
 
       navItems: navDefs.map(([k,label])=>({ key:k, label, active:s.page===k, onClick:this.go(k) })),

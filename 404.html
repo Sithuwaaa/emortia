@@ -111,6 +111,17 @@
 
   if (ok) {
     try { sessionStorage.setItem('emortia_route', path); } catch (e) {}
+    /* Coming back from a tool is not arriving. The tools open in this tab now,
+       so Back - or a tool's own link home - lands here on the way to /tools,
+       and the replace below makes the page it lands on look like a fresh
+       visit. Said here, while it can still be seen, so the front door is not
+       put in the way of somebody who was only ever out of the room. */
+    try {
+      var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+      var ref = document.referrer ? new URL(document.referrer) : null;
+      var fromTool = !!ref && ref.origin === location.origin && /^\/tools\/[^\/]+/.test(ref.pathname);
+      if ((nav && nav.type === 'back_forward') || fromTool) sessionStorage.setItem('emortia_return', '1');
+    } catch (e) {}
     /* replace, not assign: the broken address should not sit in the history
        waiting for the back button to land on it again */
     location.replace('/' + location.search + location.hash);
