@@ -1362,6 +1362,13 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   display:flex;flex-direction:column;gap:clamp(10px,1.8vh,20px);}
 .tl-grp{display:flex;align-items:baseline;gap:10px;padding-bottom:9px;
   border-bottom:1px solid var(--line);}
+/* the search sits at the far end of the group line, on the shelf itself */
+.tl-find{margin-left:auto;align-self:center;width:min(280px,42vw);box-sizing:border-box;
+  font-family:'Space Mono',monospace;font-size:12.5px;color:var(--text);
+  background:rgba(23,13,16,.55);border:1px solid var(--line2);border-radius:999px;
+  padding:8px 14px;outline:none;transition:border-color .2s ease,background .2s ease;}
+.tl-find::placeholder{color:var(--mute);letter-spacing:.06em;}
+.tl-find:focus{border-color:var(--accent);background:rgba(23,13,16,.85);}
 .tl-row{flex:1;min-height:0;display:grid;gap:16px;
   grid-template-columns:repeat(var(--tlPer,3),minmax(0,1fr));}
 .tl-row .term-card{height:100%;min-height:0;}
@@ -1403,6 +1410,10 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 @media (max-width:760px){
   .tl-inner{padding:14px 18px 12px;}
   .tl-hint{display:none;}
+  /* on a phone the search takes a line of its own above the group name,
+     rather than squeezing the name into a corner */
+  .tl-grp{flex-wrap:wrap;row-gap:10px;}
+  .tl-find{order:-1;width:100%;margin-left:0;}
 }
 .pp-art{position:absolute;inset:-6%;background-position:50% 40%;background-size:cover;
   background-repeat:no-repeat;animation:ppDrift 30s ease-in-out infinite;
@@ -2382,13 +2393,10 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
     <sc-if value="{{ isToolsStage }}" hint-placeholder-val="{{ false }}">
     <div class="tl-stage">
       <div class="tl-inner">
-        <div>
-          <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;">The office side &middot; things I built</div>
-          <h2 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(28px,4.4vw,46px);letter-spacing:-0.03em;margin:2px 0 0;">Tools</h2>
-        </div>
         <div class="tl-grp">
           <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;">{{ tlName }}</span>
           <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);">{{ tlCount }}</span>
+          <input class="tl-find" type="search" value="{{ tlQuery }}" onInput="{{ tlOnFind }}" placeholder="Search tools" aria-label="Search tools" />
         </div>
         <div class="{{ tlRowClass }}">
         <sc-for list="{{ tlCards }}" as="tool" hint-placeholder-count="3">
@@ -2663,7 +2671,7 @@ class Component extends DCLogic {
       ppIdx:0, ppDir:1, ppTick:0,
       /* which shelf of tools is showing, a tick to restart its arrival, and
          how many cards a shelf holds at this width */
-      tlIdx:0, tlTick:0, tlPer:Component.toolsPer(),
+      tlIdx:0, tlTick:0, tlPer:Component.toolsPer(), tlQuery:'',
       /* which sleeve the front page is offering, and the one it was offering
          a moment ago, which stays underneath for the crossfade */
       shuf:0, shufPrev:null, queue:[], rowMenu:null,
@@ -3418,7 +3426,35 @@ class Component extends DCLogic {
      shelf. The rule lives here, once, and both the render and the page lock
      ask it. */
   toolsStaged(){
-    return this.state.page === 'tools' && !!this.state.toolsIn && (this._tlShelfCount || 0) > 0;
+    /* counted before the search: a search that finds nothing is still the
+       shelf, saying so - not the page falling back to a column */
+    return this.state.page === 'tools' && !!this.state.toolsIn && (this._tlAllCount || 0) > 0;
+  }
+  /* The search narrows the shelves rather than replacing them: the groups
+     stay, only the tools that match stay in them, and a group left empty
+     goes. Every word typed has to be somewhere in the tool - its name, its
+     tag, what it says it does, or the group it is filed under - so
+     "site excel" finds the site tools that export, not everything with
+     either word. */
+  tlFilter(groups, q){
+    const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return groups;
+    return groups.map(g => {
+      const tools = g.tools.filter(t => {
+        const hay = [t.name, t.tag, t.desc, g.name].join(' ').toLowerCase();
+        return words.every(w => hay.indexOf(w) > -1);
+      });
+      return { name:g.name, tools, count: tools.length + (tools.length === 1 ? ' tool' : ' tools') };
+    }).filter(g => g.tools.length);
+  }
+  tlFind(q){
+    const before = (this._tlShelves || [])[this._tlAt || 0];
+    const after = this.tlShelves(this.tlFilter(this._tlAllGroups || [], q), this.state.tlPer || 3)[0];
+    const sig = s => s ? s.cards.map(c => c.name).join('|') : '';
+    /* the cards pop in when what is on the shelf changes, not on every key -
+       a spring restarting under each letter typed is a shelf that shivers */
+    const moved = sig(before) !== sig(after);
+    this.setState({ tlQuery:q, tlIdx:0, tlTick:this.state.tlTick + (moved ? 1 : 0) });
   }
   /* Shelves are groups cut to the width: a group with more tools than one
      shelf holds takes as many shelves as it needs, and says which one this is. */
@@ -3461,7 +3497,18 @@ class Component extends DCLogic {
     this._tlKey = (e) => {
       if (!live()) return;
       const t = e.target;
+      /* in the search box the keys are for typing; Escape empties it */
+      if (t && t.classList && t.classList.contains('tl-find')){
+        if (e.key === 'Escape' && this.state.tlQuery){ e.preventDefault(); this.tlFind(''); }
+        return;
+      }
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      /* "/" goes to the search, the way it does on most sites with one */
+      if (e.key === '/'){
+        const f = document.querySelector('.tl-find');
+        if (f){ e.preventDefault(); f.focus(); }
+        return;
+      }
       const k = e.key;
       if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){ e.preventDefault(); this.tlStep(1); }
       else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){ e.preventDefault(); this.tlStep(-1); }
@@ -5300,17 +5347,26 @@ class Component extends DCLogic {
       toolGroups: TOOLGROUPS,
       ...(() => {
         const per = s.tlPer || 3;
-        const shelves = this.tlShelves(TOOLGROUPS, per);
+        const q = s.tlQuery || '';
+        const groups = this.tlFilter(TOOLGROUPS, q);
+        const shelves = this.tlShelves(groups, per);
         /* remembered for the handlers and the page lock, which ask outside a render */
-        this._tlGroups = TOOLGROUPS;
+        this._tlAllGroups = TOOLGROUPS;
+        this._tlAllCount = this.tlShelves(TOOLGROUPS, per).length;
+        this._tlGroups = groups;
         this._tlShelves = shelves;
         this._tlShelfCount = shelves.length;
         const staged = this.toolsStaged();
         const i = Math.max(0, Math.min(shelves.length - 1, s.tlIdx || 0));
         this._tlAt = i;
-        const sh = shelves[i] || { name:'', count:'', cards:[] };
-        const last = shelves.length - 1;
+        /* nothing matched: the shelf says so in its own heading, and the search
+           stays where it is so the next letter can put it right */
+        const sh = shelves[i] || { name: q.trim() ? 'Nothing matches “' + q.trim() + '”' : '',
+          count: q.trim() ? 'Esc to clear' : '', cards:[] };
+        const last = Math.max(0, shelves.length - 1);
         return {
+          tlQuery: q,
+          tlOnFind: (e) => this.tlFind(e && e.target ? e.target.value : ''),
           isToolsPlain: s.page === 'tools' && !staged,
           isToolsStage: staged,
           tlName: sh.name,
