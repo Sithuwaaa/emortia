@@ -655,6 +655,7 @@ async function save(uid){
   if (!v.ok){ toast(E.why(v.missing), 4000); return; }
 
   d.busy = 'Uploading…'; render();
+  const isNew = !d.id;                       // a record with an id is being corrected, not filed
   try {
     const paths = {};
     const jobs = [['esn','esnPhoto'], ['full','esnFull'], ['om','omIpPhoto']];
@@ -679,6 +680,7 @@ async function save(uid){
       note: d.note
     });
     d.id = row.id; d.saved = true; d.busy = null;
+    if (isNew) uploaded();                   // once, the moment it is safely in
     await loadFiled(); buildTabs(); render();
     toast(E.upper(d.siteId) + ' filed');
   } catch(e){
@@ -1019,6 +1021,14 @@ addEventListener('keydown', e => { if (e.key === 'Escape') $('lightbox').classLi
 const BELL_KEY = 'esn_bell_on';
 const BELL = new Audio('new-esn.wav');
 BELL.preload = 'auto';
+/* And the other half: whoever files one hears it go. "New ESN uploaded",
+   once, when the pictures are up and the record is saved - the same voice,
+   with the two notes the other way round, settling rather than calling, so
+   the two are never mistaken for each other. It is for everybody who files,
+   the team included: they are the ones standing at a cabinet waiting to know
+   it went. Only a new ESN plays it; going back to correct one does not. */
+const DONE = new Audio('esn-uploaded.wav');
+DONE.preload = 'auto';
 let BELL_ON = true;
 try { BELL_ON = localStorage.getItem(BELL_KEY) !== '0'; } catch(e){}
 let ME = '', KNOWN = null;
@@ -1035,12 +1045,24 @@ function ring(force){
   } catch(e){}
 }
 
+/* The mute is the owner's and the admins' - they are the ones with the bell
+   button - and it silences both sounds for them. Everyone else hears the
+   upload sound; there is no bell for them to have muted. */
+function uploaded(){
+  if (hearsBell() && !BELL_ON) return;
+  try {
+    DONE.currentTime = 0;
+    const p = DONE.play();
+    if (p && p.catch) p.catch(() => {});   // not allowed to make a sound yet - the toast still says it
+  } catch(e){}
+}
+
 function paintBell(){
   const b = $('bellBtn'); if (!b) return;
   b.hidden = !hearsBell();
   b.textContent = BELL_ON ? '🔔' : '🔕';
   b.setAttribute('aria-pressed', String(BELL_ON));
-  b.title = BELL_ON ? 'A sound plays when a new ESN arrives · click to mute'
+  b.title = BELL_ON ? 'Sounds play when a new ESN arrives and when yours is uploaded · click to mute'
                     : 'Muted · click to hear new ESNs again';
 }
 $('bellBtn').onclick = () => {
@@ -1057,12 +1079,16 @@ $('bellBtn').onclick = () => {
 function unlockBell(){
   removeEventListener('pointerdown', unlockBell);
   removeEventListener('keydown', unlockBell);
-  try {
-    BELL.muted = true;
-    const p = BELL.play();
-    const done = () => { BELL.pause(); BELL.currentTime = 0; BELL.muted = false; };
-    if (p && p.then) p.then(done).catch(() => { BELL.muted = false; }); else done();
-  } catch(e){ BELL.muted = false; }
+  /* both of them: the upload sound plays after the uploads, seconds after
+     the tap on Save, which is too late to count as the tap on iOS */
+  [BELL, DONE].forEach(a => {
+    try {
+      a.muted = true;
+      const p = a.play();
+      const done = () => { a.pause(); a.currentTime = 0; a.muted = false; };
+      if (p && p.then) p.then(done).catch(() => { a.muted = false; }); else done();
+    } catch(e){ a.muted = false; }
+  });
 }
 addEventListener('pointerdown', unlockBell);
 addEventListener('keydown', unlockBell);
