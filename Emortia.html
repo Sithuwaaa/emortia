@@ -905,20 +905,24 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 [data-theme="burgundy"][data-section="tools"]{--accent:#1f97a8;--accentB:#3fbdd0;--accentD:#12707e;--glow:rgba(31,151,168,0.5);--glow0:rgba(31,151,168,0);--glowSoft:rgba(31,151,168,0.28);--stripe:rgba(31,151,168,0.06);--dot:rgba(63,189,208,0.7);}
 [data-theme="burgundy"][data-section="about"]{--accent:#6b5ce0;--accentB:#8a7cf0;--accentD:#4a3cb8;--glow:rgba(107,92,224,0.5);--glow0:rgba(107,92,224,0);--glowSoft:rgba(107,92,224,0.28);--stripe:rgba(107,92,224,0.06);--dot:rgba(138,124,240,0.7);}
 .term-card{--tc:var(--accent);--tcB:var(--accentB);--tcGrid:rgba(255,255,255,.05);--tcLine:var(--line2);--tcBg:var(--surface2);--tcRGB:255,255,255;}
-.tool-design{--tc:#8fae3e;--tcB:#a9c957;--tcGrid:rgba(143,174,62,.10);--tcLine:#2b3d1f;--tcBg:#111a0d;--tcRGB:143,174,62;}
-.tool-bom{--tc:#d99b2e;--tcB:#f0bb55;--tcGrid:rgba(217,155,46,.10);--tcLine:#3e2f16;--tcBg:#1b1408;--tcRGB:217,155,46;}
-.tool-todo{--tc:#d4547a;--tcB:#e87b9c;--tcGrid:rgba(212,84,122,.10);--tcLine:#3a1e29;--tcBg:#190c11;--tcRGB:212,84,122;}
-.tool-update{--tc:#1f97a8;--tcB:#3fbdd0;--tcGrid:rgba(31,151,168,.10);--tcLine:#1e363c;--tcBg:#0c1619;--tcRGB:31,151,168;}
-.tool-access{--tc:#2f8fd4;--tcB:#5fb0ea;--tcGrid:rgba(47,143,212,.10);--tcLine:rgba(150,135,255,.16);--tcBg:#08060f;--tcRGB:47,143,212;}
-.tool-data{--tc:#7a68e8;--tcB:#9a8bf2;--tcGrid:rgba(122,104,232,.10);--tcLine:rgba(150,135,255,.16);--tcBg:#08060f;--tcRGB:122,104,232;}
-.tool-lyric{--tc:#7c6bf0;--tcB:#9b8dff;--tcGrid:rgba(124,107,240,.10);--tcLine:#2a2444;--tcBg:#0d0b14;--tcRGB:124,107,240;}
-.tool-esn{--tc:#d9663f;--tcB:#ef8a63;--tcGrid:rgba(217,102,63,.10);--tcLine:#40241a;--tcBg:#1d100b;--tcRGB:217,102,63;}
-.tool-gin{--tc:#2fa877;--tcB:#4cc294;--tcGrid:rgba(47,168,119,.10);--tcLine:#1e363c;--tcBg:#0c1619;--tcRGB:47,168,119;}
-.tool-team{--tc:#8fa83f;--tcB:#a9c257;--tcGrid:rgba(143,168,63,.10);--tcLine:rgba(150,135,255,.16);--tcBg:#08060f;--tcRGB:143,168,63;}
-.tool-field{--tc:#d9922e;--tcB:#f0b155;--tcGrid:rgba(217,146,46,.10);--tcLine:#1e363c;--tcBg:#0c1619;--tcRGB:217,146,46;}
-.tool-mat{--tc:#3f9e6b;--tcB:#5fc189;--tcGrid:rgba(63,158,107,.10);--tcLine:#1e363c;--tcBg:#0c1619;--tcRGB:63,158,107;}
-.tool-att{--tc:#6b7fd7;--tcB:#8b9cf0;--tcGrid:rgba(107,127,215,.10);--tcLine:#1e363c;--tcBg:#0c1619;--tcRGB:107,127,215;}
-.tool-rf{--tc:#d69a3c;--tcB:#eeb95f;--tcGrid:rgba(214,154,60,.10);--tcLine:rgba(150,135,255,.16);--tcBg:#08060f;--tcRGB:214,154,60;}
+/* Chosen families: design & materials + field operations from High voltage,
+   site intelligence from Terracotta & sea, people & work from Print inks,
+   Emortia from Field spectrum. Range inside a family is carried by chroma,
+   with a lightness floor so every label clears 4.5:1 on the card ground. */
+.tool-design{--tc:#82f776;--tcB:#9fff93;--tcGrid:rgba(130,247,118,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:130,247,118;}
+.tool-bom{--tc:#63e957;--tcB:#86ff7a;--tcGrid:rgba(99,233,87,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:99,233,87;}
+.tool-mat{--tc:#50d845;--tcB:#75f169;--tcGrid:rgba(80,216,69,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:80,216,69;}
+.tool-gin{--tc:#3cc731;--tcB:#63e058;--tcGrid:rgba(60,199,49,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:60,199,49;}
+.tool-data{--tc:#5de9eb;--tcB:#83ffff;--tcGrid:rgba(93,233,235,.10);--tcLine:#013536;--tcBg:#001212;--tcRGB:93,233,235;}
+.tool-access{--tc:#00d4d7;--tcB:#0feef0;--tcGrid:rgba(0,212,215,.10);--tcLine:#013536;--tcBg:#001212;--tcRGB:0,212,215;}
+.tool-update{--tc:#00bfc4;--tcB:#00d8dc;--tcGrid:rgba(0,191,196,.10);--tcLine:#013536;--tcBg:#001212;--tcRGB:0,191,196;}
+.tool-rf{--tc:#ffbb41;--tcB:#ffce62;--tcGrid:rgba(255,187,65,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,187,65;}
+.tool-esn{--tc:#ff9600;--tcB:#ffb402;--tcGrid:rgba(255,150,0,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,150,0;}
+.tool-field{--tc:#ff7900;--tcB:#ff9700;--tcGrid:rgba(255,121,0,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,121,0;}
+.tool-todo{--tc:#f1a2fd;--tcB:#ffbeff;--tcGrid:rgba(241,162,253,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:241,162,253;}
+.tool-team{--tc:#ea84fa;--tcB:#ffa1ff;--tcGrid:rgba(234,132,250,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:234,132,250;}
+.tool-att{--tc:#de68f1;--tcB:#f786ff;--tcGrid:rgba(222,104,241,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:222,104,241;}
+.tool-lyric{--tc:#fa7999;--tcB:#ff96b3;--tcGrid:rgba(250,121,153,.10);--tcLine:#491e29;--tcBg:#1d040a;--tcRGB:250,121,153;}
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
