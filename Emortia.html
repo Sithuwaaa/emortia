@@ -905,10 +905,13 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 [data-theme="burgundy"][data-section="tools"]{--accent:#1f97a8;--accentB:#3fbdd0;--accentD:#12707e;--glow:rgba(31,151,168,0.5);--glow0:rgba(31,151,168,0);--glowSoft:rgba(31,151,168,0.28);--stripe:rgba(31,151,168,0.06);--dot:rgba(63,189,208,0.7);}
 [data-theme="burgundy"][data-section="about"]{--accent:#6b5ce0;--accentB:#8a7cf0;--accentD:#4a3cb8;--glow:rgba(107,92,224,0.5);--glow0:rgba(107,92,224,0);--glowSoft:rgba(107,92,224,0.28);--stripe:rgba(107,92,224,0.06);--dot:rgba(138,124,240,0.7);}
 .term-card{--tc:var(--accent);--tcB:var(--accentB);--tcGrid:rgba(255,255,255,.05);--tcLine:var(--line2);--tcBg:var(--surface2);--tcRGB:255,255,255;}
-/* Chosen families: design & materials + field operations from High voltage,
-   site intelligence from Terracotta & sea, people & work from Print inks,
-   Emortia from Field spectrum. Range inside a family is carried by chroma,
-   with a lightness floor so every label clears 4.5:1 on the card ground. */
+/* One family of colour per group, and the group a tool is filed under is the
+   whole of what decides its colour - so a shelf is one colour and moving a
+   tool moves its colour with it. Design & materials + field operations from
+   High voltage, site intelligence from Terracotta & sea, people & work from
+   Print inks, Emortia from Field spectrum. Range inside a family is carried
+   by chroma, with a lightness floor so every label clears 4.5:1 on the card
+   ground, and the shades run in the order the group lists its tools. */
 .tool-design{--tc:#82f776;--tcB:#9fff93;--tcGrid:rgba(130,247,118,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:130,247,118;}
 .tool-bom{--tc:#63e957;--tcB:#86ff7a;--tcGrid:rgba(99,233,87,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:99,233,87;}
 .tool-mat{--tc:#50d845;--tcB:#75f169;--tcGrid:rgba(80,216,69,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:80,216,69;}
@@ -919,10 +922,10 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 .tool-rf{--tc:#ffbb41;--tcB:#ffce62;--tcGrid:rgba(255,187,65,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,187,65;}
 .tool-esn{--tc:#ff9600;--tcB:#ffb402;--tcGrid:rgba(255,150,0,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,150,0;}
 .tool-field{--tc:#ff7900;--tcB:#ff9700;--tcGrid:rgba(255,121,0,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,121,0;}
-.tool-todo{--tc:#f1a2fd;--tcB:#ffbeff;--tcGrid:rgba(241,162,253,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:241,162,253;}
 .tool-team{--tc:#ea84fa;--tcB:#ffa1ff;--tcGrid:rgba(234,132,250,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:234,132,250;}
 .tool-att{--tc:#de68f1;--tcB:#f786ff;--tcGrid:rgba(222,104,241,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:222,104,241;}
 .tool-lyric{--tc:#fa7999;--tcB:#ff96b3;--tcGrid:rgba(250,121,153,.10);--tcLine:#491e29;--tcBg:#1d040a;--tcRGB:250,121,153;}
+.tool-todo{--tc:#ef5f85;--tcB:#ff7d9f;--tcGrid:rgba(239,95,133,.10);--tcLine:#491e29;--tcBg:#1d040a;--tcRGB:239,95,133;}
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
