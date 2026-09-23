@@ -849,6 +849,111 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   addEventListener('touchmove', onTouch, { passive: false });
 })();
 </script>
+<script>
+/* ---- About: the stage runs itself ----
+
+   The section is sized to the window and the page behind it stays where it
+   is; the photograph never moves, and only the column of words scrolls. A
+   wheel anywhere over the section drives that column, so the reader does not
+   have to find it first. What the column brings into view fades up once, in
+   turn, and then stays up.
+
+   The app draws this section long after the page has loaded, and draws it
+   again every time somebody comes back to About, so nothing here can be done
+   once on boot: it watches for the section instead. */
+(function () {
+  var bound = null, io = null, fit = null;
+
+  function copyOf(sec) { return sec.querySelector('.ab-copy'); }
+  function scrolls(copy) { return getComputedStyle(copy).overflowY === 'auto'; }
+
+  /* The observer is the fast path; this is the one that cannot miss. Anything
+     already inside the column's window - or the window's own, on a phone - is
+     shown now, in order, rather than waiting for a callback that may not come
+     because it was never out of view in the first place. */
+  function sweep() {
+    var sec = bound; if (!sec) return;
+    var copy = copyOf(sec); if (!copy) return;
+    var box = scrolls(copy) ? copy.getBoundingClientRect() : { top: 0, bottom: innerHeight };
+    var n = 0;
+    [].forEach.call(sec.querySelectorAll('.ab-rise.ab-wait'), function (el) {
+      var r = el.getBoundingClientRect();
+      if (r.top < box.bottom - 12 && r.bottom > box.top) {
+        el.style.transitionDelay = (n++ * 90) + 'ms';
+        el.classList.remove('ab-wait');
+        if (io) io.unobserve(el);
+      }
+    });
+  }
+
+  function pass() {
+    var sec = document.querySelector('.ab-sec');
+    if (!sec) { bound = null; return; }
+    var copy = copyOf(sec);
+    if (!copy) return;
+
+    if (bound !== sec) {
+      bound = sec;
+      /* Measured rather than guessed: the header wraps and the player stacks,
+         and a section sized by a clamp is a scrollbar down a page with
+         nothing to scroll to. */
+      fit = function () {
+        if (innerWidth <= 640) { sec.style.height = ''; return; }
+        var top = sec.getBoundingClientRect().top + (scrollY || 0);
+        /* the player sits over the foot of every page: the stage stops above it,
+           or the page is left with a strip of scroll and no scrollbar to say so */
+        var foot = document.querySelector('footer');
+        var fh = foot ? Math.round(foot.getBoundingClientRect().height) : 0;
+        sec.style.height = Math.max(240, innerHeight - top - fh - 12) + 'px';
+      };
+      fit();
+      addEventListener('resize', fit);
+      /* a wheel over the photograph turns the words, which is what somebody
+         reading expects; inside the column the browser does it already */
+      sec.addEventListener('wheel', function (e) {
+        if (innerWidth <= 640 || copy.contains(e.target)) return;
+        copy.scrollTop += e.deltaY;
+        e.preventDefault();
+      }, { passive: false });
+      if (io) io.disconnect();
+      io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
+        var n = 0;
+        es.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          e.target.style.transitionDelay = (n++ * 90) + 'ms';
+          e.target.classList.remove('ab-wait');
+          io.unobserve(e.target);
+        });
+      }, { root: scrolls(copy) ? copy : null, threshold: 0.12, rootMargin: '0px 0px -6% 0px' }) : null;
+      copy.addEventListener('scroll', sweep, { passive: true });
+      addEventListener('scroll', sweep, { passive: true });
+    }
+
+    [].forEach.call(sec.querySelectorAll('.ab-rise'), function (el) {
+      if (el.dataset.ab) return;
+      el.dataset.ab = '1';
+      if (!io) return;
+      el.classList.add('ab-wait');
+      io.observe(el);
+    });
+    if (fit) fit();
+    sweep();
+  }
+
+  /* The section is React's to draw and redraw, so this waits for it rather
+     than looking once: one sweep a frame, however many nodes were swapped. */
+  [200, 700, 1600].forEach(function (t) { setTimeout(pass, t); });
+  if ('MutationObserver' in window) {
+    var q = 0;
+    new MutationObserver(function () {
+      if (q) return;
+      q = requestAnimationFrame(function () { q = 0; pass(); });
+    }).observe(document.body, { childList: true, subtree: true });
+  } else {
+    setInterval(pass, 900);
+  }
+})();
+</script>
 <!-- ============ BOOT ============
      The app is drawn by support.js, which is deferred, so between the HTML
      arriving and the first paint there is a moment of empty page. This fills
@@ -930,7 +1035,12 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
-html{scrollbar-gutter:stable;}
+/* The page still scrolls - the ground and the parallax are measured off it -
+   but the system rail is gone: a grey channel with arrows down the side of a
+   dark page is furniture, and with the gutter dropped nothing shifts when it
+   goes. */
+html{scrollbar-width:none;-ms-overflow-style:none;}
+html::-webkit-scrollbar{width:0;height:0;display:none;}
 :root{--pageBot:132px;
   /* One gap for the whole front page. Every tile on it - the three features,
      the random record, the card, the links, the count - is this far from the
@@ -982,9 +1092,26 @@ img.zoomable:focus-visible{outline:2px solid var(--accentB);outline-offset:4px;}
 .lightbox .lbx:hover{background:rgba(255,255,255,.15);}
 .lightbox .lbx:focus-visible{outline:2px solid var(--accentB);outline-offset:3px;}
 @media (prefers-reduced-motion:reduce){.lightbox,.lightbox img{transition:none;}}
+/* ---- About: a stage rather than a column ----
+   The photograph holds still and fills its half; only the words move, inside
+   their own column, and what the column brings up fades in once and stays.
+   Hidden only once the script has charge of it - .ab-wait is added by the
+   script, so if none of it runs the words are simply there. */
+.ab-copy::-webkit-scrollbar{display:none;}
+.ab-rise{transition:opacity .7s ease,transform .7s cubic-bezier(.22,.7,.2,1),filter .7s ease;}
+.ab-rise.ab-wait{opacity:0;transform:translate3d(0,26px,0);filter:blur(5px);}
+@media (max-width:640px){
+  /* On a phone there is no room for two halves: it goes back to being a page.
+     The photograph is sized off its width again - off the height it has none,
+     because the section it was measuring against no longer has one either. */
+  .ab-sec{height:auto !important;min-height:0 !important;}
+  .about-portrait>div{height:auto !important;width:100% !important;max-width:340px;}
+  .ab-copy{overflow:visible !important;-webkit-mask-image:none !important;mask-image:none !important;padding-bottom:60px !important;}
+}
+@media (prefers-reduced-motion:reduce){.ab-rise.ab-wait{opacity:1;transform:none;filter:none;transition:none;}}
 @media (max-width:760px){
   .lightbox{padding:14px;}
-  .about-portrait{position:static !important;max-width:340px;margin:0 auto;width:100%;}
+  .about-portrait{position:static !important;max-width:340px;margin:0 auto;width:100%;height:auto !important;}
   .hdr-inner{padding:11px 16px !important;}
   main{padding:0 18px !important;}
   .notes-grid{grid-template-columns:1fr !important;}
@@ -2485,18 +2612,18 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
     <!-- ============ ABOUT ============ -->
     <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
-    <section style="animation:fadeUp 0.5s ease;padding:40px 0 60px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:48px;align-items:start;">
-      <div class="about-portrait" style="position:sticky;top:90px;">
-        <div style="aspect-ratio:3/4;border-radius:20px;border:1px solid var(--line3);position:relative;overflow:hidden;">
-          <img class="zoomable" src="media/portrait.webp" alt="Portrait of Sithara Perera" title="Click to see the whole photograph" role="button" tabindex="0" width="760" height="950" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></img>
+    <section class="ab-sec" style="animation:fadeUp 0.5s ease;padding:24px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:48px;align-items:stretch;grid-template-rows:minmax(0,1fr);height:calc(100vh - 150px);">
+      <div class="about-portrait" style="min-height:0;height:100%;display:flex;align-items:center;justify-content:center;">
+        <div style="aspect-ratio:3/4;height:100%;max-height:100%;width:auto;max-width:100%;border-radius:20px;border:1px solid var(--line3);position:relative;overflow:hidden;">
+          <img class="zoomable ab-photo" src="media/portrait.webp" alt="Portrait of Sithara Perera" title="Click to see the whole photograph" role="button" tabindex="0" width="760" height="950" loading="lazy" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></img>
         </div>
       </div>
-      <div>
+      <div class="ab-copy" style="min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding:8px 6px 96px 0;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 calc(100% - 72px),transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 calc(100% - 72px),transparent 100%);">
         <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;">Who's behind it</div>
         <h2 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(36px,5vw,60px);letter-spacing:-0.03em;margin:6px 0 24px;">About</h2>
-        <p style="color:var(--text2);font-size:18px;line-height:1.7;margin:0 0 18px;">Producer and sound designer by night, telecommunications engineer by day – Emortia never quite picked a lane. Half the week is spent writing music; the other half is spent on towers, links and BBUs across the Airtel, Dialog and SLT-Mobitel networks.</p>
-        <p style="color:var(--dim);font-size:16px;line-height:1.7;margin:0 0 18px;">Eight-plus years in telecom operations, maintenance and project delivery, commissioning multi-vendor BBU and microwave systems. Currently Assistant Project Manager on the Dialog Lamp Pole Project, where the engineering sits alongside coordinating field teams, progress reporting and stakeholder communication.</p>
-        <p style="color:var(--dim);font-size:16px;line-height:1.7;margin:0 0 30px;">This site is both halves in one place: a player for the work, and a workspace for everything around it. Built warm, kept honest.</p>
+        <p class="ab-rise" style="color:var(--text2);font-size:18px;line-height:1.7;margin:0 0 18px;">Producer and sound designer by night, telecommunications engineer by day – Emortia never quite picked a lane. Half the week is spent writing music; the other half is spent on towers, links and BBUs across the Airtel, Dialog and SLT-Mobitel networks.</p>
+        <p class="ab-rise" style="color:var(--dim);font-size:16px;line-height:1.7;margin:0 0 18px;">Eight-plus years in telecom operations, maintenance and project delivery, commissioning multi-vendor BBU and microwave systems. Currently Assistant Project Manager on the Dialog Lamp Pole Project, where the engineering sits alongside coordinating field teams, progress reporting and stakeholder communication.</p>
+        <p class="ab-rise" style="color:var(--dim);font-size:16px;line-height:1.7;margin:0 0 30px;">This site is both halves in one place: a player for the work, and a workspace for everything around it. Built warm, kept honest.</p>
         <!-- Three groups rather than one unlabelled row: the same chip, but it
              now says which half of the week it belongs to. -->
         {{ aboutSkills }}
@@ -4049,7 +4176,7 @@ class Component extends DCLogic {
   renderAboutSkills(){
     const mono = "'Space Mono',monospace";
     return React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:'26px'}},
-      this.aboutGroups().map((g,i)=>React.createElement('div',{key:i,
+      this.aboutGroups().map((g,i)=>React.createElement('div',{key:i,className:'ab-grp ab-rise',
         /* a hairline above every group but the first, so the three read as
            one list in sections rather than three loose piles */
         style:i?{borderTop:'1px solid var(--line)',paddingTop:'26px'}:null},
