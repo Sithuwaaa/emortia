@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1e0500">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3a2205">
 <title>Austin SWAP</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -19,1167 +18,973 @@
 <script>Access.protect({ feature: 'tool:swap' });</script>
 <script src="swap.js?v=1"></script>
 <style>
-  /* The colours are the card's own, off the Tools page: the orange of the
-     field group, its line and its ground. Opening a tool should look like
-     walking through the card you pressed, not into a different building. */
   :root{
-    --navy:#3a2205;--navy-2:#4a2c07;
-    --accent:#ffa826;--accentB:#ffc164;--accentD:#c47b00;--accent-ink:#1e1200;
-    --bg:#1e0500;--card:#2b1206;--card-2:#240d03;--line:#4a2200;--line3:#6b3a10;
-    --text:#f8ecdc;--muted:#bda183;--zebra:rgba(255,255,255,.018);
-    --ok:#34c98b;--warn:#f2a33a;--bad:#e2607a;--info:#4f9bf0;
-    --glow:rgba(255,168,38,.5);--glowSoft:rgba(255,168,38,.26);
+    --navy:#3a2205;--accent:#ffa826;--accentB:#ffc164;--ink:#1e1200;
+    --bg:#1e0500;--card:#2b1206;--card2:#240d03;--line:#4a2200;--line3:#6b3a10;
+    --text:#f8ecdc;--muted:#bda183;--ok:#34c98b;--bad:#ff7d92;
   }
   html[data-theme="light"]{
-    --navy:#4a2c07;--navy-2:#5d3809;--accent:#a75d00;--accentB:#c47b00;--accentD:#7d4500;--accent-ink:#ffffff;
-    --bg:#fbf6f0;--card:#ffffff;--card-2:#fdfaf6;--line:#ead9c9;--line3:#cdb49a;
-    --text:#2e1a05;--muted:#6d5a45;--zebra:rgba(0,0,0,.022);
-    --ok:#1f9a68;--warn:#b8721c;--bad:#c2405c;--info:#2f6fd0;
+    --navy:#4a2c07;--accent:#a75d00;--accentB:#c47b00;--ink:#fff;
+    --bg:#fbf6f0;--card:#fff;--card2:#fdfaf6;--line:#ead9c9;--line3:#cdb49a;
+    --text:#2e1a05;--muted:#6d5a45;--ok:#1f9a68;--bad:#c2405c;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--bg);color:var(--text);
-    font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.5}
-
-  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);
-    color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;display:flex;align-items:center;gap:10px;
-    border-bottom:1px solid var(--line3);box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden}
-  .hdr>*{position:relative;z-index:1}
-  .hdr .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;flex-shrink:0;transition:opacity .18s ease}
-  .hdr .brand:hover{opacity:.86}
-  .hdr .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;
-    background:linear-gradient(150deg,#d15873,#87213c) !important;display:flex;align-items:center;justify-content:center;gap:2.4px;
-    box-shadow:0 0 16px rgba(176,58,86,.45);font-size:0;transition:transform .18s ease}
-  .hdr .brand:hover .logo{transform:scale(1.06)}
-  .hdr .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
-  .hdr .logo i:nth-child(1){height:7px} .hdr .logo i:nth-child(2){height:12px}
-  .hdr .logo i:nth-child(3){height:9px} .hdr .logo i:nth-child(4){height:13px}
-  .hdr .bname{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;letter-spacing:-.02em;color:#fff;white-space:nowrap}
-  .hdr .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0}
-  .hdr h1{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;margin-right:auto;
-    white-space:nowrap;color:#fff;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
-  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:rgba(0,0,0,.32);border:1px solid var(--line3);
-    color:#f9e6cd;border-radius:999px;padding:5px 12px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
-    flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
-  .pill::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accentB);animation:tLed 1.6s ease-in-out infinite;flex-shrink:0}
-  @keyframes tLed{0%,100%{opacity:.35}50%{opacity:1}}
-  .pill b{color:var(--accentB)}
-  .theme{background:none;border:1px solid var(--line3);color:#fff;border-radius:9px;width:34px;height:34px;
-    font-size:15px;cursor:pointer;flex-shrink:0;transition:border-color .2s ease,transform .2s ease}
-  .theme:hover{border-color:var(--accentB);transform:scale(1.06)}
-  @media (max-width:900px){.hdr .bname,.hdr .hsep{display:none}}
-  @media (max-width:760px){.hdr .pill{display:none}}
-
-  .tabs{position:sticky;top:55px;z-index:25;display:flex;gap:4px;overflow-x:auto;padding:10px 14px;
-    background:var(--bg);border-bottom:1px solid var(--line);scrollbar-width:none}
-  .tabs::-webkit-scrollbar{display:none}
-  .tab{flex-shrink:0;border:1px solid var(--line);background:var(--card-2);color:var(--muted);border-radius:9px;
-    padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;
-    transition:transform .15s ease,border-color .15s ease,color .15s ease}
-  .tab:hover{transform:translateY(-1px);border-color:var(--accent);color:var(--text)}
-  .tab.on{background:var(--accent);color:var(--accent-ink);border-color:transparent;box-shadow:0 6px 16px var(--glowSoft)}
-
-  main{max-width:1180px;margin:0 auto;padding:18px 14px calc(env(safe-area-inset-bottom) + 60px)}
-  @keyframes rise{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
-  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;animation:rise .4s ease both}
-  .panel h2{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;margin-bottom:6px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-  .panel h2 .dot{width:7px;height:7px;border-radius:50%;background:var(--accentB);flex-shrink:0}
-  .panel h2 .tag{margin-left:auto;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);font-weight:400}
-  .note{color:var(--muted);font-size:13px;line-height:1.6}
-  .note b{color:var(--text);font-weight:600}
-
-  .btn{border:1px solid var(--line3);background:none;color:var(--text);border-radius:9px;padding:8px 14px;
-    font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;
-    transition:border-color .18s ease,transform .18s ease,background .18s ease}
-  .btn:hover{border-color:var(--accent);transform:translateY(-1px)}
-  .btn.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
-  .btn:disabled{opacity:.45;cursor:default;transform:none;border-color:var(--line)}
-  .btn.sm{padding:5px 10px;font-size:12px}
-  .btn.del:hover{border-color:var(--bad);color:var(--bad)}
-  .bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-
-  label.f{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.13em;
-    text-transform:uppercase;color:var(--muted);margin-bottom:5px}
-  input,select,textarea{background:var(--card-2);color:var(--text);border:1px solid var(--line);border-radius:9px;
-    padding:9px 11px;font-size:14px;font-family:inherit;outline:none;width:100%;transition:border-color .18s ease}
-  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
-  input[readonly]{color:var(--muted);background:transparent}
+  html,body{background:var(--bg);color:var(--text);font:15px/1.5 'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif}
+  a{color:var(--accentB)} a:hover{color:var(--accent)}
+  button,input,select{font:inherit;color:inherit}
   .mono{font-family:'Space Mono',monospace}
-  .fld{min-width:0}
 
-  /* the two towers */
-  .towers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .tower{border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--card-2)}
-  .tower.gone{border-color:var(--accent);box-shadow:0 0 0 1px var(--glowSoft) inset}
-  .tower h3{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;margin-bottom:9px;display:flex;align-items:center;gap:8px}
-  .tower h3 .x{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
-    border:1px solid var(--accentD);color:var(--accentB);border-radius:999px;padding:2px 8px}
-  .row2{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:10px}
-  @media(max-width:700px){.towers{grid-template-columns:1fr}.row2{grid-template-columns:1fr}}
+  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--line3)}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:#fff}
+  .logo{width:30px;height:30px;border-radius:50%;background:linear-gradient(150deg,#d15873,#87213c);display:flex;align-items:center;justify-content:center;gap:2.4px}
+  .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
+  .logo i:nth-child(1){height:7px}.logo i:nth-child(2){height:12px}.logo i:nth-child(3){height:9px}.logo i:nth-child(4){height:13px}
+  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em}
+  .hsep{width:1px;height:19px;background:rgba(255,255,255,.2)}
+  .hdr h1{font:700 18px 'Bricolage Grotesque',sans-serif;margin-right:auto;white-space:nowrap}
+  .ibtn{background:none;border:1px solid var(--line3);color:#fff;border-radius:9px;height:34px;min-width:34px;padding:0 10px;cursor:pointer}
+  .ibtn:hover{border-color:var(--accentB)}
+  @media (max-width:640px){.bname,.hsep{display:none}}
 
-  /* one material off one of the towers */
-  .item{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:11px;background:var(--card-2);
-    animation:rise .3s ease both}
-  .item>header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:11px}
-  .item>header .n{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
-    border:1px solid var(--line);border-radius:999px;padding:3px 9px}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex-shrink:0}
-  .seg button{background:none;border:0;color:var(--muted);font:600 12px/1 inherit;font-family:inherit;
-    padding:7px 12px;cursor:pointer;transition:background .15s ease,color .15s ease}
-  .seg button.on{background:var(--accent);color:var(--accent-ink)}
-  .igrid{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) 92px;gap:10px}
-  @media(max-width:700px){.igrid{grid-template-columns:1fr 1fr}.igrid .wide{grid-column:1/-1}}
+  main{max-width:1400px;margin:0 auto;padding:22px 18px 120px;display:flex;flex-direction:column;gap:18px}
 
-  /* the code box and what it suggests */
-  .findw{position:relative}
-  .sug{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:20;padding:5px;max-height:260px;overflow-y:auto;
-    background:var(--card);border:1px solid var(--line3);border-radius:12px;box-shadow:0 20px 44px -18px rgba(0,0,0,.8)}
-  .sug button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);cursor:pointer;
-    padding:8px 10px;border-radius:8px;font-size:13.5px;transition:background .14s ease}
-  .sug button:hover,.sug button.on{background:var(--glowSoft)}
-  .sug .c{font-family:'Space Mono',monospace;color:var(--accentB);margin-right:8px}
-  .sug .t{color:var(--muted);font-size:11.5px}
+  .top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,.9fr) minmax(0,1fr) minmax(0,1fr);gap:12px}
+  @media (max-width:900px){.top{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+  .fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .fld label{font:700 10.5px 'Space Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .fld input{background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;min-width:0;outline:none}
+  .fld input:focus{border-color:var(--accent)}
+  .fld input[readonly]{border-color:var(--line);color:var(--muted)}
+  .fld .big{font:700 16px 'Space Mono',monospace;color:var(--accentB);text-transform:uppercase}
+  .fld small{font-size:12px;color:var(--muted);min-height:18px}
+  .fld small.bad{color:var(--bad)}
+  .fld.req input:placeholder-shown{border-color:var(--bad)}
 
-  /* the serials under a material */
-  .sns{margin-top:11px;border-top:1px dashed var(--line);padding-top:11px}
-  .sn{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-  .sn input{flex:1 1 180px;min-width:0}
-  .sn .shot{width:42px;height:42px;border-radius:8px;object-fit:cover;border:1px solid var(--line3);flex-shrink:0;cursor:pointer;background:var(--card)}
-  .sn .miss{width:42px;height:42px;border-radius:8px;border:1px dashed var(--line3);color:var(--muted);flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;background:none}
-  .sn .miss.want{border-color:var(--bad);color:var(--bad)}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .phead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .phead h2{font:700 16px 'Bricolage Grotesque',sans-serif;margin-right:auto}
+  .count{font:12px 'Space Mono',monospace;color:var(--muted)}
+  .btn{border:1px solid var(--line3);background:transparent;border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--accentB)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700}
+  .btn.pri:disabled{opacity:.5;cursor:not-allowed}
 
-  /* what has been filed */
-  .rec{border:1px solid var(--line);border-radius:12px;background:var(--card-2);margin-bottom:11px;overflow:hidden}
-  .rec>summary{list-style:none;cursor:pointer;padding:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .rec>summary::-webkit-details-marker{display:none}
-  .rec>summary .id{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px}
-  .rec>summary .who{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);margin-left:auto}
-  .rec .body{padding:0 13px 13px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
-  th{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-  tr:nth-child(even) td{background:var(--zebra)}
-  .chip{font-family:'Space Mono',monospace;font-size:10.5px;border:1px solid var(--line3);border-radius:999px;
-    padding:2px 8px;color:var(--muted);white-space:nowrap}
-  .chip.go{border-color:var(--accentD);color:var(--accentB)}
-  .chip.wh{border-color:var(--line3)}
-  .chip.hold{border-color:var(--warn);color:var(--warn)}
-  select.move{margin-top:5px;padding:4px 6px;font-size:11.5px;width:auto;max-width:170px}
-  .wnow{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
-  .wnow .line{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-  .wnow .stp{display:inline-flex;flex-direction:column;border:1px solid var(--line3);border-radius:9px;
-    padding:5px 10px;font-size:12.5px;background:var(--card)}
-  .wnow .stp.first{border-style:dashed;color:var(--muted)}
-  .wnow .stp:last-of-type{border-color:var(--accent);color:var(--text)}
-  .wnow .stp i{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);font-style:normal}
-  .wnow .line b{color:var(--muted)}
-  .chain{display:block;max-width:34ch;font-size:11px;line-height:1.5;opacity:.85}
-  .side{border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:13px;background:var(--card-2)}
-  .side>h3{font-family:'Bricolage Grotesque',sans-serif;font-size:14.5px;margin-bottom:11px;
-    display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-  .side>h3 .sid{font-family:'Space Mono',monospace;font-size:11px;color:var(--accentB);
-    border:1px solid var(--line3);border-radius:999px;padding:2px 9px}
-  .side>h3 .cnt{margin-left:auto;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted)}
-  .side .item{background:var(--card)}
+  .wrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:1420px}
+  html:not(.is-owner) .own{display:none}
+  html:not(.is-owner) #rows ~ * table, html:not(.is-owner) .panel table{min-width:1080px}
+  th{font:700 12.5px 'Hanken Grotesk',sans-serif;text-align:left;color:var(--text);background:var(--card2);padding:11px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;vertical-align:middle;height:48px}
+  td:last-child{border-right:0}
+  td.n{width:38px;text-align:center;color:var(--muted);font:12px 'Space Mono',monospace;background:var(--card2)}
+  td.ro{padding:0 10px;color:var(--muted);font-size:13.5px;white-space:nowrap}
+  td.ro.id{font-family:'Space Mono',monospace;color:var(--accentB)}
+  td input,td select{width:100%;height:48px;border:0;background:transparent;padding:0 10px;outline:none}
+  td input:focus,td select:focus{background:rgba(255,168,38,.08);box-shadow:inset 0 0 0 1px var(--accent)}
+  td select option{background:var(--card);color:var(--text)}
+  td.miss{background:rgba(226,96,122,.16)}
+  td.desc{font-size:13.5px;min-width:280px}
+  td.desc input[readonly]{color:var(--text);cursor:default}
+  td.desc.typed input{font-style:italic}
+  .tag{font:700 9.5px 'Space Mono',monospace;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line3);border-radius:999px;padding:1px 6px;margin-left:6px;vertical-align:middle;font-style:normal}
+  #siteName:not([readonly]){border-color:var(--accent)}
+  td.qty input{text-align:right;width:70px}
+  td.sn{min-width:230px}
+  .sncell{display:flex;align-items:center;gap:6px;padding-right:6px}
+  .sncell input{font-family:'Space Mono',monospace;text-transform:uppercase}
+  .mini{height:32px;border-radius:8px;border:1px solid var(--line3);background:var(--card2);padding:0 9px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .mini:hover{border-color:var(--accentB)}
+  .mini.go{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  .mini.on{border-color:var(--accentB);color:var(--accentB)}
+  .phadd.opt{border-color:var(--line3);color:var(--muted)}
+  td.loc{min-width:390px}
+  .steps{display:flex;align-items:stretch;gap:0;padding:6px 8px}
+  .stp{display:flex;flex-direction:column;gap:3px;min-width:0;padding:4px 8px;border:1px solid var(--line3);background:var(--card2);cursor:pointer;position:relative}
+  .stp:first-child{border-radius:9px 0 0 9px} .stp:last-child{border-radius:0 9px 9px 0} .stp+.stp{border-left:0}
+  .stp .hd{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;white-space:nowrap;color:var(--muted)}
+  .stp .bx{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--line3);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;flex:0 0 auto}
+  .stp.on{border-color:var(--ok);background:rgba(52,201,139,.08)} .stp.on+.stp{border-left:1px solid var(--ok)}
+  .stp.on .hd{color:var(--text)} .stp.on .bx{background:var(--ok);border-color:var(--ok);color:#06200f}
+  .stp.now .hd::after{content:'now';font:700 9px 'Space Mono',monospace;color:var(--ok);border:1px solid var(--ok);border-radius:999px;padding:0 5px;margin-left:2px}
+  .stp .dt{font:11px 'Space Mono',monospace;color:var(--muted);white-space:nowrap}
+  .stp input{height:24px !important;width:118px !important;padding:0 4px !important;font:11px 'Space Mono',monospace;border:1px solid var(--line) !important;border-radius:5px;background:var(--bg) !important;color-scheme:dark}
+  html[data-theme="light"] .stp input{color-scheme:light}
+  .stp input.sid{width:84px !important;text-transform:uppercase}
+  .stp.bad{border-color:var(--bad)}
+  .stp.fixed{cursor:default}
+  .steps.ro .stp{padding:5px 9px}
+  .steps.ro .stp:hover{border-color:var(--accentB)}
+  .loccell{display:flex;align-items:center}
+  .loccell select{flex:1;min-width:0}
+  .loccell input[type=date]{width:128px;flex:0 0 128px;border-left:1px solid var(--line);font:12px 'Space Mono',monospace;padding:0 6px;color-scheme:dark}
+  html[data-theme="light"] .loccell input[type=date]{color-scheme:light}
+  #removedOn{color-scheme:dark} html[data-theme="light"] #removedOn{color-scheme:light}
+  .loccell input{width:100px;flex:0 0 100px;text-transform:uppercase;border-left:1px solid var(--line)}
+  .locnm{font-size:11.5px;color:var(--muted);padding:0 10px 6px;margin-top:-8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+  .lsel{background:transparent;border:1px solid var(--line3);border-radius:8px;padding:5px 8px;font-size:12.5px;max-width:170px}
+  .lsel option{background:var(--card);color:var(--text)}
+  .lsel.wh{border-color:var(--ok);color:var(--ok)} .lsel.site{border-color:var(--accentB);color:var(--accentB)} .lsel.scrapped{color:var(--muted)}
+  td.ph{min-width:268px}
+  .slot{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto;cursor:pointer}
+  .slot i{font:normal 700 9px 'Space Mono',monospace;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+  .slot.need i{color:var(--bad)}
+  .phs{padding:4px 8px !important;gap:7px !important}
+  .phs{display:flex;align-items:center;gap:5px;padding:0 8px}
+  .thumb{width:40px;height:34px;border-radius:6px;object-fit:cover;border:1px solid var(--line3);cursor:pointer;display:block;flex:0 0 auto}
+  .thumb.sn{border-color:var(--accent)}
+  .phmore{font:700 11.5px 'Space Mono',monospace;color:var(--muted);cursor:pointer}
+  .phadd{width:40px;height:34px;border-radius:6px;border:1.5px dashed var(--bad);color:var(--bad);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;flex:0 0 auto}
+  .phadd.ok{border-color:var(--line3);color:var(--muted)}
+  #lb{position:fixed;inset:0;z-index:85;background:rgba(0,0,0,.9);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}
+  #lb.on{display:flex}
+  #lb img{max-width:100%;max-height:calc(100vh - 110px);border-radius:10px;object-fit:contain}
+  .lbbar{display:flex;align-items:center;gap:10px;width:min(720px,100%);color:#f8ecdc}
+  .lbbar .btn{color:#f8ecdc}
+  .galbtn{background:none;border:1px solid var(--line3);border-radius:999px;padding:3px 10px;font:700 12px 'Space Mono',monospace;cursor:pointer;color:var(--text)}
+  .galbtn:hover{border-color:var(--accentB);color:var(--accentB)}
+  td.act{width:44px;text-align:center}
+  .del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px;width:36px;height:36px;border-radius:8px}
+  .del:hover{color:var(--bad);background:rgba(226,96,122,.12)}
+  .addrow{display:flex;padding:8px 0 8px 5px}
+  .plus{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line3);background:transparent;color:var(--muted);
+    font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,border-color .15s}
+  .plus:hover{color:var(--accent);border-color:var(--accent)}
 
-  /* the scanner */
-  #scan{position:fixed;inset:0;z-index:60;background:rgba(10,4,0,.94);display:none;
-    align-items:center;justify-content:center;padding:16px}
+  #sug{position:fixed;z-index:60;background:var(--card);border:1px solid var(--accent);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.5);
+    width:min(560px,92vw);max-height:320px;overflow:auto;display:none}
+  #sug.on{display:block}
+  #sug div{padding:9px 12px;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;border-bottom:1px solid var(--line)}
+  #sug div:last-child{border-bottom:0}
+  #sug div.on,#sug div:hover{background:rgba(255,168,38,.14)}
+  #sug b{font:700 13px 'Space Mono',monospace;color:var(--accentB)}
+  #sug span{font-size:13.5px}
+  #sug em{font:normal 11px 'Space Mono',monospace;color:var(--muted)}
+
+  .foot{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--navy);border-top:1px solid var(--line3);
+    padding:12px 18px calc(env(safe-area-inset-bottom) + 12px);display:flex;align-items:center;gap:12px}
+  .foot .msg{margin-right:auto;font-size:13.5px;color:#f9e6cd}
+  .foot .msg.bad{color:var(--bad)}
+
+  #scan{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:16px}
   #scan.on{display:flex}
-  #scan .box{width:min(520px,100%);background:var(--card);border:1px solid var(--line3);border-radius:16px;
-    padding:14px;display:flex;flex-direction:column;gap:11px}
-  #scan video{width:100%;border-radius:12px;background:#000;aspect-ratio:4/3;object-fit:cover}
-  #scan h3{font-family:'Bricolage Grotesque',sans-serif;font-size:16px}
-
-  #lightbox{position:fixed;inset:0;z-index:70;background:rgba(10,4,0,.93);display:none;align-items:center;justify-content:center;padding:18px}
-  #lightbox.on{display:flex}
-  #lightbox img{max-width:100%;max-height:86vh;border-radius:12px;border:1px solid var(--line3)}
-
-  #toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,140%);z-index:80;
-    background:var(--navy-2);color:#fff;border:1px solid var(--line3);border-radius:12px;padding:11px 16px;
-    font-size:13.5px;max-width:92vw;text-align:center;transition:transform .3s cubic-bezier(.2,.8,.25,1);box-shadow:0 18px 44px rgba(0,0,0,.6)}
+  #scan .box{background:var(--card);border:1px solid var(--line3);border-radius:16px;padding:16px;width:min(520px,100%);display:flex;flex-direction:column;gap:12px}
+  #scan h3{font:700 17px 'Bricolage Grotesque',sans-serif}
+  #scan video{width:100%;border-radius:10px;background:#000;aspect-ratio:4/3;object-fit:cover}
+  #scan p{font-size:13px;color:var(--muted)}
+  #scan .bar{display:flex;gap:10px;justify-content:flex-end}
+  [hidden]{display:none !important}
+  .tabs{position:sticky;top:var(--hdrH,66px);z-index:28;background:var(--bg);border-bottom:1px solid var(--line);display:flex;gap:6px;padding:10px 18px}
+  .tab{border:1px solid var(--line3);background:transparent;border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap;flex:0 0 auto}
+  .tab.on{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700}
+  .tab b{font-family:'Space Mono',monospace;font-size:12px;margin-left:4px}
+  .sbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .sbar input{flex:1;min-width:200px;background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;outline:none}
+  .sbar input:focus{border-color:var(--accent)}
+  .site{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .site>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:14px 16px}
+  .site>summary::-webkit-details-marker{display:none}
+  .site[open]>summary{border-bottom:1px solid var(--line)}
+  .site .sid{font:700 15px 'Space Mono',monospace;color:var(--accentB)}
+  .site .snm{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .site .meta{font:12px 'Space Mono',monospace;color:var(--muted);white-space:nowrap}
+  .site .chev{color:var(--muted);transition:transform .2s ease}
+  .site[open] .chev{transform:rotate(90deg)}
+  .site table{min-width:1400px}
+  .site td{padding:0 10px;font-size:13.5px;border-right:0}
+  .site td.m{font-family:'Space Mono',monospace;font-size:12.5px}
+  .site .sfoot{display:flex;gap:10px;justify-content:flex-end;padding:12px 14px;flex-wrap:wrap}
+  .site .sub{font-size:12px;color:var(--muted);padding:10px 16px 0}
+  .seg{display:flex;border:1px solid var(--line3);border-radius:10px;overflow:hidden}
+  .seg button{background:transparent;border:0;padding:10px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .seg button+button{border-left:1px solid var(--line3)}
+  .seg button.on{background:var(--accent);color:var(--ink);font-weight:700}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .kpis div{background:var(--card);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+  .kpis b{font:800 26px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em}
+  .kpis span{font-size:12px;color:var(--muted)}
+  .inv{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .inv table{min-width:1000px}
+  .inv td{padding:0 10px;font-size:13.5px;border-right:0}
+  .inv td.m{font-family:'Space Mono',monospace;font-size:12.5px}
+  .inv td.num{text-align:right;font:700 14px 'Space Mono',monospace}
+  .inv th.num{text-align:right}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips a{font:12px 'Space Mono',monospace;border:1px solid var(--line3);border-radius:999px;padding:3px 9px;text-decoration:none;color:var(--text)}
+  .chips a:hover{border-color:var(--accentB);color:var(--accentB)}
+  .empty{color:var(--muted);font-size:14px;padding:28px;text-align:center;border:1px dashed var(--line3);border-radius:14px}
+  .st{font:700 11px 'Space Mono',monospace;padding:3px 8px;border-radius:999px;border:1px solid var(--line3)}
+  .st.Working{color:var(--ok);border-color:var(--ok)} .st.Faulty,.st.Damaged{color:var(--bad);border-color:var(--bad)}
+  #toast{position:fixed;left:50%;bottom:86px;transform:translate(-50%,160px);background:var(--card);border:1px solid var(--accent);border-radius:12px;padding:10px 16px;z-index:90;transition:transform .25s ease;font-size:14px}
   #toast.show{transform:translate(-50%,0)}
-  .empty{color:var(--muted);font-size:13.5px;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:12px}
 </style>
 </head>
 <body>
-
 <header class="hdr">
-  <a class="brand" href="../../" title="Emortia">
-    <span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-    <span class="bname">Emortia</span>
-  </a>
+  <a class="brand" href="../../" title="Emortia"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bname">Emortia</span></a>
   <span class="hsep"></span>
   <h1>Austin SWAP</h1>
-  <span class="pill" id="pill">loading…</span>
-  <button class="theme" id="themeBtn" title="Light or dark">◐</button>
+  <button class="ibtn" id="themeBtn" title="Light or dark">◐</button>
 </header>
 
-<div class="tabs" id="tabs"></div>
-<main id="main"></main>
+<nav class="tabs">
+  <button class="tab on" data-tab="new">New sheet</button>
+  <button class="tab" data-tab="sites">Inventory <b id="siteCount">·</b></button>
+</nav>
 
-<div id="scan" role="dialog" aria-modal="true" aria-label="Scan a serial number">
-  <div class="box">
-    <h3>Point it at the barcode</h3>
-    <video id="scanVid" playsinline muted></video>
-    <p class="note" id="scanNote">Hold the label still and fill the frame. The picture is kept as the serial's photo.</p>
-    <div class="bar" style="margin:0">
-      <button class="btn" id="scanShot">Use this picture</button>
-      <button class="btn del" id="scanStop">Close</button>
+<main id="vSites" hidden>
+  <div class="sbar">
+    <input id="find" placeholder="Find a site ID, name, code or SN" autocomplete="off" spellcheck="false">
+    <div class="seg" id="seg"><button data-v="material" class="on">By material</button><button data-v="site">By site</button><button data-v="rows">Every row</button></div>
+    <button class="btn" id="exportAll">Export</button>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div id="siteList" style="display:flex;flex-direction:column;gap:12px"><div class="empty">Loading inventory…</div></div>
+</main>
+
+<main id="vNew">
+  <section class="top">
+    <div class="fld">
+      <label for="siteId">Site ID</label>
+      <input id="siteId" class="big" placeholder="CM0104" autocomplete="off" spellcheck="false">
+      <small id="siteHint"></small>
     </div>
+    <div class="fld">
+      <label for="siteName">Site name</label>
+      <input id="siteName" readonly placeholder="fills from the Site Access sheet">
+      <small id="nameHint"></small>
+    </div>
+    <div class="fld req">
+      <label for="who">Submitted by</label>
+      <input id="who" placeholder="your name" autocomplete="name">
+      <small id="whoHint"></small>
+    </div>
+    <div class="fld">
+      <label for="removedOn">Removed on</label>
+      <input id="removedOn" type="date" class="mono">
+      <small>the day it came off the tower</small>
+    </div>
+    <div class="fld">
+      <label for="when">Date &amp; time</label>
+      <input id="when" readonly class="mono">
+      <small>submitted at – set automatically</small>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="phead">
+      <h2>Removed from site</h2>
+      <span class="count" id="count">0 rows</span>
+    </div>
+    <div class="wrap">
+      <table>
+        <thead><tr>
+          <th></th><th>Site ID</th><th>Site Name</th><th>Material Code</th><th>Material description</th>
+          <th>Quantity</th><th>Unit of Measure</th><th>SN</th><th>Photos</th><th>Status</th><th class="own">Location</th><th></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="addrow">
+      <button class="plus" id="addRow" title="Add a row" aria-label="Add a row">+</button>
+    </div>
+  </section>
+</main>
+
+<div class="foot" id="foot">
+  <span class="msg" id="msg">Type a site ID to start.</span>
+  <button class="btn" id="clear" style="color:#f9e6cd">Clear</button>
+  <button class="btn pri" id="submit">Submit</button>
+</div>
+
+<div id="sug" role="listbox"></div>
+<input type="file" id="pick" accept="image/*" multiple hidden>
+<div id="lb" role="dialog" aria-modal="true" aria-label="Photo">
+  <img id="lbImg" alt="">
+  <div class="lbbar">
+    <button class="btn" id="lbPrev">‹</button>
+    <span id="lbCap" class="mono"></span>
+    <button class="btn" id="lbNext">›</button>
+    <button class="btn" id="lbDel" style="margin-left:auto;color:var(--bad)">Remove</button>
+    <button class="btn" id="lbClose">Close</button>
   </div>
 </div>
 
-<div id="lightbox"><img id="lightImg" alt=""></div>
+<div id="scan" role="dialog" aria-modal="true" aria-label="Scan a serial number">
+  <div class="box">
+    <h3>Point it at the serial barcode</h3>
+    <video id="scanVid" playsinline muted></video>
+    <p id="scanNote">Hold the label still. The frame that reads it is kept as the SN photo.</p>
+    <div class="bar">
+      <button class="btn" id="scanShot">Use this picture</button>
+      <button class="btn" id="scanStop">Close</button>
+    </div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
 'use strict';
 const S = window.SwapCore;
 const $ = id => document.getElementById(id);
-let tt; function toast(m, ms){ const t = $('toast'); t.textContent = m; t.classList.add('show');
-  clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), ms || 2800); }
+const up = v => String(v == null ? '' : v).trim().toUpperCase();
+const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const UOMS = ['EA','SET','M','KG','ROLL','PCS'];
+const STATUSES = ['', 'Working', 'Faulty', 'Damaged'];
+const PKINDS = [['sn','SN photo'],['full1','Full photo 1'],['full2','Full photo 2'],['other','Other']];
+const PSHORT = { sn:'SN', full1:'Full 1', full2:'Full 2', other:'Other' };
+const pLabel = k => (PKINDS.find(x => x[0] === k) || [,'Photo'])[1];
+const LOCS = [['team','With team'],['wh','Warehouse'],['site','Mapped to site'],['scrapped','Scrapped']];
+const locLabel = m => !m ? 'With team' : m.to === 'site' ? 'Site ' + (up(m.site) || '?') : (LOCS.find(l => l[0] === m.to) || [,'With team'])[1];
+const KEY = 'swap.sheet.v2';
+/* Location - with team, at the warehouse, mapped to a site - is the owner's
+   to keep. A Tooway login submits the sheet and every row lands "with team";
+   the ticks, their dates and the location columns never reach their screen. */
+const OWNER = !!(window.Access && Access.isOwner && Access.isOwner());
 
-const isOwner = () => !!(window.Access && Access.isOwner());
-const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
-  c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]);
+let SITES = {}, MAT = { byCode:{}, all:[] }, ROWS = [], SITE = { id:'', name:'' }, BUSY = false;
 
-/* ---------- the theme, remembered with the other tools ---------- */
-const THEME_KEY = 'office_tool_theme';
+/* ---- theme ---- */
 function paintTheme(){
-  let t = 'dark';
-  try { t = localStorage.getItem(THEME_KEY) || 'dark'; } catch(e){}
-  document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+  let t = 'dark'; try { t = localStorage.getItem('swap.theme') || 'dark'; } catch(e){}
+  document.documentElement.dataset.theme = t;
   $('themeBtn').textContent = t === 'light' ? '☀' : '◐';
 }
 $('themeBtn').onclick = () => {
-  const now = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-  try { localStorage.setItem(THEME_KEY, now); } catch(e){}
+  const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  try { localStorage.setItem('swap.theme', t); } catch(e){}
   paintTheme();
 };
 paintTheme();
 
-/* ---------- state ---------- */
-let DRAFTS = [], FILED = [], ACTIVE = 'd0';
-let SITES = {};                 // site id -> name, off the Site Access dataset
-let MAT = { byCode:{}, all:[] };// the material list, off the Material Codes tool
-let MATERR = '';
-let ME = '', MYNAME = '';
-let LINKS = {};                 // storage path -> signed URL, asked for when shown
-let SUG = { key:'', at:0 };     // which code box is open and which line is marked
+function toast(t, ms){ const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), ms || 2600); }
+const pad = n => String(n).padStart(2, '0');
+const stamp = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+setInterval(() => { $('when').value = stamp(new Date()); }, 1000);
+$('when').value = stamp(new Date());
 
-const DRAFT_KEY = 'swap_drafts_v1';
-
-/* Drafts live in this browser until they are filed: a tower visit is often
-   typed with no signal at all, and losing it to a locked phone would be the
-   end of the tool. The pictures cannot go in localStorage - they are blobs -
-   so a reloaded draft keeps everything but its photographs and says so. */
-function saveDrafts(){
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(DRAFTS.map(d => ({
-      ...d, files:{}, busy:null,
-      items:(d.items||[]).map(i => ({ ...i,
-        serials:(i.serials||[]).map(s => ({ sn:s.sn, photo:s.photo || null })) }))
-    }))));
-  } catch(e){}
+/* ---- data ---- */
+const today = () => stamp(new Date()).slice(0, 10);
+const removedOn = () => $('removedOn').value || today();
+const blankRow = () => ({ uid: Math.random().toString(36).slice(2, 9), code:'', desc:'', qty:1, uom:'EA', sn:'', status:'', photos:[], noSn:false, whOn:'', mapOn:'', locSite:'', locName:'' });
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify({ site: SITE, who: $('who').value, removedOn: $('removedOn').value,
+    rows: ROWS.map(r => ({ ...r, photos: [] })) })); } catch(e){}
 }
-function loadDrafts(){
-  let raw = null;
-  try { raw = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch(e){}
-  DRAFTS = Array.isArray(raw) && raw.length ? raw.map(d => ({ ...d, files:d.files||{}, busy:null })) : [S.blank()];
-  ACTIVE = DRAFTS[0].uid;
+function load(){
+  let d = null; try { d = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){}
+  if (d && d.rows && d.rows.length){
+    SITE = d.site || SITE; ROWS = d.rows.map(r => ({ ...blankRow(), ...r, photos:[] })).map(r => started(r) ? r : blankRow());
+    if (d.who) $('who').value = d.who;
+    if (d.removedOn) $('removedOn').value = d.removedOn;
+    if (ROWS.some(r => r.sn)) toast('Draft restored – photos need taking again', 4200);
+  } else ROWS = [blankRow()];
+  $('siteId').value = SITE.id; $('siteName').value = SITE.name;
+  if (SITE.name && !SITE.known) SITE.typed = SITE.name;
 }
-
-/* ---------- the two lists this tool reads ---------- */
-async function loadSites(){
-  try {
-    const ds = await window.DB.load('site_access');
-    SITES = S.buildIndex(ds);
-  } catch(e){ SITES = {}; }
+function uomOf(attrs){
+  const a = attrs || {};
+  for (const k of Object.keys(a)) if (/^(uom|unit|unit of measure|base unit)$/i.test(k.trim()) && a[k]) return up(a[k]);
+  return '';
 }
 async function loadMaterials(){
   try {
     const r = await window.DB.materialsLoad();
-    if (r.error){ MATERR = r.error; return; }
-    MAT = S.materialIndex(r.rows);
-  } catch(e){ MATERR = e.message; }
+    if (r.error){ toast(r.error, 5000); return; }
+    const all = r.rows.map(m => ({ code: up(m.code), name: String(m.desc || '').trim(), type: m.type || '', uom: uomOf(m.attrs) })).filter(m => m.code);
+    MAT = { all, byCode: Object.fromEntries(all.map(m => [m.code, m])) };
+  } catch(e){}
 }
-async function loadFiled(){
-  try {
-    const r = await window.DB.swapList();
-    if (r.error){ toast(r.error, 6000); return false; }
-    FILED = (r.rows || []).map(S.fromRow);
-    return true;
-  } catch(e){ toast(e.message, 6000); return false; }
+async function loadSites(){
+  try { SITES = S.buildIndex(await window.DB.load('site_access')); } catch(e){ SITES = {}; }
+  lookSite();
+}
+function suggest(q){
+  const s = up(q); if (!s) return [];
+  const words = s.split(/\s+/).filter(Boolean);
+  const hit = m => words.every(w => m.code.includes(w) || up(m.name).includes(w));
+  const rank = m => m.code.startsWith(s) ? 0 : m.code.includes(s) ? 1 : up(m.name).startsWith(s) ? 2 : 3;
+  return MAT.all.filter(hit).sort((a,b) => rank(a) - rank(b) || a.code.localeCompare(b.code)).slice(0, 10);
 }
 
-/* ---------- tabs ---------- */
-function buildTabs(){
-  const t = $('tabs');
-  t.innerHTML = DRAFTS.map((d, i) => {
-    const nm = S.swapTitle(d) || ('Swap ' + (i + 1));
-    return '<button class="tab' + (ACTIVE === d.uid ? ' on' : '') + '" data-tab="' + d.uid + '">' +
-           esc(nm) + (d.saved ? ' ✓' : '') + '</button>';
-  }).join('') +
-  '<button class="tab" data-add="1">+ New swap</button>' +
-  '<button class="tab' + (ACTIVE === 'filed' ? ' on' : '') + '" data-tab="filed">Filed · ' + FILED.length + '</button>' +
-  '<button class="tab' + (ACTIVE === 'all' ? ' on' : '') + '" data-tab="all">Every material</button>';
-  [...t.querySelectorAll('[data-tab]')].forEach(b => b.onclick = () => { ACTIVE = b.dataset.tab; buildTabs(); render(); });
-  const add = t.querySelector('[data-add]');
-  if (add) add.onclick = () => {
-    const d = S.blank(); DRAFTS.push(d); ACTIVE = d.uid; saveDrafts(); buildTabs(); render();
+/* ---- site ---- */
+/* A site the Access sheet knows fills its own name and locks it. One it does
+   not know is still a site: the name field opens and whatever is typed is
+   kept, marked as typed so it can be told apart later. */
+function lookSite(){
+  const id = up($('siteId').value), known = id ? (S.findSite(SITES, id) || '') : '';
+  if (id !== SITE.id && !known) SITE.typed = SITE.known ? '' : (SITE.typed || '');
+  SITE.id = id; SITE.known = !!known;
+  SITE.name = known || SITE.typed || '';
+  const n = $('siteName');
+  n.readOnly = !!known || !id;
+  n.placeholder = !id ? 'fills from the Site Access sheet' : known ? '' : 'type the site name';
+  if (document.activeElement !== n) n.value = SITE.name;
+  const h = $('siteHint'), nh = $('nameHint');
+  const loaded = Object.keys(SITES).length;
+  if (!id){ h.textContent = ''; h.className = ''; nh.textContent = ''; }
+  else if (known){ h.textContent = 'found in Site Access'; h.className = ''; nh.textContent = ''; }
+  else if (!loaded){ h.textContent = 'loading sites…'; h.className = ''; nh.textContent = ''; }
+  else { h.textContent = 'not in Site Access – type its name'; h.className = ''; nh.textContent = SITE.name ? 'typed – kept as entered' : 'required'; nh.className = SITE.name ? '' : 'bad'; }
+  paint(); save();
+}
+$('siteName').addEventListener('input', e => { if (SITE.known) return; SITE.typed = e.target.value.trim(); SITE.name = SITE.typed; lookSite(); });
+$('siteId').addEventListener('input', lookSite);
+
+/* ---- the table ---- */
+function rowProblems(r){
+  const p = [];
+  if (!MAT.byCode[r.code] && !String(r.desc || '').trim()) p.push('code');
+  if (!(r.qty >= 1)) p.push('qty');
+  if (!r.noSn && !r.sn) p.push('sn');
+  if (!r.noSn && !r.photos.some(x => x.kind === 'sn')) p.push('photo');
+  if (!r.photos.some(x => x.kind === 'full1') || !r.photos.some(x => x.kind === 'full2')) p.push('photo');
+  if (OWNER && r.mapOn && !r.locSite) p.push('location');
+  return p;
+}
+const started = r => r.code || String(r.desc || '').trim() || r.sn || r.photos.length;
+/* The journey as three boxes: ticked is done, and the date sits under it.
+   With team is ticked from the start, on the removal date; the other two are
+   ticked as they happen. */
+function stepsEntry(r, i){
+  const d = (f, v) => '<input type="date" data-f="' + f + '" value="' + esc(v) + '" max="' + today() + '">';
+  const now = r.mapOn ? 'site' : r.whOn ? 'wh' : 'team';
+  return '<div class="steps">' +
+    '<div class="stp on fixed' + (now === 'team' ? ' now' : '') + '"><span class="hd"><span class="bx">✓</span>With team</span><span class="dt">' + esc(removedOn()) + '</span></div>' +
+    '<div class="stp' + (r.whOn ? ' on' : '') + (now === 'wh' ? ' now' : '') + '" data-tick="' + i + '|wh"><span class="hd"><span class="bx">' + (r.whOn ? '✓' : '') + '</span>At WH</span>' + (r.whOn ? d('whOn', r.whOn) : '<span class="dt">—</span>') + '</div>' +
+    '<div class="stp' + (r.mapOn ? ' on' : '') + (now === 'site' ? ' now' : '') + (r.mapOn && !r.locSite ? ' bad' : '') + '" data-tick="' + i + '|site"><span class="hd"><span class="bx">' + (r.mapOn ? '✓' : '') + '</span>Mapped</span>' +
+      (r.mapOn ? d('mapOn', r.mapOn) + '<input class="sid" data-f="locSite" value="' + esc(r.locSite) + '" placeholder="site ID" title="' + esc(r.locName || (r.locSite ? 'not in Site Access – kept as typed' : 'site ID')) + '" autocomplete="off" spellcheck="false">' : '<span class="dt">—</span>') + '</div>' +
+    '</div>';
+}
+function slots(r, i){
+  const one = kind => {
+    const k = r.photos.findIndex(x => x.kind === kind), need = kind !== 'sn' || !r.noSn;
+    if (kind === 'sn' && r.noSn) return '';
+    return '<span class="slot' + (k < 0 && need ? ' need' : '') + '">' + (k >= 0
+      ? '<img class="thumb' + (kind === 'sn' ? ' sn' : '') + '" src="' + r.photos[k].url + '" data-view="' + i + '|' + k + '" alt="" title="' + pLabel(kind) + '">'
+      : '<span class="phadd' + (need ? '' : ' ok') + '" data-photo="' + i + '|' + kind + '" title="Add ' + pLabel(kind) + '">+</span>') + '<i>' + PSHORT[kind] + '</i></span>';
   };
-  const tot = S.totals(FILED);
-  $('pill').innerHTML = '<b>' + tot.records + '</b> filed · <b>' + tot.lines + '</b> lines · <b>' +
-                        tot.serials + '</b> serials';
+  const others = r.photos.map((x, k) => [x, k]).filter(([x]) => x.kind === 'other');
+  return one('sn') + one('full1') + one('full2') +
+    '<span class="slot">' + (others.length
+      ? '<span class="phadd ok" data-view="' + i + '|' + others[0][1] + '" title="Other photos" style="font:700 12px \'Space Mono\',monospace">' + others.length + '</span>'
+      : '') + '</span>' +
+    '<span class="slot"><span class="phadd ok" data-photo="' + i + '|other" title="Add other photos – ports, labels, cable run">+</span><i>Other</i></span>';
 }
-
-/* ---------- the form ---------- */
 function render(){
-  const m = $('main');
-  if (ACTIVE === 'filed'){ renderFiled(m); return; }
-  if (ACTIVE === 'all'){ renderAll(m); return; }
-  const d = DRAFTS.find(x => x.uid === ACTIVE) || DRAFTS[0];
-  if (!d){ m.innerHTML = ''; return; }
-  const own = isOwner();
-
-  const tower = (side) => {
-    const idF = side === 'airtel' ? 'airtelSite' : 'dialogSite';
-    const nmF = side === 'airtel' ? 'airtelName' : 'dialogName';
-    const gone = d.removed === side || d.removed === 'both';
-    return '<div class="tower' + (gone ? ' gone' : '') + '">' +
-      '<h3>' + (side === 'airtel' ? 'Airtel tower' : 'Dialog tower') +
-        (gone ? '<span class="x">coming down</span>' : '') + '</h3>' +
-      '<div class="row2">' +
-        '<div class="fld"><label class="f" for="' + idF + '">Site ID</label>' +
-          '<input class="mono" id="' + idF + '" data-fld="' + idF + '" value="' + esc(d[idF]) + '" placeholder="' +
-          (side === 'airtel' ? 'ATL…' : 'CML…') + '" autocapitalize="characters" spellcheck="false"></div>' +
-        '<div class="fld"><label class="f" for="' + nmF + '">Site name</label>' +
-          '<input id="' + nmF + '" data-fld="' + nmF + '" value="' + esc(d[nmF]) + '" placeholder="found from the site list"></div>' +
-      '</div></div>';
-  };
-
-  const itemBox = (it, i) => {
-    const mat = S.findMaterial(MAT, it.code);
-    const unknown = S.norm(it.code) && !mat;
-    const serials = (it.serials || []);
-    return '<div class="item" data-i="' + i + '">' +
-      '<header>' +
-        '<span class="n">' + (i + 1) + '</span>' +
-        '<span class="seg">' + S.SIDES.map(([k, lab]) =>
-          '<button data-side="' + k + '" class="' + (it.from === k ? 'on' : '') + '">' + lab + '</button>').join('') +
-        '</span>' +
-        '<span class="seg">' + S.DESTS.map(([k, lab]) =>
-          '<button data-dest="' + k + '" class="' + (it.dest === k ? 'on' : '') + '">' + lab + '</button>').join('') +
-        '</span>' +
-        '<button class="btn sm del" data-drop="' + i + '" style="margin-left:auto">Remove line</button>' +
-      '</header>' +
-      '<div class="igrid">' +
-        '<div class="fld findw">' +
-          '<label class="f">Material code</label>' +
-          '<input class="mono" data-code="' + i + '" value="' + esc(it.code) + '" placeholder="code or name" autocapitalize="characters" spellcheck="false" autocomplete="off">' +
-          (SUG.key === ('i' + i) ? sugList(it.code) : '') +
-        '</div>' +
-        '<div class="fld wide"><label class="f">Material name</label>' +
-          '<input data-name="' + i + '" value="' + esc(it.name) + '"' + (own ? '' : ' readonly') +
-          ' placeholder="' + (own ? 'from the list, or type it' : 'from the material list') + '"></div>' +
-        '<div class="fld"><label class="f">Qty</label>' +
-          '<input type="number" min="1" step="1" data-qty="' + i + '" value="' + esc(it.qty) + '"></div>' +
-      '</div>' +
-      (unknown ? '<p class="note" style="margin-top:7px;color:var(--warn)">' +
-        (own ? 'Not on the material list – yours to allow.' : 'Not on the material list. Pick a code from it, or ask Sithara.') +
-        '</p>' : '') +
-      '<div class="wnow">' +
-        '<label class="f">Where it has been</label>' +
-        '<div class="line">' + S.timeline(d, it).map((st, n) =>
-          '<span class="stp' + (n === 0 ? ' first' : '') + '">' + esc(st.label) +
-          (st.on ? '<i>' + esc(st.on) + '</i>' : '') + '</span>').join('<b>→</b>') +
-          (S.movesOf(it).length > 1 ? '<button class="btn sm del" data-undo="' + i + '" title="Take the last step back">↶</button>' : '') +
-        '</div>' +
-        '<div class="bar" style="margin:8px 0 0">' +
-          S.STEPS.map(([k, lab]) => '<button class="btn sm" data-move="' + i + '.' + k + '">→ ' +
-            esc(k === 'site' ? 'Onto a site' : lab) + '</button>').join('') +
-        '</div>' +
-        (() => {
-          const ms = S.movesOf(it), n = ms.length - 1, last = ms[n];
-          return '<div class="bar" style="margin:8px 0 0">' +
-            '<span class="note">Last step:</span>' +
-            (last.to === 'site'
-              ? '<input class="mono" style="width:auto;min-width:130px" data-mvsite="' + i + '.' + n + '" value="' +
-                esc(last.site || '') + '" placeholder="site ID" autocapitalize="characters">' +
-                '<span class="note" data-mvname="' + i + '.' + n + '">' + esc(last.siteName || '') + '</span>'
-              : '') +
-            '<input type="date" style="width:auto;min-width:150px" data-mvon="' + i + '.' + n + '" value="' +
-              esc(last.on || '') + '">' +
-          '</div>';
-        })() +
-      '</div>' +
-      (it.dest === 'remap' ? '<div class="row2" style="margin-top:10px">' +
-        '<div class="fld"><label class="f">Remapped to site</label>' +
-          '<input class="mono" data-remap="' + i + '" value="' + esc(it.remapSite) + '" placeholder="site ID" autocapitalize="characters"></div>' +
-        '<div class="fld"><label class="f">That site\'s name</label>' +
-          '<input data-remapname="' + i + '" value="' + esc(it.remapName) + '" placeholder="found from the site list"></div>' +
-      '</div>' : '') +
-      '<div class="sns">' +
-        '<label class="f">Serial numbers · a photo with every one</label>' +
-        serials.map((s, k) => snRow(it, i, s, k)).join('') +
-        '<div class="bar" style="margin:6px 0 0">' +
-          '<button class="btn sm" data-addsn="' + i + '">+ Serial</button>' +
-          '<button class="btn sm" data-scan="' + i + '">Scan a barcode</button>' +
-          '<span class="note">' + S.liveSerials(it).length + ' of ' + (Number(it.qty) || 0) + ' listed</span>' +
-        '</div>' +
-      '</div>' +
-      (it.note ? '' : '') +
-      '<div class="fld" style="margin-top:10px"><label class="f">Line note</label>' +
-        '<input data-inote="' + i + '" value="' + esc(it.note) + '" placeholder="anything the warehouse should know about this line"></div>' +
-    '</div>';
-  };
-
-  const snRow = (it, i, s, k) => {
-    const shot = (s.file && s.file.url) || LINKS[s.photo] || '';
-    const want = S.norm(s.sn) && !(s.photo || (s.file && s.file.blob));
-    return '<div class="sn">' +
-      (shot ? '<img class="shot" src="' + esc(shot) + '" data-see="' + i + '.' + k + '" alt="serial photo">'
-            : '<button class="miss' + (want ? ' want' : '') + '" data-shot="' + i + '.' + k + '" title="Add the photo of this serial">📷</button>') +
-      '<input class="mono" data-sn="' + i + '.' + k + '" value="' + esc(s.sn) + '" placeholder="serial number" autocapitalize="characters" spellcheck="false">' +
-      '<button class="btn sm" data-scan1="' + i + '.' + k + '">Scan</button>' +
-      '<button class="btn sm del" data-dropsn="' + i + '.' + k + '">×</button>' +
-    '</div>';
-  };
-
-  const sugList = (q) => {
-    const list = S.suggest(MAT, q, 8);
-    if (!list.length) return '';
-    return '<div class="sug">' + list.map((mm, n) =>
-      '<button data-pick="' + esc(mm.code) + '" class="' + (n === SUG.at ? 'on' : '') + '">' +
-      '<span class="c">' + esc(mm.code) + '</span>' + esc(mm.name) +
-      (mm.type ? ' <span class="t">· ' + esc(mm.type) + '</span>' : '') + '</button>').join('') + '</div>';
-  };
-
-  const v = S.check(d, { index: MAT.all.length ? MAT : null, owner: own });
-
-  m.innerHTML =
-    '<div class="panel">' +
-      '<h2><span class="dot"></span>The swap<span class="tag">' + (d.saved ? 'filed' : 'not filed yet') + '</span></h2>' +
-      '<p class="note">Two towers become one site. Say which one is coming down, then list what came off – off either of them.</p>' +
-      '<div class="bar" style="margin:13px 0 12px">' +
-        S.REMOVED.map(([k, lab]) => '<button class="btn' + (d.removed === k ? ' on' : '') + '" data-removed="' + k + '">' +
-          esc(lab) + '</button>').join('') +
-      '</div>' +
-      '<div class="towers">' + tower('airtel') + tower('dialog') + '</div>' +
-      '<div class="row2" style="margin-top:12px">' +
-        '<div class="fld"><label class="f" for="visitedOn">Visited on</label>' +
-          '<input type="date" id="visitedOn" data-fld="visitedOn" value="' + esc(d.visitedOn) + '"></div>' +
-        '<div class="fld"><label class="f" for="team">Engineer or team</label>' +
-          '<input id="team" data-fld="team" value="' + esc(d.team) + '" placeholder="who was on site"></div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="panel">' +
-      '<h2><span class="dot"></span>What came off<span class="tag">' + S.liveItems(d).length + ' lines · ' +
-        S.totals([d]).serials + ' serials</span></h2>' +
-      '<p class="note">Everything that came off goes here – radios, BBU cards, antennas, feeders, jumpers, fibre, power. Codes and names come off the Material Codes list; type a few letters of either.</p>' +
-      (MATERR ? '<p class="note" style="color:var(--warn)">The material list did not load: ' + esc(MATERR) + '</p>' : '') +
-      S.SIDES.map(([side, lab]) => {
-        const id = side === 'airtel' ? d.airtelSite : d.dialogSite;
-        const nm = side === 'airtel' ? d.airtelName : d.dialogName;
-        const mine = (d.items || []).map((it, i) => [it, i]).filter(([it]) => it.from === side);
-        return '<div class="side">' +
-          '<h3>Off the ' + esc(lab) + ' tower' +
-            (id ? '<span class="sid">' + esc(S.upper(id)) + (nm ? ' · ' + esc(nm) : '') + '</span>' : '') +
-            '<span class="cnt">' + mine.filter(([it]) => S.norm(it.code)).length + ' lines</span>' +
-          '</h3>' +
-          (mine.length ? mine.map(([it, i]) => itemBox(it, i)).join('')
-                       : '<div class="empty">Nothing off this tower yet.</div>') +
-          '<div class="bar" style="margin:9px 0 0">' +
-            '<button class="btn" data-additem="' + side + '">+ Material off ' + esc(lab) + '</button>' +
-          '</div>' +
-        '</div>';
-      }).join('') +
-    '</div>' +
-
-    '<div class="panel">' +
-      '<h2><span class="dot"></span>Anything else</h2>' +
-      '<textarea rows="3" data-fld="note" placeholder="what the warehouse should know">' + esc(d.note) + '</textarea>' +
-      '<div class="bar" style="margin:13px 0 0">' +
-        '<button class="btn on" id="fileBtn"' + (d.busy ? ' disabled' : '') + '>' +
-          (d.busy || (d.id ? 'Save the changes' : 'File this swap')) + '</button>' +
-        '<button class="btn del" id="dropDraft">Throw this draft away</button>' +
-        '<span class="note">' + (v.ok ? 'Ready to file.' : esc(S.why(v.missing))) + '</span>' +
-      '</div>' +
-    '</div>';
-
-  wireForm(d);
+  const tb = $('rows');
+  tb.innerHTML = ROWS.map((r, i) => {
+    const miss = started(r) ? rowProblems(r) : [];
+    const m = r.code ? MAT.byCode[r.code] : null;
+    return `<tr data-i="${i}">
+      <td class="n">${i + 1}</td>
+      <td class="ro id">${esc(SITE.id) || '—'}</td>
+      <td class="ro">${esc(SITE.name) || '—'}</td>
+      <td class="${miss.includes('code') ? 'miss' : ''}" style="min-width:150px"><input data-f="code" value="${esc(r.code)}" placeholder="short name or code" autocomplete="off" spellcheck="false" class="mono"></td>
+      <td class="desc${m ? '' : ' typed'}${miss.includes('code') ? ' miss' : ''}"><input data-f="desc" value="${esc(m ? m.name : r.desc)}"${m ? ' readonly' : ''} placeholder="${r.code ? 'not on the list – type the name' : 'pick a code, or type the name'}" autocomplete="off"></td>
+      <td class="qty ${miss.includes('qty') ? 'miss' : ''}"><input data-f="qty" type="number" min="1" step="1" inputmode="numeric" value="${esc(r.qty)}"></td>
+      <td style="width:110px"><select data-f="uom">${[...new Set([r.uom, ...UOMS])].filter(Boolean).map(u => `<option${u === r.uom ? ' selected' : ''}>${u}</option>`).join('')}</select></td>
+      <td class="sn ${miss.includes('sn') ? 'miss' : ''}"><div class="sncell">${r.noSn
+        ? '<span style="flex:1;padding:0 10px;font:700 13px \'Space Mono\',monospace;color:var(--muted)">N/A</span>'
+        : `<input data-f="sn" value="${esc(r.sn)}" placeholder="scan, type, or N/A" autocomplete="off" spellcheck="false"><button class="mini go" data-scan="${i}">Scan</button>`}
+        <button class="mini${r.noSn ? ' on' : ''}" data-nosn="${i}" title="Power cable, jumper or anything without a serial">N/A</button></div></td>
+      <td class="ph ${miss.includes('photo') ? 'miss' : ''}"><div class="phs">${slots(r, i)}</div></td>
+      <td style="width:120px"><select data-f="status">${STATUSES.map(s => `<option value="${s}"${s === r.status ? ' selected' : ''}>${s || '—'}</option>`).join('')}</select></td>
+      ${OWNER ? `<td class="loc own ${miss.includes('location') ? 'miss' : ''}">${stepsEntry(r, i)}</td>` : ''}
+      <td class="act"><button class="del" data-del="${i}" title="Remove row">✕</button></td>
+    </tr>`;
+  }).join('');
+  paint();
 }
-
-/* ---------- the form's wiring ---------- */
-function wireForm(d){
-  const set = (fn) => { fn(); d.saved = false; saveDrafts(); };
-  const at = (key) => { const [i, k] = String(key).split('.').map(Number); return { i, k }; };
-
-  [...document.querySelectorAll('[data-fld]')].forEach(el => {
-    el.oninput = () => {
-      set(() => { d[el.dataset.fld] = el.value; });
-      /* a site ID types its own name in, from the site list */
-      if (el.dataset.fld === 'airtelSite') fillName(d, 'airtelSite', 'airtelName');
-      if (el.dataset.fld === 'dialogSite') fillName(d, 'dialogSite', 'dialogName');
-    };
-  });
-  [...document.querySelectorAll('[data-removed]')].forEach(b => b.onclick = () => {
-    set(() => { d.removed = b.dataset.removed; }); render();
-  });
-  [...document.querySelectorAll('[data-additem]')].forEach(b => b.onclick = () => {
-    set(() => { d.items.push(S.blankItem(b.dataset.additem)); }); render();
-  });
-  [...document.querySelectorAll('[data-drop]')].forEach(b => b.onclick = () => {
-    set(() => { d.items.splice(Number(b.dataset.drop), 1); if (!d.items.length) d.items.push(S.blankItem('airtel')); });
-    render();
-  });
-  [...document.querySelectorAll('[data-side]')].forEach(b => b.onclick = (e) => {
-    const i = Number(e.target.closest('.item').dataset.i);
-    set(() => { d.items[i].from = b.dataset.side; }); render();
-  });
-  [...document.querySelectorAll('[data-dest]')].forEach(b => b.onclick = (e) => {
-    const i = Number(e.target.closest('.item').dataset.i);
-    set(() => { d.items[i].dest = b.dataset.dest; }); render();
-  });
-  [...document.querySelectorAll('[data-qty]')].forEach(el => el.oninput = () =>
-    set(() => { d.items[Number(el.dataset.qty)].qty = el.value; }));
-  [...document.querySelectorAll('[data-name]')].forEach(el => el.oninput = () =>
-    set(() => { d.items[Number(el.dataset.name)].name = el.value; }));
-  [...document.querySelectorAll('[data-inote]')].forEach(el => el.oninput = () =>
-    set(() => { d.items[Number(el.dataset.inote)].note = el.value; }));
-  [...document.querySelectorAll('[data-remap]')].forEach(el => el.oninput = () => {
-    const i = Number(el.dataset.remap);
-    set(() => { d.items[i].remapSite = el.value;
-      const nm = S.findSite(SITES, el.value);
-      if (nm) d.items[i].remapName = nm; });
-    const nb = document.querySelector('[data-remapname="' + i + '"]');
-    if (nb && d.items[i].remapName) nb.value = d.items[i].remapName;
-  });
-  [...document.querySelectorAll('[data-remapname]')].forEach(el => el.oninput = () =>
-    set(() => { d.items[Number(el.dataset.remapname)].remapName = el.value; }));
-  [...document.querySelectorAll('[data-move]')].forEach(b => b.onclick = () => {
-    const [i, k] = b.dataset.move.split('.');
-    const it = d.items[Number(i)];
-    set(() => {
-      it.moves = S.movesOf(it).slice();
-      const m = S.blankMove(k);
-      /* a step onto a site knows where it is going if the line already said */
-      if (k === 'site'){ m.site = it.remapSite || ''; m.siteName = it.remapName || ''; }
-      it.moves.push(m);
-    });
-    render();
-  });
-  [...document.querySelectorAll('[data-undo]')].forEach(b => b.onclick = () => {
-    const it = d.items[Number(b.dataset.undo)];
-    set(() => { it.moves = S.movesOf(it).slice(0, -1); });
-    render();
-  });
-  [...document.querySelectorAll('[data-mvsite]')].forEach(el => el.oninput = () => {
-    const [i, n] = el.dataset.mvsite.split('.').map(Number);
-    const it = d.items[i];
-    set(() => {
-      it.moves = S.movesOf(it).slice();
-      it.moves[n] = { ...it.moves[n], site: el.value, siteName: S.findSite(SITES, el.value) || it.moves[n].siteName };
-    });
-    const lab = document.querySelector('[data-mvname="' + i + '.' + n + '"]');
-    if (lab) lab.textContent = it.moves[n].siteName || '';
-  });
-  [...document.querySelectorAll('[data-mvon]')].forEach(el => el.oninput = () => {
-    const [i, n] = el.dataset.mvon.split('.').map(Number);
-    const it = d.items[i];
-    set(() => { it.moves = S.movesOf(it).slice(); it.moves[n] = { ...it.moves[n], on: el.value }; });
-  });
-
-  /* the code box: type, see what it could be, pick one */
-  [...document.querySelectorAll('[data-code]')].forEach(el => {
-    const i = Number(el.dataset.code);
-    el.oninput = () => {
-      set(() => {
-        d.items[i].code = el.value;
-        const mm = S.findMaterial(MAT, el.value);
-        if (mm) d.items[i].name = mm.name;
-      });
-      SUG = { key:'i' + i, at:0 };
-      redrawSug(i, el);
-    };
-    el.onfocus = () => { SUG = { key:'i' + i, at:0 }; redrawSug(i, el); };
-    el.onblur = () => { setTimeout(() => { if (SUG.key === 'i' + i){ SUG = { key:'', at:0 }; redrawSug(i, el); } }, 140); };
-    el.onkeydown = (e) => {
-      const list = S.suggest(MAT, el.value, 8);
-      if (!list.length) return;
-      if (e.key === 'ArrowDown'){ e.preventDefault(); SUG.at = (SUG.at + 1) % list.length; redrawSug(i, el); }
-      else if (e.key === 'ArrowUp'){ e.preventDefault(); SUG.at = (SUG.at - 1 + list.length) % list.length; redrawSug(i, el); }
-      else if (e.key === 'Enter'){ e.preventDefault(); pick(d, i, list[SUG.at] || list[0]); }
-      else if (e.key === 'Escape'){ SUG = { key:'', at:0 }; redrawSug(i, el); }
-    };
-  });
-  [...document.querySelectorAll('[data-pick]')].forEach(b => b.onmousedown = (e) => {
-    e.preventDefault();
-    const i = Number(b.closest('.item').dataset.i);
-    pick(d, i, S.findMaterial(MAT, b.dataset.pick));
-  });
-
-  /* serials */
-  [...document.querySelectorAll('[data-sn]')].forEach(el => el.oninput = () => {
-    const { i, k } = at(el.dataset.sn);
-    set(() => { d.items[i].serials[k].sn = el.value; });
-  });
-  [...document.querySelectorAll('[data-sn]')].forEach(el => el.onchange = () => {
-    /* a hardware scanner types the lot and presses Enter: tidy it once it stops */
-    const { i, k } = at(el.dataset.sn);
-    const clean = S.cleanSerial(el.value);
-    if (clean !== el.value){ el.value = clean; set(() => { d.items[i].serials[k].sn = clean; }); }
-  });
-  [...document.querySelectorAll('[data-addsn]')].forEach(b => b.onclick = () => {
-    set(() => { d.items[Number(b.dataset.addsn)].serials.push(S.blankSerial()); }); render();
-  });
-  [...document.querySelectorAll('[data-dropsn]')].forEach(b => b.onclick = () => {
-    const { i, k } = at(b.dataset.dropsn);
-    set(() => { d.items[i].serials.splice(k, 1); if (!d.items[i].serials.length) d.items[i].serials.push(S.blankSerial()); });
-    render();
-  });
-  [...document.querySelectorAll('[data-shot]')].forEach(b => b.onclick = () => pickPhoto(d, at(b.dataset.shot)));
-  [...document.querySelectorAll('[data-see]')].forEach(im => im.onclick = () => showBig(im.src));
-  [...document.querySelectorAll('[data-scan]')].forEach(b => b.onclick = () => {
-    const i = Number(b.dataset.scan);
-    const k = d.items[i].serials.findIndex(s => !S.norm(s.sn));
-    openScan(d, { i, k: k < 0 ? (d.items[i].serials.push(S.blankSerial()) - 1) : k });
-  });
-  [...document.querySelectorAll('[data-scan1]')].forEach(b => b.onclick = () => openScan(d, at(b.dataset.scan1)));
-
-  $('fileBtn').onclick = () => file(d);
-  $('dropDraft').onclick = async () => {
-    const go = window.Ask ? await Ask.twice($('dropDraft'), 'Throw it away?') : confirm('Throw this draft away?');
-    if (!go) return;
-    DRAFTS = DRAFTS.filter(x => x.uid !== d.uid);
-    if (!DRAFTS.length) DRAFTS = [S.blank()];
-    ACTIVE = DRAFTS[0].uid; saveDrafts(); buildTabs(); render();
-  };
+function paint(){
+  const live = ROWS.filter(started);
+  $('count').textContent = live.length + (live.length === 1 ? ' row' : ' rows') + ' · ' + live.filter(r => r.sn).length + ' serials';
+  const who = $('who').value.trim();
+  $('whoHint').textContent = who ? '' : 'required';
+  $('whoHint').className = who ? '' : 'bad';
+  let t = '', bad = false;
+  if (!SITE.id) t = 'Type a site ID to start.';
+  else if (!SITE.name){ t = SITE.id + ' is not in Site Access – type the site name.'; bad = true; }
+  else if (!who){ t = 'Add your name.'; bad = true; }
+  else if (!live.length) t = 'Add what came off ' + SITE.id + '.';
+  else {
+    const n = live.filter(r => rowProblems(r).length).length;
+    t = n ? n + (n === 1 ? ' row still needs' : ' rows still need') + ' a material, SN, SN photo, both full photos or a mapped site ID.' : live.length + ' ready to submit for ' + SITE.id + '.';
+    bad = !!n;
+  }
+  $('msg').textContent = BUSY || t; $('msg').className = 'msg' + (bad && !BUSY ? ' bad' : '');
+  $('submit').disabled = !!BUSY;
 }
-
-function redrawSug(i, el){
-  const box = el.closest('.findw');
-  const old = box.querySelector('.sug');
-  if (old) old.remove();
-  if (SUG.key !== 'i' + i) return;
-  const list = S.suggest(MAT, el.value, 8);
-  if (!list.length) return;
-  const div = document.createElement('div');
-  div.className = 'sug';
-  div.innerHTML = list.map((mm, n) =>
-    '<button data-pick="' + esc(mm.code) + '" class="' + (n === SUG.at ? 'on' : '') + '">' +
-    '<span class="c">' + esc(mm.code) + '</span>' + esc(mm.name) +
-    (mm.type ? ' <span class="t">· ' + esc(mm.type) + '</span>' : '') + '</button>').join('');
-  box.appendChild(div);
-  const d = DRAFTS.find(x => x.uid === ACTIVE);
-  [...div.querySelectorAll('[data-pick]')].forEach(b => b.onmousedown = (e) => {
-    e.preventDefault(); pick(d, i, S.findMaterial(MAT, b.dataset.pick));
-  });
+function repaintRow(i){ // keep focus while typing: only swap the cells that change
+  const tr = $('rows').children[i]; if (!tr) return;
+  if (!tr.querySelector('.desc')) return render();
+  const r = ROWS[i], m = MAT.byCode[r.code], miss = started(r) ? rowProblems(r) : [];
+  const d = tr.querySelector('.desc'), di = d.querySelector('input');
+  d.className = 'desc' + (m ? '' : ' typed') + (miss.includes('code') ? ' miss' : '');
+  di.readOnly = !!m;
+  if (m) di.value = m.name; else if (document.activeElement !== di) di.value = r.desc || '';
+  di.placeholder = r.code ? 'not on the list – type the name' : 'pick a code, or type the name';
+  tr.querySelector('[data-f=code]').parentNode.classList.toggle('miss', miss.includes('code'));
+  tr.querySelector('.qty').classList.toggle('miss', miss.includes('qty'));
+  tr.querySelector('.sn').classList.toggle('miss', miss.includes('sn'));
+  tr.querySelector('.ph').classList.toggle('miss', miss.includes('photo'));
+  paint();
 }
-function pick(d, i, mm){
-  if (!mm) return;
-  d.items[i].code = mm.code;
-  d.items[i].name = mm.name;
-  d.saved = false; saveDrafts();
-  SUG = { key:'', at:0 };
-  render();
+function ensureTail(){ if (started(ROWS[ROWS.length - 1] || {})) { ROWS.push(blankRow()); render(); } }
+
+$('rows').addEventListener('input', e => {
+  const f = e.target.dataset.f; if (!f) return;
+  const i = +e.target.closest('tr').dataset.i, r = ROWS[i];
+  if (f === 'code'){ const was = MAT.byCode[r.code]; r.code = up(e.target.value); const m = MAT.byCode[r.code]; if (m) setMat(i, m, false); else if (was) r.desc = ''; openSug(e.target, i); }
+  else if (f === 'desc'){ if (MAT.byCode[r.code]) return; r.desc = e.target.value; save(); repaintRow(i); ensureTail(); return; }
+  else if (f === 'qty') r.qty = Math.max(0, parseInt(e.target.value, 10) || 0);
+  else if (f === 'sn'){ if (/^n\s*\/?\s*a$/i.test(e.target.value.trim())){ r.noSn = true; r.sn = ''; save(); render(); ensureTail(); return; } r.sn = S.cleanSerial(e.target.value); }
+  else if (f === 'whOn' || f === 'mapOn'){ r[f] = e.target.value || today(); save(); return; }
+  else if (f === 'locSite'){ r.locSite = up(e.target.value); r.locName = r.locSite ? S.findSite(SITES, r.locSite) : '';
+    e.target.title = r.locName || (r.locSite ? 'not in Site Access – kept as typed' : 'site ID');
+    e.target.closest('.stp').classList.toggle('bad', !r.locSite); e.target.closest('td').classList.toggle('miss', !r.locSite); save(); paint(); return; }
+  else r[f] = e.target.value;
+  save(); repaintRow(i);
+});
+$('rows').addEventListener('change', e => { if (e.target.dataset.f === 'sn'){ e.target.value = ROWS[+e.target.closest('tr').dataset.i].sn; ensureTail(); } });
+$('rows').addEventListener('focusin', e => { if (e.target.dataset.f === 'code') openSug(e.target, +e.target.closest('tr').dataset.i); });
+$('rows').addEventListener('click', e => {
+  const t = e.target;
+  if (t.dataset.del != null){ ROWS.splice(+t.dataset.del, 1); if (!ROWS.length) ROWS.push(blankRow()); save(); render(); }
+  else if (t.dataset.scan != null) openScan(+t.dataset.scan);
+  else if (t.dataset.nosn != null){ const r = ROWS[+t.dataset.nosn]; r.noSn = !r.noSn; if (r.noSn) r.sn = ''; save(); render(); ensureTail(); }
+  else if (t.dataset.photo != null){ const [i, kind] = t.dataset.photo.split('|'); PICK = { i: +i, kind }; $('pick').multiple = kind === 'other'; $('pick').click(); }
+  else if (t.closest('[data-tick]') && !t.matches('input')){
+    const [i, st] = t.closest('[data-tick]').dataset.tick.split('|'), r = ROWS[+i], key = st === 'wh' ? 'whOn' : 'mapOn';
+    r[key] = r[key] ? '' : today();
+    if (st === 'site' && !r.mapOn){ r.locSite = ''; r.locName = ''; }
+    save(); render();
+    if (st === 'site' && r.mapOn){ const inp = $('rows').children[+i].querySelector('input.sid'); inp && inp.focus(); }
+  }
+  else if (t.dataset.view){ const [i, k] = t.dataset.view.split('|').map(Number); openLB(ROWS[i].photos.map(p => p.url), k, i, ROWS[i].photos.map(p => pLabel(p.kind))); }
+});
+$('addRow').onclick = () => { ROWS.push(blankRow()); render(); $('rows').lastElementChild.querySelector('[data-f=code]').focus(); };
+$('who').addEventListener('input', () => { save(); paint(); });
+$('removedOn').addEventListener('input', () => { save(); paint(); });
+
+/* ---- material suggestions ---- */
+let SUG = { i:-1, at:0, list:[], input:null };
+function openSug(input, i){
+  const list = suggest(input.value);
+  SUG = { i, at:0, list, input };
+  const box = $('sug');
+  if (!list.length || (list.length === 1 && list[0].code === up(input.value))){ box.classList.remove('on'); return; }
+  box.innerHTML = list.map((m, k) => `<div data-k="${k}" class="${k === 0 ? 'on' : ''}"><b>${esc(m.code)}</b><span>${esc(m.name)}</span><em>${esc(m.uom || m.type)}</em></div>`).join('');
+  const r = input.getBoundingClientRect();
+  const below = innerHeight - r.bottom > 240;
+  box.style.left = Math.min(r.left, innerWidth - box.offsetWidth - 8) + 'px';
+  box.style.top = below ? (r.bottom + 4) + 'px' : '';
+  box.style.bottom = below ? '' : (innerHeight - r.top + 4) + 'px';
+  box.classList.add('on');
 }
-function fillName(d, idF, nmF){
-  const nm = S.findSite(SITES, d[idF]);
-  if (!nm) return;
-  d[nmF] = nm;
-  const el = document.querySelector('[data-fld="' + nmF + '"]');
-  if (el) el.value = nm;
-  saveDrafts();
+function closeSug(){ $('sug').classList.remove('on'); SUG.list = []; }
+function setMat(i, m, move){
+  const r = ROWS[i]; r.code = m.code; r.desc = m.name; if (m.uom) r.uom = m.uom;
+  if (/^(M|ROLL|KG)$/.test(r.uom) || /cable|jumper|feeder|fib(er|re)|patch cord/i.test(m.name + ' ' + m.type)) r.noSn = true;
+  save(); render(); closeSug(); ensureTail();
+  /* On to the serial - unless the material has none, which this may just
+     have decided for a cable or a jumper: then there is no serial box to go
+     to and the quantity is the next thing to fill in. */
+  if (move){
+    const tr = $('rows').children[i];
+    const next = tr && (tr.querySelector('[data-f=sn]') || tr.querySelector('[data-f=qty]'));
+    if (next) next.focus();
+  }
 }
+$('sug').addEventListener('mousedown', e => { const d = e.target.closest('[data-k]'); if (d){ e.preventDefault(); setMat(SUG.i, SUG.list[+d.dataset.k], true); } });
+document.addEventListener('keydown', e => {
+  if (!$('sug').classList.contains('on') || document.activeElement !== SUG.input) return;
+  const items = $('sug').children;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+    e.preventDefault(); items[SUG.at].classList.remove('on');
+    SUG.at = (SUG.at + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    items[SUG.at].classList.add('on');
+    const el = items[SUG.at], box = $('sug');
+    if (el.offsetTop < box.scrollTop) box.scrollTop = el.offsetTop;
+    else if (el.offsetTop + el.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = el.offsetTop + el.offsetHeight - box.clientHeight;
+  } else if (e.key === 'Enter' || e.key === 'Tab'){ if (SUG.list[SUG.at]){ e.preventDefault(); setMat(SUG.i, SUG.list[SUG.at], true); } }
+  else if (e.key === 'Escape') closeSug();
+});
+document.addEventListener('focusout', e => { if (e.target.dataset && e.target.dataset.f === 'code') setTimeout(closeSug, 120); });
+addEventListener('scroll', closeSug, true); addEventListener('resize', closeSug);
 
-/* ---------- the pictures ----------
-
-   Kept as they arrive. A serial is something somebody has to be able to read
-   back off the picture, and a resized photograph is a photograph you might
-   have to go back up the tower for. */
-function pickPhoto(d, where){
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
-  inp.onchange = () => {
-    const f = inp.files && inp.files[0];
-    if (!f) return;
-    attach(d, where, f, (f.name.split('.').pop() || 'jpg').toLowerCase());
-  };
-  inp.click();
-}
-function attach(d, where, blob, ext){
-  const s = d.items[where.i].serials[where.k];
-  if (s.file && s.file.url) URL.revokeObjectURL(s.file.url);
-  s.file = { blob, ext: ext || 'jpg', url: URL.createObjectURL(blob) };
-  s.photo = s.photo || null;
-  d.saved = false; saveDrafts(); render();
-}
-function showBig(src){ $('lightImg').src = src; $('lightbox').classList.add('on'); }
-$('lightbox').onclick = () => $('lightbox').classList.remove('on');
-
-/* ---------- the scanner ----------
-
-   Two ways of reading a barcode and one way of typing it. BarcodeDetector is
-   built into Chrome and Android's webview and costs nothing; iPhones do not
-   have it, and an iPhone is what is in the field, so ZXing is fetched only
-   when it is needed and only when the browser has no reader of its own.
-
-   The frame that read the barcode is kept as the serial's photograph. The
-   warehouse wants both and nobody on a tower wants to do it twice. */
-let SCAN = { where:null, stream:null, stop:false, draft:null };
-
-async function openScan(d, where){
-  SCAN = { where, stream:null, stop:false, draft:d };
-  $('scan').classList.add('on');
-  $('scanNote').textContent = 'Hold the label still and fill the frame. The picture is kept as the serial\'s photo.';
+/* ---- photos ---- */
+let PICK = null;
+async function shrink(blob){
   try {
-    SCAN.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }, audio: false });
+    const bmp = await createImageBitmap(blob);
+    const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+    return await new Promise(r => cv.toBlob(b => r(b || blob), 'image/jpeg', 0.86));
+  } catch(e){ return blob; }
+}
+/* Several pictures a row: the serial label, the whole unit, its ports, the
+   cable run. The one the scanner took is the SN photo and sits first. */
+const KORDER = { sn:0, full1:1, full2:2, other:3 };
+async function addPhoto(i, blob, kind){
+  const r = ROWS[i]; if (!r || !blob) return;
+  const b = await shrink(blob), p = { blob: b, url: URL.createObjectURL(b), kind: kind || 'other' };
+  if (p.kind !== 'other'){ r.photos.filter(x => x.kind === p.kind).forEach(x => URL.revokeObjectURL(x.url)); r.photos = r.photos.filter(x => x.kind !== p.kind); }
+  r.photos.push(p);
+  r.photos.sort((a, b) => KORDER[a.kind] - KORDER[b.kind]);
+  render(); ensureTail();
+}
+$('pick').onchange = async e => { const fs = [...e.target.files]; e.target.value = ''; if (!PICK) return; for (const f of fs) await addPhoto(PICK.i, f, PICK.kind); };
+
+/* ---- viewer: the row's own photos (removable) or a filed item's (read only) ---- */
+let LB = { urls:[], k:0, row:-1, caps:[] };
+function openLB(urls, k, row, caps){ LB = { urls, k: Math.min(k, urls.length - 1), row: row == null ? -1 : row, caps: caps || [] }; paintLB(); $('lb').classList.add('on'); }
+function paintLB(){
+  $('lbImg').src = LB.urls[LB.k] || ''; $('lbCap').textContent = (LB.caps[LB.k] ? LB.caps[LB.k] + ' · ' : '') + (LB.k + 1) + ' / ' + LB.urls.length;
+  $('lbDel').hidden = LB.row < 0; $('lbPrev').hidden = $('lbNext').hidden = LB.urls.length < 2;
+}
+$('lbPrev').onclick = () => { LB.k = (LB.k - 1 + LB.urls.length) % LB.urls.length; paintLB(); };
+$('lbNext').onclick = () => { LB.k = (LB.k + 1) % LB.urls.length; paintLB(); };
+$('lbClose').onclick = () => $('lb').classList.remove('on');
+$('lbDel').onclick = () => {
+  const r = ROWS[LB.row]; if (!r) return;
+  const [gone] = r.photos.splice(LB.k, 1); if (gone) URL.revokeObjectURL(gone.url);
+  $('lb').classList.remove('on'); render();
+};
+document.addEventListener('keydown', e => { if (!$('lb').classList.contains('on')) return;
+  if (e.key === 'Escape') $('lbClose').click(); else if (e.key === 'ArrowLeft') $('lbPrev').click(); else if (e.key === 'ArrowRight') $('lbNext').click(); });
+
+/* ---- scanner: the frame that reads the serial is its photo ---- */
+let SCAN = { i:-1, stream:null, stop:false };
+async function openScan(i){
+  SCAN = { i, stream:null, stop:false };
+  $('scan').classList.add('on');
+  $('scanNote').textContent = 'Hold the label still. The frame that reads it is kept as the SN photo.';
+  try {
+    SCAN.stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1920 } }, audio:false });
   } catch(e){
-    $('scanNote').textContent = 'The camera is not available here – type the serial in, or add the photo from the ▣ button.';
+    $('scanNote').textContent = 'Camera not available – close this, type the SN, and tap + to add photos.';
     return;
   }
-  const v = $('scanVid');
-  v.srcObject = SCAN.stream;
-  await v.play().catch(() => {});
+  const v = $('scanVid'); v.srcObject = SCAN.stream; await v.play().catch(() => {});
   readLoop(v);
 }
 async function readLoop(v){
   let reader = null;
-  if ('BarcodeDetector' in window){
-    try { reader = new window.BarcodeDetector(); } catch(e){ reader = null; }
-  }
+  if ('BarcodeDetector' in window){ try { reader = new BarcodeDetector(); } catch(e){} }
   if (!reader){
     try { reader = await zxing(); }
-    catch(e){ $('scanNote').textContent = 'No barcode reader in this browser – type the serial in, and use “Use this picture” for the photo.'; return; }
+    catch(e){ $('scanNote').textContent = 'No barcode reader here – type the SN in the row and use “Use this picture” for the photo.'; return; }
   }
   while (!SCAN.stop && $('scan').classList.contains('on')){
     try {
-      const found = await reader.detect(v);
-      if (found && found.length){
-        const sn = S.cleanSerial(found[0].rawValue || found[0].text || '');
-        if (sn){ await takeShot(sn); return; }
-      }
+      const f = await reader.detect(v);
+      if (f && f.length){ const sn = S.cleanSerial(f[0].rawValue || f[0].text || ''); if (sn){ await shot(sn); return; } }
     } catch(e){}
     await new Promise(r => setTimeout(r, 220));
   }
 }
-/* ZXing, only if it has to be: a reader with the same detect() the browser's
-   own has, so the loop above does not care which one it got. */
 async function zxing(){
-  if (!window.ZXing){
-    await new Promise((ok, no) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
-      s.onload = ok; s.onerror = () => no(new Error('no reader'));
-      document.head.appendChild(s);
-    });
-  }
-  const r = new window.ZXing.BrowserMultiFormatReader();
-  const cv = document.createElement('canvas');
-  return { detect: async (v) => {
+  if (!window.ZXing) await new Promise((ok, no) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+    s.onload = ok; s.onerror = () => no(new Error('no reader')); document.head.appendChild(s);
+  });
+  const r = new ZXing.BrowserMultiFormatReader(), cv = document.createElement('canvas');
+  return { detect: async v => {
     if (!v.videoWidth) return [];
-    cv.width = v.videoWidth; cv.height = v.videoHeight;
-    cv.getContext('2d').drawImage(v, 0, 0);
-    try {
-      const res = r.decodeFromCanvas(cv);
-      return res ? [{ rawValue: res.getText() }] : [];
-    } catch(e){ return []; }
+    cv.width = v.videoWidth; cv.height = v.videoHeight; cv.getContext('2d').drawImage(v, 0, 0);
+    try { const res = r.decodeFromCanvas(cv); return res ? [{ rawValue: res.getText() }] : []; } catch(e){ return []; }
   } };
 }
-/* The frame on screen, as it is, as the serial's photograph. */
-async function takeShot(sn){
-  const v = $('scanVid'), w = SCAN.where, d = SCAN.draft;
-  if (!w || !d) return closeScan();
-  const cv = document.createElement('canvas');
-  cv.width = v.videoWidth || 1280; cv.height = v.videoHeight || 960;
+async function shot(sn){
+  const v = $('scanVid'), i = SCAN.i;
+  const cv = document.createElement('canvas'); cv.width = v.videoWidth || 1280; cv.height = v.videoHeight || 960;
   cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height);
-  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
-  const s = d.items[w.i].serials[w.k] || (d.items[w.i].serials[w.k] = S.blankSerial());
-  if (sn) s.sn = sn;
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9));
   closeScan();
-  if (blob) attach(d, w, blob, 'jpg');
-  else { d.saved = false; saveDrafts(); render(); }
-  toast(sn ? 'Read ' + sn : 'Picture kept – type the serial in');
+  if (sn){
+    if (ROWS.some((r, k) => k !== i && r.sn === sn)) toast(sn + ' is already on this sheet', 3500);
+    ROWS[i].sn = sn;
+  }
+  if (blob) await addPhoto(i, blob, 'sn'); else render();
+  save();
+  const tr = $('rows').children[i];
+  if (tr && !ROWS[i].code) tr.querySelector('[data-f=code]').focus();
 }
 function closeScan(){
   SCAN.stop = true;
-  $('scan').classList.remove('on');
   if (SCAN.stream) SCAN.stream.getTracks().forEach(t => t.stop());
-  SCAN.stream = null;
-  $('scanVid').srcObject = null;
+  $('scanVid').srcObject = null; $('scan').classList.remove('on');
 }
+$('scanShot').onclick = () => shot('');
 $('scanStop').onclick = closeScan;
-$('scanShot').onclick = () => takeShot('');
-addEventListener('keydown', e => { if (e.key === 'Escape'){ if ($('scan').classList.contains('on')) closeScan();
-  $('lightbox').classList.remove('on'); } });
 
-/* ---------- filing ---------- */
-async function file(d){
-  const own = isOwner();
-  const v = S.check(d, { index: MAT.all.length ? MAT : null, owner: own });
-  if (!v.ok){ toast(S.why(v.missing), 5000); return; }
+/* ---- submit ---- */
+$('clear').onclick = () => {
+  if (ROWS.some(started) && !confirm('Clear this sheet?')) return;
+  ROWS.forEach(r => r.photos.forEach(p => URL.revokeObjectURL(p.url)));
+  ROWS = [blankRow()]; SITE = { id:'', name:'', typed:'', known:false }; $('siteId').value = ''; $('siteName').value = '';
+  save(); lookSite(); render();
+};
+$('submit').onclick = async () => {
+  const who = $('who').value.trim(), live = ROWS.filter(started);
+  if (!SITE.id){ toast('Type a site ID'); $('siteId').focus(); return; }
+  if (!SITE.name){ toast('Type the site name'); $('siteName').focus(); return; }
+  if (!who){ toast('Add your name'); $('who').focus(); return; }
+  if (!live.length){ toast('Nothing on the sheet yet'); return; }
+  const bad = live.findIndex(r => rowProblems(r).length);
+  if (bad >= 0){ render(); toast('Row ' + (ROWS.indexOf(live[bad]) + 1) + ' needs ' + rowProblems(live[bad]).join(', ').replace('code','a code off the list'), 4200); return; }
 
-  d.busy = 'Uploading…'; render();
-  const site = S.upper(d.airtelSite) || S.upper(d.dialogSite);
+  const at = new Date(), when = stamp(at);
+  BUSY = 'Uploading photos…'; paint();
   try {
-    let n = 0;
-    for (const it of d.items){
-      for (const s of (it.serials || [])){
-        if (s.file && s.file.blob){
-          n++; d.busy = 'Uploading photo ' + n + '…'; render();
-          s.photo = await window.DB.swapUpload(site, 'sn', s.file.blob, s.file.ext);
-          if (s.file.url) URL.revokeObjectURL(s.file.url);
-          delete s.file;
-        }
+    const items = [];
+    for (let k = 0; k < live.length; k++){
+      const r = live[k];
+      BUSY = 'Saving row ' + (k + 1) + ' of ' + live.length + '…'; paint();
+      const paths = [];
+      for (let q = 0; q < r.photos.length; q++){
+        BUSY = 'Row ' + (k + 1) + ' of ' + live.length + ' · photo ' + (q + 1) + ' of ' + r.photos.length + '…'; paint();
+        paths.push(await window.DB.swapUpload(SITE.id, r.photos[q].kind, r.photos[q].blob, 'jpg'));
       }
+      const kinds = r.photos.map(p => p.kind);
+      const snPath = kinds.indexOf('sn') >= 0 ? paths[kinds.indexOf('sn')] : null;
+      items.push({ from:'airtel', code:r.code, name:(MAT.byCode[r.code] || {}).name || String(r.desc || '').trim(), typedMaterial: !MAT.byCode[r.code], qty:r.qty, uom:r.uom,
+        status:r.status, dest:'wh', remapSite:'', remapName:'',
+        removedOn: removedOn(),
+        moves:[{ to:'team', on: removedOn(), site:'', siteName:'', note:'Removed from ' + SITE.id }]
+          .concat(OWNER && r.whOn ? [{ to:'wh', on: r.whOn, site:'', siteName:'', note:'' }] : [])
+          .concat(OWNER && r.mapOn ? [{ to:'site', on: r.mapOn, site: r.locSite, siteName: r.locName, note:'' }] : [])
+          .sort((a, b) => String(a.on).localeCompare(String(b.on))),
+        serials: r.noSn ? [] : [{ sn:r.sn, photo:snPath }], photos: paths, photoKinds: kinds, photo: r.noSn ? (paths[kinds.indexOf('full1')] || null) : null, noSn: !!r.noSn,
+        note:'', submittedAt: at.toISOString() });
     }
-    d.busy = 'Saving…'; render();
-    const row = await window.DB.swapSave({
-      id: d.id,
-      airtelSite: S.upper(d.airtelSite), airtelName: d.airtelName,
-      dialogSite: S.upper(d.dialogSite), dialogName: d.dialogName,
-      removed: d.removed, visitedOn: d.visitedOn || null, team: d.team,
-      items: S.liveItems(d).map(i => ({
-        from: i.from, code: S.upper(i.code), name: i.name, qty: Number(i.qty) || 0,
-        dest: i.dest, remapSite: S.upper(i.remapSite), remapName: i.remapName,
-        moves: S.movesOf(i).map(m => ({ ...m, site: S.upper(m.site || '') })),
-        note: i.note, serials: S.liveSerials(i).map(s => ({ sn: S.upper(s.sn), photo: s.photo || null }))
-      })),
-      note: d.note, createdName: MYNAME
-    });
-    d.id = row.id; d.saved = true; d.busy = null;
-    await loadFiled(); buildTabs(); render();
-    toast((S.swapName(d) || 'The swap') + ' filed');
+    BUSY = 'Saving…'; paint();
+    await window.DB.swapSave({ airtelSite: SITE.id, airtelName: SITE.name, dialogSite:'', dialogName:'',
+      removed:'airtel', visitedOn: removedOn(), team: who, items,
+      note: 'Submitted ' + when + ' by ' + who + (SITE.known ? '' : ' · site name typed (not in Site Access)'), createdName: who });
+    ROWS.forEach(r => r.photos.forEach(p => URL.revokeObjectURL(p.url)));
+    ROWS = [blankRow()]; BUSY = false; save(); render();
+    toast(live.length + ' rows filed for ' + SITE.id + ' – see Sites', 3500);
+    loadFiled();
   } catch(e){
-    d.busy = null; render();
-    toast(e.message, 7000);
+    BUSY = false; paint(); toast(e.message || 'Could not submit', 5000);
   }
-}
+};
 
-/* ---------- what has been filed ---------- */
-function renderFiled(m){
-  if (!FILED.length){
-    m.innerHTML = '<div class="panel"><div class="empty">Nothing filed yet. Fill a swap in and it lands here – and on every other phone and laptop that has this open.</div></div>';
-    return;
-  }
-  const tot = S.totals(FILED);
-  m.innerHTML =
-    '<div class="panel">' +
-      '<h2><span class="dot"></span>Filed swaps<span class="tag">' + tot.records + ' swaps · ' + tot.lines +
-        ' lines · ' + tot.pieces + ' pieces · ' + tot.remapped + ' remapped · ' +
-        tot.waiting + ' not yet delivered</span></h2>' +
-      '<div class="bar" style="margin:12px 0 0">' +
-        '<button class="btn on" id="xlAll">Excel · everything</button>' +
-        '<span class="note">One row per serial number, with a link to each photo. That is the sheet the warehouse gets.</span>' +
-      '</div>' +
-    '</div>' +
-    FILED.map((r, i) => recBox(r, i)).join('');
-
-  $('xlAll').onclick = () => xl(FILED, 'austin-swap');
-  [...document.querySelectorAll('[data-xl]')].forEach(b => b.onclick = () => {
-    const r = FILED[Number(b.dataset.xl)];
-    xl([r], 'swap-' + (S.swapName(r) || 'record').replace(/[^A-Za-z0-9]+/g, '-'));
-  });
-  [...document.querySelectorAll('[data-edit]')].forEach(b => b.onclick = () => {
-    const r = FILED[Number(b.dataset.edit)];
-    const d = { ...S.blank(), ...JSON.parse(JSON.stringify(r)),
-                uid: 'e' + (r.id || Date.now()), files:{}, busy:null, saved:true };
-    if (!d.items.length) d.items = [S.blankItem('airtel')];
-    d.items.forEach(i => { if (!i.serials || !i.serials.length) i.serials = [S.blankSerial()]; });
-    const had = DRAFTS.findIndex(x => x.uid === d.uid);
-    if (had >= 0) DRAFTS[had] = d; else DRAFTS.push(d);
-    ACTIVE = d.uid; saveDrafts(); buildTabs(); render();
-    linkShots(d);
-  });
-  [...document.querySelectorAll('[data-del]')].forEach(b => b.onclick = async () => {
-    const r = FILED[Number(b.dataset.del)];
-    const go = window.Ask ? await Ask.twice(b, 'Delete it?') : confirm('Delete this swap and its photos?');
-    if (!go) return;
-    try {
-      await window.DB.swapDelete(r.id, S.pathsOf(r));
-      await loadFiled(); buildTabs(); render();
-      toast('Deleted');
-    } catch(e){ toast(e.message, 6000); }
-  });
-  /* Moving a material on, from the list, without opening the whole record:
-     the step everybody adds most often is "it reached the warehouse". */
-  [...document.querySelectorAll('[data-step]')].forEach(sel => sel.onchange = async () => {
-    const to = sel.value;
-    if (!to) return;
-    const [ri, ni] = sel.dataset.step.split('.').map(Number);
-    const r = FILED[ri];
-    const items = S.liveItems(r);
-    const it = items[ni];
-    if (!it) return;
-    const m = S.blankMove(to);
-    if (to === 'site'){
-      const id = prompt('Which site did it go onto?', it.remapSite || '');
-      if (!id){ sel.value = ''; return; }
-      m.site = S.upper(id); m.siteName = S.findSite(SITES, id) || '';
-    }
-    it.moves = S.movesOf(it).concat([m]);
-    try {
-      await window.DB.swapSave({ ...r, items, createdName: r.createdName });
-      await loadFiled(); buildTabs(); render();
-      toast(S.upper(it.code) + ' · ' + S.whereLabel(m).toLowerCase());
-    } catch(e){
-      it.moves = S.movesOf(it).slice(0, -1);
-      toast(e.message, 6000);
-    }
-  });
-  [...document.querySelectorAll('[data-shotlink]')].forEach(a => a.onclick = async (e) => {
-    e.preventDefault();
-    const url = LINKS[a.dataset.shotlink] || await window.DB.swapLink(a.dataset.shotlink);
-    if (!url){ toast('That picture has gone'); return; }
-    LINKS[a.dataset.shotlink] = url;
-    showBig(url);
-  });
-}
-
-function recBox(r, i){
-  const mine = S.editableFor(r, ME, isOwner());
-  const items = S.liveItems(r);
-  return '<details class="rec"' + (i === 0 ? ' open' : '') + '>' +
-    '<summary>' +
-      '<span class="id">' + esc(S.swapTitle(r) || '—') + '</span>' +
-      '<span class="chip">' + esc(S.removedLabel(r.removed)) + '</span>' +
-      '<span class="chip">' + items.length + ' lines</span>' +
-      (items.some(x => x.dest === 'remap') ? '<span class="chip go">remapped</span>' : '') +
-      '<span class="who">' + esc(r.createdName || '') + ' · ' + esc(S.localStamp(r.savedAt)) + '</span>' +
-    '</summary>' +
-    '<div class="body">' +
-      '<p class="note" style="margin-bottom:9px">' +
-        (r.airtelName ? 'Airtel: <b>' + esc(r.airtelName) + '</b>. ' : '') +
-        (r.dialogName ? 'Dialog: <b>' + esc(r.dialogName) + '</b>. ' : '') +
-        (r.visitedOn ? 'Visited ' + esc(r.visitedOn) + '. ' : '') +
-        (r.team ? 'Team: <b>' + esc(r.team) + '</b>.' : '') +
-      '</p>' +
-      (r.note ? '<p class="note" style="margin-bottom:9px">' + esc(r.note) + '</p>' : '') +
-      '<div style="overflow-x:auto"><table><thead><tr>' +
-        '<th>Off</th><th>Code</th><th>Material</th><th>Qty</th><th>Serials</th><th>Going to</th><th>Where it is now</th>' +
-      '</tr></thead><tbody>' +
-      items.map((it, n) => '<tr>' +
-        '<td>' + esc(S.sideLabel(it.from)) + '</td>' +
-        '<td class="mono">' + esc(it.code) + '</td>' +
-        '<td>' + esc(it.name) + (it.note ? '<br><span class="note">' + esc(it.note) + '</span>' : '') + '</td>' +
-        '<td>' + esc(it.qty) + '</td>' +
-        '<td>' + (S.liveSerials(it).map(s =>
-            '<span class="mono">' + esc(s.sn) + '</span>' +
-            (s.photo ? ' <a href="#" data-shotlink="' + esc(s.photo) + '" title="See the photo">▣</a>' : '')
-          ).join('<br>') || '<span class="note">none</span>') + '</td>' +
-        '<td>' + (it.dest === 'remap'
-            ? '<span class="chip go">' + esc(S.upper(it.remapSite)) + '</span>' +
-              (it.remapName ? '<br><span class="note">' + esc(it.remapName) + '</span>' : '')
-            : '<span class="chip wh">' + esc(S.destLabel(it.dest)) + '</span>') + '</td>' +
-        '<td>' + (() => {
-            const now = S.whereNow(it), done = now.to === 'wh' || now.to === 'site' || now.to === 'scrapped';
-            return '<span class="chip ' + (done ? 'go' : 'hold') + '">' + esc(S.whereLabel(now)) + '</span>' +
-              (now.on ? '<br><span class="note">since ' + esc(now.on) + '</span>' : '') +
-              '<br><span class="note chain">' + esc(S.chainText(r, it)) + '</span>' +
-              (mine ? '<br><select class="move" data-step="' + i + '.' + n + '">' +
-                '<option value="">move it on…</option>' +
-                S.STEPS.map(([k, lab]) => '<option value="' + k + '">' +
-                  esc(k === 'site' ? 'Onto a site' : lab) + '</option>').join('') + '</select>' : '');
-          })() + '</td>' +
-      '</tr>').join('') +
-      '</tbody></table></div>' +
-      '<div class="bar" style="margin:12px 0 0">' +
-        '<button class="btn sm" data-xl="' + i + '">Excel · this swap</button>' +
-        (mine ? '<button class="btn sm" data-edit="' + i + '">Correct it</button>' : '') +
-        (isOwner() ? '<button class="btn sm del" data-del="' + i + '">Delete</button>' : '') +
-      '</div>' +
-    '</div>' +
-  '</details>';
-}
-
-/* The pictures on a record being corrected: signed links, so the thumbnails
-   show what is already up there rather than an empty box. */
-async function linkShots(d){
-  const paths = S.pathsOf(d);
-  for (const p of paths){
-    if (LINKS[p]) continue;
-    try { const u = await window.DB.swapLink(p); if (u) LINKS[p] = u; } catch(e){}
-  }
-  if (paths.length) render();
-}
-
-/* ---------- every material, on one list ----------
-
-   The other two tabs are for collecting: one swap, one tower, one line at a
-   time, which is the shape the work has on site. This one is for keeping it
-   straight afterwards - every material off every swap on one list, narrowed
-   by where it is, and moved on in bunches rather than one record at a time.
-   Picking twenty lines and saying "these reached the warehouse" is the job
-   this tool is actually for once the data is in. */
-let VIEW = { where:'', q:'', sel:{} };
-
-function allLines(){
+/* ---- filed, site-wise ----
+   Every submission is kept as it was filed; this view folds them by site ID,
+   so a site visited twice reads as one list with both visits in it. */
+let FILED = [], LINKS = {};
+const siteOf = rec => up(rec.airtelSite || rec.dialogSite);
+function flat(recs){
   const out = [];
-  FILED.forEach((r, ri) => S.liveItems(r).forEach((it, ni) => {
-    const now = S.whereNow(it);
-    out.push({ ri, ni, r, it, now, key: ri + '.' + ni });
-  }));
+  recs.forEach(rec => (rec.items || []).forEach((it, ii) => (it.serials && it.serials.length ? it.serials : [{}]).forEach(s => out.push({
+    rec, ii, mv: S.movesOf(it).slice(-1)[0], site: siteOf(rec), name: rec.airtelName || rec.dialogName || '', code: up(it.code), desc: it.name || '',
+    qty: it.qty || 1, uom: it.uom || '', sn: s.sn || (it.noSn ? 'N/A' : ''), photos: (it.photos && it.photos.length ? it.photos : [s.photo || it.photo]).filter(Boolean),
+    kinds: it.photos && it.photos.length ? (it.photoKinds || it.photos.map(() => 'other')) : [s.photo ? 'sn' : 'other'], status: it.status || '',
+    who: rec.createdName || rec.team || '', when: it.submittedAt ? stamp(new Date(it.submittedAt)) : (rec.visitedOn || ''),
+    removedOn: it.removedOn || rec.visitedOn || '',
+    tMat: !!it.typedMaterial, tSite: /site name typed/.test(rec.note || ''),
+    ...(() => { const ms = S.movesOf(it), wh = ms.find(m => m.to === 'wh'), st = ms.filter(m => m.to === 'site').pop(), sc = ms.find(m => m.to === 'scrapped');
+      return { whOn: wh ? wh.on || '' : '', mapOn: st ? st.on || '' : '', mapSite: st ? up(st.site) : '', mapName: st ? st.siteName || '' : '', scrapOn: sc ? sc.on || '' : '' }; })()
+  }))));
   return out;
 }
-function viewLines(){
-  const q = S.upper(VIEW.q);
-  return allLines().filter(L => {
-    if (VIEW.where && (L.now.to || 'team') !== VIEW.where) return false;
-    if (!q) return true;
-    const hay = [S.swapTitle(L.r), L.it.code, L.it.name, L.now.site,
-                 S.liveSerials(L.it).map(x => x.sn).join(' ')].join(' ').toUpperCase();
-    return hay.indexOf(q) > -1;
-  });
-}
-
-function renderAll(m){
-  const lines = viewLines();
-  const counts = {};
-  allLines().forEach(L => { const k = L.now.to || 'team'; counts[k] = (counts[k] || 0) + 1; });
-  const picked = Object.keys(VIEW.sel).filter(k => VIEW.sel[k]);
-  const may = (L) => S.editableFor(L.r, ME, isOwner());
-
-  m.innerHTML =
-    '<div class="panel">' +
-      '<h2><span class="dot"></span>Every material<span class="tag">' + lines.length + ' of ' + allLines().length + ' lines</span></h2>' +
-      '<p class="note">Where everything off every swap has got to. Tick the ones that have moved and say where they went – twenty at a time if that is what the warehouse sent back.</p>' +
-      '<div class="bar" style="margin:12px 0 0">' +
-        '<button class="btn' + (VIEW.where === '' ? ' on' : '') + '" data-where="">All · ' + allLines().length + '</button>' +
-        S.STEPS.map(([k, lab]) => '<button class="btn' + (VIEW.where === k ? ' on' : '') + '" data-where="' + k + '">' +
-          esc(lab) + ' · ' + (counts[k] || 0) + '</button>').join('') +
-        '<input id="vq" style="width:auto;min-width:200px;margin-left:auto" placeholder="code, name, site or serial" value="' + esc(VIEW.q) + '">' +
-      '</div>' +
-    '</div>' +
-
-    (picked.length ? '<div class="panel" style="position:sticky;top:96px;z-index:20">' +
-      '<div class="bar" style="margin:0">' +
-        '<b>' + picked.length + ' picked</b>' +
-        S.STEPS.map(([k, lab]) => '<button class="btn sm" data-bulk="' + k + '">→ ' +
-          esc(k === 'site' ? 'Onto a site' : lab) + '</button>').join('') +
-        '<button class="btn sm del" data-clear="1">Clear</button>' +
-      '</div></div>' : '') +
-
-    '<div class="panel">' +
-      (lines.length ? '<div style="overflow-x:auto"><table><thead><tr>' +
-        '<th></th><th>Swap</th><th>Off</th><th>Code</th><th>Material</th><th>Qty</th>' +
-        '<th>Serials</th><th>Where it is now</th><th>Journey</th>' +
-      '</tr></thead><tbody>' +
-      lines.map(L => '<tr>' +
-        '<td>' + (may(L) ? '<input type="checkbox" style="width:auto" data-pick="' + L.key + '"' +
-            (VIEW.sel[L.key] ? ' checked' : '') + '>' : '') + '</td>' +
-        '<td>' + esc(S.swapTitle(L.r)) + '</td>' +
-        '<td>' + esc(S.sideLabel(L.it.from)) + '</td>' +
-        '<td class="mono">' + esc(L.it.code) + '</td>' +
-        '<td>' + esc(L.it.name) + '</td>' +
-        '<td>' + esc(L.it.qty) + '</td>' +
-        '<td class="mono">' + (S.liveSerials(L.it).map(x => esc(x.sn)).join('<br>') ||
-          '<span class="note">none</span>') + '</td>' +
-        '<td><span class="chip ' + (['wh','site','scrapped'].indexOf(L.now.to) > -1 ? 'go' : 'hold') + '">' +
-          esc(S.whereLabel(L.now)) + '</span>' +
-          (L.now.on ? '<br><span class="note">since ' + esc(L.now.on) + '</span>' : '') + '</td>' +
-        '<td><span class="note chain">' + esc(S.chainText(L.r, L.it)) + '</span></td>' +
-      '</tr>').join('') + '</tbody></table></div>'
-      : '<div class="empty">Nothing matches that.</div>') +
-      '<div class="bar" style="margin:13px 0 0">' +
-        '<button class="btn" id="xlView">Excel · this list</button>' +
-      '</div>' +
-    '</div>';
-
-  [...document.querySelectorAll('[data-where]')].forEach(b => b.onclick = () => {
-    VIEW.where = b.dataset.where; render();
-  });
-  const q = $('vq');
-  if (q) q.oninput = () => { VIEW.q = q.value; render(); const n = $('vq'); if (n){ n.focus(); n.setSelectionRange(n.value.length, n.value.length); } };
-  [...document.querySelectorAll('[data-pick]')].forEach(c => c.onchange = () => {
-    VIEW.sel[c.dataset.pick] = c.checked; render();
-  });
-  const clr = document.querySelector('[data-clear]');
-  if (clr) clr.onclick = () => { VIEW.sel = {}; render(); };
-  [...document.querySelectorAll('[data-bulk]')].forEach(b => b.onclick = () => bulk(b.dataset.bulk));
-  const xv = $('xlView');
-  if (xv) xv.onclick = () => {
-    /* the same sheet, cut to what is on screen */
-    const keep = {};
-    viewLines().forEach(L => { (keep[L.ri] = keep[L.ri] || []).push(L.ni); });
-    const recs = Object.keys(keep).map(ri => {
-      const r = FILED[Number(ri)], items = S.liveItems(r);
-      return { ...r, items: keep[ri].map(n => items[n]) };
-    });
-    xl(recs, 'swap-materials');
-  };
-}
-
-/* One step, onto every line that was ticked, written back a record at a time
-   so a record that refuses does not take the others with it. */
-async function bulk(to){
-  const picked = viewLines().filter(L => VIEW.sel[L.key]);
-  if (!picked.length) return;
-  let site = '', siteName = '';
-  if (to === 'site'){
-    site = prompt('Which site did these go onto?', '');
-    if (!site) return;
-    site = S.upper(site);
-    siteName = S.findSite(SITES, site) || '';
-  }
-  const byRec = {};
-  picked.forEach(L => { (byRec[L.ri] = byRec[L.ri] || []).push(L.ni); });
-  let done = 0, failed = 0;
-  for (const ri of Object.keys(byRec)){
-    const r = FILED[Number(ri)];
-    const items = S.liveItems(r).map(x => ({ ...x }));
-    byRec[ri].forEach(n => {
-      const m = S.blankMove(to);
-      if (to === 'site'){ m.site = site; m.siteName = siteName; }
-      items[n].moves = S.movesOf(items[n]).concat([m]);
-    });
-    try { await window.DB.swapSave({ ...r, items, createdName: r.createdName }); done += byRec[ri].length; }
-    catch(e){ failed += byRec[ri].length; }
-  }
-  VIEW.sel = {};
-  await loadFiled(); buildTabs(); render();
-  toast(done + ' moved' + (failed ? ' · ' + failed + ' refused' : ''));
-}
-
-/* ---------- the sheet the warehouse gets ---------- */
-async function xl(records, name){
-  if (!window.XLSX){ toast('The spreadsheet library has not loaded yet'); return; }
-  toast('Building the sheet…');
-  /* every picture gets a link, asked for together rather than one at a time */
-  const paths = [];
-  records.forEach(r => S.pathsOf(r).forEach(p => paths.push(p)));
-  await Promise.all([...new Set(paths)].map(async p => {
-    if (LINKS[p]) return;
-    try { const u = await window.DB.swapLink(p, 60 * 60 * 24 * 7); if (u) LINKS[p] = u; } catch(e){}
-  }));
-  const rows = [S.COLS].concat(S.toRows(records, LINKS));
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = S.COLS.map((c, i) => ({ wch: i === 10 ? 34 : i === 13 ? 40 : Math.max(11, c.length + 2) }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'SWAP');
-  XLSX.writeFile(wb, name + '-' + new Date().toISOString().slice(0, 10) + '.xlsx');
-  toast(rows.length - 1 + ' rows');
-}
-
-/* ---------- boot ---------- */
-(async function(){
-  loadDrafts();
-  buildTabs(); render();
+async function loadFiled(){
   try {
-    const s = await window.DB.session();
-    ME = (s && s.user && s.user.id) || '';
-  } catch(e){}
-  MYNAME = (window.Access && Access.currentUser && Access.currentUser()) || '';
-  DRAFTS.forEach(d => { if (!d.team) d.team = MYNAME; });
-  await Promise.all([loadSites(), loadMaterials()]);
-  await loadFiled();
-  buildTabs(); render();
-  try { window.DB.swapSubscribe(async () => {
-    await loadFiled(); buildTabs(); if (ACTIVE === 'filed') render();
-  }); } catch(e){}
+    const r = await window.DB.swapList();
+    if (r.error){ $('siteList').innerHTML = '<div class="empty">' + esc(r.error) + '</div>'; return; }
+    FILED = (r.rows || []).map(S.fromRow);
+  } catch(e){ FILED = []; }
+  renderSites();
+}
+function groups(){
+  const q = up($('find').value), by = {};
+  flat(FILED).forEach(x => {
+    if (!matches(x)) return;
+    (by[x.site] = by[x.site] || { site: x.site, name: x.name, rows: [], last: '' }).rows.push(x);
+    if (x.when > by[x.site].last) by[x.site].last = x.when;
+  });
+  return Object.values(by).sort((a, b) => b.last.localeCompare(a.last));
+}
+let VIEW = 'material';
+const qty = r => Number(r.qty) || 0;
+const hasSn = r => !!r.sn && r.sn !== 'N/A';
+const locSel = r => {
+  if (!OWNER) return '';
+  const ms = S.movesOf(r.rec.items[r.ii]), last = r.mv ? r.mv.to : 'team';
+  const box = (st, label, extra) => {
+    const m = st === 'site' ? ms.filter(x => x.to === 'site').pop() : ms.find(x => x.to === st);
+    const on = st === 'team' || !!m;
+    return '<div class="stp' + (on ? ' on' : '') + (last === st ? ' now' : '') + '" data-step="' + esc(r.rec.id) + '|' + r.ii + '|' + st + '" title="' + (on ? 'Change the date or untick' : 'Tick and record the date') + '"><span class="hd"><span class="bx">' + (on ? '✓' : '') + '</span>' + label + '</span><span class="dt">' + (m ? esc(m.on || '—') + (st === 'site' && m.site ? ' · ' + esc(up(m.site)) : '') : (st === 'team' ? esc(r.removedOn || '—') : '—')) + '</span></div>';
+  };
+  return '<div class="steps ro">' + box('team', 'With team') + box('wh', 'At WH') + box('site', 'Mapped') + '</div>';
+};
+function matches(x){ const q = up($('find').value); return !q || [x.site, up(x.name), x.code, up(x.desc), x.sn, up(locLabel(x.mv))].some(v => v.includes(q)); }
+function renderSites(){
+  const rows = flat(FILED).filter(matches);
+  $('siteCount').textContent = new Set(flat(FILED).map(r => r.code)).size;
+  const at = t => rows.filter(r => (r.mv ? r.mv.to : 'team') === t).length;
+  $('kpis').innerHTML = [
+    [new Set(rows.map(r => r.code)).size, 'materials'],
+    [rows.filter(hasSn).length, 'serialised units'],
+    [rows.filter(r => !hasSn(r)).length, 'no-SN lines'],
+  ].concat(OWNER ? [
+    [at('team'), 'with team'],
+    [at('wh'), 'at warehouse'],
+    [at('site'), 'mapped to sites'],
+  ] : []).map(([n, l]) => '<div><b>' + n + '</b><span>' + esc(l) + '</span></div>').join('');
+  if (VIEW === 'material') return renderByMaterial(rows);
+  if (VIEW === 'rows') return renderRows(rows);
+  renderBySite();
+}
+function renderByMaterial(rows){
+  const box = $('siteList'), by = {};
+  rows.forEach(r => {
+    const k = (r.code || 'NAME:' + up(r.desc)) + '|' + (r.uom || 'EA'), to = r.mv ? r.mv.to : 'team';
+    const g = by[k] = by[k] || { code: r.code, desc: r.desc, tMat: r.tMat, uom: r.uom || 'EA', qty: 0, sn: 0, sites: {}, team: 0, wh: 0, site: 0, scrapped: 0 };
+    g.qty += qty(r); if (hasSn(r)) g.sn++; g[to] = (g[to] || 0) + qty(r);
+    g.sites[r.site] = (g.sites[r.site] || 0) + qty(r);
+  });
+  const list = Object.values(by).sort((a, b) => a.desc.localeCompare(b.desc));
+  if (!list.length){ box.innerHTML = '<div class="empty">' + (FILED.length ? 'Nothing matches.' : 'Nothing in inventory yet. Submit a sheet and it lands here.') + '</div>'; return; }
+  const n = v => v ? v.toLocaleString() : '—';
+  box.innerHTML = '<div class="inv"><div class="wrap"><table><thead><tr><th>Material Code</th><th>Material description</th><th class="num">Total</th><th>UoM</th><th class="num">Serials</th><th class="num">With team</th><th class="num">Warehouse</th><th class="num">On sites</th><th class="num">Scrapped</th><th>Removed from</th></tr></thead><tbody>' +
+    list.map(g => {
+      const s = Object.entries(g.sites).sort((a, b) => b[1] - a[1]);
+      return '<tr><td class="m">' + (esc(g.code) || '—') + '</td><td>' + esc(g.desc) + (g.tMat ? '<span class="tag">typed</span>' : '') + '</td><td class="num">' + n(g.qty) + '</td><td>' + esc(g.uom) + '</td><td class="num">' + n(g.sn) + '</td><td class="num">' + n(g.team) + '</td><td class="num" style="color:var(--ok)">' + n(g.wh) + '</td><td class="num" style="color:var(--accentB)">' + n(g.site) + '</td><td class="num" style="color:var(--muted)">' + n(g.scrapped) + '</td><td><div class="chips">' +
+        s.slice(0, 3).map(([id, c]) => '<a href="#" data-gosite="' + esc(id) + '">' + esc(id) + ' · ' + c + '</a>').join('') + (s.length > 3 ? '<span style="font-size:12px;color:var(--muted)">+' + (s.length - 3) + '</span>' : '') + '</div></td></tr>';
+    }).join('') + '</tbody></table></div></div>';
+}
+function renderRows(rows){
+  const box = $('siteList');
+  if (!rows.length){ box.innerHTML = '<div class="empty">' + (FILED.length ? 'Nothing matches.' : 'Nothing in inventory yet.') + '</div>'; return; }
+  rows = rows.slice().sort((a, b) => b.when.localeCompare(a.when));
+  box.innerHTML = '<div class="inv"><div class="wrap"><table style="min-width:1700px"><thead><tr><th>Site ID</th><th>Site Name</th><th>Material Code</th><th>Material description</th><th class="num">Qty</th><th>UoM</th><th>SN</th><th>Photos</th><th>Status</th><th class="own">Location</th><th class="own">Removed on</th><th class="own">At WH on</th><th class="own">Mapped on</th><th class="own">Mapped to</th><th>Submitted by</th><th>Date &amp; time</th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td class="m" style="color:var(--accentB)">' + esc(r.site) + '</td><td>' + esc(r.name) + (r.tSite ? '<span class="tag">typed</span>' : '') + '</td><td class="m">' + (esc(r.code) || '—') + '</td><td>' + esc(r.desc) + (r.tMat ? '<span class="tag">typed</span>' : '') + '</td><td class="num">' + esc(r.qty) + '</td><td>' + esc(r.uom) + '</td><td class="m">' + (esc(r.sn) || '—') + '</td><td>' + (r.photos.length ? '<button class="galbtn" data-gal="' + esc(JSON.stringify(r.photos.map((p, k) => [p, r.kinds[k]]))) + '">▣ ' + r.photos.length + '</button>' : '—') + '</td><td>' + (r.status ? '<span class="st ' + esc(r.status) + '">' + esc(r.status) + '</span>' : '—') + '</td><td class="own">' + locSel(r) + '</td><td class="m own">' + (esc(r.removedOn) || '—') + '</td><td class="m own">' + (esc(r.whOn) || '—') + '</td><td class="m own">' + (esc(r.mapOn) || '—') + '</td><td class="m own">' + (r.mapSite ? esc(r.mapSite + (r.mapName ? ' ' + r.mapName : '')) : '—') + '</td><td>' + esc(r.who) + '</td><td class="m">' + esc(r.when) + '</td></tr>').join('') +
+    '</tbody></table></div></div>';
+}
+function renderBySite(){
+  const g = groups(), box = $('siteList');
+  if (!g.length){ box.innerHTML = '<div class="empty">' + (FILED.length ? 'Nothing matches.' : 'No sites filed yet. Submit a sheet and it lands here.') + '</div>'; return; }
+  const open = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.site));
+  box.innerHTML = g.map(s => {
+    const visits = new Set(s.rows.map(r => r.rec.id)).size;
+    const sn = s.rows.filter(hasSn).length;
+    return `<details class="site" data-site="${esc(s.site)}"${open.has(s.site) ? ' open' : ''}>
+      <summary><span class="sid">${esc(s.site)}</span><span class="snm">${esc(s.name)}${s.rows.some(r => r.tSite) ? '<span class="tag">typed</span>' : ''}</span>
+        <span class="meta">${s.rows.length} rows · ${sn} SN · ${s.rows.filter(r => r.mv && r.mv.to === 'wh').length} at WH · ${visits} ${visits === 1 ? 'sheet' : 'sheets'} · ${esc(s.last.slice(0, 10))}</span><span class="chev">›</span></summary>
+      <div class="wrap"><table><thead><tr><th>Material Code</th><th>Material description</th><th>Qty</th><th>UoM</th><th>SN</th><th>Photos</th><th>Status</th><th class="own">Location</th><th class="own">Removed on</th><th class="own">At WH on</th><th class="own">Mapped on</th><th class="own">Mapped to</th><th>Submitted by</th><th>Date &amp; time</th></tr></thead><tbody>
+      ${s.rows.map(r => `<tr><td class="m">${esc(r.code) || '—'}</td><td>${esc(r.desc)}${r.tMat ? '<span class="tag">typed</span>' : ''}</td><td>${esc(r.qty)}</td><td>${esc(r.uom)}</td>
+        <td class="m">${esc(r.sn) || '—'}</td><td>${(r.photos.length ? '<button class="galbtn" data-gal="' + esc(JSON.stringify(r.photos.map((p, k) => [p, r.kinds[k]]))) + '">▣ ' + r.photos.length + '</button>' : '—')}</td>
+        <td>${r.status ? `<span class="st ${esc(r.status)}">${esc(r.status)}</span>` : '—'}</td><td class="own">${locSel(r)}</td><td class="m own">${esc(r.removedOn) || '—'}</td><td class="m own">${esc(r.whOn) || '—'}</td><td class="m own">${esc(r.mapOn) || '—'}</td><td class="m own">${r.mapSite ? esc(r.mapSite + (r.mapName ? ' ' + r.mapName : '')) : '—'}</td><td>${esc(r.who)}</td><td class="m">${esc(r.when)}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="sfoot"><button class="btn" data-addto="${esc(s.site)}">+ Add to this site</button><button class="btn pri" data-export="${esc(s.site)}">Export ${esc(s.site)}</button></div>
+    </details>`;
+  }).join('');
+}
+$('find').addEventListener('input', renderSites);
+$('seg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; VIEW = v;
+  [...$('seg').children].forEach(b => b.classList.toggle('on', b.dataset.v === v)); renderSites(); });
+/* Ticking a filed item's step records the date it happened; clicking a
+   ticked step lets the date be corrected, or cleared to untick it. */
+$('siteList').addEventListener('click', async e => {
+  if (!OWNER) return;
+  const el = e.target.closest('[data-step]'); if (!el) return;
+  const [id, ii, st] = el.dataset.step.split('|'), rec = FILED.find(r => String(r.id) === id); if (!rec) return;
+  const items = rec.items.map(x => ({ ...x })), it = items[+ii];
+  let ms = S.movesOf(it).map(m => ({ ...m }));
+  const has = st === 'site' ? ms.filter(m => m.to === 'site').pop() : ms.find(m => m.to === st);
+  const what = st === 'wh' ? 'reached the warehouse' : st === 'site' ? 'was mapped to a site' : 'was removed / with the team';
+  if (has){
+    const v = prompt('Date it ' + what + ' (YYYY-MM-DD). Clear it to untick.', has.on || today());
+    if (v === null) return;
+    if (!v.trim()){ if (st === 'team'){ toast('With team is where every item starts'); return; } ms = ms.filter(m => m !== has); }
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(v.trim())) has.on = v.trim();
+    else { toast('Use YYYY-MM-DD'); return; }
+  } else {
+    let site = '', siteName = '';
+    if (st === 'site'){
+      site = up(prompt('Mapped to which site ID?') || ''); if (!site) return;
+      siteName = S.findSite(SITES, site);
+      if (!siteName) siteName = (prompt(site + ' is not in Site Access. Its name? (optional)') || '').trim();
+    }
+    const v = prompt('Date it ' + what + ' (YYYY-MM-DD)', today());
+    if (v === null) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v.trim())){ toast('Use YYYY-MM-DD'); return; }
+    ms.push({ to: st, on: v.trim(), site, siteName, note:'' });
+  }
+  ms.sort((a, b) => String(a.on).localeCompare(String(b.on)));
+  it.moves = ms;
+  try { await window.DB.swapSave({ ...rec, items, createdName: rec.createdName }); rec.items = items; toast(up(it.code) + ' · ' + locLabel(ms[ms.length - 1])); }
+  catch(err){ toast(err.message || 'Could not save that', 5000); }
+  renderSites();
+});
+$('siteList').addEventListener('click', async e => {
+  const t = e.target;
+  if (t.dataset.gal){
+    const ps = JSON.parse(t.dataset.gal); t.disabled = true;
+    const got = await Promise.all(ps.map(async ([p, k]) => [LINKS[p] || (LINKS[p] = await window.DB.swapLink(p).catch(() => null)), k]));
+    t.disabled = false;
+    const ok = got.filter(g => g[0]);
+    if (!ok.length){ toast('Those pictures have gone'); return; }
+    openLB(ok.map(g => g[0]), 0, null, ok.map(g => pLabel(g[1])));
+  } else if (t.dataset.gosite){
+    e.preventDefault(); $('find').value = t.dataset.gosite; VIEW = 'site';
+    [...$('seg').children].forEach(b => b.classList.toggle('on', b.dataset.v === 'site')); renderSites();
+    const d = $('siteList').querySelector('details'); if (d) d.open = true;
+  } else if (t.dataset.export){
+    exportRows(flat(FILED).filter(x => x.site === t.dataset.export), 'swap-' + t.dataset.export);
+  } else if (t.dataset.addto){
+    $('siteId').value = t.dataset.addto; lookSite(); showTab('new');
+  }
+});
+function showTab(t){
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $('vNew').hidden = t !== 'new'; $('foot').hidden = t !== 'new'; $('vSites').hidden = t !== 'sites';
+  if (t === 'sites') loadFiled();
+  scrollTo(0, 0);
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+/* ---- export: one row per serial, the warehouse sheet's own columns ---- */
+async function exportRows(rows, name){
+  if (!window.XLSX){ toast('Spreadsheet library still loading'); return; }
+  if (!rows.length){ toast('Nothing to export'); return; }
+  const paths = [...new Set(rows.flatMap(r => r.photos))];
+  await Promise.all(paths.map(async p => { if (!LINKS[p]) try { LINKS[p] = await window.DB.swapLink(p, 604800); } catch(e){} }));
+  const out = [['Site ID','Site Name','Site name typed','Material Code','Material description','Material typed','Quantity','Unit of Measure','SN','Status','Current location','Location site name','Removed on','At WH on','Mapped on','Mapped to site','Mapped site name','Scrapped on','SN photo','Full photo 1','Full photo 2','Other photos','Submitted by','Date & time']]
+    .concat(rows.map(r => [r.site, r.name, r.tSite ? 'Yes' : '', r.code, r.desc, r.tMat ? 'Yes' : '', r.qty, r.uom, r.sn, r.status, locLabel(r.mv), r.mv && r.mv.to === 'site' ? (r.mv.siteName || '') : '', r.removedOn, r.whOn, r.mapOn, r.mapSite, r.mapName, r.scrapOn, ...['sn','full1','full2','other'].map(kd => r.photos.filter((p, k) => r.kinds[k] === kd).map(p => LINKS[p] || p).join('\n')), r.who, r.when]));
+  /* A team export keeps Removed on - they typed it - and drops every column
+     that says where the item went after. Found by name, not position. */
+  if (!OWNER){
+    const HIDE = ['Current location','Location site name','At WH on','Mapped on','Mapped to site','Mapped site name','Scrapped on'];
+    const idx = HIDE.map(n => out[0].indexOf(n)).filter(k => k >= 0).sort((x, y) => y - x);
+    out.forEach(row => idx.forEach(k => row.splice(k, 1)));
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(out), 'Removed');
+  XLSX.writeFile(wb, name + '-' + stamp(new Date()).slice(0, 10) + '.xlsx');
+}
+$('exportAll').onclick = async () => { if (!FILED.length) await loadFiled(); exportRows(flat(FILED).filter(matches), 'swap-inventory'); };
+
+const fitHdr = () => document.documentElement.style.setProperty('--hdrH', document.querySelector('.hdr').offsetHeight + 'px');
+fitHdr(); addEventListener('resize', fitHdr);
+
+/* ---- start ---- */
+(async () => {
+  document.documentElement.classList.toggle('is-owner', OWNER);
+  $('removedOn').value = today(); $('removedOn').max = today();
+  load(); render();
+  const me = (window.Access && Access.currentUser && Access.currentUser()) || '';
+  if (!$('who').value && me) $('who').value = me;
+  paint();
+  await Promise.all([loadSites(), loadMaterials(), loadFiled()]);
+  render();
+  try { window.DB.swapSubscribe(() => loadFiled()); } catch(e){}
 })();
 </script>
 <script src="../_lib/ask.js?v=1" defer></script>
