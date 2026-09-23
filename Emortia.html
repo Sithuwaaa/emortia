@@ -922,6 +922,7 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 .tool-rf{--tc:#ffbb41;--tcB:#ffce62;--tcGrid:rgba(255,187,65,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,187,65;}
 .tool-esn{--tc:#ff9600;--tcB:#ffb402;--tcGrid:rgba(255,150,0,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,150,0;}
 .tool-field{--tc:#ff7900;--tcB:#ff9700;--tcGrid:rgba(255,121,0,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,121,0;}
+.tool-swap{--tc:#ffa826;--tcB:#ffc164;--tcGrid:rgba(255,168,38,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,168,38;}
 .tool-team{--tc:#ea84fa;--tcB:#ffa1ff;--tcGrid:rgba(234,132,250,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:234,132,250;}
 .tool-att{--tc:#de68f1;--tcB:#f786ff;--tcGrid:rgba(222,104,241,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:222,104,241;}
 .tool-lyric{--tc:#fa7999;--tcB:#ff96b3;--tcGrid:rgba(250,121,153,.10);--tcLine:#491e29;--tcBg:#1d040a;--tcRGB:250,121,153;}
@@ -5371,6 +5372,8 @@ class Component extends DCLogic {
          desc:'Makes the two things a song needs to go out. The lyric video: cover art swaying behind a dark gradient, the words lighting one at a time on the beat they are sung, rendered to MP4 rather than filmed off the screen. The artwork: the photograph at full strength with the title on solid ink beneath it, square for the stores and 16:9 for YouTube. Both take the same picture and the same title, so neither is asked for twice.'},
         {name:'Daily Attendance', initial:'A', tag:'Tooway · who was on site', href:'tools/attendance/', feature:'tool:attendance',
          desc:'A photo at each end of the shift is the record. Whoever holds the shared phone takes one picture of everyone starting, and the time and the place are stamped on it there and then rather than typed in afterwards. The office ticks the faces it can see and the sheet fills itself in – present, late, hours, and the half that matters, who did not come. Export the day as Excel.'},
+        {name:'Austin SWAP', initial:'S', tag:'Dialog · Airtel swap removals', href:'tools/swap/', feature:'tool:swap',
+         desc:'What came off a tower when an Airtel site and a Dialog site became one. The engineer on site says which tower is coming down and lists what was taken off either of them – codes and names straight off the Material Codes list, serial numbers scanned off the label with the camera, and the photograph of each serial kept with it. Anything not going to the warehouse says which site it is going to instead. The warehouse gets it as Excel, one row per serial.'},
         {name:'ESN Sharing', initial:'E', tag:'Dialog · ESN + serials', href:'tools/esn/', feature:'tool:esn',
          desc:'The team files an ESN from the field: type a site ID and the name arrives on its own, paste the print screens straight out of the clipboard, list the card types and their serials. Tick Run O&M Script and the O&M IP slot opens. Everything lands in one place and comes out as Excel.'},
         {name:'What To Do', initial:'W', tag:'Jobs · reminders', href:'tools/whattodo/', feature:'tool:whattodo',
@@ -5393,7 +5396,7 @@ class Component extends DCLogic {
          whether it is drawn. Each page checks again on its way in - a card
          that is not drawn is not a lock, only a tidy list. */
       ].filter(t=>!t.feature || may(t.feature))
-       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
+       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
                   group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}));
       const gs = (A && A.grouped) ? A.grouped(cards) : [{ group:'', items:cards }];
       /* A group with nothing left in it is a heading over empty space — which

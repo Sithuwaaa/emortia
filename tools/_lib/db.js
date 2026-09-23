@@ -486,6 +486,91 @@
       .subscribe();
   }
 
+  /* ------------------------------------------------- Austin SWAP materials
+
+     The same shape as the ESN pair above: one table, one private bucket, and
+     this is the only file that speaks to either. A record is one visit to a
+     swap - the two towers, which of them is coming down, and everything taken
+     off - so the materials are a list inside the row rather than a table of
+     their own: a material line means nothing without the swap it came off. */
+  const SWAP = 'swap_records', SWBUCKET = 'swap';
+
+  async function swapList(limit){
+    const c = await client(); if (!c) return { rows: [], error: 'offline' };
+    const { data, error } = await c.from(SWAP).select('*')
+      .order('created_at', { ascending: false }).limit(limit || 500);
+    if (error) return { rows: [], error:
+      /does not exist|schema cache|could not find the table/i.test(error.message)
+        ? 'The swap list is not switched on yet – run migration 030.'
+      : error.message };
+    return { rows: data || [], error: null };
+  }
+
+  /* Filed under the swap they came off and named by when they arrived, so two
+     people at the same swap never overwrite each other's pictures. */
+  async function swapUpload(siteId, kind, blob, ext){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const safe = String(siteId || 'unknown').toUpperCase().replace(/[^A-Z0-9_-]+/g, '') || 'UNKNOWN';
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const rnd = Math.random().toString(36).slice(2, 7);
+    const path = safe + '/' + stamp + '-' + rnd + '-' + (kind || 'sn') + '.' + (ext || 'webp');
+    const { error } = await c.storage.from(SWBUCKET).upload(path, blob, {
+      contentType: blob.type || 'image/webp', upsert: false });
+    if (error) throw new Error(error.message);
+    return path;
+  }
+
+  async function swapLink(path, seconds){
+    const c = await client(); if (!c || !path) return null;
+    const { data, error } = await c.storage.from(SWBUCKET)
+      .createSignedUrl(path, seconds || 3600);
+    return error ? null : (data ? data.signedUrl : null);
+  }
+
+  async function swapSave(rec){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const row = {
+      airtel_site: rec.airtelSite || null, airtel_name: rec.airtelName || null,
+      dialog_site: rec.dialogSite || null, dialog_name: rec.dialogName || null,
+      removed: rec.removed || 'airtel',
+      visited_on: rec.visitedOn || null,
+      team: rec.team || null,
+      items: rec.items || [],
+      note: rec.note || null,
+      created_by: s.user.id,
+      created_name: rec.createdName || null
+    };
+    const q = rec.id
+      ? c.from(SWAP).update(row).eq('id', rec.id).select().single()
+      : c.from(SWAP).insert(row).select().single();
+    const { data, error } = await q;
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'That record is not yours to change.' : error.message);
+    return data;
+  }
+
+  /* The pictures first, then the row - a row deleted with its images left
+     behind is storage nobody can find again. */
+  async function swapDelete(id, paths){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const keep = (paths || []).filter(Boolean);
+    if (keep.length){
+      const { error: se } = await c.storage.from(SWBUCKET).remove(keep);
+      if (se) throw new Error(se.message);
+    }
+    const { error } = await c.from(SWAP).delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async function swapSubscribe(fn){
+    const c = await client(); if (!c) return;
+    c.channel('swap_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: SWAP }, () => fn())
+      .subscribe();
+  }
+
   /* ---------------------------------------------------- lyric video projects
 
      Timing a song word by word is an hour that used to live in one browser.
@@ -1482,6 +1567,7 @@
                 gateGet, gateSet,
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
+                swapList, swapSave, swapDelete, swapUpload, swapLink, swapSubscribe,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
                 load, publish, subscribe,
                 publishBook, loadBook, subscribeBook,

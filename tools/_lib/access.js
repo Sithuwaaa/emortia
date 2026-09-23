@@ -758,6 +758,8 @@
       what:'Vendor commands, logins and UMPT passwords. Opening it lets the team read and copy; editing stays mine.' },
     { key:'tool:attendance', name:'Daily Attendance', since:'2026-09-05', tier:'tooway', group:'People & work',
       what:'Who was on site, from a photo at each end of the shift. Anyone who can open it can clock in and name faces; the roster is mine.' },
+    { key:'tool:swap', name:'Austin SWAP', since:'2026-09-22', tier:'tooway', group:'Field operations',
+      what:'The swap removals. Whoever can open it can file what came off a tower.' },
     { key:'tool:esn', name:'ESN Sharing', since:'2026-08-17', tier:'tooway', group:'Field operations',
       what:'Filing an ESN from the field.' },
     { key:'tool:design-extractor', name:'Design Extractor', since:'2026-08-13', tier:'tooway', group:'Design & materials',

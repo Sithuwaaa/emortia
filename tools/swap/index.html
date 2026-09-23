@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e0500">
+<title>Austin SWAP</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script src="../_lib/owner-config.js"></script>
+<script src="../_lib/owner.js"></script>
+<script src="../_lib/supabase-config.js"></script>
+<script src="../_lib/db.js"></script>
+<script src="../_lib/access-config.js"></script>
+<script src="../_lib/access.js"></script>
+<script>Access.protect({ feature: 'tool:swap' });</script>
+<script src="swap.js?v=1"></script>
+<style>
+  /* The colours are the card's own, off the Tools page: the orange of the
+     field group, its line and its ground. Opening a tool should look like
+     walking through the card you pressed, not into a different building. */
+  :root{
+    --navy:#3a2205;--navy-2:#4a2c07;
+    --accent:#ffa826;--accentB:#ffc164;--accentD:#c47b00;--accent-ink:#1e1200;
+    --bg:#1e0500;--card:#2b1206;--card-2:#240d03;--line:#4a2200;--line3:#6b3a10;
+    --text:#f8ecdc;--muted:#bda183;--zebra:rgba(255,255,255,.018);
+    --ok:#34c98b;--warn:#f2a33a;--bad:#e2607a;--info:#4f9bf0;
+    --glow:rgba(255,168,38,.5);--glowSoft:rgba(255,168,38,.26);
+  }
+  html[data-theme="light"]{
+    --navy:#4a2c07;--navy-2:#5d3809;--accent:#a75d00;--accentB:#c47b00;--accentD:#7d4500;--accent-ink:#ffffff;
+    --bg:#fbf6f0;--card:#ffffff;--card-2:#fdfaf6;--line:#ead9c9;--line3:#cdb49a;
+    --text:#2e1a05;--muted:#6d5a45;--zebra:rgba(0,0,0,.022);
+    --ok:#1f9a68;--warn:#b8721c;--bad:#c2405c;--info:#2f6fd0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.5}
+
+  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);
+    color:#fff;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;display:flex;align-items:center;gap:10px;
+    border-bottom:1px solid var(--line3);box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden}
+  .hdr>*{position:relative;z-index:1}
+  .hdr .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;flex-shrink:0;transition:opacity .18s ease}
+  .hdr .brand:hover{opacity:.86}
+  .hdr .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;
+    background:linear-gradient(150deg,#d15873,#87213c) !important;display:flex;align-items:center;justify-content:center;gap:2.4px;
+    box-shadow:0 0 16px rgba(176,58,86,.45);font-size:0;transition:transform .18s ease}
+  .hdr .brand:hover .logo{transform:scale(1.06)}
+  .hdr .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
+  .hdr .logo i:nth-child(1){height:7px} .hdr .logo i:nth-child(2){height:12px}
+  .hdr .logo i:nth-child(3){height:9px} .hdr .logo i:nth-child(4){height:13px}
+  .hdr .bname{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;letter-spacing:-.02em;color:#fff;white-space:nowrap}
+  .hdr .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0}
+  .hdr h1{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;margin-right:auto;
+    white-space:nowrap;color:#fff;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
+  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:rgba(0,0,0,.32);border:1px solid var(--line3);
+    color:#f9e6cd;border-radius:999px;padding:5px 12px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
+    flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .pill::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accentB);animation:tLed 1.6s ease-in-out infinite;flex-shrink:0}
+  @keyframes tLed{0%,100%{opacity:.35}50%{opacity:1}}
+  .pill b{color:var(--accentB)}
+  .theme{background:none;border:1px solid var(--line3);color:#fff;border-radius:9px;width:34px;height:34px;
+    font-size:15px;cursor:pointer;flex-shrink:0;transition:border-color .2s ease,transform .2s ease}
+  .theme:hover{border-color:var(--accentB);transform:scale(1.06)}
+  @media (max-width:900px){.hdr .bname,.hdr .hsep{display:none}}
+  @media (max-width:760px){.hdr .pill{display:none}}
+
+  .tabs{position:sticky;top:55px;z-index:25;display:flex;gap:4px;overflow-x:auto;padding:10px 14px;
+    background:var(--bg);border-bottom:1px solid var(--line);scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex-shrink:0;border:1px solid var(--line);background:var(--card-2);color:var(--muted);border-radius:9px;
+    padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;
+    transition:transform .15s ease,border-color .15s ease,color .15s ease}
+  .tab:hover{transform:translateY(-1px);border-color:var(--accent);color:var(--text)}
+  .tab.on{background:var(--accent);color:var(--accent-ink);border-color:transparent;box-shadow:0 6px 16px var(--glowSoft)}
+
+  main{max-width:1180px;margin:0 auto;padding:18px 14px calc(env(safe-area-inset-bottom) + 60px)}
+  @keyframes rise{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;animation:rise .4s ease both}
+  .panel h2{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;margin-bottom:6px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .panel h2 .dot{width:7px;height:7px;border-radius:50%;background:var(--accentB);flex-shrink:0}
+  .panel h2 .tag{margin-left:auto;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);font-weight:400}
+  .note{color:var(--muted);font-size:13px;line-height:1.6}
+  .note b{color:var(--text);font-weight:600}
+
+  .btn{border:1px solid var(--line3);background:none;color:var(--text);border-radius:9px;padding:8px 14px;
+    font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;
+    transition:border-color .18s ease,transform .18s ease,background .18s ease}
+  .btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .btn.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+  .btn:disabled{opacity:.45;cursor:default;transform:none;border-color:var(--line)}
+  .btn.sm{padding:5px 10px;font-size:12px}
+  .btn.del:hover{border-color:var(--bad);color:var(--bad)}
+  .bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+
+  label.f{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  input,select,textarea{background:var(--card-2);color:var(--text);border:1px solid var(--line);border-radius:9px;
+    padding:9px 11px;font-size:14px;font-family:inherit;outline:none;width:100%;transition:border-color .18s ease}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  input[readonly]{color:var(--muted);background:transparent}
+  .mono{font-family:'Space Mono',monospace}
+  .fld{min-width:0}
+
+  /* the two towers */
+  .towers{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .tower{border:1px solid var(--line);border-radius:12px;padding:13px;background:var(--card-2)}
+  .tower.gone{border-color:var(--accent);box-shadow:0 0 0 1px var(--glowSoft) inset}
+  .tower h3{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;margin-bottom:9px;display:flex;align-items:center;gap:8px}
+  .tower h3 .x{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+    border:1px solid var(--accentD);color:var(--accentB);border-radius:999px;padding:2px 8px}
+  .row2{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:10px}
+  @media(max-width:700px){.towers{grid-template-columns:1fr}.row2{grid-template-columns:1fr}}
+
+  /* one material off one of the towers */
+  .item{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:11px;background:var(--card-2);
+    animation:rise .3s ease both}
+  .item>header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:11px}
+  .item>header .n{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;flex-shrink:0}
+  .seg button{background:none;border:0;color:var(--muted);font:600 12px/1 inherit;font-family:inherit;
+    padding:7px 12px;cursor:pointer;transition:background .15s ease,color .15s ease}
+  .seg button.on{background:var(--accent);color:var(--accent-ink)}
+  .igrid{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) 92px;gap:10px}
+  @media(max-width:700px){.igrid{grid-template-columns:1fr 1fr}.igrid .wide{grid-column:1/-1}}
+
+  /* the code box and what it suggests */
+  .findw{position:relative}
+  .sug{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:20;padding:5px;max-height:260px;overflow-y:auto;
+    background:var(--card);border:1px solid var(--line3);border-radius:12px;box-shadow:0 20px 44px -18px rgba(0,0,0,.8)}
+  .sug button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);cursor:pointer;
+    padding:8px 10px;border-radius:8px;font-size:13.5px;transition:background .14s ease}
+  .sug button:hover,.sug button.on{background:var(--glowSoft)}
+  .sug .c{font-family:'Space Mono',monospace;color:var(--accentB);margin-right:8px}
+  .sug .t{color:var(--muted);font-size:11.5px}
+
+  /* the serials under a material */
+  .sns{margin-top:11px;border-top:1px dashed var(--line);padding-top:11px}
+  .sn{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+  .sn input{flex:1 1 180px;min-width:0}
+  .sn .shot{width:42px;height:42px;border-radius:8px;object-fit:cover;border:1px solid var(--line3);flex-shrink:0;cursor:pointer;background:var(--card)}
+  .sn .miss{width:42px;height:42px;border-radius:8px;border:1px dashed var(--line3);color:var(--muted);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;background:none}
+  .sn .miss.want{border-color:var(--bad);color:var(--bad)}
+
+  /* what has been filed */
+  .rec{border:1px solid var(--line);border-radius:12px;background:var(--card-2);margin-bottom:11px;overflow:hidden}
+  .rec>summary{list-style:none;cursor:pointer;padding:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .rec>summary::-webkit-details-marker{display:none}
+  .rec>summary .id{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px}
+  .rec>summary .who{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);margin-left:auto}
+  .rec .body{padding:0 13px 13px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
+  th{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  tr:nth-child(even) td{background:var(--zebra)}
+  .chip{font-family:'Space Mono',monospace;font-size:10.5px;border:1px solid var(--line3);border-radius:999px;
+    padding:2px 8px;color:var(--muted);white-space:nowrap}
+  .chip.go{border-color:var(--accentD);color:var(--accentB)}
+  .chip.wh{border-color:var(--line3)}
+  .chip.hold{border-color:var(--warn);color:var(--warn)}
+  select.move{margin-top:5px;padding:4px 6px;font-size:11.5px;width:auto;max-width:170px}
+  .wnow{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+  .wnow .line{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .wnow .stp{display:inline-flex;flex-direction:column;border:1px solid var(--line3);border-radius:9px;
+    padding:5px 10px;font-size:12.5px;background:var(--card)}
+  .wnow .stp.first{border-style:dashed;color:var(--muted)}
+  .wnow .stp:last-of-type{border-color:var(--accent);color:var(--text)}
+  .wnow .stp i{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);font-style:normal}
+  .wnow .line b{color:var(--muted)}
+  .chain{display:block;max-width:34ch;font-size:11px;line-height:1.5;opacity:.85}
+  .side{border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:13px;background:var(--card-2)}
+  .side>h3{font-family:'Bricolage Grotesque',sans-serif;font-size:14.5px;margin-bottom:11px;
+    display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .side>h3 .sid{font-family:'Space Mono',monospace;font-size:11px;color:var(--accentB);
+    border:1px solid var(--line3);border-radius:999px;padding:2px 9px}
+  .side>h3 .cnt{margin-left:auto;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted)}
+  .side .item{background:var(--card)}
+
+  /* the scanner */
+  #scan{position:fixed;inset:0;z-index:60;background:rgba(10,4,0,.94);display:none;
+    align-items:center;justify-content:center;padding:16px}
+  #scan.on{display:flex}
+  #scan .box{width:min(520px,100%);background:var(--card);border:1px solid var(--line3);border-radius:16px;
+    padding:14px;display:flex;flex-direction:column;gap:11px}
+  #scan video{width:100%;border-radius:12px;background:#000;aspect-ratio:4/3;object-fit:cover}
+  #scan h3{font-family:'Bricolage Grotesque',sans-serif;font-size:16px}
+
+  #lightbox{position:fixed;inset:0;z-index:70;background:rgba(10,4,0,.93);display:none;align-items:center;justify-content:center;padding:18px}
+  #lightbox.on{display:flex}
+  #lightbox img{max-width:100%;max-height:86vh;border-radius:12px;border:1px solid var(--line3)}
+
+  #toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,140%);z-index:80;
+    background:var(--navy-2);color:#fff;border:1px solid var(--line3);border-radius:12px;padding:11px 16px;
+    font-size:13.5px;max-width:92vw;text-align:center;transition:transform .3s cubic-bezier(.2,.8,.25,1);box-shadow:0 18px 44px rgba(0,0,0,.6)}
+  #toast.show{transform:translate(-50%,0)}
+  .empty{color:var(--muted);font-size:13.5px;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <a class="brand" href="../../" title="Emortia">
+    <span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span class="bname">Emortia</span>
+  </a>
+  <span class="hsep"></span>
+  <h1>Austin SWAP</h1>
+  <span class="pill" id="pill">loading…</span>
+  <button class="theme" id="themeBtn" title="Light or dark">◐</button>
+</header>
+
+<div class="tabs" id="tabs"></div>
+<main id="main"></main>
+
+<div id="scan" role="dialog" aria-modal="true" aria-label="Scan a serial number">
+  <div class="box">
+    <h3>Point it at the barcode</h3>
+    <video id="scanVid" playsinline muted></video>
+    <p class="note" id="scanNote">Hold the label still and fill the frame. The picture is kept as the serial's photo.</p>
+    <div class="bar" style="margin:0">
+      <button class="btn" id="scanShot">Use this picture</button>
+      <button class="btn del" id="scanStop">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox"><img id="lightImg" alt=""></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const S = window.SwapCore;
+const $ = id => document.getElementById(id);
+let tt; function toast(m, ms){ const t = $('toast'); t.textContent = m; t.classList.add('show');
+  clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), ms || 2800); }
+
+const isOwner = () => !!(window.Access && Access.isOwner());
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]);
+
+/* ---------- the theme, remembered with the other tools ---------- */
+const THEME_KEY = 'office_tool_theme';
+function paintTheme(){
+  let t = 'dark';
+  try { t = localStorage.getItem(THEME_KEY) || 'dark'; } catch(e){}
+  document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+  $('themeBtn').textContent = t === 'light' ? '☀' : '◐';
+}
+$('themeBtn').onclick = () => {
+  const now = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  try { localStorage.setItem(THEME_KEY, now); } catch(e){}
+  paintTheme();
+};
+paintTheme();
+
+/* ---------- state ---------- */
+let DRAFTS = [], FILED = [], ACTIVE = 'd0';
+let SITES = {};                 // site id -> name, off the Site Access dataset
+let MAT = { byCode:{}, all:[] };// the material list, off the Material Codes tool
+let MATERR = '';
+let ME = '', MYNAME = '';
+let LINKS = {};                 // storage path -> signed URL, asked for when shown
+let SUG = { key:'', at:0 };     // which code box is open and which line is marked
+
+const DRAFT_KEY = 'swap_drafts_v1';
+
+/* Drafts live in this browser until they are filed: a tower visit is often
+   typed with no signal at all, and losing it to a locked phone would be the
+   end of the tool. The pictures cannot go in localStorage - they are blobs -
+   so a reloaded draft keeps everything but its photographs and says so. */
+function saveDrafts(){
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(DRAFTS.map(d => ({
+      ...d, files:{}, busy:null,
+      items:(d.items||[]).map(i => ({ ...i,
+        serials:(i.serials||[]).map(s => ({ sn:s.sn, photo:s.photo || null })) }))
+    }))));
+  } catch(e){}
+}
+function loadDrafts(){
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch(e){}
+  DRAFTS = Array.isArray(raw) && raw.length ? raw.map(d => ({ ...d, files:d.files||{}, busy:null })) : [S.blank()];
+  ACTIVE = DRAFTS[0].uid;
+}
+
+/* ---------- the two lists this tool reads ---------- */
+async function loadSites(){
+  try {
+    const ds = await window.DB.load('site_access');
+    SITES = S.buildIndex(ds);
+  } catch(e){ SITES = {}; }
+}
+async function loadMaterials(){
+  try {
+    const r = await window.DB.materialsLoad();
+    if (r.error){ MATERR = r.error; return; }
+    MAT = S.materialIndex(r.rows);
+  } catch(e){ MATERR = e.message; }
+}
+async function loadFiled(){
+  try {
+    const r = await window.DB.swapList();
+    if (r.error){ toast(r.error, 6000); return false; }
+    FILED = (r.rows || []).map(S.fromRow);
+    return true;
+  } catch(e){ toast(e.message, 6000); return false; }
+}
+
+/* ---------- tabs ---------- */
+function buildTabs(){
+  const t = $('tabs');
+  t.innerHTML = DRAFTS.map((d, i) => {
+    const nm = S.swapTitle(d) || ('Swap ' + (i + 1));
+    return '<button class="tab' + (ACTIVE === d.uid ? ' on' : '') + '" data-tab="' + d.uid + '">' +
+           esc(nm) + (d.saved ? ' ✓' : '') + '</button>';
+  }).join('') +
+  '<button class="tab" data-add="1">+ New swap</button>' +
+  '<button class="tab' + (ACTIVE === 'filed' ? ' on' : '') + '" data-tab="filed">Filed · ' + FILED.length + '</button>' +
+  '<button class="tab' + (ACTIVE === 'all' ? ' on' : '') + '" data-tab="all">Every material</button>';
+  [...t.querySelectorAll('[data-tab]')].forEach(b => b.onclick = () => { ACTIVE = b.dataset.tab; buildTabs(); render(); });
+  const add = t.querySelector('[data-add]');
+  if (add) add.onclick = () => {
+    const d = S.blank(); DRAFTS.push(d); ACTIVE = d.uid; saveDrafts(); buildTabs(); render();
+  };
+  const tot = S.totals(FILED);
+  $('pill').innerHTML = '<b>' + tot.records + '</b> filed · <b>' + tot.lines + '</b> lines · <b>' +
+                        tot.serials + '</b> serials';
+}
+
+/* ---------- the form ---------- */
+function render(){
+  const m = $('main');
+  if (ACTIVE === 'filed'){ renderFiled(m); return; }
+  if (ACTIVE === 'all'){ renderAll(m); return; }
+  const d = DRAFTS.find(x => x.uid === ACTIVE) || DRAFTS[0];
+  if (!d){ m.innerHTML = ''; return; }
+  const own = isOwner();
+
+  const tower = (side) => {
+    const idF = side === 'airtel' ? 'airtelSite' : 'dialogSite';
+    const nmF = side === 'airtel' ? 'airtelName' : 'dialogName';
+    const gone = d.removed === side || d.removed === 'both';
+    return '<div class="tower' + (gone ? ' gone' : '') + '">' +
+      '<h3>' + (side === 'airtel' ? 'Airtel tower' : 'Dialog tower') +
+        (gone ? '<span class="x">coming down</span>' : '') + '</h3>' +
+      '<div class="row2">' +
+        '<div class="fld"><label class="f" for="' + idF + '">Site ID</label>' +
+          '<input class="mono" id="' + idF + '" data-fld="' + idF + '" value="' + esc(d[idF]) + '" placeholder="' +
+          (side === 'airtel' ? 'ATL…' : 'CML…') + '" autocapitalize="characters" spellcheck="false"></div>' +
+        '<div class="fld"><label class="f" for="' + nmF + '">Site name</label>' +
+          '<input id="' + nmF + '" data-fld="' + nmF + '" value="' + esc(d[nmF]) + '" placeholder="found from the site list"></div>' +
+      '</div></div>';
+  };
+
+  const itemBox = (it, i) => {
+    const mat = S.findMaterial(MAT, it.code);
+    const unknown = S.norm(it.code) && !mat;
+    const serials = (it.serials || []);
+    return '<div class="item" data-i="' + i + '">' +
+      '<header>' +
+        '<span class="n">' + (i + 1) + '</span>' +
+        '<span class="seg">' + S.SIDES.map(([k, lab]) =>
+          '<button data-side="' + k + '" class="' + (it.from === k ? 'on' : '') + '">' + lab + '</button>').join('') +
+        '</span>' +
+        '<span class="seg">' + S.DESTS.map(([k, lab]) =>
+          '<button data-dest="' + k + '" class="' + (it.dest === k ? 'on' : '') + '">' + lab + '</button>').join('') +
+        '</span>' +
+        '<button class="btn sm del" data-drop="' + i + '" style="margin-left:auto">Remove line</button>' +
+      '</header>' +
+      '<div class="igrid">' +
+        '<div class="fld findw">' +
+          '<label class="f">Material code</label>' +
+          '<input class="mono" data-code="' + i + '" value="' + esc(it.code) + '" placeholder="code or name" autocapitalize="characters" spellcheck="false" autocomplete="off">' +
+          (SUG.key === ('i' + i) ? sugList(it.code) : '') +
+        '</div>' +
+        '<div class="fld wide"><label class="f">Material name</label>' +
+          '<input data-name="' + i + '" value="' + esc(it.name) + '"' + (own ? '' : ' readonly') +
+          ' placeholder="' + (own ? 'from the list, or type it' : 'from the material list') + '"></div>' +
+        '<div class="fld"><label class="f">Qty</label>' +
+          '<input type="number" min="1" step="1" data-qty="' + i + '" value="' + esc(it.qty) + '"></div>' +
+      '</div>' +
+      (unknown ? '<p class="note" style="margin-top:7px;color:var(--warn)">' +
+        (own ? 'Not on the material list – yours to allow.' : 'Not on the material list. Pick a code from it, or ask Sithara.') +
+        '</p>' : '') +
+      '<div class="wnow">' +
+        '<label class="f">Where it has been</label>' +
+        '<div class="line">' + S.timeline(d, it).map((st, n) =>
+          '<span class="stp' + (n === 0 ? ' first' : '') + '">' + esc(st.label) +
+          (st.on ? '<i>' + esc(st.on) + '</i>' : '') + '</span>').join('<b>→</b>') +
+          (S.movesOf(it).length > 1 ? '<button class="btn sm del" data-undo="' + i + '" title="Take the last step back">↶</button>' : '') +
+        '</div>' +
+        '<div class="bar" style="margin:8px 0 0">' +
+          S.STEPS.map(([k, lab]) => '<button class="btn sm" data-move="' + i + '.' + k + '">→ ' +
+            esc(k === 'site' ? 'Onto a site' : lab) + '</button>').join('') +
+        '</div>' +
+        (() => {
+          const ms = S.movesOf(it), n = ms.length - 1, last = ms[n];
+          return '<div class="bar" style="margin:8px 0 0">' +
+            '<span class="note">Last step:</span>' +
+            (last.to === 'site'
+              ? '<input class="mono" style="width:auto;min-width:130px" data-mvsite="' + i + '.' + n + '" value="' +
+                esc(last.site || '') + '" placeholder="site ID" autocapitalize="characters">' +
+                '<span class="note" data-mvname="' + i + '.' + n + '">' + esc(last.siteName || '') + '</span>'
+              : '') +
+            '<input type="date" style="width:auto;min-width:150px" data-mvon="' + i + '.' + n + '" value="' +
+              esc(last.on || '') + '">' +
+          '</div>';
+        })() +
+      '</div>' +
+      (it.dest === 'remap' ? '<div class="row2" style="margin-top:10px">' +
+        '<div class="fld"><label class="f">Remapped to site</label>' +
+          '<input class="mono" data-remap="' + i + '" value="' + esc(it.remapSite) + '" placeholder="site ID" autocapitalize="characters"></div>' +
+        '<div class="fld"><label class="f">That site\'s name</label>' +
+          '<input data-remapname="' + i + '" value="' + esc(it.remapName) + '" placeholder="found from the site list"></div>' +
+      '</div>' : '') +
+      '<div class="sns">' +
+        '<label class="f">Serial numbers · a photo with every one</label>' +
+        serials.map((s, k) => snRow(it, i, s, k)).join('') +
+        '<div class="bar" style="margin:6px 0 0">' +
+          '<button class="btn sm" data-addsn="' + i + '">+ Serial</button>' +
+          '<button class="btn sm" data-scan="' + i + '">Scan a barcode</button>' +
+          '<span class="note">' + S.liveSerials(it).length + ' of ' + (Number(it.qty) || 0) + ' listed</span>' +
+        '</div>' +
+      '</div>' +
+      (it.note ? '' : '') +
+      '<div class="fld" style="margin-top:10px"><label class="f">Line note</label>' +
+        '<input data-inote="' + i + '" value="' + esc(it.note) + '" placeholder="anything the warehouse should know about this line"></div>' +
+    '</div>';
+  };
+
+  const snRow = (it, i, s, k) => {
+    const shot = (s.file && s.file.url) || LINKS[s.photo] || '';
+    const want = S.norm(s.sn) && !(s.photo || (s.file && s.file.blob));
+    return '<div class="sn">' +
+      (shot ? '<img class="shot" src="' + esc(shot) + '" data-see="' + i + '.' + k + '" alt="serial photo">'
+            : '<button class="miss' + (want ? ' want' : '') + '" data-shot="' + i + '.' + k + '" title="Add the photo of this serial">📷</button>') +
+      '<input class="mono" data-sn="' + i + '.' + k + '" value="' + esc(s.sn) + '" placeholder="serial number" autocapitalize="characters" spellcheck="false">' +
+      '<button class="btn sm" data-scan1="' + i + '.' + k + '">Scan</button>' +
+      '<button class="btn sm del" data-dropsn="' + i + '.' + k + '">×</button>' +
+    '</div>';
+  };
+
+  const sugList = (q) => {
+    const list = S.suggest(MAT, q, 8);
+    if (!list.length) return '';
+    return '<div class="sug">' + list.map((mm, n) =>
+      '<button data-pick="' + esc(mm.code) + '" class="' + (n === SUG.at ? 'on' : '') + '">' +
+      '<span class="c">' + esc(mm.code) + '</span>' + esc(mm.name) +
+      (mm.type ? ' <span class="t">· ' + esc(mm.type) + '</span>' : '') + '</button>').join('') + '</div>';
+  };
+
+  const v = S.check(d, { index: MAT.all.length ? MAT : null, owner: own });
+
+  m.innerHTML =
+    '<div class="panel">' +
+      '<h2><span class="dot"></span>The swap<span class="tag">' + (d.saved ? 'filed' : 'not filed yet') + '</span></h2>' +
+      '<p class="note">Two towers become one site. Say which one is coming down, then list what came off – off either of them.</p>' +
+      '<div class="bar" style="margin:13px 0 12px">' +
+        S.REMOVED.map(([k, lab]) => '<button class="btn' + (d.removed === k ? ' on' : '') + '" data-removed="' + k + '">' +
+          esc(lab) + '</button>').join('') +
+      '</div>' +
+      '<div class="towers">' + tower('airtel') + tower('dialog') + '</div>' +
+      '<div class="row2" style="margin-top:12px">' +
+        '<div class="fld"><label class="f" for="visitedOn">Visited on</label>' +
+          '<input type="date" id="visitedOn" data-fld="visitedOn" value="' + esc(d.visitedOn) + '"></div>' +
+        '<div class="fld"><label class="f" for="team">Engineer or team</label>' +
+          '<input id="team" data-fld="team" value="' + esc(d.team) + '" placeholder="who was on site"></div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="panel">' +
+      '<h2><span class="dot"></span>What came off<span class="tag">' + S.liveItems(d).length + ' lines · ' +
+        S.totals([d]).serials + ' serials</span></h2>' +
+      '<p class="note">Everything that came off goes here – radios, BBU cards, antennas, feeders, jumpers, fibre, power. Codes and names come off the Material Codes list; type a few letters of either.</p>' +
+      (MATERR ? '<p class="note" style="color:var(--warn)">The material list did not load: ' + esc(MATERR) + '</p>' : '') +
+      S.SIDES.map(([side, lab]) => {
+        const id = side === 'airtel' ? d.airtelSite : d.dialogSite;
+        const nm = side === 'airtel' ? d.airtelName : d.dialogName;
+        const mine = (d.items || []).map((it, i) => [it, i]).filter(([it]) => it.from === side);
+        return '<div class="side">' +
+          '<h3>Off the ' + esc(lab) + ' tower' +
+            (id ? '<span class="sid">' + esc(S.upper(id)) + (nm ? ' · ' + esc(nm) : '') + '</span>' : '') +
+            '<span class="cnt">' + mine.filter(([it]) => S.norm(it.code)).length + ' lines</span>' +
+          '</h3>' +
+          (mine.length ? mine.map(([it, i]) => itemBox(it, i)).join('')
+                       : '<div class="empty">Nothing off this tower yet.</div>') +
+          '<div class="bar" style="margin:9px 0 0">' +
+            '<button class="btn" data-additem="' + side + '">+ Material off ' + esc(lab) + '</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>' +
+
+    '<div class="panel">' +
+      '<h2><span class="dot"></span>Anything else</h2>' +
+      '<textarea rows="3" data-fld="note" placeholder="what the warehouse should know">' + esc(d.note) + '</textarea>' +
+      '<div class="bar" style="margin:13px 0 0">' +
+        '<button class="btn on" id="fileBtn"' + (d.busy ? ' disabled' : '') + '>' +
+          (d.busy || (d.id ? 'Save the changes' : 'File this swap')) + '</button>' +
+        '<button class="btn del" id="dropDraft">Throw this draft away</button>' +
+        '<span class="note">' + (v.ok ? 'Ready to file.' : esc(S.why(v.missing))) + '</span>' +
+      '</div>' +
+    '</div>';
+
+  wireForm(d);
+}
+
+/* ---------- the form's wiring ---------- */
+function wireForm(d){
+  const set = (fn) => { fn(); d.saved = false; saveDrafts(); };
+  const at = (key) => { const [i, k] = String(key).split('.').map(Number); return { i, k }; };
+
+  [...document.querySelectorAll('[data-fld]')].forEach(el => {
+    el.oninput = () => {
+      set(() => { d[el.dataset.fld] = el.value; });
+      /* a site ID types its own name in, from the site list */
+      if (el.dataset.fld === 'airtelSite') fillName(d, 'airtelSite', 'airtelName');
+      if (el.dataset.fld === 'dialogSite') fillName(d, 'dialogSite', 'dialogName');
+    };
+  });
+  [...document.querySelectorAll('[data-removed]')].forEach(b => b.onclick = () => {
+    set(() => { d.removed = b.dataset.removed; }); render();
+  });
+  [...document.querySelectorAll('[data-additem]')].forEach(b => b.onclick = () => {
+    set(() => { d.items.push(S.blankItem(b.dataset.additem)); }); render();
+  });
+  [...document.querySelectorAll('[data-drop]')].forEach(b => b.onclick = () => {
+    set(() => { d.items.splice(Number(b.dataset.drop), 1); if (!d.items.length) d.items.push(S.blankItem('airtel')); });
+    render();
+  });
+  [...document.querySelectorAll('[data-side]')].forEach(b => b.onclick = (e) => {
+    const i = Number(e.target.closest('.item').dataset.i);
+    set(() => { d.items[i].from = b.dataset.side; }); render();
+  });
+  [...document.querySelectorAll('[data-dest]')].forEach(b => b.onclick = (e) => {
+    const i = Number(e.target.closest('.item').dataset.i);
+    set(() => { d.items[i].dest = b.dataset.dest; }); render();
+  });
+  [...document.querySelectorAll('[data-qty]')].forEach(el => el.oninput = () =>
+    set(() => { d.items[Number(el.dataset.qty)].qty = el.value; }));
+  [...document.querySelectorAll('[data-name]')].forEach(el => el.oninput = () =>
+    set(() => { d.items[Number(el.dataset.name)].name = el.value; }));
+  [...document.querySelectorAll('[data-inote]')].forEach(el => el.oninput = () =>
+    set(() => { d.items[Number(el.dataset.inote)].note = el.value; }));
+  [...document.querySelectorAll('[data-remap]')].forEach(el => el.oninput = () => {
+    const i = Number(el.dataset.remap);
+    set(() => { d.items[i].remapSite = el.value;
+      const nm = S.findSite(SITES, el.value);
+      if (nm) d.items[i].remapName = nm; });
+    const nb = document.querySelector('[data-remapname="' + i + '"]');
+    if (nb && d.items[i].remapName) nb.value = d.items[i].remapName;
+  });
+  [...document.querySelectorAll('[data-remapname]')].forEach(el => el.oninput = () =>
+    set(() => { d.items[Number(el.dataset.remapname)].remapName = el.value; }));
+  [...document.querySelectorAll('[data-move]')].forEach(b => b.onclick = () => {
+    const [i, k] = b.dataset.move.split('.');
+    const it = d.items[Number(i)];
+    set(() => {
+      it.moves = S.movesOf(it).slice();
+      const m = S.blankMove(k);
+      /* a step onto a site knows where it is going if the line already said */
+      if (k === 'site'){ m.site = it.remapSite || ''; m.siteName = it.remapName || ''; }
+      it.moves.push(m);
+    });
+    render();
+  });
+  [...document.querySelectorAll('[data-undo]')].forEach(b => b.onclick = () => {
+    const it = d.items[Number(b.dataset.undo)];
+    set(() => { it.moves = S.movesOf(it).slice(0, -1); });
+    render();
+  });
+  [...document.querySelectorAll('[data-mvsite]')].forEach(el => el.oninput = () => {
+    const [i, n] = el.dataset.mvsite.split('.').map(Number);
+    const it = d.items[i];
+    set(() => {
+      it.moves = S.movesOf(it).slice();
+      it.moves[n] = { ...it.moves[n], site: el.value, siteName: S.findSite(SITES, el.value) || it.moves[n].siteName };
+    });
+    const lab = document.querySelector('[data-mvname="' + i + '.' + n + '"]');
+    if (lab) lab.textContent = it.moves[n].siteName || '';
+  });
+  [...document.querySelectorAll('[data-mvon]')].forEach(el => el.oninput = () => {
+    const [i, n] = el.dataset.mvon.split('.').map(Number);
+    const it = d.items[i];
+    set(() => { it.moves = S.movesOf(it).slice(); it.moves[n] = { ...it.moves[n], on: el.value }; });
+  });
+
+  /* the code box: type, see what it could be, pick one */
+  [...document.querySelectorAll('[data-code]')].forEach(el => {
+    const i = Number(el.dataset.code);
+    el.oninput = () => {
+      set(() => {
+        d.items[i].code = el.value;
+        const mm = S.findMaterial(MAT, el.value);
+        if (mm) d.items[i].name = mm.name;
+      });
+      SUG = { key:'i' + i, at:0 };
+      redrawSug(i, el);
+    };
+    el.onfocus = () => { SUG = { key:'i' + i, at:0 }; redrawSug(i, el); };
+    el.onblur = () => { setTimeout(() => { if (SUG.key === 'i' + i){ SUG = { key:'', at:0 }; redrawSug(i, el); } }, 140); };
+    el.onkeydown = (e) => {
+      const list = S.suggest(MAT, el.value, 8);
+      if (!list.length) return;
+      if (e.key === 'ArrowDown'){ e.preventDefault(); SUG.at = (SUG.at + 1) % list.length; redrawSug(i, el); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); SUG.at = (SUG.at - 1 + list.length) % list.length; redrawSug(i, el); }
+      else if (e.key === 'Enter'){ e.preventDefault(); pick(d, i, list[SUG.at] || list[0]); }
+      else if (e.key === 'Escape'){ SUG = { key:'', at:0 }; redrawSug(i, el); }
+    };
+  });
+  [...document.querySelectorAll('[data-pick]')].forEach(b => b.onmousedown = (e) => {
+    e.preventDefault();
+    const i = Number(b.closest('.item').dataset.i);
+    pick(d, i, S.findMaterial(MAT, b.dataset.pick));
+  });
+
+  /* serials */
+  [...document.querySelectorAll('[data-sn]')].forEach(el => el.oninput = () => {
+    const { i, k } = at(el.dataset.sn);
+    set(() => { d.items[i].serials[k].sn = el.value; });
+  });
+  [...document.querySelectorAll('[data-sn]')].forEach(el => el.onchange = () => {
+    /* a hardware scanner types the lot and presses Enter: tidy it once it stops */
+    const { i, k } = at(el.dataset.sn);
+    const clean = S.cleanSerial(el.value);
+    if (clean !== el.value){ el.value = clean; set(() => { d.items[i].serials[k].sn = clean; }); }
+  });
+  [...document.querySelectorAll('[data-addsn]')].forEach(b => b.onclick = () => {
+    set(() => { d.items[Number(b.dataset.addsn)].serials.push(S.blankSerial()); }); render();
+  });
+  [...document.querySelectorAll('[data-dropsn]')].forEach(b => b.onclick = () => {
+    const { i, k } = at(b.dataset.dropsn);
+    set(() => { d.items[i].serials.splice(k, 1); if (!d.items[i].serials.length) d.items[i].serials.push(S.blankSerial()); });
+    render();
+  });
+  [...document.querySelectorAll('[data-shot]')].forEach(b => b.onclick = () => pickPhoto(d, at(b.dataset.shot)));
+  [...document.querySelectorAll('[data-see]')].forEach(im => im.onclick = () => showBig(im.src));
+  [...document.querySelectorAll('[data-scan]')].forEach(b => b.onclick = () => {
+    const i = Number(b.dataset.scan);
+    const k = d.items[i].serials.findIndex(s => !S.norm(s.sn));
+    openScan(d, { i, k: k < 0 ? (d.items[i].serials.push(S.blankSerial()) - 1) : k });
+  });
+  [...document.querySelectorAll('[data-scan1]')].forEach(b => b.onclick = () => openScan(d, at(b.dataset.scan1)));
+
+  $('fileBtn').onclick = () => file(d);
+  $('dropDraft').onclick = async () => {
+    const go = window.Ask ? await Ask.twice($('dropDraft'), 'Throw it away?') : confirm('Throw this draft away?');
+    if (!go) return;
+    DRAFTS = DRAFTS.filter(x => x.uid !== d.uid);
+    if (!DRAFTS.length) DRAFTS = [S.blank()];
+    ACTIVE = DRAFTS[0].uid; saveDrafts(); buildTabs(); render();
+  };
+}
+
+function redrawSug(i, el){
+  const box = el.closest('.findw');
+  const old = box.querySelector('.sug');
+  if (old) old.remove();
+  if (SUG.key !== 'i' + i) return;
+  const list = S.suggest(MAT, el.value, 8);
+  if (!list.length) return;
+  const div = document.createElement('div');
+  div.className = 'sug';
+  div.innerHTML = list.map((mm, n) =>
+    '<button data-pick="' + esc(mm.code) + '" class="' + (n === SUG.at ? 'on' : '') + '">' +
+    '<span class="c">' + esc(mm.code) + '</span>' + esc(mm.name) +
+    (mm.type ? ' <span class="t">· ' + esc(mm.type) + '</span>' : '') + '</button>').join('');
+  box.appendChild(div);
+  const d = DRAFTS.find(x => x.uid === ACTIVE);
+  [...div.querySelectorAll('[data-pick]')].forEach(b => b.onmousedown = (e) => {
+    e.preventDefault(); pick(d, i, S.findMaterial(MAT, b.dataset.pick));
+  });
+}
+function pick(d, i, mm){
+  if (!mm) return;
+  d.items[i].code = mm.code;
+  d.items[i].name = mm.name;
+  d.saved = false; saveDrafts();
+  SUG = { key:'', at:0 };
+  render();
+}
+function fillName(d, idF, nmF){
+  const nm = S.findSite(SITES, d[idF]);
+  if (!nm) return;
+  d[nmF] = nm;
+  const el = document.querySelector('[data-fld="' + nmF + '"]');
+  if (el) el.value = nm;
+  saveDrafts();
+}
+
+/* ---------- the pictures ----------
+
+   Kept as they arrive. A serial is something somebody has to be able to read
+   back off the picture, and a resized photograph is a photograph you might
+   have to go back up the tower for. */
+function pickPhoto(d, where){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    attach(d, where, f, (f.name.split('.').pop() || 'jpg').toLowerCase());
+  };
+  inp.click();
+}
+function attach(d, where, blob, ext){
+  const s = d.items[where.i].serials[where.k];
+  if (s.file && s.file.url) URL.revokeObjectURL(s.file.url);
+  s.file = { blob, ext: ext || 'jpg', url: URL.createObjectURL(blob) };
+  s.photo = s.photo || null;
+  d.saved = false; saveDrafts(); render();
+}
+function showBig(src){ $('lightImg').src = src; $('lightbox').classList.add('on'); }
+$('lightbox').onclick = () => $('lightbox').classList.remove('on');
+
+/* ---------- the scanner ----------
+
+   Two ways of reading a barcode and one way of typing it. BarcodeDetector is
+   built into Chrome and Android's webview and costs nothing; iPhones do not
+   have it, and an iPhone is what is in the field, so ZXing is fetched only
+   when it is needed and only when the browser has no reader of its own.
+
+   The frame that read the barcode is kept as the serial's photograph. The
+   warehouse wants both and nobody on a tower wants to do it twice. */
+let SCAN = { where:null, stream:null, stop:false, draft:null };
+
+async function openScan(d, where){
+  SCAN = { where, stream:null, stop:false, draft:d };
+  $('scan').classList.add('on');
+  $('scanNote').textContent = 'Hold the label still and fill the frame. The picture is kept as the serial\'s photo.';
+  try {
+    SCAN.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }, audio: false });
+  } catch(e){
+    $('scanNote').textContent = 'The camera is not available here – type the serial in, or add the photo from the ▣ button.';
+    return;
+  }
+  const v = $('scanVid');
+  v.srcObject = SCAN.stream;
+  await v.play().catch(() => {});
+  readLoop(v);
+}
+async function readLoop(v){
+  let reader = null;
+  if ('BarcodeDetector' in window){
+    try { reader = new window.BarcodeDetector(); } catch(e){ reader = null; }
+  }
+  if (!reader){
+    try { reader = await zxing(); }
+    catch(e){ $('scanNote').textContent = 'No barcode reader in this browser – type the serial in, and use “Use this picture” for the photo.'; return; }
+  }
+  while (!SCAN.stop && $('scan').classList.contains('on')){
+    try {
+      const found = await reader.detect(v);
+      if (found && found.length){
+        const sn = S.cleanSerial(found[0].rawValue || found[0].text || '');
+        if (sn){ await takeShot(sn); return; }
+      }
+    } catch(e){}
+    await new Promise(r => setTimeout(r, 220));
+  }
+}
+/* ZXing, only if it has to be: a reader with the same detect() the browser's
+   own has, so the loop above does not care which one it got. */
+async function zxing(){
+  if (!window.ZXing){
+    await new Promise((ok, no) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+      s.onload = ok; s.onerror = () => no(new Error('no reader'));
+      document.head.appendChild(s);
+    });
+  }
+  const r = new window.ZXing.BrowserMultiFormatReader();
+  const cv = document.createElement('canvas');
+  return { detect: async (v) => {
+    if (!v.videoWidth) return [];
+    cv.width = v.videoWidth; cv.height = v.videoHeight;
+    cv.getContext('2d').drawImage(v, 0, 0);
+    try {
+      const res = r.decodeFromCanvas(cv);
+      return res ? [{ rawValue: res.getText() }] : [];
+    } catch(e){ return []; }
+  } };
+}
+/* The frame on screen, as it is, as the serial's photograph. */
+async function takeShot(sn){
+  const v = $('scanVid'), w = SCAN.where, d = SCAN.draft;
+  if (!w || !d) return closeScan();
+  const cv = document.createElement('canvas');
+  cv.width = v.videoWidth || 1280; cv.height = v.videoHeight || 960;
+  cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+  const s = d.items[w.i].serials[w.k] || (d.items[w.i].serials[w.k] = S.blankSerial());
+  if (sn) s.sn = sn;
+  closeScan();
+  if (blob) attach(d, w, blob, 'jpg');
+  else { d.saved = false; saveDrafts(); render(); }
+  toast(sn ? 'Read ' + sn : 'Picture kept – type the serial in');
+}
+function closeScan(){
+  SCAN.stop = true;
+  $('scan').classList.remove('on');
+  if (SCAN.stream) SCAN.stream.getTracks().forEach(t => t.stop());
+  SCAN.stream = null;
+  $('scanVid').srcObject = null;
+}
+$('scanStop').onclick = closeScan;
+$('scanShot').onclick = () => takeShot('');
+addEventListener('keydown', e => { if (e.key === 'Escape'){ if ($('scan').classList.contains('on')) closeScan();
+  $('lightbox').classList.remove('on'); } });
+
+/* ---------- filing ---------- */
+async function file(d){
+  const own = isOwner();
+  const v = S.check(d, { index: MAT.all.length ? MAT : null, owner: own });
+  if (!v.ok){ toast(S.why(v.missing), 5000); return; }
+
+  d.busy = 'Uploading…'; render();
+  const site = S.upper(d.airtelSite) || S.upper(d.dialogSite);
+  try {
+    let n = 0;
+    for (const it of d.items){
+      for (const s of (it.serials || [])){
+        if (s.file && s.file.blob){
+          n++; d.busy = 'Uploading photo ' + n + '…'; render();
+          s.photo = await window.DB.swapUpload(site, 'sn', s.file.blob, s.file.ext);
+          if (s.file.url) URL.revokeObjectURL(s.file.url);
+          delete s.file;
+        }
+      }
+    }
+    d.busy = 'Saving…'; render();
+    const row = await window.DB.swapSave({
+      id: d.id,
+      airtelSite: S.upper(d.airtelSite), airtelName: d.airtelName,
+      dialogSite: S.upper(d.dialogSite), dialogName: d.dialogName,
+      removed: d.removed, visitedOn: d.visitedOn || null, team: d.team,
+      items: S.liveItems(d).map(i => ({
+        from: i.from, code: S.upper(i.code), name: i.name, qty: Number(i.qty) || 0,
+        dest: i.dest, remapSite: S.upper(i.remapSite), remapName: i.remapName,
+        moves: S.movesOf(i).map(m => ({ ...m, site: S.upper(m.site || '') })),
+        note: i.note, serials: S.liveSerials(i).map(s => ({ sn: S.upper(s.sn), photo: s.photo || null }))
+      })),
+      note: d.note, createdName: MYNAME
+    });
+    d.id = row.id; d.saved = true; d.busy = null;
+    await loadFiled(); buildTabs(); render();
+    toast((S.swapName(d) || 'The swap') + ' filed');
+  } catch(e){
+    d.busy = null; render();
+    toast(e.message, 7000);
+  }
+}
+
+/* ---------- what has been filed ---------- */
+function renderFiled(m){
+  if (!FILED.length){
+    m.innerHTML = '<div class="panel"><div class="empty">Nothing filed yet. Fill a swap in and it lands here – and on every other phone and laptop that has this open.</div></div>';
+    return;
+  }
+  const tot = S.totals(FILED);
+  m.innerHTML =
+    '<div class="panel">' +
+      '<h2><span class="dot"></span>Filed swaps<span class="tag">' + tot.records + ' swaps · ' + tot.lines +
+        ' lines · ' + tot.pieces + ' pieces · ' + tot.remapped + ' remapped · ' +
+        tot.waiting + ' not yet delivered</span></h2>' +
+      '<div class="bar" style="margin:12px 0 0">' +
+        '<button class="btn on" id="xlAll">Excel · everything</button>' +
+        '<span class="note">One row per serial number, with a link to each photo. That is the sheet the warehouse gets.</span>' +
+      '</div>' +
+    '</div>' +
+    FILED.map((r, i) => recBox(r, i)).join('');
+
+  $('xlAll').onclick = () => xl(FILED, 'austin-swap');
+  [...document.querySelectorAll('[data-xl]')].forEach(b => b.onclick = () => {
+    const r = FILED[Number(b.dataset.xl)];
+    xl([r], 'swap-' + (S.swapName(r) || 'record').replace(/[^A-Za-z0-9]+/g, '-'));
+  });
+  [...document.querySelectorAll('[data-edit]')].forEach(b => b.onclick = () => {
+    const r = FILED[Number(b.dataset.edit)];
+    const d = { ...S.blank(), ...JSON.parse(JSON.stringify(r)),
+                uid: 'e' + (r.id || Date.now()), files:{}, busy:null, saved:true };
+    if (!d.items.length) d.items = [S.blankItem('airtel')];
+    d.items.forEach(i => { if (!i.serials || !i.serials.length) i.serials = [S.blankSerial()]; });
+    const had = DRAFTS.findIndex(x => x.uid === d.uid);
+    if (had >= 0) DRAFTS[had] = d; else DRAFTS.push(d);
+    ACTIVE = d.uid; saveDrafts(); buildTabs(); render();
+    linkShots(d);
+  });
+  [...document.querySelectorAll('[data-del]')].forEach(b => b.onclick = async () => {
+    const r = FILED[Number(b.dataset.del)];
+    const go = window.Ask ? await Ask.twice(b, 'Delete it?') : confirm('Delete this swap and its photos?');
+    if (!go) return;
+    try {
+      await window.DB.swapDelete(r.id, S.pathsOf(r));
+      await loadFiled(); buildTabs(); render();
+      toast('Deleted');
+    } catch(e){ toast(e.message, 6000); }
+  });
+  /* Moving a material on, from the list, without opening the whole record:
+     the step everybody adds most often is "it reached the warehouse". */
+  [...document.querySelectorAll('[data-step]')].forEach(sel => sel.onchange = async () => {
+    const to = sel.value;
+    if (!to) return;
+    const [ri, ni] = sel.dataset.step.split('.').map(Number);
+    const r = FILED[ri];
+    const items = S.liveItems(r);
+    const it = items[ni];
+    if (!it) return;
+    const m = S.blankMove(to);
+    if (to === 'site'){
+      const id = prompt('Which site did it go onto?', it.remapSite || '');
+      if (!id){ sel.value = ''; return; }
+      m.site = S.upper(id); m.siteName = S.findSite(SITES, id) || '';
+    }
+    it.moves = S.movesOf(it).concat([m]);
+    try {
+      await window.DB.swapSave({ ...r, items, createdName: r.createdName });
+      await loadFiled(); buildTabs(); render();
+      toast(S.upper(it.code) + ' · ' + S.whereLabel(m).toLowerCase());
+    } catch(e){
+      it.moves = S.movesOf(it).slice(0, -1);
+      toast(e.message, 6000);
+    }
+  });
+  [...document.querySelectorAll('[data-shotlink]')].forEach(a => a.onclick = async (e) => {
+    e.preventDefault();
+    const url = LINKS[a.dataset.shotlink] || await window.DB.swapLink(a.dataset.shotlink);
+    if (!url){ toast('That picture has gone'); return; }
+    LINKS[a.dataset.shotlink] = url;
+    showBig(url);
+  });
+}
+
+function recBox(r, i){
+  const mine = S.editableFor(r, ME, isOwner());
+  const items = S.liveItems(r);
+  return '<details class="rec"' + (i === 0 ? ' open' : '') + '>' +
+    '<summary>' +
+      '<span class="id">' + esc(S.swapTitle(r) || '—') + '</span>' +
+      '<span class="chip">' + esc(S.removedLabel(r.removed)) + '</span>' +
+      '<span class="chip">' + items.length + ' lines</span>' +
+      (items.some(x => x.dest === 'remap') ? '<span class="chip go">remapped</span>' : '') +
+      '<span class="who">' + esc(r.createdName || '') + ' · ' + esc(S.localStamp(r.savedAt)) + '</span>' +
+    '</summary>' +
+    '<div class="body">' +
+      '<p class="note" style="margin-bottom:9px">' +
+        (r.airtelName ? 'Airtel: <b>' + esc(r.airtelName) + '</b>. ' : '') +
+        (r.dialogName ? 'Dialog: <b>' + esc(r.dialogName) + '</b>. ' : '') +
+        (r.visitedOn ? 'Visited ' + esc(r.visitedOn) + '. ' : '') +
+        (r.team ? 'Team: <b>' + esc(r.team) + '</b>.' : '') +
+      '</p>' +
+      (r.note ? '<p class="note" style="margin-bottom:9px">' + esc(r.note) + '</p>' : '') +
+      '<div style="overflow-x:auto"><table><thead><tr>' +
+        '<th>Off</th><th>Code</th><th>Material</th><th>Qty</th><th>Serials</th><th>Going to</th><th>Where it is now</th>' +
+      '</tr></thead><tbody>' +
+      items.map((it, n) => '<tr>' +
+        '<td>' + esc(S.sideLabel(it.from)) + '</td>' +
+        '<td class="mono">' + esc(it.code) + '</td>' +
+        '<td>' + esc(it.name) + (it.note ? '<br><span class="note">' + esc(it.note) + '</span>' : '') + '</td>' +
+        '<td>' + esc(it.qty) + '</td>' +
+        '<td>' + (S.liveSerials(it).map(s =>
+            '<span class="mono">' + esc(s.sn) + '</span>' +
+            (s.photo ? ' <a href="#" data-shotlink="' + esc(s.photo) + '" title="See the photo">▣</a>' : '')
+          ).join('<br>') || '<span class="note">none</span>') + '</td>' +
+        '<td>' + (it.dest === 'remap'
+            ? '<span class="chip go">' + esc(S.upper(it.remapSite)) + '</span>' +
+              (it.remapName ? '<br><span class="note">' + esc(it.remapName) + '</span>' : '')
+            : '<span class="chip wh">' + esc(S.destLabel(it.dest)) + '</span>') + '</td>' +
+        '<td>' + (() => {
+            const now = S.whereNow(it), done = now.to === 'wh' || now.to === 'site' || now.to === 'scrapped';
+            return '<span class="chip ' + (done ? 'go' : 'hold') + '">' + esc(S.whereLabel(now)) + '</span>' +
+              (now.on ? '<br><span class="note">since ' + esc(now.on) + '</span>' : '') +
+              '<br><span class="note chain">' + esc(S.chainText(r, it)) + '</span>' +
+              (mine ? '<br><select class="move" data-step="' + i + '.' + n + '">' +
+                '<option value="">move it on…</option>' +
+                S.STEPS.map(([k, lab]) => '<option value="' + k + '">' +
+                  esc(k === 'site' ? 'Onto a site' : lab) + '</option>').join('') + '</select>' : '');
+          })() + '</td>' +
+      '</tr>').join('') +
+      '</tbody></table></div>' +
+      '<div class="bar" style="margin:12px 0 0">' +
+        '<button class="btn sm" data-xl="' + i + '">Excel · this swap</button>' +
+        (mine ? '<button class="btn sm" data-edit="' + i + '">Correct it</button>' : '') +
+        (isOwner() ? '<button class="btn sm del" data-del="' + i + '">Delete</button>' : '') +
+      '</div>' +
+    '</div>' +
+  '</details>';
+}
+
+/* The pictures on a record being corrected: signed links, so the thumbnails
+   show what is already up there rather than an empty box. */
+async function linkShots(d){
+  const paths = S.pathsOf(d);
+  for (const p of paths){
+    if (LINKS[p]) continue;
+    try { const u = await window.DB.swapLink(p); if (u) LINKS[p] = u; } catch(e){}
+  }
+  if (paths.length) render();
+}
+
+/* ---------- every material, on one list ----------
+
+   The other two tabs are for collecting: one swap, one tower, one line at a
+   time, which is the shape the work has on site. This one is for keeping it
+   straight afterwards - every material off every swap on one list, narrowed
+   by where it is, and moved on in bunches rather than one record at a time.
+   Picking twenty lines and saying "these reached the warehouse" is the job
+   this tool is actually for once the data is in. */
+let VIEW = { where:'', q:'', sel:{} };
+
+function allLines(){
+  const out = [];
+  FILED.forEach((r, ri) => S.liveItems(r).forEach((it, ni) => {
+    const now = S.whereNow(it);
+    out.push({ ri, ni, r, it, now, key: ri + '.' + ni });
+  }));
+  return out;
+}
+function viewLines(){
+  const q = S.upper(VIEW.q);
+  return allLines().filter(L => {
+    if (VIEW.where && (L.now.to || 'team') !== VIEW.where) return false;
+    if (!q) return true;
+    const hay = [S.swapTitle(L.r), L.it.code, L.it.name, L.now.site,
+                 S.liveSerials(L.it).map(x => x.sn).join(' ')].join(' ').toUpperCase();
+    return hay.indexOf(q) > -1;
+  });
+}
+
+function renderAll(m){
+  const lines = viewLines();
+  const counts = {};
+  allLines().forEach(L => { const k = L.now.to || 'team'; counts[k] = (counts[k] || 0) + 1; });
+  const picked = Object.keys(VIEW.sel).filter(k => VIEW.sel[k]);
+  const may = (L) => S.editableFor(L.r, ME, isOwner());
+
+  m.innerHTML =
+    '<div class="panel">' +
+      '<h2><span class="dot"></span>Every material<span class="tag">' + lines.length + ' of ' + allLines().length + ' lines</span></h2>' +
+      '<p class="note">Where everything off every swap has got to. Tick the ones that have moved and say where they went – twenty at a time if that is what the warehouse sent back.</p>' +
+      '<div class="bar" style="margin:12px 0 0">' +
+        '<button class="btn' + (VIEW.where === '' ? ' on' : '') + '" data-where="">All · ' + allLines().length + '</button>' +
+        S.STEPS.map(([k, lab]) => '<button class="btn' + (VIEW.where === k ? ' on' : '') + '" data-where="' + k + '">' +
+          esc(lab) + ' · ' + (counts[k] || 0) + '</button>').join('') +
+        '<input id="vq" style="width:auto;min-width:200px;margin-left:auto" placeholder="code, name, site or serial" value="' + esc(VIEW.q) + '">' +
+      '</div>' +
+    '</div>' +
+
+    (picked.length ? '<div class="panel" style="position:sticky;top:96px;z-index:20">' +
+      '<div class="bar" style="margin:0">' +
+        '<b>' + picked.length + ' picked</b>' +
+        S.STEPS.map(([k, lab]) => '<button class="btn sm" data-bulk="' + k + '">→ ' +
+          esc(k === 'site' ? 'Onto a site' : lab) + '</button>').join('') +
+        '<button class="btn sm del" data-clear="1">Clear</button>' +
+      '</div></div>' : '') +
+
+    '<div class="panel">' +
+      (lines.length ? '<div style="overflow-x:auto"><table><thead><tr>' +
+        '<th></th><th>Swap</th><th>Off</th><th>Code</th><th>Material</th><th>Qty</th>' +
+        '<th>Serials</th><th>Where it is now</th><th>Journey</th>' +
+      '</tr></thead><tbody>' +
+      lines.map(L => '<tr>' +
+        '<td>' + (may(L) ? '<input type="checkbox" style="width:auto" data-pick="' + L.key + '"' +
+            (VIEW.sel[L.key] ? ' checked' : '') + '>' : '') + '</td>' +
+        '<td>' + esc(S.swapTitle(L.r)) + '</td>' +
+        '<td>' + esc(S.sideLabel(L.it.from)) + '</td>' +
+        '<td class="mono">' + esc(L.it.code) + '</td>' +
+        '<td>' + esc(L.it.name) + '</td>' +
+        '<td>' + esc(L.it.qty) + '</td>' +
+        '<td class="mono">' + (S.liveSerials(L.it).map(x => esc(x.sn)).join('<br>') ||
+          '<span class="note">none</span>') + '</td>' +
+        '<td><span class="chip ' + (['wh','site','scrapped'].indexOf(L.now.to) > -1 ? 'go' : 'hold') + '">' +
+          esc(S.whereLabel(L.now)) + '</span>' +
+          (L.now.on ? '<br><span class="note">since ' + esc(L.now.on) + '</span>' : '') + '</td>' +
+        '<td><span class="note chain">' + esc(S.chainText(L.r, L.it)) + '</span></td>' +
+      '</tr>').join('') + '</tbody></table></div>'
+      : '<div class="empty">Nothing matches that.</div>') +
+      '<div class="bar" style="margin:13px 0 0">' +
+        '<button class="btn" id="xlView">Excel · this list</button>' +
+      '</div>' +
+    '</div>';
+
+  [...document.querySelectorAll('[data-where]')].forEach(b => b.onclick = () => {
+    VIEW.where = b.dataset.where; render();
+  });
+  const q = $('vq');
+  if (q) q.oninput = () => { VIEW.q = q.value; render(); const n = $('vq'); if (n){ n.focus(); n.setSelectionRange(n.value.length, n.value.length); } };
+  [...document.querySelectorAll('[data-pick]')].forEach(c => c.onchange = () => {
+    VIEW.sel[c.dataset.pick] = c.checked; render();
+  });
+  const clr = document.querySelector('[data-clear]');
+  if (clr) clr.onclick = () => { VIEW.sel = {}; render(); };
+  [...document.querySelectorAll('[data-bulk]')].forEach(b => b.onclick = () => bulk(b.dataset.bulk));
+  const xv = $('xlView');
+  if (xv) xv.onclick = () => {
+    /* the same sheet, cut to what is on screen */
+    const keep = {};
+    viewLines().forEach(L => { (keep[L.ri] = keep[L.ri] || []).push(L.ni); });
+    const recs = Object.keys(keep).map(ri => {
+      const r = FILED[Number(ri)], items = S.liveItems(r);
+      return { ...r, items: keep[ri].map(n => items[n]) };
+    });
+    xl(recs, 'swap-materials');
+  };
+}
+
+/* One step, onto every line that was ticked, written back a record at a time
+   so a record that refuses does not take the others with it. */
+async function bulk(to){
+  const picked = viewLines().filter(L => VIEW.sel[L.key]);
+  if (!picked.length) return;
+  let site = '', siteName = '';
+  if (to === 'site'){
+    site = prompt('Which site did these go onto?', '');
+    if (!site) return;
+    site = S.upper(site);
+    siteName = S.findSite(SITES, site) || '';
+  }
+  const byRec = {};
+  picked.forEach(L => { (byRec[L.ri] = byRec[L.ri] || []).push(L.ni); });
+  let done = 0, failed = 0;
+  for (const ri of Object.keys(byRec)){
+    const r = FILED[Number(ri)];
+    const items = S.liveItems(r).map(x => ({ ...x }));
+    byRec[ri].forEach(n => {
+      const m = S.blankMove(to);
+      if (to === 'site'){ m.site = site; m.siteName = siteName; }
+      items[n].moves = S.movesOf(items[n]).concat([m]);
+    });
+    try { await window.DB.swapSave({ ...r, items, createdName: r.createdName }); done += byRec[ri].length; }
+    catch(e){ failed += byRec[ri].length; }
+  }
+  VIEW.sel = {};
+  await loadFiled(); buildTabs(); render();
+  toast(done + ' moved' + (failed ? ' · ' + failed + ' refused' : ''));
+}
+
+/* ---------- the sheet the warehouse gets ---------- */
+async function xl(records, name){
+  if (!window.XLSX){ toast('The spreadsheet library has not loaded yet'); return; }
+  toast('Building the sheet…');
+  /* every picture gets a link, asked for together rather than one at a time */
+  const paths = [];
+  records.forEach(r => S.pathsOf(r).forEach(p => paths.push(p)));
+  await Promise.all([...new Set(paths)].map(async p => {
+    if (LINKS[p]) return;
+    try { const u = await window.DB.swapLink(p, 60 * 60 * 24 * 7); if (u) LINKS[p] = u; } catch(e){}
+  }));
+  const rows = [S.COLS].concat(S.toRows(records, LINKS));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = S.COLS.map((c, i) => ({ wch: i === 10 ? 34 : i === 13 ? 40 : Math.max(11, c.length + 2) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'SWAP');
+  XLSX.writeFile(wb, name + '-' + new Date().toISOString().slice(0, 10) + '.xlsx');
+  toast(rows.length - 1 + ' rows');
+}
+
+/* ---------- boot ---------- */
+(async function(){
+  loadDrafts();
+  buildTabs(); render();
+  try {
+    const s = await window.DB.session();
+    ME = (s && s.user && s.user.id) || '';
+  } catch(e){}
+  MYNAME = (window.Access && Access.currentUser && Access.currentUser()) || '';
+  DRAFTS.forEach(d => { if (!d.team) d.team = MYNAME; });
+  await Promise.all([loadSites(), loadMaterials()]);
+  await loadFiled();
+  buildTabs(); render();
+  try { window.DB.swapSubscribe(async () => {
+    await loadFiled(); buildTabs(); if (ACTIVE === 'filed') render();
+  }); } catch(e){}
+})();
+</script>
+<script src="../_lib/ask.js?v=1" defer></script>
+</body>
+</html>
