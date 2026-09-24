@@ -38,20 +38,51 @@
   button,input,select{font:inherit;color:inherit}
   .mono{font-family:'Space Mono',monospace}
 
+  /* ---- the bar every tool wears ----
+     Same as the rest of the suite down to the numbers: the mark glows and
+     lifts under the cursor, the name and rule drop away at 900, the pill
+     keeps its slow light, and only the accent colour tells the tools apart. */
   .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;
-    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--line3)}
-  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:#fff}
-  .logo{width:30px;height:30px;border-radius:50%;background:linear-gradient(150deg,#d15873,#87213c);display:flex;align-items:center;justify-content:center;gap:2.4px}
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--line3);
+    box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden}
+  .hdr>*{position:relative;z-index:1}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:#fff;flex-shrink:0;transition:opacity .18s ease}
+  .brand:hover{opacity:.86}
+  .brand:focus-visible{outline:2px solid #f7edf0;outline-offset:4px;border-radius:10px}
+  .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:linear-gradient(150deg,#d15873,#87213c);
+    display:flex;align-items:center;justify-content:center;gap:2.4px;font-size:0;
+    box-shadow:0 0 16px rgba(176,58,86,.45);transition:transform .18s ease}
+  .brand:hover .logo{transform:scale(1.06)}
   .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
   .logo i:nth-child(1){height:7px}.logo i:nth-child(2){height:12px}.logo i:nth-child(3){height:9px}.logo i:nth-child(4){height:13px}
-  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em}
-  .hsep{width:1px;height:19px;background:rgba(255,255,255,.2)}
-  .hdr h1{font:700 18px 'Bricolage Grotesque',sans-serif;margin-right:auto;white-space:nowrap}
-  .ibtn{background:none;border:1px solid var(--line3);color:#fff;border-radius:9px;height:34px;min-width:34px;padding:0 10px;cursor:pointer}
-  .ibtn:hover{border-color:var(--accentB)}
-  @media (max-width:640px){.bname,.hsep{display:none}}
+  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:#fff;white-space:nowrap}
+  .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0}
+  .hdr h1{font:700 18px 'Bricolage Grotesque',sans-serif;margin-right:auto;white-space:nowrap;color:#fff;
+    overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
+  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:rgba(0,0,0,.32);border:1px solid var(--line3);
+    color:#f7ded2;border-radius:999px;padding:5px 12px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
+    flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .pill::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accentB);animation:tLed 1.6s ease-in-out infinite;flex-shrink:0}
+  @keyframes tLed{0%,100%{opacity:.35}50%{opacity:1}}
+  .pill b{color:var(--accentB)}
+  .ibtn{background:none;border:1px solid var(--line3);color:#fff;border-radius:9px;height:34px;min-width:34px;padding:0 10px;
+    cursor:pointer;flex-shrink:0;transition:border-color .2s ease,transform .2s ease}
+  .ibtn:hover{border-color:var(--accentB);transform:scale(1.06)}
+  @media (max-width:900px){.bname,.hsep{display:none}}
+  @media (max-width:760px){.pill{display:none}}
 
-  main{max-width:1400px;margin:0 auto;padding:22px 18px 120px;display:flex;flex-direction:column;gap:18px}
+  /* what arrives, arrives from below - once, on the way in */
+  @keyframes rise{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
+  main{max-width:1400px;margin:0 auto;padding:22px 18px 120px;display:flex;flex-direction:column;gap:18px;
+    animation:rise .4s ease both}
+  /* the filed list lifts in a run when it is loaded, and not while somebody
+     is typing in the search box above it - a list that flinches at every
+     letter is harder to read, not livelier */
+  #siteList.fresh>*{animation:rise .38s ease both}
+  #siteList.fresh>*:nth-child(2){animation-delay:.05s}
+  #siteList.fresh>*:nth-child(3){animation-delay:.1s}
+  #siteList.fresh>*:nth-child(4){animation-delay:.15s}
+  #siteList.fresh>*:nth-child(n+5){animation-delay:.2s}
 
   .top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,.9fr) minmax(0,1fr) minmax(0,1fr);gap:12px}
   @media (max-width:900px){.top{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
@@ -226,6 +257,7 @@
   .st.Working{color:var(--ok);border-color:var(--ok)} .st.Faulty,.st.Damaged{color:var(--bad);border-color:var(--bad)}
   #toast{position:fixed;left:50%;bottom:86px;transform:translate(-50%,160px);background:var(--card);border:1px solid var(--accent);border-radius:12px;padding:10px 16px;z-index:90;transition:transform .25s ease;font-size:14px}
   #toast.show{transform:translate(-50%,0)}
+  @media (prefers-reduced-motion:reduce){*{animation:none !important}}
 </style>
 </head>
 <body>
@@ -233,7 +265,8 @@
   <a class="brand" href="../../" title="Emortia"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bname">Emortia</span></a>
   <span class="hsep"></span>
   <h1>Austin SWAP</h1>
-  <button class="ibtn" id="themeBtn" title="Light or dark">◐</button>
+  <span class="pill" id="pill">loading</span>
+  <button class="ibtn" id="themeBtn" title="Light or dark" aria-label="Light or dark">◐</button>
 </header>
 
 <nav class="tabs">
@@ -809,6 +842,7 @@ async function loadFiled(){
     FILED = (r.rows || []).map(S.fromRow);
   } catch(e){ FILED = []; }
   renderSites();
+  freshen();
 }
 function groups(){
   const q = up($('find').value), by = {};
@@ -928,9 +962,23 @@ async function dropSite(site){
   toast(failed ? few(gone, 'sheet') + ' deleted · ' + failed + ' refused' + (why ? ' – ' + why : '')
                : site + ' deleted · ' + few(lines, 'line') + ' gone', failed ? 5500 : 3500);
 }
+/* The pill says what is filed, not what is on screen: it is the tool's own
+   line in the bar, the same one every other tool carries. */
+function pill(){
+  const all = flat(FILED);
+  $('pill').innerHTML = FILED.length
+    ? '<b>' + FILED.length + '</b> ' + (FILED.length === 1 ? 'sheet' : 'sheets') +
+      ' · <b>' + all.length + '</b> ' + (all.length === 1 ? 'line' : 'lines') +
+      ' · <b>' + new Set(all.map(r => r.site)).size + '</b> sites'
+    : 'nothing filed yet';
+}
+/* the run of cards lifts in when the list is loaded, not when it is filtered */
+function freshen(){ const b = $('siteList'); b.classList.remove('fresh'); void b.offsetWidth; b.classList.add('fresh'); }
 function renderSites(){
   const rows = flat(FILED).filter(matches);
+  $('siteList').classList.remove('fresh');
   $('siteCount').textContent = new Set(flat(FILED).map(r => r.code)).size;
+  pill();
   const at = t => rows.filter(r => (r.mv ? r.mv.to : 'team') === t).length;
   $('kpis').innerHTML = [
     [new Set(rows.map(r => r.code)).size, 'materials'],
@@ -992,7 +1040,7 @@ function renderBySite(){
 }
 $('find').addEventListener('input', renderSites);
 $('seg').addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; VIEW = v;
-  [...$('seg').children].forEach(b => b.classList.toggle('on', b.dataset.v === v)); renderSites(); });
+  [...$('seg').children].forEach(b => b.classList.toggle('on', b.dataset.v === v)); renderSites(); freshen(); });
 /* Ticking a filed item's step records the date it happened; clicking a
    ticked step lets the date be corrected, or cleared to untick it. */
 $('siteList').addEventListener('click', async e => {
@@ -1053,6 +1101,10 @@ $('siteList').addEventListener('click', async e => {
 function showTab(t){
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   $('vNew').hidden = t !== 'new'; $('foot').hidden = t !== 'new'; $('vSites').hidden = t !== 'sites';
+  /* a hidden section's entrance already played: wind it back so the one being
+     shown arrives the way it did the first time */
+  const shown = $(t === 'new' ? 'vNew' : 'vSites');
+  shown.style.animation = 'none'; void shown.offsetWidth; shown.style.animation = '';
   if (t === 'sites') loadFiled();
   scrollTo(0, 0);
 }
