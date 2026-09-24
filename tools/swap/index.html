@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#3a2205">
 <title>Austin SWAP</title>
+<!-- Two arrows passing each other, in the tool's own amber: every other tool
+     carries its colour into the tab strip and this one was showing the
+     browser's blank globe. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ffa826'/%3E%3Cg fill='none' stroke='%231e1200' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 12h15'/%3E%3Cpath d='M18 8l4 4-4 4'/%3E%3Cpath d='M25 20H10'/%3E%3Cpath d='M14 16l-4 4 4 4'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -69,6 +73,8 @@
   .btn:hover{border-color:var(--accentB)}
   .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700}
   .btn.pri:disabled{opacity:.5;cursor:not-allowed}
+  .btn.bad{border-color:var(--bad);color:var(--bad)}
+  .btn.bad:hover{background:var(--bad);color:var(--ink);border-color:var(--bad)}
 
   .wrap{overflow-x:auto}
   table{border-collapse:collapse;width:100%;min-width:1420px}
@@ -194,6 +200,9 @@
   .site td{padding:0 10px;font-size:13.5px;border-right:0}
   .site td.m{font-family:'Space Mono',monospace;font-size:12.5px}
   .site .sfoot{display:flex;gap:10px;justify-content:flex-end;padding:12px 14px;flex-wrap:wrap}
+  /* the one button here that loses something sits away from the two that do
+     not, so a hurried hand never finds it where Export used to be */
+  .site .sfoot .btn.bad{margin-right:auto}
   .site .sub{font-size:12px;color:var(--muted);padding:10px 16px 0}
   .seg{display:flex;border:1px solid var(--line3);border-radius:10px;overflow:hidden}
   .seg button{background:transparent;border:0;padding:10px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
@@ -824,6 +833,101 @@ const locSel = r => {
   return '<div class="steps ro">' + box('team', 'With team') + box('wh', 'At WH') + box('site', 'Mapped') + '</div>';
 };
 function matches(x){ const q = up($('find').value); return !q || [x.site, up(x.name), x.code, up(x.desc), x.sn, up(locLabel(x.mv))].some(v => v.includes(q)); }
+
+/* ---- taking data back out, owner only ----
+
+   The team files and never unfiles: a sheet submitted from a site is the
+   record of that visit. But a line typed twice, a sheet filed against the
+   wrong site or a swap that never happened has to be able to go, and the
+   only hands that should do it are mine. The buttons ride in the .own
+   columns, so nobody else is even shown them, and the database refuses it
+   besides – is_owner() on the delete policy, not the button.
+
+   Every picture a line carries goes with it: the ones taken for it, and the
+   one the scanner kept with the serial. Storage nobody can reach again is
+   just a bill. */
+/* The scanner's frame is both the SN photo and the serial's own picture, so
+   the same path is reached twice - counted once, deleted once. */
+function itemPaths(it){
+  return [...new Set([].concat(it.photos || [], (it.serials || []).map(s => s.photo), [it.photo]).filter(Boolean))];
+}
+function recPaths(rec){ return (rec.items || []).flatMap(itemPaths); }
+const dropCell = r => '<td class="own act"><button class="del" data-drop="' + esc(r.rec.id) + '|' + r.ii +
+  '" title="Remove this line for good">✕</button></td>';
+const few = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+/* two questions, the second naming what is lost - and if that script never
+   arrived, one plain question rather than none */
+const ask2 = steps => window.Ask ? Ask.twice(steps)
+  : Promise.resolve(confirm(steps[steps.length - 1].title + '\n\n' + steps[steps.length - 1].body));
+
+async function dropItem(id, ii){
+  const rec = FILED.find(r => String(r.id) === id); if (!rec) return;
+  const it = (rec.items || [])[ii]; if (!it) return;
+  const site = siteOf(rec);
+  const what = (up(it.code) ? up(it.code) + ' · ' : '') + (it.name || 'this line');
+  const sns = (it.serials || []).map(s => s.sn).filter(Boolean);
+  const pics = itemPaths(it).length;
+  const last = (rec.items || []).length === 1;
+
+  const ok = await ask2([
+    { title: 'Remove this line from ' + site + '?',
+      body: what + ' – ' + (Number(it.qty) || 1) + ' ' + (it.uom || 'EA') +
+        (sns.length ? ' · SN ' + sns.join(', ') : '') +
+        '. It comes off the sheet and out of the inventory totals.' },
+    { title: last ? 'It is the last line on that sheet' : 'This cannot be undone',
+      body: (last ? 'The whole sheet filed for ' + site + ' goes with it. ' : '') +
+        (pics ? few(pics, 'photograph') + ' will be deleted from storage too, and nothing brings ' +
+          (pics === 1 ? 'it' : 'them') + ' back. ' : '') +
+        'The export already sent to the warehouse is not changed by this.',
+      no: 'No, keep it', yes: last ? 'Delete the sheet' : 'Remove the line' }
+  ]);
+  if (!ok) return;
+
+  const paths = itemPaths(it);
+  try {
+    if (last){
+      await window.DB.swapDelete(rec.id, paths);
+    } else {
+      /* the row first, then the pictures: a record still pointing at files
+         that have gone is worse than a few files nothing points at */
+      const items = rec.items.filter((_, k) => k !== ii);
+      await window.DB.swapSave({ ...rec, items, createdName: rec.createdName });
+      rec.items = items;
+      try { await window.DB.swapDropFiles(paths); }
+      catch(e){ toast('Line removed – its photos could not be deleted', 4500); }
+    }
+    toast(what + ' removed from ' + site);
+  } catch(e){ toast(e.message || 'Could not remove that', 5000); return; }
+  await loadFiled();
+}
+
+async function dropSite(site){
+  const recs = FILED.filter(r => siteOf(r) === site);
+  if (!recs.length) return;
+  const lines = recs.reduce((n, r) => n + (r.items || []).length, 0);
+  const pics = recs.reduce((n, r) => n + recPaths(r).length, 0);
+  const name = recs[0].airtelName || recs[0].dialogName || '';
+
+  const ok = await ask2([
+    { title: 'Delete everything filed for ' + site + '?',
+      body: (name ? name + ' – ' : '') + few(recs.length, 'sheet') + ', ' + few(lines, 'line') +
+        ', ' + few(pics, 'photograph') + '. The site disappears from the inventory entirely.' },
+    { title: 'Nothing here can be brought back',
+      body: 'Every sheet anyone filed for ' + site + ' is deleted, with its pictures, for everyone. ' +
+        'If you only meant one line, close this and use the ✕ at the end of that row.',
+      no: 'No, keep it', yes: 'Delete all of ' + site }
+  ]);
+  if (!ok) return;
+
+  let gone = 0, failed = 0, why = '';
+  for (const rec of recs){
+    try { await window.DB.swapDelete(rec.id, recPaths(rec)); gone++; }
+    catch(e){ failed++; why = e.message || ''; }
+  }
+  await loadFiled();
+  toast(failed ? few(gone, 'sheet') + ' deleted · ' + failed + ' refused' + (why ? ' – ' + why : '')
+               : site + ' deleted · ' + few(lines, 'line') + ' gone', failed ? 5500 : 3500);
+}
 function renderSites(){
   const rows = flat(FILED).filter(matches);
   $('siteCount').textContent = new Set(flat(FILED).map(r => r.code)).size;
@@ -863,8 +967,8 @@ function renderRows(rows){
   const box = $('siteList');
   if (!rows.length){ box.innerHTML = '<div class="empty">' + (FILED.length ? 'Nothing matches.' : 'Nothing in inventory yet.') + '</div>'; return; }
   rows = rows.slice().sort((a, b) => b.when.localeCompare(a.when));
-  box.innerHTML = '<div class="inv"><div class="wrap"><table style="min-width:1700px"><thead><tr><th>Site ID</th><th>Site Name</th><th>Material Code</th><th>Material description</th><th class="num">Qty</th><th>UoM</th><th>SN</th><th>Photos</th><th>Status</th><th class="own">Location</th><th class="own">Removed on</th><th class="own">At WH on</th><th class="own">Mapped on</th><th class="own">Mapped to</th><th>Submitted by</th><th>Date &amp; time</th></tr></thead><tbody>' +
-    rows.map(r => '<tr><td class="m" style="color:var(--accentB)">' + esc(r.site) + '</td><td>' + esc(r.name) + (r.tSite ? '<span class="tag">typed</span>' : '') + '</td><td class="m">' + (esc(r.code) || '—') + '</td><td>' + esc(r.desc) + (r.tMat ? '<span class="tag">typed</span>' : '') + '</td><td class="num">' + esc(r.qty) + '</td><td>' + esc(r.uom) + '</td><td class="m">' + (esc(r.sn) || '—') + '</td><td>' + (r.photos.length ? '<button class="galbtn" data-gal="' + esc(JSON.stringify(r.photos.map((p, k) => [p, r.kinds[k]]))) + '">▣ ' + r.photos.length + '</button>' : '—') + '</td><td>' + (r.status ? '<span class="st ' + esc(r.status) + '">' + esc(r.status) + '</span>' : '—') + '</td><td class="own">' + locSel(r) + '</td><td class="m own">' + (esc(r.removedOn) || '—') + '</td><td class="m own">' + (esc(r.whOn) || '—') + '</td><td class="m own">' + (esc(r.mapOn) || '—') + '</td><td class="m own">' + (r.mapSite ? esc(r.mapSite + (r.mapName ? ' ' + r.mapName : '')) : '—') + '</td><td>' + esc(r.who) + '</td><td class="m">' + esc(r.when) + '</td></tr>').join('') +
+  box.innerHTML = '<div class="inv"><div class="wrap"><table style="min-width:1700px"><thead><tr><th>Site ID</th><th>Site Name</th><th>Material Code</th><th>Material description</th><th class="num">Qty</th><th>UoM</th><th>SN</th><th>Photos</th><th>Status</th><th class="own">Location</th><th class="own">Removed on</th><th class="own">At WH on</th><th class="own">Mapped on</th><th class="own">Mapped to</th><th>Submitted by</th><th>Date &amp; time</th><th class="own"></th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td class="m" style="color:var(--accentB)">' + esc(r.site) + '</td><td>' + esc(r.name) + (r.tSite ? '<span class="tag">typed</span>' : '') + '</td><td class="m">' + (esc(r.code) || '—') + '</td><td>' + esc(r.desc) + (r.tMat ? '<span class="tag">typed</span>' : '') + '</td><td class="num">' + esc(r.qty) + '</td><td>' + esc(r.uom) + '</td><td class="m">' + (esc(r.sn) || '—') + '</td><td>' + (r.photos.length ? '<button class="galbtn" data-gal="' + esc(JSON.stringify(r.photos.map((p, k) => [p, r.kinds[k]]))) + '">▣ ' + r.photos.length + '</button>' : '—') + '</td><td>' + (r.status ? '<span class="st ' + esc(r.status) + '">' + esc(r.status) + '</span>' : '—') + '</td><td class="own">' + locSel(r) + '</td><td class="m own">' + (esc(r.removedOn) || '—') + '</td><td class="m own">' + (esc(r.whOn) || '—') + '</td><td class="m own">' + (esc(r.mapOn) || '—') + '</td><td class="m own">' + (r.mapSite ? esc(r.mapSite + (r.mapName ? ' ' + r.mapName : '')) : '—') + '</td><td>' + esc(r.who) + '</td><td class="m">' + esc(r.when) + '</td>' + dropCell(r) + '</tr>').join('') +
     '</tbody></table></div></div>';
 }
 function renderBySite(){
@@ -877,12 +981,12 @@ function renderBySite(){
     return `<details class="site" data-site="${esc(s.site)}"${open.has(s.site) ? ' open' : ''}>
       <summary><span class="sid">${esc(s.site)}</span><span class="snm">${esc(s.name)}${s.rows.some(r => r.tSite) ? '<span class="tag">typed</span>' : ''}</span>
         <span class="meta">${s.rows.length} rows · ${sn} SN · ${s.rows.filter(r => r.mv && r.mv.to === 'wh').length} at WH · ${visits} ${visits === 1 ? 'sheet' : 'sheets'} · ${esc(s.last.slice(0, 10))}</span><span class="chev">›</span></summary>
-      <div class="wrap"><table><thead><tr><th>Material Code</th><th>Material description</th><th>Qty</th><th>UoM</th><th>SN</th><th>Photos</th><th>Status</th><th class="own">Location</th><th class="own">Removed on</th><th class="own">At WH on</th><th class="own">Mapped on</th><th class="own">Mapped to</th><th>Submitted by</th><th>Date &amp; time</th></tr></thead><tbody>
+      <div class="wrap"><table><thead><tr><th>Material Code</th><th>Material description</th><th>Qty</th><th>UoM</th><th>SN</th><th>Photos</th><th>Status</th><th class="own">Location</th><th class="own">Removed on</th><th class="own">At WH on</th><th class="own">Mapped on</th><th class="own">Mapped to</th><th>Submitted by</th><th>Date &amp; time</th><th class="own"></th></tr></thead><tbody>
       ${s.rows.map(r => `<tr><td class="m">${esc(r.code) || '—'}</td><td>${esc(r.desc)}${r.tMat ? '<span class="tag">typed</span>' : ''}</td><td>${esc(r.qty)}</td><td>${esc(r.uom)}</td>
         <td class="m">${esc(r.sn) || '—'}</td><td>${(r.photos.length ? '<button class="galbtn" data-gal="' + esc(JSON.stringify(r.photos.map((p, k) => [p, r.kinds[k]]))) + '">▣ ' + r.photos.length + '</button>' : '—')}</td>
-        <td>${r.status ? `<span class="st ${esc(r.status)}">${esc(r.status)}</span>` : '—'}</td><td class="own">${locSel(r)}</td><td class="m own">${esc(r.removedOn) || '—'}</td><td class="m own">${esc(r.whOn) || '—'}</td><td class="m own">${esc(r.mapOn) || '—'}</td><td class="m own">${r.mapSite ? esc(r.mapSite + (r.mapName ? ' ' + r.mapName : '')) : '—'}</td><td>${esc(r.who)}</td><td class="m">${esc(r.when)}</td></tr>`).join('')}
+        <td>${r.status ? `<span class="st ${esc(r.status)}">${esc(r.status)}</span>` : '—'}</td><td class="own">${locSel(r)}</td><td class="m own">${esc(r.removedOn) || '—'}</td><td class="m own">${esc(r.whOn) || '—'}</td><td class="m own">${esc(r.mapOn) || '—'}</td><td class="m own">${r.mapSite ? esc(r.mapSite + (r.mapName ? ' ' + r.mapName : '')) : '—'}</td><td>${esc(r.who)}</td><td class="m">${esc(r.when)}</td>${dropCell(r)}</tr>`).join('')}
       </tbody></table></div>
-      <div class="sfoot"><button class="btn" data-addto="${esc(s.site)}">+ Add to this site</button><button class="btn pri" data-export="${esc(s.site)}">Export ${esc(s.site)}</button></div>
+      <div class="sfoot"><button class="btn own bad" data-dropsite="${esc(s.site)}">Delete everything for ${esc(s.site)}</button><button class="btn" data-addto="${esc(s.site)}">+ Add to this site</button><button class="btn pri" data-export="${esc(s.site)}">Export ${esc(s.site)}</button></div>
     </details>`;
   }).join('');
 }
@@ -940,6 +1044,10 @@ $('siteList').addEventListener('click', async e => {
     exportRows(flat(FILED).filter(x => x.site === t.dataset.export), 'swap-' + t.dataset.export);
   } else if (t.dataset.addto){
     $('siteId').value = t.dataset.addto; lookSite(); showTab('new');
+  } else if (t.dataset.drop && OWNER){
+    const [id, ii] = t.dataset.drop.split('|'); dropItem(id, +ii);
+  } else if (t.dataset.dropsite && OWNER){
+    dropSite(t.dataset.dropsite);
   }
 });
 function showTab(t){

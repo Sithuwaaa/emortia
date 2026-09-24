@@ -564,6 +564,17 @@
     if (error) throw new Error(error.message);
   }
 
+  /* One line off a sheet rather than the whole sheet: the record stays and is
+     rewritten without it, so only its pictures need clearing away. Told apart
+     from swapDelete because nothing here touches the row. */
+  async function swapDropFiles(paths){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const keep = (paths || []).filter(Boolean);
+    if (!keep.length) return;
+    const { error } = await c.storage.from(SWBUCKET).remove(keep);
+    if (error) throw new Error(error.message);
+  }
+
   async function swapSubscribe(fn){
     const c = await client(); if (!c) return;
     c.channel('swap_live')
@@ -1567,7 +1578,7 @@
                 gateGet, gateSet,
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
-                swapList, swapSave, swapDelete, swapUpload, swapLink, swapSubscribe,
+                swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
                 load, publish, subscribe,
                 publishBook, loadBook, subscribeBook,
