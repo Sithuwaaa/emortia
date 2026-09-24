@@ -1006,9 +1006,27 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 /* nav + player dock stay on the brand colour, whatever the section accent is */
 header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(176,58,86,0.5);--glow0:rgba(176,58,86,0);--glowSoft:rgba(176,58,86,0.28);--stripe:rgba(176,58,86,0.06);--dot:rgba(209,88,115,0.7);}
 [data-theme="burgundy"][data-section="music"]{--accent:#d15873;--accentB:#e87a94;--accentD:#a83a55;--glow:rgba(209,88,115,0.5);--glow0:rgba(209,88,115,0);--glowSoft:rgba(209,88,115,0.28);--stripe:rgba(209,88,115,0.06);--dot:rgba(232,122,148,0.7);}
-[data-theme="burgundy"][data-section="poetry"]{--accent:#c9954a;--accentB:#dfae63;--accentD:#9d6f2f;--glow:rgba(201,149,74,0.5);--glow0:rgba(201,149,74,0);--glowSoft:rgba(201,149,74,0.28);--stripe:rgba(201,149,74,0.06);--dot:rgba(223,174,99,0.7);}
-[data-theme="burgundy"][data-section="tools"]{--accent:#1f97a8;--accentB:#3fbdd0;--accentD:#12707e;--glow:rgba(31,151,168,0.5);--glow0:rgba(31,151,168,0);--glowSoft:rgba(31,151,168,0.28);--stripe:rgba(31,151,168,0.06);--dot:rgba(63,189,208,0.7);}
-[data-theme="burgundy"][data-section="about"]{--accent:#6b5ce0;--accentB:#8a7cf0;--accentD:#4a3cb8;--glow:rgba(107,92,224,0.5);--glow0:rgba(107,92,224,0);--glowSoft:rgba(107,92,224,0.28);--stripe:rgba(107,92,224,0.06);--dot:rgba(138,124,240,0.7);}
+/* The three sections used to borrow a colour from outside the palette -
+   a gold, a teal and a violet. Same weights, same job, moved onto the
+   burgundy arc so a section change is a shift of temperature rather than
+   a different site. */
+[data-theme="burgundy"][data-section="poetry"]{--accent:#da8f00;--accentB:#f6a30b;--accentD:#c17d00;--glow:rgba(218,143,0,0.5);--glow0:rgba(218,143,0,0);--glowSoft:rgba(218,143,0,0.28);--stripe:rgba(218,143,0,0.06);--dot:rgba(246,163,11,0.7);}
+[data-theme="burgundy"][data-section="tools"]{--accent:#c766be;--accentB:#e480d9;--accentD:#ac4ca4;--glow:rgba(199,102,190,0.5);--glow0:rgba(199,102,190,0);--glowSoft:rgba(199,102,190,0.28);--stripe:rgba(199,102,190,0.06);--dot:rgba(228,128,217,0.7);}
+[data-theme="burgundy"][data-section="about"]{--accent:#c3425c;--accentB:#e8647b;--accentD:#a21f41;--glow:rgba(195,66,92,0.5);--glow0:rgba(195,66,92,0);--glowSoft:rgba(195,66,92,0.28);--stripe:rgba(195,66,92,0.06);--dot:rgba(232,100,123,0.7);}
+/* ---- the family's shape ----
+   Drawn rather than lettered, so it reads at 9px and needs no font; it
+   takes the colour it sits on, which is the card's ink over the header and
+   the family's own colour beside a heading. This is the cue that still
+   works in greyscale, in a photocopy, and for an eye that cannot separate
+   the two warm families either side of it. */
+.gmark{display:inline-block;width:9px;height:9px;flex:0 0 auto;background:currentColor;}
+.gmark.g-square{border-radius:1.5px;}
+.gmark.g-circle{border-radius:50%;}
+.gmark.g-triangle{background:none;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:9px solid currentColor;}
+.gmark.g-diamond{width:8px;height:8px;border-radius:1.5px;transform:rotate(45deg);}
+.gmark.g-ring{background:none;border:2.5px solid currentColor;border-radius:50%;}
+.grp-head .gmark{color:var(--gc,var(--mute));}
+.term-card .gmark{opacity:.72;}
 .term-card{--tc:var(--accent);--tcB:var(--accentB);--tcGrid:rgba(255,255,255,.05);--tcLine:var(--line2);--tcBg:var(--surface2);--tcRGB:255,255,255;}
 /* One family of colour per group, and the group a tool is filed under is the
    whole of what decides its colour - so a shelf is one colour and moving a
@@ -1017,21 +1035,42 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
    Print inks, Emortia from Field spectrum. Range inside a family is carried
    by chroma, with a lightness floor so every label clears 4.5:1 on the card
    ground, and the shades run in the order the group lists its tools. */
-.tool-design{--tc:#82f776;--tcB:#9fff93;--tcGrid:rgba(130,247,118,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:130,247,118;}
-.tool-bom{--tc:#63e957;--tcB:#86ff7a;--tcGrid:rgba(99,233,87,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:99,233,87;}
-.tool-mat{--tc:#50d845;--tcB:#75f169;--tcGrid:rgba(80,216,69,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:80,216,69;}
-.tool-gin{--tc:#3cc731;--tcB:#63e058;--tcGrid:rgba(60,199,49,.10);--tcLine:#0f380c;--tcBg:#001300;--tcRGB:60,199,49;}
-.tool-data{--tc:#5de9eb;--tcB:#83ffff;--tcGrid:rgba(93,233,235,.10);--tcLine:#013536;--tcBg:#001212;--tcRGB:93,233,235;}
-.tool-access{--tc:#00d4d7;--tcB:#0feef0;--tcGrid:rgba(0,212,215,.10);--tcLine:#013536;--tcBg:#001212;--tcRGB:0,212,215;}
-.tool-update{--tc:#00bfc4;--tcB:#00d8dc;--tcGrid:rgba(0,191,196,.10);--tcLine:#013536;--tcBg:#001212;--tcRGB:0,191,196;}
-.tool-rf{--tc:#ffbb41;--tcB:#ffce62;--tcGrid:rgba(255,187,65,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,187,65;}
-.tool-esn{--tc:#ff9600;--tcB:#ffb402;--tcGrid:rgba(255,150,0,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,150,0;}
-.tool-field{--tc:#ff7900;--tcB:#ff9700;--tcGrid:rgba(255,121,0,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,121,0;}
-.tool-swap{--tc:#ffa826;--tcB:#ffc164;--tcGrid:rgba(255,168,38,.10);--tcLine:#4a2200;--tcBg:#1e0500;--tcRGB:255,168,38;}
-.tool-team{--tc:#ea84fa;--tcB:#ffa1ff;--tcGrid:rgba(234,132,250,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:234,132,250;}
-.tool-att{--tc:#de68f1;--tcB:#f786ff;--tcGrid:rgba(222,104,241,.10);--tcLine:#3c2240;--tcBg:#160618;--tcRGB:222,104,241;}
-.tool-lyric{--tc:#fa7999;--tcB:#ff96b3;--tcGrid:rgba(250,121,153,.10);--tcLine:#491e29;--tcBg:#1d040a;--tcRGB:250,121,153;}
-.tool-todo{--tc:#ef5f85;--tcB:#ff7d9f;--tcGrid:rgba(239,95,133,.10);--tcLine:#491e29;--tcBg:#1d040a;--tcRGB:239,95,133;}
+/* ---- The tools, by family ----
+
+   Five families inside the burgundy arc, about 29 degrees of OKLCH hue
+   apart - the widest even spacing that hue 300-60 allows. Inside a family
+   the members step down in lightness, which is how the page has always
+   drawn them.
+
+   Twenty-nine degrees of warm hue is not enough on its own: two of these
+   families are hard to tell apart for the roughly one man in twelve whose
+   red and green run together, and none of them survive a greyscale print.
+   So the colour is the third cue rather than the only one - each family
+   also starts its ladder at a different height, and carries a shape.
+
+   Every value here clears 6:1 against the page ground; the shallowest is
+   .tool-rf at 6.83, against 6.03 for the palette this replaces. */
+.tool-design{--tc:#ffb986;--tcB:#ffd5b6;--tcGrid:rgba(255,185,134,.10);--tcLine:#41250e;--tcBg:#1f0e02;--tcRGB:255,185,134;}
+.tool-mat{--tc:#ffa866;--tcB:#ffc79f;--tcGrid:rgba(255,168,102,.10);--tcLine:#41250e;--tcBg:#1f0e02;--tcRGB:255,168,102;}
+.tool-bom{--tc:#ff9537;--tcB:#ffb884;--tcGrid:rgba(255,149,55,.10);--tcLine:#41250e;--tcBg:#1f0e02;--tcRGB:255,149,55;}
+.tool-gin{--tc:#f08520;--tcB:#ffa864;--tcGrid:rgba(240,133,32,.10);--tcLine:#41250e;--tcBg:#1f0e02;--tcRGB:240,133,32;}
+.tool-update{--tc:#ffa89d;--tcB:#ffc8bf;--tcGrid:rgba(255,168,157,.10);--tcLine:#44211d;--tcBg:#210b09;--tcRGB:255,168,157;}
+.tool-access{--tc:#ff9587;--tcB:#ffb8ae;--tcGrid:rgba(255,149,135,.10);--tcLine:#44211d;--tcBg:#210b09;--tcRGB:255,149,135;}
+.tool-data{--tc:#ff7d6e;--tcB:#ffa79c;--tcGrid:rgba(255,125,110,.10);--tcLine:#44211d;--tcBg:#210b09;--tcRGB:255,125,110;}
+.tool-field{--tc:#f5ba16;--tcB:#ffd374;--tcGrid:rgba(245,186,22,.10);--tcLine:#392a06;--tcBg:#1a1100;--tcRGB:245,186,22;}
+.tool-swap{--tc:#e7ae00;--tcB:#ffc634;--tcGrid:rgba(231,174,0,.10);--tcLine:#392a06;--tcBg:#1a1100;--tcRGB:231,174,0;}
+.tool-esn{--tc:#d6a200;--tcB:#f5ba16;--tcGrid:rgba(214,162,0,.10);--tcLine:#392a06;--tcBg:#1a1100;--tcRGB:214,162,0;}
+.tool-rf{--tc:#c49300;--tcB:#e7ae00;--tcGrid:rgba(196,147,0,.10);--tcLine:#392a06;--tcBg:#1a1100;--tcRGB:196,147,0;}
+.tool-team{--tc:#fb96f3;--tcB:#ffbaf8;--tcGrid:rgba(251,150,243,.10);--tcLine:#3c223a;--tcBg:#1c0c1b;--tcRGB:251,150,243;}
+.tool-att{--tc:#ec89e5;--tcB:#ffa7f7;--tcGrid:rgba(236,137,229,.10);--tcLine:#3c223a;--tcBg:#1c0c1b;--tcRGB:236,137,229;}
+.tool-lyric{--tc:#ff95b9;--tcB:#ffb9cf;--tcGrid:rgba(255,149,185,.10);--tcLine:#42202c;--tcBg:#200b12;--tcRGB:255,149,185;}
+.tool-todo{--tc:#ff7cab;--tcB:#ffa8c4;--tcGrid:rgba(255,124,171,.10);--tcLine:#42202c;--tcBg:#200b12;--tcRGB:255,124,171;}
+
+.tgrp-design{--gc:#ffb986;}
+.tgrp-site{--gc:#ffa89d;}
+.tgrp-field{--gc:#f5ba16;}
+.tgrp-people{--gc:#fb96f3;}
+.tgrp-emortia{--gc:#ff95b9;}
 
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -2286,7 +2325,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
           <div class="in">
             <div class="kick" style="color:#3fbdd0;">Latest tool</div>
             <div class="ttl">{{ hmToolName }}</div>
-            <span class="pill" style="background:#1f97a8;color:#0e1a1e;">Open it &#8594;</span>
+            <span class="pill" style="background:#c766be;color:#1b0a1a;">Open it &#8594;</span>
           </div>
         </div>
         </sc-if>
@@ -2296,7 +2335,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
           <div style="position:absolute;right:-22px;top:-16px;font-family:'EB Garamond',serif;font-size:150px;line-height:1;color:rgba(223,174,99,.09);" aria-hidden="true">&#8221;</div>
           <div class="in" style="height:100%;gap:18px;">
             <div style="flex:1;min-height:64px;display:flex;align-items:center;gap:16px;">
-              <span style="width:2px;flex-shrink:0;border-radius:2px;background:linear-gradient(180deg,#c9954a,rgba(201,149,74,0));"></span>
+              <span style="width:2px;flex-shrink:0;border-radius:2px;background:linear-gradient(180deg,#da8f00,rgba(218,143,0,0));"></span>
               <div style="font-family:'UN-Agni','EB Garamond',serif;font-size:23px;line-height:1.6;color:#f0dcbb;">
                 <sc-for list="{{ hmPoemLines }}" as="pl" hint-placeholder-count="1">
                   <div style="text-wrap:pretty;">{{ pl }}</div>
@@ -2304,11 +2343,11 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
               </div>
             </div>
             <div style="display:flex;flex-direction:column;gap:11px;">
-              <div style="display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#c9954a;">
+              <div style="display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#da8f00;">
                 <span>Latest poem</span><span style="color:rgba(201,149,74,.45);">&#183;</span><span style="letter-spacing:.1em;color:#9d7c4c;">{{ hmPoemLen }}</span>
               </div>
               <div class="ttl" style="font-family:'UN-Agni','EB Garamond',serif;font-weight:400;font-size:clamp(28px,3.2vw,36px);line-height:1.14;letter-spacing:0;">{{ hmPoemTitle }}</div>
-              <span class="pill" style="background:#c9954a;color:#1c1610;">Read it &#8594;</span>
+              <span class="pill" style="background:#da8f00;color:#1a1000;">Read it &#8594;</span>
             </div>
           </div>
         </div>
@@ -2508,8 +2547,9 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
       <div>{{ toolsGate }}</div>
       <div class="{{ toolsGridClass }}">
       <sc-for list="{{ toolGroups }}" as="grp" hint-placeholder-count="1">
-      <div style="margin-bottom:34px;">
-        <div style="display:flex;align-items:baseline;gap:10px;margin:0 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line);">
+      <div class="{{ grp.tgrp }}" style="margin-bottom:34px;">
+        <div class="grp-head" style="display:flex;align-items:center;gap:10px;margin:0 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line);">
+          <span class="{{ grp.glyph }}" aria-hidden="true"></span>
           <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;">{{ grp.name }}</span>
           <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);">{{ grp.count }}</span>
         </div>
@@ -2518,7 +2558,10 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
           <a href="{{ tool.href }}" target="_blank" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;height:100%;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
             <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
-              <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
+              <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;">
+                <span class="{{ tool.glyph }}" aria-hidden="true"></span>
+                <span style="overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</span>
+              </div>
               <div style="position:relative;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;margin-top:5px;">{{ tool.name }}</div>
             </div>
             <div style="position:relative;padding:17px 18px 18px;display:flex;flex-direction:column;flex:1;">
@@ -2542,7 +2585,8 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
     <sc-if value="{{ isToolsStage }}" hint-placeholder-val="{{ false }}">
     <div class="tl-stage">
       <div class="tl-inner">
-        <div class="tl-grp">
+        <div class="tl-grp grp-head {{ tlTgrp }}">
+          <span class="{{ tlGlyph }}" aria-hidden="true"></span>
           <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;">{{ tlName }}</span>
           <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);">{{ tlCount }}</span>
           <div class="tl-findw">
@@ -2563,7 +2607,10 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
           <a href="{{ tool.href }}" target="_blank" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
             <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
-              <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
+              <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;">
+                <span class="{{ tool.glyph }}" aria-hidden="true"></span>
+                <span style="overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</span>
+              </div>
               <div style="position:relative;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;margin-top:5px;">{{ tool.name }}</div>
             </div>
             <div style="position:relative;padding:17px 18px 18px;display:flex;flex-direction:column;flex:1;min-height:0;">
@@ -3659,6 +3706,7 @@ class Component extends DCLogic {
       const parts = Math.max(1, Math.ceil(g.tools.length / per));
       for (let p = 0; p < parts; p++){
         out.push({ name:g.name, cards:g.tools.slice(p * per, p * per + per),
+          glyph:g.glyph, tgrp:g.tgrp,
           count: g.count + (parts > 1 ? ' · ' + (p + 1) + ' of ' + parts : ''),
           label: g.name + (parts > 1 ? ' ' + (p + 1) + ' of ' + parts : '') });
       }
@@ -5486,6 +5534,31 @@ class Component extends DCLogic {
       return t === 'public' ? true : !!s.isOwner;
     };
 
+    /* Which shape and which colour a family wears. Keyed by the group name
+       the access list gives, so a group renamed there shows up here as a
+       missing shape rather than a wrong one. */
+    const FAMILY = {
+          "Design & materials": {
+                "glyph": "square",
+                "key": "design"
+          },
+          "Site intelligence": {
+                "glyph": "circle",
+                "key": "site"
+          },
+          "Field operations": {
+                "glyph": "triangle",
+                "key": "field"
+          },
+          "People & work": {
+                "glyph": "diamond",
+                "key": "people"
+          },
+          "Emortia": {
+                "glyph": "ring",
+                "key": "emortia"
+          }
+    };
     const TOOLGROUPS = (()=>{
       const A = window.Access;
       const cards = [
@@ -5524,11 +5597,14 @@ class Component extends DCLogic {
          that is not drawn is not a lock, only a tidy list. */
       ].filter(t=>!t.feature || may(t.feature))
        .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
-                  group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}));
+                  group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}))
+       .map(t=>({...t, glyph:'gmark g-' + (FAMILY[t.group] ? FAMILY[t.group].glyph : 'circle')}));
       const gs = (A && A.grouped) ? A.grouped(cards) : [{ group:'', items:cards }];
       /* A group with nothing left in it is a heading over empty space — which
          is what a shut switch would otherwise leave behind. */
       return gs.filter(g=>g.items.length).map(g=>({ name:g.group, tools:g.items,
+        glyph: 'gmark g-' + (FAMILY[g.group] ? FAMILY[g.group].glyph : 'circle'),
+        tgrp: 'tgrp-' + (FAMILY[g.group] ? FAMILY[g.group].key : 'site'),
         count: g.items.length + (g.items.length===1 ? ' tool' : ' tools') }));
       })();
 
@@ -5571,7 +5647,7 @@ class Component extends DCLogic {
         /* nothing matched: the shelf says so in its own heading, and the search
            stays where it is so the next letter can put it right */
         const sh = shelves[i] || { name: q.trim() ? 'Nothing matches “' + q.trim() + '”' : '',
-          count: q.trim() ? 'Esc to clear' : '', cards:[] };
+          count: q.trim() ? 'Esc to clear' : '', cards:[], glyph:'', tgrp:'' };
         const last = Math.max(0, shelves.length - 1);
         const sugs = this.tlSuggest(TOOLGROUPS, q);
         this._tlSugs = sugs;
@@ -5590,6 +5666,8 @@ class Component extends DCLogic {
           isToolsPlain: s.page === 'tools' && !staged,
           isToolsStage: staged,
           tlName: sh.name,
+          tlGlyph: sh.glyph || '',
+          tlTgrp: sh.tgrp || '',
           tlCount: sh.count,
           tlCards: sh.cards,
           /* the class alternates every turn so the pop plays again */
