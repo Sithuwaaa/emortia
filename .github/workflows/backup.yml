@@ -1,0 +1,99 @@
+# Weekly backup of the Supabase database to Cloudflare R2.
+#
+# Sunday evening, and by hand from the Actions tab whenever you want one.
+# The dump is written in three passes because that is what restoring needs
+# and in this order: the roles, then the schema, then the data. A dump of
+# the schema on its own restores an empty database, which is the worst kind
+# of backup - the kind that looks like it worked.
+#
+# Restoring one:
+#   gunzip -c emortia-2026-09-27.sql.gz | psql "$SUPABASE_DB_URL"
+
+name: Backup database to R2
+
+on:
+  schedule:
+    - cron: '0 18 * * 0'
+  workflow_dispatch:
+
+# Nothing here reads or writes the repository; it only needs to check out
+# nothing at all. Least privilege costs a line.
+permissions:
+  contents: read
+
+# A hand-run backup while the Sunday one is still going would have both
+# writing the same file. One at a time, and the one already running wins.
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Install the Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Dump the database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_DB_URL" || { echo "SUPABASE_DB_URL is empty"; exit 1; }
+
+          # --db-url is read from the environment rather than written into the
+          # command line, so it never reaches a process list or a log line.
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only -f roles.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL"             -f schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only -f data.sql
+
+          STAMP="$(date -u +%Y-%m-%d)"
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          echo "ARCHIVE=emortia-$STAMP.sql.gz" >> "$GITHUB_ENV"
+
+          cat roles.sql schema.sql data.sql > "emortia-$STAMP.sql"
+          gzip -9 "emortia-$STAMP.sql"
+
+      - name: Check the dump is not empty
+        run: |
+          set -euo pipefail
+          # A backup that succeeds every week and restores nothing is worse
+          # than one that fails loudly, so a suspiciously small archive stops
+          # the run rather than being uploaded over the good ones.
+          BYTES=$(stat -c%s "$ARCHIVE")
+          echo "$ARCHIVE is $BYTES bytes"
+          if [ "$BYTES" -lt 4096 ]; then
+            echo "That is too small to be a real dump - refusing to upload it."
+            exit 1
+          fi
+          gzip -t "$ARCHIVE"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          # R2 rejects the trailing checksums newer AWS CLI builds add by
+          # default; asking for them only when required is Cloudflare's own
+          # advice and keeps this working as the runner image moves on.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          aws s3 cp "$ARCHIVE" "s3://$R2_BUCKET/db/$ARCHIVE" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type application/gzip \
+            --only-show-errors
+          echo "Uploaded db/$ARCHIVE"
+
+      - name: Say what landed
+        run: |
+          echo "### Backup $STAMP" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`db/$ARCHIVE\` — $(stat -c%s "$ARCHIVE") bytes" >> "$GITHUB_STEP_SUMMARY"
