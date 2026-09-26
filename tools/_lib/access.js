@@ -670,8 +670,19 @@
     '.acc-chip-d{width:6px;height:6px;border-radius:50%;background:#7fdc8a;flex-shrink:0}',
     '.acc-chip-n{font-family:"Space Mono",ui-monospace,monospace;font-size:11.5px;color:#fff;opacity:.9;',
     '  max-width:12ch;overflow:hidden;text-overflow:ellipsis}',
+    /* Longhands, not the `font` shorthand. It used to say
+         font:600 11.5px/1 inherit
+       and `inherit` is not a legal family name inside that shorthand, so the
+       whole declaration was invalid and thrown away - on every tool, since
+       it was written. The button then fell to whatever else reached it: the
+       browser's own 13.3px on fourteen tools, and on Austin SWAP, which sets
+       button{font:inherit}, the body's 15px/1.5 - which is the 4.5px that
+       made that one header 70.5 instead of 66.
+       Written out, it applies, it is the size it was meant to be, and no
+       page's button rule can reach past it again. */
     '.acc-chip-o{background:none;border:1px solid var(--line3,rgba(255,255,255,.24));border-radius:999px;',
-    '  color:#fff;opacity:.72;cursor:pointer;font:600 11.5px/1 inherit;font-family:inherit;padding:4px 9px;',
+    '  color:#fff;opacity:.72;cursor:pointer;padding:4px 9px;',
+    '  font-family:inherit;font-weight:600;font-size:11.5px;line-height:1;',
     '  transition:opacity .16s ease,border-color .16s ease}',
     '.acc-chip-o:hover{opacity:1;border-color:var(--accent,#b03a56)}',
     '@media (max-width:560px){.acc-chip-n{display:none}}'

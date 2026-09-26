@@ -2396,7 +2396,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
             </div>
             <div style="display:flex;flex-direction:column;gap:11px;">
               <div style="display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#da8f00;">
-                <span>Latest poem</span><span style="color:rgba(201,149,74,.45);">&#183;</span><span style="letter-spacing:.1em;color:#9d7c4c;">{{ hmPoemLen }}</span>
+                <span>Latest poem</span>
               </div>
               <div class="ttl" style="font-family:'UN-Agni','EB Garamond',serif;font-weight:400;font-size:clamp(28px,3.2vw,36px);line-height:1.14;letter-spacing:0;">{{ hmPoemTitle }}</div>
               <span class="pill" style="background:#da8f00;color:#1a1000;">Read it &#8594;</span>
@@ -6100,7 +6100,6 @@ class Component extends DCLogic {
         const lines = String((p&&p.body)||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
         return {
           hmPoemLines: lines.slice(0,1),
-          hmPoemLen: lines.length ? lines.length + ' lines' : '',
         };
       })(),
       /* Counted, not typed. The tools figure is the same may() the cards are

@@ -22,8 +22,11 @@ html,body{background:var(--bg);color:var(--text);
 .pill b{color:var(--accent);font-weight:600}
 .theme{background:none;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;
   width:34px;height:34px;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0}
+/* The bar is sticky now, so it takes its own room in the flow and the
+   inset is already inside it. This used to stand in for a fixed header
+   with 78px of padding; keeping that would simply leave a gap. */
 main{max-width:920px;margin:0 auto;
-  padding:calc(env(safe-area-inset-top) + 78px) 16px calc(env(safe-area-inset-bottom) + 48px)}
+  padding:12px 16px calc(env(safe-area-inset-bottom) + 48px)}
 .searchwrap{position:relative;margin-bottom:6px}
 #q{width:100%;font-size:17px;padding:15px 46px 15px 44px;border-radius:13px;border:1px solid var(--line);
   background:var(--card);color:var(--text);outline:none;box-shadow:0 1px 3px rgba(20,30,60,.06)}

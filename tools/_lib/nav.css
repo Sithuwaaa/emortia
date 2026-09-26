@@ -37,14 +37,26 @@
 }
 
 header.hdr{
+  /* Sticky, like the site and like twelve of the fifteen. Three tools had
+     it fixed, which takes the bar out of the flow and makes every page under
+     it carry a top padding to stand in for a header that is not there. Set
+     here rather than in each of them, so a page cannot drift back. */
+  position:sticky;top:0;
   /* the inset is the tools' own: they run as installed apps under a notch,
-     which the site in a browser tab never has to think about - and because
-     it is added to the padding, a notch grows the bar past the minimum
-     rather than being swallowed by it */
+     which the site in a browser tab never has to think about */
   padding:calc(env(safe-area-inset-top) + var(--navPadY)) var(--navPadX) var(--navPadY);
   gap:var(--navGap);
-  min-height:var(--navH);
+  /* Height, not min-height. The site's own bar is a fixed height, and while
+     this was a minimum one oversized button was enough to push a header to
+     70.5 - which is exactly what happened. Now nothing in the row can change
+     the bar; anything that does not fit is a bug in that element.
+
+     The notch is added on top rather than included, because with border-box
+     a flat 66 would have the inset eat into the content instead of moving
+     the bar down past it. */
+  height:calc(env(safe-area-inset-top) + var(--navH));
   box-sizing:border-box;
+  align-items:center;
 }
 
 header.hdr .logo{width:var(--navLogo);height:var(--navLogo);gap:2.5px}

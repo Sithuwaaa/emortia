@@ -32,3 +32,6 @@ samples/
 tools/site-access/data.json
 tools/site-data/data.json
 tools/project-update/*.xlsm
+
+# header measuring harnesses (generated)
+tools/*/__hdr.html

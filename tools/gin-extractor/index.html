@@ -58,8 +58,10 @@
     width:34px;height:34px;font-size:16px;cursor:pointer;line-height:1}
   .theme:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
+  /* the bar is sticky now and takes its own room, so this is breathing
+     space rather than a stand-in for a header that was not in the flow */
   main{max-width:1120px;margin:0 auto;
-    padding:calc(env(safe-area-inset-top) + 74px) 16px calc(env(safe-area-inset-bottom) + 40px)}
+    padding:8px 16px calc(env(safe-area-inset-bottom) + 40px)}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
     box-shadow:0 1px 3px rgba(20,30,60,.06);margin-bottom:16px;overflow:hidden}

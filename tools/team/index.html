@@ -61,7 +61,11 @@
      folder, and nobody needed telling they were in the tools. */
   .hdr{display:flex;align-items:center;gap:10px;color:#fff;
     padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
-    background:var(--navy);position:sticky;top:0;z-index:20}
+    background:var(--navy);position:sticky;top:0;z-index:20;
+    /* The skin sets a backdrop blur for a translucent bar; this bar is
+       opaque, so the blur had nothing to see through and was costing a
+       compositor layer to render nothing. */
+    -webkit-backdrop-filter:none;backdrop-filter:none}
   .hdr .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;
     flex-shrink:0;transition:opacity .18s ease}
   .hdr .brand:hover{opacity:.86}
