@@ -143,11 +143,6 @@
   .ibox .go:active{filter:brightness(1.08);}
   .ibox .later{background:none;border:0;color:var(--muted);font-size:14px;padding:13px;
     margin-top:4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
-  /* the written-out route, for when the browser will not do it in one tap */
-  .steps{text-align:left;background:var(--card2);border:1px solid var(--line);
-    border-radius:13px;padding:14px 16px;margin-bottom:18px;}
-  .steps li{font-size:14.5px;line-height:1.7;margin-left:18px;color:var(--text);}
-  .steps b{color:var(--accentB);}
 
   .gate{padding:32px 24px;text-align:center;display:flex;flex-direction:column;gap:14px;
     align-items:center;justify-content:center;flex:1;}
@@ -176,11 +171,6 @@
     <img class="shot" src="icon-192.png" alt="" width="64" height="64">
     <h2 id="installH">Put the clock on this phone</h2>
     <p>Add this to your home screen so you can clock in with one tap.</p>
-    <ol class="steps" id="installSteps" hidden>
-      <li>Open the browser menu &mdash; the <b>&#8942;</b> at the top right.</li>
-      <li>Choose <b>Add to Home screen</b>.</li>
-      <li>Press <b>Install</b>, or <b>Add</b>.</li>
-    </ol>
     <button class="go" id="installGo">Install</button>
     <button class="later" id="installNo">Later</button>
   </div>
@@ -574,13 +564,13 @@ function offerInstall(){
   const until = Number(get(K.noInstall, '0'));
   if (until && Date.now() < until) return;
   deferred = window.__bip;
-  /* One tap where Chrome has offered; the written route where it has not -
-     iPhones never offer, and nor does Chrome for a page already inside an
-     installed app's scope. Crews will not guess at a menu. */
-  const can = !!deferred;
-  $('installGo').hidden = !can;
-  $('installSteps').hidden = can;
-  $('installNo').textContent = can ? 'Later' : 'Close';
+  /* Only ever the real thing. A screen of instructions - open the menu,
+     find this, press that - is a screen somebody reads, gives up on, and
+     closes; it asks them to do the work the button is for. So if the
+     browser has not offered, nothing is shown and the clock simply opens.
+     The cost is that a phone where Chrome stays quiet gets no prompt at
+     all, which is the right way round: better nothing than homework. */
+  if (!deferred) return;
   $('install').classList.add('on');
 }
 
