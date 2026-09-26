@@ -124,13 +124,30 @@
   .cam .msg{position:absolute;top:calc(env(safe-area-inset-top) + 16px);left:16px;right:16px;
     text-align:center;color:#fff;font-size:15px;text-shadow:0 1px 6px rgba(0,0,0,.8);}
 
-  .install{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 12px);
-    background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:13px 15px;
-    display:none;align-items:center;gap:12px;font-size:14.5px;z-index:30;}
+  /* The first thing somebody sees, not a strip above the clock they scroll
+     past. A crew phone gets set up once, by whoever is holding it, and that
+     one moment is the only chance to get the icon onto the home screen. */
+  .install{position:fixed;inset:0;z-index:70;background:rgba(4,10,12,.76);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center;padding:22px;}
   .install.on{display:flex;}
-  .install button{background:var(--accent);color:var(--ink);border:0;border-radius:10px;
-    padding:9px 15px;font-weight:700;cursor:pointer;margin-left:auto;flex:none;}
-  .install .x{background:none;color:var(--muted);border:0;padding:9px 4px;margin-left:0;font-size:18px;}
+  .ibox{width:min(400px,100%);background:var(--card);border:1px solid var(--line2);
+    border-radius:20px;padding:26px 22px 20px;text-align:center;
+    box-shadow:0 30px 70px rgba(0,0,0,.6);animation:ipop .2s ease-out;}
+  @keyframes ipop{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .ibox .shot{width:64px;height:64px;border-radius:17px;margin:0 auto 14px;display:block;}
+  .ibox h2{font-size:21px;font-weight:800;letter-spacing:-.01em;margin-bottom:8px;}
+  .ibox p{color:var(--muted);font-size:15px;line-height:1.55;margin-bottom:20px;}
+  .ibox .go{width:100%;min-height:58px;border:0;border-radius:15px;background:var(--accent);
+    color:var(--ink);font-weight:800;font-size:18px;cursor:pointer;}
+  .ibox .go:active{filter:brightness(1.08);}
+  .ibox .later{background:none;border:0;color:var(--muted);font-size:14px;padding:13px;
+    margin-top:4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+  /* the written-out route, for when the browser will not do it in one tap */
+  .steps{text-align:left;background:var(--card2);border:1px solid var(--line);
+    border-radius:13px;padding:14px 16px;margin-bottom:18px;}
+  .steps li{font-size:14.5px;line-height:1.7;margin-left:18px;color:var(--text);}
+  .steps b{color:var(--accentB);}
 
   .gate{padding:32px 24px;text-align:center;display:flex;flex-direction:column;gap:14px;
     align-items:center;justify-content:center;flex:1;}
@@ -154,11 +171,19 @@
   <p id="gateWhy" style="color:var(--bad)"></p>
 </div>
 
-<div class="install" id="install">
-  <span id="installSay">Add the clock to your home screen.</span>
-  <button id="installGo" hidden>Install</button>
-  <span id="installWhere" hidden></span>
-  <button class="x" id="installNo" aria-label="Not now">&times;</button>
+<div class="install" id="install" role="dialog" aria-modal="true" aria-labelledby="installH">
+  <div class="ibox">
+    <img class="shot" src="icon-192.png" alt="" width="64" height="64">
+    <h2 id="installH">Put the clock on this phone</h2>
+    <p>Add this to your home screen so you can clock in with one tap.</p>
+    <ol class="steps" id="installSteps" hidden>
+      <li>Open the browser menu &mdash; the <b>&#8942;</b> at the top right.</li>
+      <li>Choose <b>Add to Home screen</b>.</li>
+      <li>Press <b>Install</b>, or <b>Add</b>.</li>
+    </ol>
+    <button class="go" id="installGo">Install</button>
+    <button class="later" id="installNo">Later</button>
+  </div>
 </div>
 
 <div class="wrap" id="app" hidden>
@@ -533,37 +558,55 @@ $('go').addEventListener('click', function () {
 
 var deferred = null;
 
+/* Dismissed, and not asked again for a fortnight - long enough not to nag
+   the person who meant it, short enough that a phone that was set up wrong
+   gets another chance. */
+const HUSH = 14 * 24 * 60 * 60 * 1000;
+
+function installed(){
+  try { return matchMedia('(display-mode: standalone)').matches ||
+               matchMedia('(display-mode: fullscreen)').matches ||
+               navigator.standalone === true; } catch(e){ return false; }
+}
+
 function offerInstall(){
-  if (get(K.noInstall, '')) return;
-  if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
+  if (installed()) return;                       // nothing to offer
+  const until = Number(get(K.noInstall, '0'));
+  if (until && Date.now() < until) return;
   deferred = window.__bip;
-  $('install').classList.add('on');
-  /* Chrome can do it in one tap. Everywhere else - and on any phone where
-     Chrome has decided not to offer - the menu still works, so say where it
-     is rather than leaving a button that does nothing. */
-  var can = !!deferred;
+  /* One tap where Chrome has offered; the written route where it has not -
+     iPhones never offer, and nor does Chrome for a page already inside an
+     installed app's scope. Crews will not guess at a menu. */
+  const can = !!deferred;
   $('installGo').hidden = !can;
-  $('installWhere').hidden = can;
-  $('installSay').textContent = can
-    ? 'Add the clock to your home screen.'
-    : 'Add the clock to your home screen: open the browser menu (⋮) and choose “Add to Home screen”.';
+  $('installSteps').hidden = can;
+  $('installNo').textContent = can ? 'Later' : 'Close';
+  $('install').classList.add('on');
 }
 
 addEventListener('bip', offerInstall);
 if (window.__bip) offerInstall();
 /* If Chrome has not offered within a few seconds it is not going to, and the
-   crews still need the icon - so the menu route is shown instead. */
-setTimeout(offerInstall, 4000);
+   crews still need the icon - so the written route is shown instead. */
+setTimeout(offerInstall, 3500);
 $('installGo').addEventListener('click', function () {
   $('install').classList.remove('on');
   if (!deferred) return;
   var p = deferred; deferred = null;
   p.prompt();
+  /* Said no to Chrome's own sheet: hush this for the fortnight too, rather
+     than showing the same dialog again on the next open. */
+  p.userChoice.then(function (c) {
+    if (!c || c.outcome !== 'accepted') put(K.noInstall, String(Date.now() + HUSH));
+  }).catch(function(){});
 });
 $('installNo').addEventListener('click', function () {
-  $('install').classList.remove('on'); put(K.noInstall, '1');
+  $('install').classList.remove('on');
+  put(K.noInstall, String(Date.now() + HUSH));
 });
-addEventListener('appinstalled', function () { $('install').classList.remove('on'); });
+addEventListener('appinstalled', function () {
+  $('install').classList.remove('on'); drop(K.noInstall);
+});
 
 /* ────────────────────────────────────────────── start */
 

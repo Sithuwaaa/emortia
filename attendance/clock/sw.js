@@ -16,7 +16,7 @@
    a thing to replay from a cache, and the queue in the page is what handles
    being offline. */
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = 'tooway-clock-' + VERSION;
 
 const SHELL = [

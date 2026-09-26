@@ -1,6 +1,6 @@
 {
   "name": "Tooway Clock",
-  "short_name": "Clock",
+  "short_name": "Tooway Clock",
   "description": "Clock in and out with a photo.",
   "start_url": ".",
   "scope": "./",
