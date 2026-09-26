@@ -49,32 +49,15 @@
      Same as the rest of the suite down to the numbers: the mark glows and
      lifts under the cursor, the name and rule drop away at 900, the pill
      keeps its slow light, and only the accent colour tells the tools apart. */
-  .hdr{position:sticky;top:0;z-index:30;background:rgba(32,18,3,.62);color:#fff;display:flex;align-items:center;gap:10px;
+  /* Solid, like every other tool's. It used to be glass with a blur, a
+     wedge of light crossing it and a bright length running the rule beneath
+     - carried over from the lookup tools' skin. Against the page showing
+     through, that read as a heavier, taller band than the others even
+     though it measured the same 66 pixels, so it is paint again. */
+  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;
     padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--line3);
-    box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden;
-    -webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
-  /* a browser with no backdrop filter gets the solid bar rather than a
-     see-through one with the page legible behind the title */
-  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-    .hdr{background:var(--navy)}
-  }
-  /* glass over a pale page pulls the page up through it and the bar goes
-     grey; in the light theme it is held more opaque so it stays brown */
-  html[data-theme="light"] .hdr{background:rgba(74,44,7,.88)}
+    box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden}
   .hdr>*{position:relative;z-index:1}
-  /* ---- the bar's own weather ----
-     The lookup tools wear a skin the others do not, and this bar was the
-     still one in a suite of moving ones: a wedge of light crossing the
-     glass, a short bright length running the rule beneath it, and a status
-     light after the title. Behind the content, never over it. */
-  .hdr::after{content:'';position:absolute;top:0;bottom:0;left:-20%;width:18%;z-index:0;pointer-events:none;
-    background:linear-gradient(90deg,transparent,rgba(255,193,100,.20) 50%,transparent);
-    animation:swSweep 6.5s cubic-bezier(.5,0,.5,1) infinite}
-  @keyframes swSweep{0%{left:-20%}70%,100%{left:120%}}
-  .hdr::before{content:'';position:absolute;bottom:0;left:0;width:34%;height:2px;z-index:1;pointer-events:none;
-    background:linear-gradient(90deg,transparent,var(--accentB),transparent);
-    animation:swRule 3.6s linear infinite}
-  @keyframes swRule{from{transform:translateX(-110%)}to{transform:translateX(330%)}}
   .hdr h1::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accentB);
     margin-left:10px;vertical-align:middle;animation:swLed 1.5s ease-in-out infinite}
   @keyframes swLed{0%,100%{opacity:.25;box-shadow:none}50%{opacity:1;box-shadow:0 0 10px var(--accentB)}}
@@ -305,7 +288,7 @@
   /* `*` does not match a pseudo-element, and the bar's weather is all drawn
      in them - they have to be named or they keep moving. */
   @media (prefers-reduced-motion:reduce){
-    *,.hdr::before,.hdr::after,.hdr h1::after{animation:none !important}
+    *,.hdr h1::after{animation:none !important}
     .ibtn:hover{transform:none}
   }
 </style>
