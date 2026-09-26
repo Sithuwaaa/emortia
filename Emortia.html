@@ -1107,6 +1107,12 @@ input,textarea,button{font-family:inherit;}
 @font-face{font-family:'UN-Alakamanda';src:url('fonts/UN-Alakamanda-4-95.ttf') format('truetype');font-display:swap;}
 @font-face{font-family:'UN-Isiwara';src:url('fonts/UN-Isiwara.ttf') format('truetype');font-display:swap;}
 /* ---- responsive ---- */
+/* The app's own back button. Sized like a target for a thumb, not a mouse:
+   44px is the smallest thing a phone should ask anybody to hit. */
+.appback{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;
+  background:none;border:1px solid var(--line2);border-radius:11px;color:var(--dim);cursor:pointer;
+  margin-right:-6px;transition:color .16s ease,border-color .16s ease,background .16s ease;}
+.appback:hover,.appback:active{color:var(--text);border-color:var(--accentB);background:rgba(244,239,230,.05);}
 .nav-toggle{display:none;align-items:center;justify-content:center;}
 @media (max-width:940px){
   .nav-toggle{display:flex;}
@@ -2252,6 +2258,15 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
   <header style="position:sticky;top:0;z-index:40;backdrop-filter:blur(14px);background:var(--bar);border-bottom:1px solid var(--line);">
     <div class="hdr-inner" style="width:100%;margin:0;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
+      <!-- Installed, there is no browser chrome to go back with, and the
+           iPhone edge swipe is not dependable inside a PWA. So the app
+           carries its own. Drawn only when installed: in a browser the
+           toolbar already has one and two would be clutter. -->
+      <sc-if value="{{ isStandalone }}" hint-placeholder-val="{{ false }}">
+        <button class="appback" onClick="{{ goBack }}" title="Back" aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
+      </sc-if>
       <div data-navlock="1" onClick="{{ nav.home }}" style="display:flex;align-items:center;gap:11px;cursor:pointer;">
         <div data-navlogo="1" style="width:34px;height:34px;border-radius:50%;background:linear-gradient(150deg,var(--accentB),var(--accentD));display:flex;align-items:center;justify-content:center;gap:2.5px;box-shadow:0 0 20px var(--glow);animation:logoFloat 4.5s ease-in-out infinite;">
           <span style="width:3px;height:8px;border-radius:2px;background:var(--bg);transform-origin:center;animation:eq 0.85s ease-in-out infinite;animation-delay:0s;animation-play-state:{{ spinState }};"></span>
@@ -2594,7 +2609,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));grid-auto-rows:1fr;gap:16px;">
         <sc-for list="{{ grp.tools }}" as="tool" hint-placeholder-count="1">
-          <a href="{{ tool.href }}" target="_blank" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;height:100%;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
+          <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;height:100%;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
             <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
               <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;">
@@ -2643,7 +2658,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </div>
         <div class="{{ tlRowClass }}">
         <sc-for list="{{ tlCards }}" as="tool" hint-placeholder-count="3">
-          <a href="{{ tool.href }}" target="_blank" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
+          <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
             <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
               <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;">
@@ -2917,6 +2932,9 @@ class Component extends DCLogic {
       ppIdx:0, ppDir:1, ppTick:0,
       /* which songs are kept on this device, and which are being fetched */
       audioSaved:[], audioBusy:{},
+      /* installed and running without browser chrome - read once here and
+         watched, because it changes when the app is launched from the icon */
+      standalone: Component.standalone(),
       /* which shelf of tools is showing, a tick to restart its arrival, and
          how many cards a shelf holds at this width */
       tlIdx:0, tlTick:0, tlPer:Component.toolsPer(), tlQuery:'', tlSugOpen:false, tlSugAt:0,
@@ -3156,6 +3174,17 @@ class Component extends DCLogic {
       this.setState({ canInstall: !!(A && A.canInstall && A.canInstall() && !A.installed()) }); };
     addEventListener('emortia:install-state', inst);
     inst();
+    /* Chrome flips display-mode live when the app is installed or opened
+       from the icon, so the back button and the link targets follow rather
+       than waiting for a reload. */
+    try {
+      const mq = matchMedia('(display-mode: standalone)');
+      const sync = () => { const v = Component.standalone();
+        if (v !== this.state.standalone) this.setState({ standalone: v }); };
+      mq.addEventListener ? mq.addEventListener('change', sync) : mq.addListener(sync);
+      addEventListener('appinstalled', sync);
+      sync();
+    } catch(e){}
     this.bindAudioEvents();
     /* The player used to open with the first track already loaded, so the
        bar read 'Harana Hitha' and row one sat highlighted before anyone had
@@ -3736,8 +3765,25 @@ class Component extends DCLogic {
      "tools/bom/" would otherwise land on /tools/tools/bom/. */
   tlOpen(href){
     if (!href) return;
-    window.open(new URL(href, document.baseURI).href, '_blank', 'noopener');
+    const url = new URL(href, document.baseURI).href;
+    /* Installed, a new window is a window with no history: back from it has
+       nowhere to go, so it closes and the app looks like it has quit. In a
+       browser a tool still gets its own tab. */
+    if (Component.standalone()) location.href = url;
+    else window.open(url, '_blank', 'noopener');
     this.setState({ tlSugOpen:false });
+  }
+  /* pwa.js owns the real test; this is the same answer when it has not
+     loaded, so the page never depends on it being there. */
+  static standalone(){
+    const A = window.Emortia;
+    if (A && A.standalone) return A.standalone();
+    try {
+      return matchMedia('(display-mode: standalone)').matches ||
+             matchMedia('(display-mode: fullscreen)').matches ||
+             matchMedia('(display-mode: minimal-ui)').matches ||
+             navigator.standalone === true;
+    } catch(e){ return navigator.standalone === true; }
   }
   tlFind(q){
     const before = (this._tlShelves || [])[this._tlAt || 0];
@@ -5709,6 +5755,11 @@ class Component extends DCLogic {
       isHome:s.page==='home' || (s.page==='poetry' && !may('journal')),
       canInstall: !!s.canInstall,
       doInstall: () => { const A=window.Emortia; if (A && A.install) A.install(); },
+      /* A tool gets its own tab in a browser and the same window once the
+         app is installed, where a new window would have no way back. */
+      toolTarget: s.standalone ? '_self' : '_blank',
+      isStandalone: !!s.standalone,
+      goBack: () => { if (history.length > 1) history.back(); else this.setPage('home'); },
       isPoetry: s.page==='poetry' && may('journal'),
       poetryContent: this.renderPoetry(),
       isMusic:s.page==='music', isTools:s.page==='tools', isAbout:s.page==='about', isContact:s.page==='contact',

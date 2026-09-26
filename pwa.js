@@ -105,6 +105,51 @@
     return ask({ type: 'version' }).then(function (r) { return r && r.version; }).catch(function () { return null; });
   };
 
+  /* ---- 3b. staying inside the app ----
+
+     Installed on Android, a target="_blank" link does not open a tab - it
+     opens a second standalone window with a history of one. Back from
+     there has nowhere to go, so it closes the window, and from the user's
+     side the app has simply quit to the home screen.
+
+     So when the app is installed, same-origin links open in the same
+     window and the history builds the way it does everywhere else. This
+     runs on the capture phase over the whole document, which makes it a
+     net under every link on every page - the tool cards, anything a tool
+     draws, anything added later - rather than a list to keep in step.
+
+     Left alone: other people's sites, downloads, and any click where the
+     user has asked for a new window themselves (ctrl, shift, middle). */
+  function standalone() {
+    try {
+      return matchMedia('(display-mode: standalone)').matches ||
+             matchMedia('(display-mode: fullscreen)').matches ||
+             matchMedia('(display-mode: minimal-ui)').matches ||
+             navigator.standalone === true;
+    } catch (e) { return navigator.standalone === true; }
+  }
+  API.standalone = standalone;
+
+  document.addEventListener('click', function (e) {
+    if (!standalone()) return;
+    if (e.defaultPrevented) return;
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    var t = (a.getAttribute('target') || '').toLowerCase();
+    if (t !== '_blank' && t !== '_new') return;
+    if (a.hasAttribute('download')) return;
+
+    var url;
+    try { url = new URL(a.href, location.href); } catch (err) { return; }
+    if (url.origin !== location.origin) return;          // someone else's site
+    if (!/^https?:$/.test(url.protocol)) return;         // mailto:, tel:, blob:
+
+    e.preventDefault();
+    location.href = url.href;
+  }, true);
+
   /* ---- 4. installing ----
      The event only fires where the browser is willing, and never once the
      app is already installed, so its arrival is the whole test. */
