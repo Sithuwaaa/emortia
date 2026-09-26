@@ -1982,6 +1982,34 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   font-size:22px;letter-spacing:-.02em;color:rgba(247,237,240,.13);}
 /* narrow: the links take the middle, and there is no end left to sign */
 @media (max-width:860px){ .hm-else .mark{display:none;} }
+/* ---- 14c: the Elsewhere band as a signal line ----
+   A pulse runs the width of the band with a dot travelling it, the links
+   sit on it as a dock, and the name is a watermark behind. The rose is the
+   site's own accent rather than a new colour. */
+.hm-else.pulse{background:#1c0f13;}
+.hm-else.pulse::before,.hm-else.pulse::after{display:none;}
+.hm-else.pulse .pl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.hm-else.pulse .wm{position:absolute;left:50%;bottom:-.27em;transform:translateX(-50%);pointer-events:none;white-space:nowrap;
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:800;letter-spacing:-.04em;line-height:1;
+  font-size:clamp(140px,21vw,300px);color:rgba(232,122,148,.06);}
+.hm-else.pulse .row{justify-content:center;min-height:210px;}
+.hm-else.pulse .lab{position:absolute;left:max(28px,calc((100vw - 1180px)/2 + 28px));top:26px;color:#e87a94;margin:0;}
+.hm-else.pulse .dock{display:flex;align-items:flex-end;gap:16px;padding:14px 20px;border-radius:26px;
+  background:#1c0f13;border:1px solid rgba(255,255,255,.09);}
+.hm-else.pulse .dk{display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;}
+.hm-else.pulse .ico{width:56px;height:56px;box-sizing:border-box;border-radius:15px;border:1px solid;display:flex;align-items:center;justify-content:center;
+  transform-origin:50% 100%;transition:transform .28s cubic-bezier(.3,1.6,.5,1),filter .28s;}
+.hm-else.pulse .dk:hover .ico,.hm-else.pulse .dk:focus-visible .ico{transform:scale(1.3) translateY(-6px);filter:brightness(1.25);}
+.hm-else.pulse .nm{font-size:11px;letter-spacing:.04em;color:#c19da8;}
+.hm-else.pulse .dk:hover .nm{color:#f7edf0;}
+@media (max-width:860px){
+  .hm-else.pulse .lab{position:static;width:100%;text-align:center;}
+  .hm-else.pulse .dock{gap:10px;padding:12px 14px;}
+  .hm-else.pulse .ico{width:46px;height:46px;border-radius:13px;}
+  .hm-else.pulse .ico svg{width:21px;height:21px;}
+}
+/* the travelling dot is the one thing in the band that moves */
+@media (prefers-reduced-motion:reduce){ .hm-else.pulse .pl circle{display:none;} }
 .hm-else .row{position:relative;max-width:1180px;margin:0 auto;min-height:96px;
   padding:18px max(28px,calc((100vw - 1180px)/2 + 28px));
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
@@ -2372,12 +2400,26 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
              mockup had a tool that does not exist yet; a door onto a 404 is
              worse than no door. -->
         <sc-if value="{{ hmToolShow }}" hint-placeholder-val="{{ true }}">
-        <div class="hm-feat" onClick="{{ hmToolGo }}" style="border:1px solid #1c3a42;background:radial-gradient(90% 120% at 80% 12%,#123844 0%,#0e1a1e 64%);">
-          <div style="position:absolute;right:-56px;top:-56px;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(63,189,208,.30),transparent 68%);filter:blur(24px);"></div>
-          <div class="in">
-            <div class="kick" style="color:#3fbdd0;">Latest tool</div>
+        <div class="hm-feat" onClick="{{ hmToolGo }}" style="border:1px solid {{ hmToolLine }};background:{{ hmToolBg }};overflow:hidden;">
+          <!-- The newest tool's own colour across the top with its glyph cut
+               out of it, and its tile sitting on the seam with the two before
+               it fanned behind. Every colour here is that tool's. -->
+          <div aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:42%;background:radial-gradient(circle at 70% 40%,rgba(255,255,255,.10),rgba(255,255,255,0) 62%),linear-gradient(rgba(0,0,0,.52),rgba(0,0,0,.52)),{{ hmToolC }};overflow:hidden;">
+            <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:-16%;top:-30%;width:78%;aspect-ratio:1;stroke:{{ hmToolBg }};stroke-width:1.1;opacity:.9;"><path d="{{ hmToolIcon }}"></path></svg>
+          </div>
+          <div aria-hidden="true" style="position:absolute;left:28px;top:calc(42% - 50px);width:100px;height:100px;z-index:2;">
+            <sc-if value="{{ hmOld2 }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:32px;top:-22px;width:92px;height:92px;box-sizing:border-box;border-radius:24px;background:{{ hmOld2.bg }};border:1px solid {{ hmOld2.line }};transform:rotate(14deg);opacity:.55;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width:48px;height:48px;stroke:{{ hmOld2.c }};stroke-width:1.6;"><path d="{{ hmOld2.icon }}"></path></svg></div>
+            </sc-if>
+            <sc-if value="{{ hmOld1 }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:18px;top:-12px;width:92px;height:92px;box-sizing:border-box;border-radius:24px;background:{{ hmOld1.bg }};border:1px solid {{ hmOld1.line }};transform:rotate(7deg);opacity:.8;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width:48px;height:48px;stroke:{{ hmOld1.c }};stroke-width:1.6;"><path d="{{ hmOld1.icon }}"></path></svg></div>
+            </sc-if>
+            <div style="position:absolute;left:0;top:0;width:100px;height:100px;box-sizing:border-box;border-radius:26px;background:radial-gradient(circle,rgba({{ hmToolRGB }},.32),rgba({{ hmToolRGB }},.07) 45%,rgba({{ hmToolRGB }},0) 70%),{{ hmToolBg }};border:2px solid {{ hmToolC }};display:flex;align-items:center;justify-content:center;box-shadow:0 18px 36px -12px rgba(0,0,0,.9);"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width:52px;height:52px;stroke:{{ hmToolC }};stroke-width:1.5;filter:drop-shadow(0 0 5px rgba({{ hmToolRGB }},.7));"><path d="{{ hmToolIcon }}"></path></svg></div>
+          </div>
+          <div class="in" style="position:relative;z-index:1;">
+            <div class="kick" style="color:{{ hmToolC }};">Latest tool</div>
             <div class="ttl">{{ hmToolName }}</div>
-            <span class="pill" style="background:#c766be;color:#1b0a1a;">Open it &#8594;</span>
+            <span class="pill" style="background:{{ hmToolC }};color:{{ hmToolBg }};">Open it &#8594;</span>
           </div>
         </div>
         </sc-if>
@@ -2443,14 +2485,24 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
       <!-- 7b · everywhere else to find it. Its own band, under the card rather
            than cut into the side of it. -->
-      <div class="hm-else">
+      <!-- A signal runs the length of the band with a dot travelling it; the
+           links sit on it as a dock, and the name is a watermark behind. -->
+      <div class="hm-else pulse">
+        <svg class="pl" aria-hidden="true" viewBox="0 0 1400 200" preserveAspectRatio="xMidYMid slice">
+          <path d="" fill="none" stroke="rgba(232,122,148,.35)" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+          <circle r="5" fill="#e87a94" style="filter:drop-shadow(0 0 8px #e87a94);"><animateMotion dur="6s" repeatCount="indefinite" path=""></animateMotion></circle>
+        </svg>
+        <div class="wm" aria-hidden="true">Emortia</div>
         <div class="row">
           <span class="lab">Elsewhere</span>
-          {{ socialRail }}
-        </div>
-        <div class="mark" aria-hidden="true">
-          <span class="lg"><i></i><i></i><i></i><i></i></span>
-          <b>Emortia</b>
+          <div class="dock">
+            <sc-for list="{{ elseLinks }}" as="s" hint-placeholder-count="5">
+              <a class="dk" href="{{ s.href }}" target="_blank" rel="noopener noreferrer" title="{{ s.name }}" aria-label="{{ s.name }}">
+                <span class="ico" style="background:{{ s.bg }};border-color:{{ s.bd }};">{{ s.svg }}</span>
+                <span class="nm">{{ s.name }}</span>
+              </a>
+            </sc-for>
+          </div>
         </div>
       </div>
 
@@ -3416,8 +3468,11 @@ class Component extends DCLogic {
   /* rail: the icon on its own in a circle, for the column beside the about
      card where there is no room for a word and the mark is the word anyway.
      The title attribute carries the name for anyone hovering or listening. */
-  socials(large, rail){
-    const items=[
+  /* The five places the music lives, written down once. The rail on the
+     home page and the dock under the pulse both draw from this, so a new
+     link is added in one place rather than two. */
+  socialData(){
+    return [
       {name:'YouTube', href:'https://www.youtube.com/@emortiamusic', hoverBorder:'rgba(255,0,0,.42)', hoverBg:'rgba(255,0,0,.07)',
         path:'M23.5 6.2a3 3 0 0 0-2.12-2.12C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.53A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .5 5.8 3 3 0 0 0 2.12 2.12c1.88.53 9.38.53 9.38.53s7.5 0 9.38-.53a3 3 0 0 0 2.12-2.12A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8zM9.55 15.57V8.43L15.82 12z',
         colour:[{d:'M23.5 6.2a3 3 0 0 0-2.12-2.12C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.53A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .5 5.8 3 3 0 0 0 2.12 2.12c1.88.53 9.38.53 9.38.53s7.5 0 9.38-.53a3 3 0 0 0 2.12-2.12A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8z', fill:'#FF0000'},
@@ -3440,6 +3495,9 @@ class Component extends DCLogic {
         colour:[{d:'M12 0a12 12 0 1 0 0 24 12 12 0 0 0 0-24z', fill:'#ffffff'},
                  {d:'M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.09 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.09 24 18.1 24 12.07z', fill:'#1877F2'}]},
     ];
+  }
+  socials(large, rail){
+    const items=this.socialData();
     return React.createElement('div',{style:{display:'flex',gap:rail?'11px':'10px',flexWrap:'wrap',
         flexDirection:rail?'column':'row',alignItems:'center'}},
       items.map(it=>React.createElement('a',{key:it.name, href:it.href, target:'_blank', rel:'noopener noreferrer',
@@ -3779,6 +3837,46 @@ class Component extends DCLogic {
     else window.open(url, '_blank', 'noopener');
     this.setState({ tlSugOpen:false });
   }
+  /* ---- a tool's own colours, asked of the stylesheet ----
+
+     The fifteen palettes are declared once, in the .tool-* rules. Reading
+     them back from the CSSOM means the front page cannot hold a stale copy
+     of a colour that was changed in one place - and it reads the declared
+     value, never a computed one caught mid-transition. */
+  static toolPalette(cls){
+    if (!cls || !document.body) return null;
+    const C = Component._pal || (Component._pal = {});
+    if (C[cls]) return C[cls];                 // only a hit is remembered
+    /* Asked of a throwaway element wearing the class, rather than hunted
+       through the stylesheets: custom properties resolve the same way the
+       card itself resolves them, whichever sheet they came from and in
+       whatever order the sheets happened to load. They do not animate, so
+       there is no half-finished value to catch. */
+    const el = document.createElement('div');
+    el.className = 'term-card tool-' + cls;
+    el.style.cssText = 'position:absolute;left:-9999px;top:0;width:0;height:0;pointer-events:none';
+    document.body.appendChild(el);
+    const cs = getComputedStyle(el);
+    const g = (n) => (cs.getPropertyValue(n) || '').trim();
+    const p = { tc:g('--tc'), tcB:g('--tcB'), tcBg:g('--tcBg'),
+                tcLine:g('--tcLine'), tcRGB:g('--tcRGB') };
+    el.remove();
+    if (!p.tc) return null;
+    return (C[cls] = p);
+  }
+  static clsOf(featureKey){
+    const dir = String(featureKey || '').replace(/^tool:/, '');
+    return ({ 'design-extractor':'design', 'materials':'mat', 'bom':'bom',
+      'gin-extractor':'gin', 'site-data':'data', 'site-access':'access',
+      'project-update':'update', 'rf-jumper':'rf', 'esn':'esn',
+      'field-config':'field', 'swap':'swap', 'whattodo':'todo',
+      'team':'team', 'attendance':'att', 'lyric-video':'lyric' })[dir] || '';
+  }
+  static toolGlyph(cls){
+    const g = window.__TOOLICON && window.__TOOLICON[cls];
+    return g ? g[1] : '';
+  }
+
   /* pwa.js owns the real test; this is the same answer when it has not
      loaded, so the page never depends on it being there. */
   static standalone(){
@@ -5700,7 +5798,9 @@ class Component extends DCLogic {
     /* One glyph per tool, from the design's icon sheet. The colours there
        are the old palette, so only the drawing is taken: each glyph wears
        its own tool's colour, which is the point of having one. */
-    const TOOLICON = {
+    /* the glyph map is also read by the front page, for the latest-tool
+       stack, so it is hung where that can reach it rather than copied */
+    const TOOLICON = window.__TOOLICON = {
           "design": [
                 "DX",
                 "M6 3h8l4 4v14H6z M14 3v4h4 M9 11h6 M9 14.5h6 M9 18h3"
@@ -6020,6 +6120,16 @@ class Component extends DCLogic {
       hmNewShot: this.artImg(this.big((this.tracks[this.tracks.length-1]||{}).img),
         {position:'absolute',inset:0,width:'100%',height:'100%',objectPosition:'50% 16%'}, true),
       socialRail: this.socials(true, true),
+      /* The dock under the pulse. Same five links and the same full-colour
+         brand marks the rail already draws - this only re-dresses them, so
+         there is still one place a social link is written down. */
+      elseLinks: this.socialData().map(x => ({
+        name:x.name, href:x.href, bg:x.hoverBg, bd:x.hoverBorder,
+        svg: React.createElement('svg', { viewBox:'0 0 24 24', width:26, height:26, 'aria-hidden':'true' },
+          (x.colour || [{ d:x.path, fill:'currentColor' }]).map((p, i) =>
+            React.createElement('path', { key:i, d:p.d, fill:p.fill,
+              transform: (p.dx || p.dy) ? 'translate(' + (p.dx||0) + ' ' + (p.dy||0) + ')' : undefined })))
+      })),
       heroWordmark: this.renderWordmark(),
       /* what the front page is playing, or that it is not */
       nowSpinning: s.picked ? (t.t + ' · ' + t.a) : 'Nothing playing',
@@ -6075,10 +6185,26 @@ class Component extends DCLogic {
 
          Signed out, nothing passes may() and the card is not drawn at all. */
       ...(()=>{
-        const f = ((window.Access && Access.FEATURES) || [])
+        const live = ((window.Access && Access.FEATURES) || [])
           .filter(x => String(x.key).indexOf('tool:') === 0 && may(x.key))
-          .sort((a, b) => String(b.since || '').localeCompare(String(a.since || '')))[0];
-        return { hmToolShow: !!f, hmToolName: f ? f.name : '', hmToolGo: this.go('tools') };
+          .sort((a, b) => String(b.since || '').localeCompare(String(a.since || '')));
+        const f = live[0];
+        /* The newest tool, with the two before it fanned behind it. Each tile
+           is drawn in that tool's own colours, read off the stylesheet rather
+           than written out again here - the palette lives in one place and
+           this asks it rather than keeping a copy that can drift. */
+        const tile = (x) => {
+          if (!x) return null;
+          const cls = Component.clsOf(x.key);
+          const p = Component.toolPalette(cls);
+          const ic = Component.toolGlyph(cls);
+          return p && ic ? { bg:p.tcBg, line:p.tcLine, c:p.tc, rgb:p.tcRGB, icon:ic } : null;
+        };
+        const t0 = tile(f), t1 = tile(live[1]), t2 = tile(live[2]);
+        return { hmToolShow: !!(f && t0), hmToolName: f ? f.name : '', hmToolGo: this.go('tools'),
+          hmToolC: t0 ? t0.c : '', hmToolBg: t0 ? t0.bg : '', hmToolLine: t0 ? t0.line : '',
+          hmToolRGB: t0 ? t0.rgb : '', hmToolIcon: t0 ? t0.icon : '',
+          hmOld1: t1, hmOld2: t2 };
       })(),
       showJournal: may('journal'),
       /* The newest by its date, not by where it sits in the list. This read
