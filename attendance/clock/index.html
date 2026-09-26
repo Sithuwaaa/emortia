@@ -23,6 +23,15 @@
      No db.js and no supabase-js either. Three RPC calls do not need a
      library, and a field app that fetches nothing from a CDN is one that
      still opens at a site with no signal. -->
+<!-- Caught here, in the head, before anything else runs. Chrome fires this
+     once and does not fire it again, so a listener attached at the bottom of
+     the body is a listener that can miss it on a fast load - and a missed
+     event is indistinguishable from a browser that never offered. -->
+<script>
+  window.__bip = null;
+  addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__bip = e;
+    try { window.dispatchEvent(new CustomEvent('bip')); } catch (x) {} });
+</script>
 <script src="../../tools/_lib/supabase-config.js"></script>
 
 <style>
@@ -146,8 +155,9 @@
 </div>
 
 <div class="install" id="install">
-  <span>Add the clock to your home screen.</span>
-  <button id="installGo">Install</button>
+  <span id="installSay">Add the clock to your home screen.</span>
+  <button id="installGo" hidden>Install</button>
+  <span id="installWhere" hidden></span>
   <button class="x" id="installNo" aria-label="Not now">&times;</button>
 </div>
 
@@ -522,10 +532,28 @@ $('go').addEventListener('click', function () {
 /* ────────────────────────────────────────────── installing */
 
 var deferred = null;
-addEventListener('beforeinstallprompt', function (e) {
-  e.preventDefault(); deferred = e;
-  if (!get(K.noInstall, '')) $('install').classList.add('on');
-});
+
+function offerInstall(){
+  if (get(K.noInstall, '')) return;
+  if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
+  deferred = window.__bip;
+  $('install').classList.add('on');
+  /* Chrome can do it in one tap. Everywhere else - and on any phone where
+     Chrome has decided not to offer - the menu still works, so say where it
+     is rather than leaving a button that does nothing. */
+  var can = !!deferred;
+  $('installGo').hidden = !can;
+  $('installWhere').hidden = can;
+  $('installSay').textContent = can
+    ? 'Add the clock to your home screen.'
+    : 'Add the clock to your home screen: open the browser menu (⋮) and choose “Add to Home screen”.';
+}
+
+addEventListener('bip', offerInstall);
+if (window.__bip) offerInstall();
+/* If Chrome has not offered within a few seconds it is not going to, and the
+   crews still need the icon - so the menu route is shown instead. */
+setTimeout(offerInstall, 4000);
 $('installGo').addEventListener('click', function () {
   $('install').classList.remove('on');
   if (!deferred) return;
