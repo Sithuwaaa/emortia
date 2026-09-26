@@ -1,0 +1,68 @@
+/* The tools' bar, at the site's own measurements.
+
+   These numbers are the front page's, read off index.html rather than
+   guessed: 14 and 28 of padding, a 34px mark, an 18px name and title, 11
+   and 16 once the window is under 760. They live here, once, because the
+   last time they were changed they were hand-copied into fifteen files and
+   the next change would have had to find all fifteen again.
+
+   Only dimensions are set. Whatever a tool's bar carries that the site's
+   does not - a pill, a sync light, a theme button, a pending count - is the
+   tool's own business and is left alone.
+
+   Load it after the page's own styles:
+     <link rel="stylesheet" href="../_lib/nav.css?v=1">
+
+   Written as `header.hdr` rather than `.hdr` so it outranks the rules in
+   lookup.css and the tools' own blocks without needing !important. */
+
+:root{
+  --navPadY:14px;
+  --navPadX:28px;
+  --navGap:20px;
+  --navLogo:34px;
+  --navName:18px;   /* "Emortia", beside the mark */
+  --navTitle:18px;  /* the tool's name */
+  --navSep:21px;
+  /* The site's bar is 66 tall, and not because of its padding: its nav
+     links are a few pixels taller than anything a tool puts in the row.
+     Padding alone therefore lands a tool at 63, so the height is set
+     outright. Measured off the front page, not chosen. */
+  --navH:66px;
+}
+
+/* the same step the site takes */
+@media (max-width:760px){
+  :root{ --navPadY:11px; --navPadX:16px; --navH:60px; }
+}
+
+header.hdr{
+  /* the inset is the tools' own: they run as installed apps under a notch,
+     which the site in a browser tab never has to think about - and because
+     it is added to the padding, a notch grows the bar past the minimum
+     rather than being swallowed by it */
+  padding:calc(env(safe-area-inset-top) + var(--navPadY)) var(--navPadX) var(--navPadY);
+  gap:var(--navGap);
+  min-height:var(--navH);
+  box-sizing:border-box;
+}
+
+header.hdr .logo{width:var(--navLogo);height:var(--navLogo);gap:2.5px}
+/* the four bars scale with the mark rather than staying at their old
+   heights, which is what made a 34px circle look stretched */
+header.hdr .logo i{width:3px}
+header.hdr .logo i:nth-child(1){height:8px}
+header.hdr .logo i:nth-child(2){height:14px}
+header.hdr .logo i:nth-child(3){height:10px}
+header.hdr .logo i:nth-child(4){height:15px}
+
+header.hdr .bname{font-size:var(--navName)}
+header.hdr h1{font-size:var(--navTitle)}
+header.hdr .hsep{height:var(--navSep)}
+
+/* The site drops to its menu at 940; the tools fold their name away at the
+   same width, so crossing between them is not two different breakpoints. */
+@media (max-width:940px){
+  header.hdr .bname,
+  header.hdr .hsep{display:none}
+}

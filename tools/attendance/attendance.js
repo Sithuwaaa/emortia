@@ -35,11 +35,18 @@
   function fmt(ts) { return ts ? hm(minsOf(ts)) : '—'; }
 
   /* Late is the shift start plus whatever grace is allowed. Both are settings
-     rather than constants: the lamp-pole crews do not all start at nine. */
+     rather than constants: the lamp-pole crews do not all start at nine.
+
+     The fallback matters more than it looks. Five places below call
+     lateAfter() with nothing when they are handed no cutoff, so whatever is
+     written here is a second rule living in the same codebase as the first.
+     It used to say 08:30 while the tool said 09:00, which meant any caller
+     that forgot to pass the cutoff would quietly mark people late by a rule
+     nobody had chosen. It now agrees with the tool. */
   function lateAfter(shiftStart, graceMinutes) {
-    var p = s(shiftStart || '08:30').split(':');
+    var p = s(shiftStart || '09:00').split(':');
     var h = parseInt(p[0], 10), m = parseInt(p[1], 10);
-    if (isNaN(h)) h = 8; if (isNaN(m)) m = 30;
+    if (isNaN(h)) h = 9; if (isNaN(m)) m = 0;
     var g = parseInt(graceMinutes, 10);
     return h * 60 + m + (isNaN(g) ? 15 : g);
   }

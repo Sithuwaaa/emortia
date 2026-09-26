@@ -46,8 +46,11 @@ console.log('\nthe clock');
   is('a timestamp reads as a time', A.fmt(at(17,5)), '17:05');
   is('and nothing reads as a dash', A.fmt(null), '—');
   is('late is the start plus grace', A.hm(LATE), '08:45');
-  is('a missing setting still answers', A.hm(A.lateAfter()), '08:45');
-  is('and so does a broken one',    A.hm(A.lateAfter('nonsense', 'x')), '08:45');
+  /* the fallback agrees with the tool's own cutoff, so a caller that
+     forgets to pass one does not invent a second rule */
+  is('a missing setting still answers', A.hm(A.lateAfter()), '09:15');
+  is('and so does a broken one',    A.hm(A.lateAfter('nonsense', 'x')), '09:15');
+  is('the real cutoff is 09:15',    A.hm(A.lateAfter('09:00', 15)), '09:15');
 }
 
 console.log('\nthe day the sheet is built from');
