@@ -1992,8 +1992,13 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .hm-else.pulse .wm{position:absolute;left:50%;bottom:-.27em;transform:translateX(-50%);pointer-events:none;white-space:nowrap;
   font-family:'Bricolage Grotesque',sans-serif;font-weight:800;letter-spacing:-.04em;line-height:1;
   font-size:clamp(140px,21vw,300px);color:rgba(232,122,148,.06);}
-.hm-else.pulse .row{justify-content:center;min-height:210px;}
-.hm-else.pulse .lab{position:absolute;left:max(28px,calc((100vw - 1180px)/2 + 28px));top:26px;color:#e87a94;margin:0;}
+.hm-else.pulse .row{justify-content:center;min-height:210px;position:static;}
+.hm-else.pulse .dock{position:relative;z-index:1;}
+/* the spine: the word on its side, in a strip against the left edge */
+.hm-else.pulse .lab{position:absolute;left:0;top:0;bottom:0;width:56px;margin:0;z-index:2;
+  display:flex;align-items:center;justify-content:center;
+  background:#170d10;border-right:1px solid #4a2632;color:#e87a94;font-size:12px;letter-spacing:.34em;}
+.hm-else.pulse .lab span{transform:rotate(-90deg);white-space:nowrap;}
 .hm-else.pulse .dock{display:flex;align-items:flex-end;gap:16px;padding:14px 20px;border-radius:26px;
   background:#1c0f13;border:1px solid rgba(255,255,255,.09);}
 .hm-else.pulse .dk{display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;}
@@ -2003,7 +2008,9 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .hm-else.pulse .nm{font-size:11px;letter-spacing:.04em;color:#c19da8;}
 .hm-else.pulse .dk:hover .nm{color:#f7edf0;}
 @media (max-width:860px){
-  .hm-else.pulse .lab{position:static;width:100%;text-align:center;}
+  /* narrower strip, and the row moved clear of it */
+  .hm-else.pulse .lab{width:40px;font-size:10.5px;letter-spacing:.28em;}
+  .hm-else.pulse .row{padding-left:56px;}
   .hm-else.pulse .dock{gap:10px;padding:12px 14px;}
   .hm-else.pulse .ico{width:46px;height:46px;border-radius:13px;}
   .hm-else.pulse .ico svg{width:21px;height:21px;}
@@ -2499,7 +2506,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </svg>
         <div class="wm" aria-hidden="true">Emortia</div>
         <div class="row">
-          <span class="lab">Elsewhere</span>
+          <span class="lab"><span>Elsewhere</span></span>
           <div class="dock">
             <sc-for list="{{ elseLinks }}" as="s" hint-placeholder-count="5">
               <a class="dk" href="{{ s.href }}" target="_blank" rel="noopener noreferrer" title="{{ s.name }}" aria-label="{{ s.name }}">
