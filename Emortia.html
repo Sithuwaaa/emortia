@@ -1588,10 +1588,14 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
    animation only starts again if its NAME changed - the same name on the same
    node is the same animation, already finished. Backwards fill, not both, so
    once it has played the card's own hover lift is free to move it again. */
-.tl-in-a .term-card{animation:tlPopA .62s cubic-bezier(.34,1.56,.64,1) backwards;}
-.tl-in-b .term-card{animation:tlPopB .62s cubic-bezier(.34,1.56,.64,1) backwards;}
-.tl-row .term-card:nth-child(2){animation-delay:.07s;}
-.tl-row .term-card:nth-child(3){animation-delay:.14s;}
+/* .62s with a long overshoot, and a stagger on top, meant the last card
+   was still settling two thirds of a second after the shelf turned - which
+   reads as the page being slow rather than the card being lively. Shorter,
+   with less bounce to settle out of, and the stagger halved. */
+.tl-in-a .term-card{animation:tlPopA .34s cubic-bezier(.22,1.2,.36,1) backwards;}
+.tl-in-b .term-card{animation:tlPopB .34s cubic-bezier(.22,1.2,.36,1) backwards;}
+.tl-row .term-card:nth-child(2){animation-delay:.035s;}
+.tl-row .term-card:nth-child(3){animation-delay:.07s;}
 @media (prefers-reduced-motion:reduce){
   .tl-in-a .term-card,.tl-in-b .term-card{animation:none;}
 }
@@ -1650,14 +1654,12 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .pp-read{position:relative;z-index:2;flex:1;min-width:0;min-height:0;box-sizing:border-box;
   display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
   padding:clamp(28px,5vh,52px) clamp(28px,8vw,120px) clamp(28px,5vh,52px) clamp(22px,5vw,76px);
-  /* The poem was scrolling behind the system's own scrollbar - a grey channel
-     with arrows on it, running the height of a page that is otherwise a
-     photograph. The same thin rail the song list uses: visible enough to say
-     there is more poem, quiet enough not to be furniture. */
-  scrollbar-width:thin;scrollbar-color:rgba(228,206,213,.28) transparent;}
-.pp-read::-webkit-scrollbar{width:8px}
-.pp-read::-webkit-scrollbar-thumb{background:rgba(228,206,213,.28);border-radius:4px}
-.pp-read::-webkit-scrollbar-thumb:hover{background:rgba(228,206,213,.45)}
+  /* No rail of its own. A long poem had two of them side by side - this one
+     and the pink progress bar beside the art, which is already saying how
+     far down the poem you are and is the better of the two. The poem still
+     scrolls; it just does not draw a second channel to say so. */
+  scrollbar-width:none;-ms-overflow-style:none;}
+.pp-read::-webkit-scrollbar{width:0;height:0;display:none}
 .pp-read::-webkit-scrollbar-track{background:transparent}
 .pp-hold{position:relative;z-index:1;max-width:40ch;flex:none;margin:auto auto auto 0;}
 /* a pane of frosted glass under the words, faded at its edges so it is a
@@ -3832,9 +3834,22 @@ class Component extends DCLogic {
     /* One turn per gesture. A trackpad sends a long tail of small wheel events
        for one flick; without the cooldown one flick would throw three shelves
        past. */
+    /* One flick, one shelf - but the second flick must not have to wait.
+
+       The old rule was half a second on the clock, which eats the momentum
+       tail a trackpad keeps sending after the fingers lift, and eats a
+       deliberate second flick with it. The gesture is what matters, not the
+       clock: events arriving in an unbroken run are one flick, and a gap
+       means the hand has come back. So a run turns one shelf however long
+       it coasts, and a new run turns immediately.
+
+       The 150ms floor is only for the thumb and the keyboard, which have no
+       tail to ignore and no reason to fire twice in that time. */
     const turn = (d) => {
       const now = Date.now();
-      if (now - this._tlCool < 520) return;
+      if (this._tlSpent) return;
+      if (now - this._tlCool < 150) return;
+      this._tlSpent = true;
       this._tlCool = now;
       this.tlStep(d);
     };
@@ -3875,6 +3890,12 @@ class Component extends DCLogic {
     this._tlWheel = (e) => {
       if (!live()) return;
       if (e.target && e.target.closest && e.target.closest('.player-vol,footer,.tl-sug')) return;
+      /* Every event counts towards deciding whether this is still the same
+         flick, including the small ones the tail is made of - which is why
+         this is read before the size test below throws them away. */
+      const now = Date.now();
+      if (now - (this._tlLast || 0) > 120) this._tlSpent = false;
+      this._tlLast = now;
       const dx = e.deltaX, dy = e.deltaY;
       const v = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
       if (Math.abs(v) < 12) return;
@@ -3885,6 +3906,9 @@ class Component extends DCLogic {
     this._tlTouch = null;
     this._tlDown = (e) => {
       this._tlTouch = null;
+      /* a finger down is unmistakably a new gesture, whatever the wheel was
+         doing a moment ago */
+      this._tlSpent = false;
       if (!live() || !e.touches || e.touches.length !== 1) return;
       const t = e.target;
       if (!t || !t.closest || !t.closest('.tl-stage') || t.closest('button')) return;
