@@ -2610,19 +2610,21 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));grid-auto-rows:1fr;gap:16px;">
         <sc-for list="{{ grp.tools }}" as="tool" hint-placeholder-count="1">
           <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;height:100%;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
-            <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--tc);z-index:2;"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;right:-64px;bottom:-48px;width:260px;height:260px;stroke:var(--tc);stroke-width:0.5;opacity:.12;z-index:0;pointer-events:none;"><path d="{{ tool.icon }}"></path></svg>
+            <div style="position:relative;overflow:hidden;flex:none;height:50px;background:var(--tc);color:var(--tcBg);display:flex;align-items:center;padding:0 18px 0 100px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
-              <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.78;white-space:nowrap;overflow:hidden;">
-                {{ tool.icon }}
-                <span style="overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</span>
-              </div>
-              <div style="position:relative;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;margin-top:5px;">{{ tool.name }}</div>
+              <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
             </div>
-            <div style="position:relative;padding:17px 18px 18px;display:flex;flex-direction:column;flex:1;">
+            <div style="position:absolute;left:24px;top:16px;width:62px;height:62px;box-sizing:border-box;border-radius:17px;background:radial-gradient(circle,rgba(var(--tcRGB),.30),rgba(var(--tcRGB),.06) 45%,rgba(var(--tcRGB),0) 70%),var(--tcBg);border:2px solid var(--tc);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -8px rgba(0,0,0,.8);z-index:3;">
+              <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:32px;height:32px;stroke:var(--tc);stroke-width:1.6;filter:drop-shadow(0 0 4px rgba(var(--tcRGB),.6));"><path d="{{ tool.icon }}"></path></svg>
+            </div>
+            <div style="position:relative;padding:40px 18px 18px 28px;display:flex;flex-direction:column;flex:1;">
+              <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;color:var(--text);margin-bottom:10px;">{{ tool.name }}</div>
               <div class="tdesc">{{ tool.desc }}</div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:16px;border-top:1px solid var(--line);">
                 <span style="font-size:13.5px;font-weight:600;color:var(--tcB);">Open tool &#8594;</span>
-                <span style="width:7px;height:7px;border-radius:50%;background:var(--tc);animation:termLed 1.8s ease-in-out infinite;"></span>
+                <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--mute);">{{ tool.code }}</span>
               </div>
             </div>
           </a>
@@ -2659,19 +2661,21 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         <div class="{{ tlRowClass }}">
         <sc-for list="{{ tlCards }}" as="tool" hint-placeholder-count="3">
           <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
-            <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--tc);z-index:2;"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;right:-64px;bottom:-48px;width:260px;height:260px;stroke:var(--tc);stroke-width:0.5;opacity:.12;z-index:0;pointer-events:none;"><path d="{{ tool.icon }}"></path></svg>
+            <div style="position:relative;overflow:hidden;flex:none;height:50px;background:var(--tc);color:var(--tcBg);display:flex;align-items:center;padding:0 18px 0 100px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
-              <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.78;white-space:nowrap;overflow:hidden;">
-                {{ tool.icon }}
-                <span style="overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</span>
-              </div>
-              <div style="position:relative;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;margin-top:5px;">{{ tool.name }}</div>
+              <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
             </div>
-            <div style="position:relative;padding:17px 18px 18px;display:flex;flex-direction:column;flex:1;min-height:0;">
+            <div style="position:absolute;left:24px;top:16px;width:62px;height:62px;box-sizing:border-box;border-radius:17px;background:radial-gradient(circle,rgba(var(--tcRGB),.30),rgba(var(--tcRGB),.06) 45%,rgba(var(--tcRGB),0) 70%),var(--tcBg);border:2px solid var(--tc);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -8px rgba(0,0,0,.8);z-index:3;">
+              <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:32px;height:32px;stroke:var(--tc);stroke-width:1.6;filter:drop-shadow(0 0 4px rgba(var(--tcRGB),.6));"><path d="{{ tool.icon }}"></path></svg>
+            </div>
+            <div style="position:relative;padding:40px 18px 18px 28px;display:flex;flex-direction:column;flex:1;min-height:0;">
+              <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;color:var(--text);margin-bottom:10px;">{{ tool.name }}</div>
               <div class="tdesc">{{ tool.desc }}</div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:16px;border-top:1px solid var(--line);">
                 <span style="font-size:13.5px;font-weight:600;color:var(--tcB);">Open tool &#8594;</span>
-                <span style="width:7px;height:7px;border-radius:50%;background:var(--tc);animation:termLed 1.8s ease-in-out infinite;"></span>
+                <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--mute);">{{ tool.code }}</span>
               </div>
             </div>
           </a>
@@ -5803,13 +5807,9 @@ class Component extends DCLogic {
          const ic = TOOLICON[t.cls.replace('tool-','')];
          return {...t, glyph:'gmark g-' + (FAMILY[t.group] ? FAMILY[t.group].glyph : 'circle'),
            code: ic ? ic[0] : '',
-           /* drawn rather than written: one path, the tool's own ink over its
-              own colour, and it costs no request */
-           icon: ic ? React.createElement('svg', { width:17, height:17, viewBox:'0 0 24 24',
-             fill:'none', stroke:'currentColor', strokeWidth:1.9,
-             strokeLinecap:'round', strokeLinejoin:'round', 'aria-hidden':'true',
-             style:{ flex:'none', opacity:.92 } },
-             React.createElement('path', { key:'p', d: ic[1] })) : null };
+           /* the bare path: the card draws it three times at three sizes -
+              a lit badge, a watermark in the corner, and nothing else needed */
+           icon: ic ? ic[1] : '' };
        });
       const gs = (A && A.grouped) ? A.grouped(cards) : [{ group:'', items:cards }];
       /* A group with nothing left in it is a heading over empty space — which
