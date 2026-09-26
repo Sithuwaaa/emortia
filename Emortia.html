@@ -2612,8 +2612,8 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
           <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;height:100%;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
             <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
-              <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;">
-                <span class="{{ tool.glyph }}" aria-hidden="true"></span>
+              <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.78;white-space:nowrap;overflow:hidden;">
+                {{ tool.icon }}
                 <span style="overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</span>
               </div>
               <div style="position:relative;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;margin-top:5px;">{{ tool.name }}</div>
@@ -2661,8 +2661,8 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
           <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
             <div style="position:relative;overflow:hidden;background:var(--tc);color:var(--tcBg);padding:17px 18px 15px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
-              <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.72;white-space:nowrap;overflow:hidden;">
-                <span class="{{ tool.glyph }}" aria-hidden="true"></span>
+              <div style="position:relative;display:flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.78;white-space:nowrap;overflow:hidden;">
+                {{ tool.icon }}
                 <span style="overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</span>
               </div>
               <div style="position:relative;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;margin-top:5px;">{{ tool.name }}</div>
@@ -5669,6 +5669,72 @@ class Component extends DCLogic {
       return t === 'public' ? true : !!s.isOwner;
     };
 
+    /* One glyph per tool, from the design's icon sheet. The colours there
+       are the old palette, so only the drawing is taken: each glyph wears
+       its own tool's colour, which is the point of having one. */
+    const TOOLICON = {
+          "design": [
+                "DX",
+                "M6 3h8l4 4v14H6z M14 3v4h4 M9 11h6 M9 14.5h6 M9 18h3"
+          ],
+          "mat": [
+                "MC",
+                "M3.5 12.5l9-9H20v7.5l-9 9z M15 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"
+          ],
+          "bom": [
+                "BM",
+                "M4 6l1.5 1.5L8 5 M11 6.5h9 M4 12l1.5 1.5L8 11 M11 12.5h9 M4.5 18h3 M11 18.5h9"
+          ],
+          "gin": [
+                "GN",
+                "M5 3h8l4 4v5 M13 3v4h4 M5 3v18h7 M8 10h5 M8 14h3 M15 17h6 M18.5 14.5L21 17l-2.5 2.5"
+          ],
+          "data": [
+                "SD",
+                "M12 8l-4.5 13 M12 8l4.5 13 M9 16h6 M10.2 12.5h3.6 M8.5 3.5a4.5 4.5 0 0 0 0 6 M15.5 3.5a4.5 4.5 0 0 1 0 6 M11 6.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"
+          ],
+          "access": [
+                "SA",
+                "M12 21s-7-6-7-11.5a7 7 0 0 1 14 0C19 15 12 21 12 21z M9.5 9.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0"
+          ],
+          "update": [
+                "PU",
+                "M3 20.5h18 M6 17v-4 M10.5 17V9 M15 17v-6 M19.5 17V5 M4 9l5-4 4 3 7-5"
+          ],
+          "rf": [
+                "RF",
+                "M3 5h5v5H3z M16 14h5v5h-5z M8 7.5c7 0 1 9 8 9"
+          ],
+          "esn": [
+                "ES",
+                "M7 7h10v10H7z M10 10h4v4h-4z M10 3v4 M14 3v4 M10 17v4 M14 17v4 M3 10h4 M3 14h4 M17 10h4 M17 14h4"
+          ],
+          "field": [
+                "FC",
+                "M3 5h18v14H3z M7 10l3 2-3 2 M12.5 14.5h4.5"
+          ],
+          "swap": [
+                "SW",
+                "M4 8.5h15 M15.5 5L19 8.5 15.5 12 M20 15.5H5 M8.5 12L5 15.5 8.5 19"
+          ],
+          "todo": [
+                "TD",
+                "M4 4.5h5v5H4z M12 7h8 M4 16l2 2 3.5-4 M12 17h8"
+          ],
+          "team": [
+                "TM",
+                "M6 8a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6 M15.5 5.3a3 3 0 0 1 0 5.4 M18 14.4c1.8.9 3 2.9 3 5.6"
+          ],
+          "att": [
+                "AT",
+                "M3 8h4l2-3h6l2 3h4v11H3z M8.5 13a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0 M12 11.5V13l1 1"
+          ],
+          "lyric": [
+                "VA",
+                "M3 5h18v14H3z M10 9v6l5-3z"
+          ]
+    };
+
     /* Which shape and which colour a family wears. Keyed by the group name
        the access list gives, so a group renamed there shows up here as a
        missing shape rather than a wrong one. */
@@ -5733,7 +5799,18 @@ class Component extends DCLogic {
       ].filter(t=>!t.feature || may(t.feature))
        .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
                   group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}))
-       .map(t=>({...t, glyph:'gmark g-' + (FAMILY[t.group] ? FAMILY[t.group].glyph : 'circle')}));
+       .map(t=>{
+         const ic = TOOLICON[t.cls.replace('tool-','')];
+         return {...t, glyph:'gmark g-' + (FAMILY[t.group] ? FAMILY[t.group].glyph : 'circle'),
+           code: ic ? ic[0] : '',
+           /* drawn rather than written: one path, the tool's own ink over its
+              own colour, and it costs no request */
+           icon: ic ? React.createElement('svg', { width:17, height:17, viewBox:'0 0 24 24',
+             fill:'none', stroke:'currentColor', strokeWidth:1.9,
+             strokeLinecap:'round', strokeLinejoin:'round', 'aria-hidden':'true',
+             style:{ flex:'none', opacity:.92 } },
+             React.createElement('path', { key:'p', d: ic[1] })) : null };
+       });
       const gs = (A && A.grouped) ? A.grouped(cards) : [{ group:'', items:cards }];
       /* A group with nothing left in it is a heading over empty space — which
          is what a shut switch would otherwise leave behind. */

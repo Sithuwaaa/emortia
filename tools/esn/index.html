@@ -242,6 +242,24 @@
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
 <script src="../_lib/motion.js?v=1" defer></script>
 <script src="../_lib/ask.js?v=1" defer></script>
+<style id="emortia-navsize">
+/* ---- the bar, at the size the site wears ----
+   34px mark, 18px name, 14/28 padding: the same numbers as the front page,
+   so moving between the site and a tool is not a change of scale. The mark's
+   four bars are scaled with it rather than left at their old heights. */
+header.hdr{padding:calc(env(safe-area-inset-top) + 14px) 28px 14px;gap:12px}
+header.hdr .logo{width:34px;height:34px;gap:2.5px}
+header.hdr .logo i{width:3px}
+header.hdr .logo i:nth-child(1){height:8px}
+header.hdr .logo i:nth-child(2){height:14px}
+header.hdr .logo i:nth-child(3){height:10px}
+header.hdr .logo i:nth-child(4){height:15px}
+header.hdr .bname{font-size:18px}
+header.hdr h1{font-size:18px}
+header.hdr .hsep{height:21px}
+/* a phone has no room for 28px of gutter either side */
+@media (max-width:640px){header.hdr{padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;gap:10px}}
+</style>
 </head>
 <body>
 <header class="hdr">
