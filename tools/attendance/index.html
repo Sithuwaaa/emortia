@@ -83,6 +83,71 @@
 
   /* One tab per thing the office does, because the day is read every morning
      and the other three are touched once a month between them. */
+  /* ---- the month view ----
+     A person a row, a day a column. The first column and the header row stay
+     put while the month scrolls sideways under them, because a square with
+     no name and no date beside it says nothing. */
+  .dsh-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .dsh-nav{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line3);
+    border-radius:999px;padding:4px}
+  .dsh-nav b{font-weight:700;font-size:14px;min-width:132px;text-align:center}
+  .dsh-mv{width:32px;height:32px;border-radius:50%;border:0;background:transparent;color:var(--text);
+    font-size:16px;cursor:pointer}
+  .dsh-mv:hover{background:rgba(255,255,255,.06)}
+  .dsh-shape{display:flex;background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:3px;margin-left:auto}
+  .dsh-sh{padding:7px 14px;border:0;border-radius:7px;cursor:pointer;font-weight:600;font-size:13px;
+    background:transparent;color:var(--muted)}
+  .dsh-sh.on{background:var(--accent);color:var(--ink)}
+  .dsh-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+  .dsh-stat{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+  .dsh-stat::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--sc)}
+  .dsh-stat .l{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted)}
+  .dsh-stat .v{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:34px;
+    letter-spacing:-.03em;line-height:1}
+  .dsh-stat .v i{font-style:normal;font-family:'Hanken Grotesk',sans-serif;font-weight:500;
+    font-size:14px;color:var(--muted);margin-left:4px}
+  .dsh-stat .s{font-size:12.5px;color:var(--muted)}
+  .dsh-key{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:12px}
+  .dsh-key span{display:flex;align-items:center;gap:6px}
+  .dsh-key i{width:12px;height:12px;border-radius:3px;box-sizing:border-box;flex:none}
+  .dsh-wrap{overflow-x:auto;overflow-y:hidden}
+  .dsh-grid{min-width:max-content}
+  .dsh-hrow,.dsh-row{display:flex;align-items:center}
+  .dsh-who{width:230px;min-width:230px;box-sizing:border-box;flex:none;position:sticky;left:0;z-index:2;
+    background:var(--card);display:flex;align-items:center;gap:10px;padding:4px 14px;
+    font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dsh-hrow .dsh-who{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);padding:8px 14px}
+  .dsh-who .av{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--ink);
+    font:700 10.5px/1 'Space Mono',monospace;display:flex;align-items:center;justify-content:center;flex:none}
+  .dsh-dh{width:30px;min-width:30px;flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0}
+  .dsh-dh .wd{font-size:10px;color:var(--muted)}
+  .dsh-dh .dn{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;color:var(--dim)}
+  .dsh-dh.sun .wd,.dsh-dh.sun .dn{color:var(--mute,#7d6479);opacity:.7}
+  .dsh-dh.now .dn{background:var(--accent);color:var(--ink)}
+  .dsh-c{width:30px;min-width:30px;flex:none;display:flex;justify-content:center;padding:3px 0}
+  .dsh-row:hover{background:rgba(var(--accentRGB,234,132,250),.05)}
+  .dsh-role{position:sticky;left:0;width:max-content;white-space:nowrap;padding:14px 14px 6px;
+    font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+  .dsh-tot{width:160px;flex:none;display:grid;grid-template-columns:repeat(3,1fr) 52px;gap:4px;
+    align-items:center;padding:0 14px;font-family:'Space Mono',monospace;font-size:12px;text-align:center}
+  .dsh-hrow .dsh-tot{font-size:10px;color:var(--muted);padding-bottom:8px}
+  .dsh-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .dsh-tile{background:var(--card2);border:1px solid var(--line3);border-radius:14px;padding:14px;
+    display:flex;flex-direction:column;gap:12px}
+  .dsh-tile .hd{display:flex;align-items:center;gap:10px}
+  .dsh-tile .av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--ink);
+    font:700 12px/1 'Space Mono',monospace;display:flex;align-items:center;justify-content:center;flex:none}
+  .dsh-tile .nm{display:flex;flex-direction:column;min-width:0;flex:1}
+  .dsh-tile .nm b{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dsh-tile .nm i{font-style:normal;font-size:11.5px;color:var(--muted)}
+  .dsh-tile .rate{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px}
+  .dsh-tile .mini{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .dsh-tile .ft{display:flex;gap:14px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+  @media (max-width:640px){ .dsh-who{width:150px;min-width:150px} }
   .tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:18px}
   .tab{font:inherit;font-size:13.5px;padding:10px 15px;border:0;background:none;cursor:pointer;
     color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;
@@ -252,7 +317,10 @@ let DEVICES = [], MADE = null, LEAVE = [];      // MADE: a link just created, sh
    thing this page shows and pretending otherwise would mean loading one. */
 let XSCOPE = 'day', XMONTH = DAY.slice(0, 7), XWHO = '';
 let OLD = 90;                                   // how old a picture has to be to be swept
-let TAB = 'day';                                // day | leave | team | links
+let TAB = 'dash';                               // dash | day | leave | team | links
+/* the month view: which month, which shape, and the month itself once it
+   has been fetched - kept so flipping grid/tiles does not re-query */
+let DYM = A.dstr(new Date()).slice(0, 7), DDAYS = null, DSHAPE = 'grid', DBUSY = false, DERR = '';
 let AHEAD = [];                                 // leave marked for the days to come
 let BELL = false, SEEN = null;                  // SEEN: the ids already known, so an arrival is an arrival
 let LV_WHO = '', LV_FROM = '', LV_TO = '', LV_NOTE = '';
@@ -413,8 +481,8 @@ function renderOffice(){
   const day = A.ofDay(RECS, DAY);
   const st = A.stats(sheet, day);
 
-  const tabs = [['day','The day', day.length], ['leave','Leave', AHEAD.length],
-                ['team','Team members', PEOPLE.length]];
+  const tabs = [['dash','The month', 0], ['day','The day', day.length],
+                ['leave','Leave', AHEAD.length], ['team','Team members', PEOPLE.length]];
   /* CAN_EDIT rather than IS_OWNER: an office admin runs this tool, and running
      it includes handing a phone its link and taking it back when the phone is
      lost. Everything else on the page already asks CAN_EDIT; this one tab was
@@ -429,13 +497,184 @@ function renderOffice(){
   if (BELL) h += bellPanel(day);
   if (ERR) h += '<div class="empty">' + esc(ERR) + '</div>';
 
-  h += TAB === 'leave' ? viewLeave()
+  h += TAB === 'dash'  ? viewDash()
+     : TAB === 'leave' ? viewLeave()
      : TAB === 'team'  ? viewTeam()
      : TAB === 'links' ? viewLinks()
      : viewDay(sheet, day, st, late);
 
   $('main').innerHTML = h;
   wireOffice(sheet, late);
+}
+
+/* ---------------------------------------------------------- the month view
+
+   A person a row, a day a column, for the month being looked at. The same
+   A.monthSheets() the exports use, so a day that reads Late here reads Late
+   in the spreadsheet - there is one rule and it lives in one place. */
+async function loadDash(force){
+  if (DBUSY) return;
+  if (DDAYS && DDAYS.ym === DYM && !force) return;
+  const from = A.monthStart(DYM), to = A.monthEnd(DYM);
+  if (!from || !to) return;
+  DBUSY = true; DERR = ''; paint();
+  try {
+    const [r, l] = await Promise.all([window.DB.attendRange(from, to), window.DB.attendLeaveRange(from, to)]);
+    if (r.error) throw new Error(r.error);
+    DDAYS = { ym: DYM,
+      days: A.monthSheets(PEOPLE, r.records, (l && l.leave) || [], DYM,
+                          A.lateAfter(SHIFT, GRACE), A.dstr(new Date())) };
+  } catch (e){ DERR = e.message || 'Could not read that month.'; DDAYS = null; }
+  DBUSY = false; paint();
+}
+
+function shiftMonth(by){
+  const [y, m] = DYM.split('-').map(Number);
+  const d = new Date(y, m - 1 + by, 1);
+  DYM = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  DDAYS = null; paint(); loadDash();
+}
+
+/* Every day of the month, whether or not it has been reached: monthSheets
+   stops at today, and a grid that stops with it looks like a month that
+   ended early. */
+function dashDays(){
+  const [y, m] = DYM.split('-').map(Number);
+  const last = new Date(y, m, 0).getDate();
+  const today = A.dstr(new Date());
+  const byDate = {};
+  ((DDAYS && DDAYS.days) || []).forEach(d => { byDate[d.date] = d.sheet; });
+  const out = [];
+  for (let n = 1; n <= last; n++){
+    const ds = DYM + '-' + String(n).padStart(2, '0');
+    const dt = new Date(y, m - 1, n);
+    out.push({ n, ds, wd: ['Su','Mo','Tu','We','Th','Fr','Sa'][dt.getDay()],
+      sun: dt.getDay() === 0, today: ds === today, fut: ds > today,
+      sheet: byDate[ds] || null, dow: dt.getDay() });
+  }
+  return out;
+}
+
+/* One square. The states are the sheet's own, not a second opinion. */
+function dashCell(day, row, name){
+  const tip = name + ' · ' + day.wd + ' ' + day.n + ' · ';
+  const base = 'width:24px;height:24px;box-sizing:border-box;border-radius:6px;font:700 9.5px/1 ' +
+    "'Space Mono',monospace;display:flex;align-items:center;justify-content:center;";
+  if (day.fut) return { st:base + 'background:transparent;border:1px dashed rgba(255,255,255,.09);color:#4a3748', t:'', tip:tip + 'Not yet' };
+  if (!row)    return { st:base + 'background:rgba(255,255,255,.05);color:#5a4458', t:'', tip:tip + (day.sun ? 'Sunday' : 'No sheet') };
+  if (row.present) return {
+    st: base + 'background:var(--ok);color:#0b1a12' + (row.late ? ';box-shadow:inset 0 -4px 0 var(--warn)' : ''),
+    t: row.closed ? '' : '·',
+    tip: tip + (row.late ? 'Late' : 'Present') + (row.closed ? '' : ' · no clock-out') };
+  if (row.leave) return {
+    st: base + 'background:repeating-linear-gradient(135deg,rgba(226,96,122,.45) 0 2px,transparent 2px 5px);' +
+        'border:1.5px solid var(--bad);color:#ffd2dc', t:'L', tip:tip + 'On leave' };
+  if (day.sun) return { st:base + 'background:rgba(255,255,255,.05);color:#5a4458', t:'', tip:tip + 'Sunday' };
+  return { st:base + 'background:var(--bad);color:#2a0610', t:'A', tip:tip + 'Absent' };
+}
+
+/* the month for one person, and the counts under it */
+function dashRow(p, days){
+  const cells = [], t = { p:0, late:0, lv:0, a:0 };
+  days.forEach(day => {
+    const row = day.sheet ? day.sheet.find(x => x.id === p.id) : null;
+    if (!day.fut && row){
+      if (row.present){ t.p++; if (row.late) t.late++; }
+      else if (row.leave) t.lv++;
+      else if (!day.sun) t.a++;
+    }
+    cells.push(dashCell(day, row, p.name));
+  });
+  const worked = t.p + t.a;
+  /* 'who', not 'p': the totals below carry a p of their own - the days
+     present - and spreading them over the person replaced the person with a
+     number, which is how every row lost its name and its role. */
+  return { who: p, cells, ...t, rate: worked ? Math.round(t.p / worked * 100) : null };
+}
+
+function viewDash(){
+  const days = dashDays();
+  const rows = PEOPLE.map(p => dashRow(p, days));
+  const nav = '<div class="dsh-nav">' +
+    '<button class="dsh-mv" data-mon="-1" aria-label="Previous month">&#8249;</button>' +
+    '<b>' + esc(A.monthLabel(DYM)) + '</b>' +
+    '<button class="dsh-mv" data-mon="1" aria-label="Next month">&#8250;</button></div>';
+
+  if (DBUSY) return '<div class="panel">' + nav + '<div class="empty">Reading the month…</div></div>';
+  if (DERR)  return '<div class="panel">' + nav + '<div class="empty">' + esc(DERR) + '</div></div>';
+  if (!PEOPLE.length) return '<div class="panel">' + nav + '<div class="empty">Nobody on the roster yet.</div></div>';
+
+  /* the month in five numbers */
+  const tot = rows.reduce((a, r) => ({ p:a.p + r.p, late:a.late + r.late, lv:a.lv + r.lv, a:a.a + r.a }),
+                          { p:0, late:0, lv:0, a:0 });
+  const expected = tot.p + tot.a;
+  const onTime = tot.p - tot.late;
+  const stat = (label, value, of, sub, c) =>
+    '<div class="dsh-stat" style="--sc:' + c + '"><span class="l">' + esc(label) + '</span>' +
+    '<span class="v">' + value + (of ? '<i>' + esc(of) + '</i>' : '') + '</span>' +
+    '<span class="s">' + esc(sub) + '</span></div>';
+
+  let h = '<div class="dsh-head">' + nav +
+    '<div class="dsh-shape">' +
+      '<button class="dsh-sh' + (DSHAPE === 'grid' ? ' on' : '') + '" data-shape="grid">Grid</button>' +
+      '<button class="dsh-sh' + (DSHAPE === 'tiles' ? ' on' : '') + '" data-shape="tiles">Tiles</button>' +
+    '</div></div>';
+
+  h += '<div class="dsh-stats">' +
+    stat('Days worked', tot.p, expected ? ' / ' + expected : '', 'across ' + PEOPLE.length + ' people', 'var(--ok)') +
+    stat('On time', onTime, tot.p ? ' / ' + tot.p : '', tot.p ? Math.round(onTime / tot.p * 100) + '% of days worked' : 'nothing yet', 'var(--ok)') +
+    stat('Late', tot.late, '', tot.late === 1 ? 'one arrival after ' + A.hm(A.lateAfter(SHIFT, GRACE)) : 'arrivals after ' + A.hm(A.lateAfter(SHIFT, GRACE)), 'var(--warn)') +
+    stat('Absent', tot.a, '', 'no photo, no leave', 'var(--bad)') +
+    stat('On leave', tot.lv, '', 'days marked by the office', 'var(--accent)') +
+    '</div>';
+
+  const legend = '<div class="dsh-key">' +
+    '<span><i style="background:var(--ok)"></i>Present</span>' +
+    '<span><i style="background:var(--ok);box-shadow:inset 0 -3px 0 var(--warn)"></i>Late</span>' +
+    '<span><i style="background:var(--bad)"></i>Absent</span>' +
+    '<span><i style="border:1.5px solid var(--bad);background:repeating-linear-gradient(135deg,rgba(226,96,122,.45) 0 2px,transparent 2px 5px)"></i>Leave</span>' +
+    '<span><i style="background:rgba(255,255,255,.06)"></i>Sunday</span></div>';
+
+  if (DSHAPE === 'tiles'){
+    h += '<div class="panel">' + legend + '<div class="dsh-tiles">' + rows.map(r => {
+      const pad = new Array(days.length ? days[0].dow : 0).fill('<span></span>').join('');
+      return '<div class="dsh-tile"><div class="hd">' +
+        '<span class="av">' + esc(((r.who.name || '?').trim()[0] || '?').toUpperCase()) + '</span>' +
+        '<span class="nm"><b>' + esc(r.who.name) + '</b><i>' + esc(r.who.role || '—') + '</i></span>' +
+        '<span class="rate">' + (r.rate == null ? '—' : r.rate + '%') + '</span></div>' +
+        '<div class="mini">' + pad + r.cells.map(c =>
+          '<span title="' + esc(c.tip) + '" style="' + c.st.replace(/width:24px;height:24px/, 'width:100%;aspect-ratio:1;height:auto') + '">' + c.t + '</span>').join('') + '</div>' +
+        '<div class="ft"><span><b style="color:var(--ok)">' + r.p + '</b> present</span>' +
+        '<span><b style="color:var(--bad)">' + r.a + '</b> absent</span>' +
+        '<span><b style="color:var(--accent)">' + r.lv + '</b> leave</span></div></div>';
+    }).join('') + '</div></div>';
+    return h;
+  }
+
+  /* the grid, grouped by role the way the day sheet is */
+  const byRole = {};
+  rows.forEach(r => { const k = r.who.role || 'Team'; (byRole[k] = byRole[k] || []).push(r); });
+
+  h += '<div class="panel">' + legend + '<div class="dsh-wrap"><div class="dsh-grid">' +
+    '<div class="dsh-hrow"><div class="dsh-who">' + days.length + ' days</div>' +
+    days.map(d => '<div class="dsh-dh' + (d.today ? ' now' : '') + (d.sun ? ' sun' : '') + '">' +
+      '<span class="wd">' + d.wd + '</span><span class="dn">' + d.n + '</span></div>').join('') +
+    '<div class="dsh-tot"><span>P</span><span>A</span><span>LV</span><span>RATE</span></div></div>';
+
+  Object.keys(byRole).forEach(role => {
+    h += '<div class="dsh-role">' + esc(role) + ' &#183; ' + byRole[role].length + '</div>';
+    byRole[role].forEach(r => {
+      h += '<div class="dsh-row"><div class="dsh-who">' +
+        '<span class="av">' + esc(((r.who.name || '?').trim()[0] || '?').toUpperCase()) + '</span>' +
+        '<span>' + esc(r.who.name) + '</span></div>' +
+        r.cells.map(c => '<div class="dsh-c"><span title="' + esc(c.tip) + '" style="' + c.st + '">' + c.t + '</span></div>').join('') +
+        '<div class="dsh-tot"><span style="color:var(--ok)">' + r.p + '</span>' +
+        '<span style="color:' + (r.a ? 'var(--bad)' : 'var(--mute)') + '">' + r.a + '</span>' +
+        '<span style="color:' + (r.lv ? 'var(--accent)' : 'var(--mute)') + '">' + r.lv + '</span>' +
+        '<b>' + (r.rate == null ? '—' : r.rate + '%') + '</b></div></div>';
+    });
+  });
+  return h + '</div></div></div>';
 }
 
 /* What is waiting, and what happens when the next one lands. */
@@ -759,6 +998,13 @@ function tile(k, v, colour){
 function wireOffice(sheet, late){
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
     TAB = b.dataset.tab; BELL = false; paint();
+    /* the month is only fetched when somebody asks to see it */
+    if (TAB === 'dash') loadDash();
+  });
+  /* the month view's own controls */
+  document.querySelectorAll('[data-mon]').forEach(b => b.onclick = () => shiftMonth(+b.dataset.mon));
+  document.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => {
+    DSHAPE = b.dataset.shape; paint();
   });
   /* jumping from the bell to the photograph it is about */
   document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => {
@@ -1140,6 +1386,10 @@ async function refresh(){
   }
   SEEN = ids;
   paint();
+  /* The month opens on the month, so it has to fetch itself rather than
+     wait for a tab to be clicked - and it needs PEOPLE, which is why it is
+     asked for here and not at boot. */
+  if (TAB === 'dash') loadDash();
 }
 
 /* The clock ticks by writing into the one element, not by painting the page:

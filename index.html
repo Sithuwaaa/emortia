@@ -2425,23 +2425,28 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </sc-if>
 
         <sc-if value="{{ showJournal }}" hint-placeholder-val="{{ true }}">
-        <div class="hm-feat" onClick="{{ nav.poetry }}" style="border:1px solid #453518;background:radial-gradient(95% 120% at 18% 8%,#2f2211 0%,#1c1610 62%);justify-content:stretch;">
-          <div style="position:absolute;right:-22px;top:-16px;font-family:'EB Garamond',serif;font-size:150px;line-height:1;color:rgba(223,174,99,.09);" aria-hidden="true">&#8221;</div>
+        <!-- Plum, not gold. The latest-tool card beside it takes whichever tool
+             is newest, and that has been amber since Austin SWAP shipped - two
+             gold cards side by side read as one. Plum sits at the far end of
+             the same burgundy arc from both the amber tools and the rose the
+             music card uses. -->
+        <div class="hm-feat" onClick="{{ nav.poetry }}" style="border:1px solid #3c2240;background:radial-gradient(95% 120% at 18% 8%,#2a1330 0%,#190c1d 62%);justify-content:stretch;">
+          <div style="position:absolute;right:-22px;top:-16px;font-family:'EB Garamond',serif;font-size:150px;line-height:1;color:rgba(229,154,216,.10);" aria-hidden="true">&#8221;</div>
           <div class="in" style="height:100%;gap:18px;">
             <div style="flex:1;min-height:64px;display:flex;align-items:center;gap:16px;">
-              <span style="width:2px;flex-shrink:0;border-radius:2px;background:linear-gradient(180deg,#da8f00,rgba(218,143,0,0));"></span>
-              <div style="font-family:'UN-Agni','EB Garamond',serif;font-size:23px;line-height:1.6;color:#f0dcbb;">
+              <span style="width:2px;flex-shrink:0;border-radius:2px;background:linear-gradient(180deg,#c974b4,rgba(201,116,180,0));"></span>
+              <div style="font-family:'UN-Agni','EB Garamond',serif;font-size:23px;line-height:1.6;color:#efdaec;">
                 <sc-for list="{{ hmPoemLines }}" as="pl" hint-placeholder-count="1">
                   <div style="text-wrap:pretty;">{{ pl }}</div>
                 </sc-for>
               </div>
             </div>
             <div style="display:flex;flex-direction:column;gap:11px;">
-              <div style="display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#da8f00;">
+              <div style="display:flex;align-items:center;gap:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#e59ad8;">
                 <span>Latest poem</span>
               </div>
               <div class="ttl" style="font-family:'UN-Agni','EB Garamond',serif;font-weight:400;font-size:clamp(28px,3.2vw,36px);line-height:1.14;letter-spacing:0;">{{ hmPoemTitle }}</div>
-              <span class="pill" style="background:#da8f00;color:#1a1000;">Read it &#8594;</span>
+              <span class="pill" style="background:#e59ad8;color:#1e0a1c;">Read it &#8594;</span>
             </div>
           </div>
         </div>
@@ -2489,8 +2494,8 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
            links sit on it as a dock, and the name is a watermark behind. -->
       <div class="hm-else pulse">
         <svg class="pl" aria-hidden="true" viewBox="0 0 1400 200" preserveAspectRatio="xMidYMid slice">
-          <path d="" fill="none" stroke="rgba(232,122,148,.35)" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
-          <circle r="5" fill="#e87a94" style="filter:drop-shadow(0 0 8px #e87a94);"><animateMotion dur="6s" repeatCount="indefinite" path=""></animateMotion></circle>
+          <path d="M0 100 H300 L330 50 L360 150 L390 100 H1010 L1040 40 L1070 160 L1100 100 H1400" fill="none" stroke="rgba(232,122,148,.35)" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+          <circle r="5" fill="#e87a94" style="filter:drop-shadow(0 0 8px #e87a94);"><animateMotion dur="6s" repeatCount="indefinite" path="M0 100 H300 L330 50 L360 150 L390 100 H1010 L1040 40 L1070 160 L1100 100 H1400"></animateMotion></circle>
         </svg>
         <div class="wm" aria-hidden="true">Emortia</div>
         <div class="row">
@@ -2498,7 +2503,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
           <div class="dock">
             <sc-for list="{{ elseLinks }}" as="s" hint-placeholder-count="5">
               <a class="dk" href="{{ s.href }}" target="_blank" rel="noopener noreferrer" title="{{ s.name }}" aria-label="{{ s.name }}">
-                <span class="ico" style="background:{{ s.bg }};border-color:{{ s.bd }};">{{ s.svg }}</span>
+                <span class="ico" style="background:{{ s.bg }};border-color:{{ s.bd }};box-shadow:{{ s.sh }};">{{ s.svg }}</span>
                 <span class="nm">{{ s.name }}</span>
               </a>
             </sc-for>
@@ -6125,6 +6130,7 @@ class Component extends DCLogic {
          there is still one place a social link is written down. */
       elseLinks: this.socialData().map(x => ({
         name:x.name, href:x.href, bg:x.hoverBg, bd:x.hoverBorder,
+        sh: '0 0 18px -2px ' + x.hoverBorder,
         svg: React.createElement('svg', { viewBox:'0 0 24 24', width:26, height:26, 'aria-hidden':'true' },
           (x.colour || [{ d:x.path, fill:'currentColor' }]).map((p, i) =>
             React.createElement('path', { key:i, d:p.d, fill:p.fill,
