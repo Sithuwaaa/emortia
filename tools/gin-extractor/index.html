@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0c1619">
 <title>GIN Extractor</title>
-<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Emortia">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script src="/pwa.js" defer></script>
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
@@ -858,10 +864,11 @@ function exportMoveExcel() {
 
 render();
 
-/* ---------- service worker ---------- */
-if ('serviceWorker' in navigator) {
-  addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
-}
+/* ---------- service worker ----------
+   This tool used to register its own, under its own scope, and that worker
+   served everything from its cache for ever. The site has one at the root
+   now; the file that used to be here is a stub whose only job is to remove
+   the old registration, and nothing re-registers it. */
 </script>
 </body>
 </html>

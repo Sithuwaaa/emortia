@@ -996,6 +996,14 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 <helmet>
 <title>Emortia</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2b171e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Emortia">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script src="/pwa.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -2024,6 +2032,13 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
   transition:background .18s ease,transform .18s ease,box-shadow .18s ease;}
 .playall:hover{background:var(--accentB);transform:translateY(-1px);box-shadow:0 12px 30px var(--glowSoft)}
+/* An offer, not a demand: the shape of the play button, drawn in outline so
+   it never competes with it. */
+.installbtn{display:inline-flex;align-items:center;gap:9px;background:transparent;color:var(--dim);
+  border:1px solid var(--line2);border-radius:999px;padding:12px 20px;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  transition:color .18s ease,border-color .18s ease,transform .18s ease;}
+.installbtn:hover{color:var(--text);border-color:var(--accentB);transform:translateY(-1px);}
 .spin-now{display:flex;align-items:center;gap:11px;min-width:0}
 .spin-dot{width:9px;height:9px;border-radius:50%;background:var(--accentB);flex-shrink:0;
   box-shadow:0 0 0 4px var(--glowSoft);animation:termLed 1.9s ease-in-out infinite}
@@ -2125,6 +2140,17 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .mt-row:hover{background:rgba(var(--accentRGB,194,65,95),.14);}
 .mt-row.on{background:rgba(var(--accentRGB,194,65,95),.18);}
 .mt-row .n{font-family:'Space Mono',monospace;font-size:12px;color:var(--mute);}
+/* Keeping a song on the device. Quiet until the row is under the cursor,
+   because it is an occasional thing - but a song already kept says so all
+   the time, since that is the state worth seeing at a glance. */
+.mt-off{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:none;
+  font-size:13px;line-height:1;color:var(--mute);border:1px solid transparent;cursor:pointer;
+  opacity:0;transition:opacity .16s ease,color .16s ease,border-color .16s ease,background .16s ease;}
+.mt-row:hover .mt-off,.mt-row:focus-within .mt-off{opacity:1;}
+.mt-off:hover{color:var(--accentB);border-color:var(--accentB);background:rgba(var(--accentRGB,194,65,95),.16);}
+.mt-off.on{opacity:1;color:var(--accentB);border-color:rgba(var(--accentRGB,194,65,95),.55);}
+.mt-off.busy{opacity:1;color:var(--dim);cursor:progress;}
+@media (hover:none){.mt-off{opacity:1;}}
 .mt-row .shot{width:46px;height:46px;border-radius:8px;flex:none;overflow:hidden;
   background:var(--surface2);box-shadow:0 8px 20px rgba(0,0,0,.4);opacity:.78;}
 .mt-row.on .shot{opacity:1;}
@@ -2290,6 +2316,15 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
                 <b class="spin-tit">{{ nowSpinning }}</b>
               </span>
             </div>
+            <!-- Only ever drawn when the browser has offered: the event that
+                 sets this never fires once the app is installed, and never at
+                 all where installing is not a thing. No dead button. -->
+            <sc-if value="{{ canInstall }}" hint-placeholder-val="{{ false }}">
+              <button class="installbtn" onClick="{{ doInstall }}" title="Put Emortia on your home screen">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 11l5 5 5-5"></path><path d="M4 20h16"></path></svg>
+                Install
+              </button>
+            </sc-if>
           </div>
         </div>
       </div>
@@ -2514,6 +2549,10 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
                 <span style="display:flex;align-items:center;gap:9px;">
                   <sc-if value="{{ track.queued }}" hint-placeholder-val="{{ false }}">
                     <span class="qd">{{ track.queuedAt }}</span>
+                  </sc-if>
+                  <sc-if value="{{ track.offShow }}" hint-placeholder-val="{{ false }}">
+                    <span class="{{ track.offCls }}" role="button" tabindex="0" title="{{ track.offTitle }}"
+                          aria-label="{{ track.offTitle }}" onClick="{{ track.onOffline }}">{{ track.offGlyph }}</span>
                   </sc-if>
                   <span class="d">{{ track.durLabel }}</span>
                 </span>
@@ -2876,6 +2915,8 @@ class Component extends DCLogic {
       /* Poetry: which poem, which way it was turned, and a counter that
          alternates the A/B animations so a turn always moves. */
       ppIdx:0, ppDir:1, ppTick:0,
+      /* which songs are kept on this device, and which are being fetched */
+      audioSaved:[], audioBusy:{},
       /* which shelf of tools is showing, a tick to restart its arrival, and
          how many cards a shelf holds at this width */
       tlIdx:0, tlTick:0, tlPer:Component.toolsPer(), tlQuery:'', tlSugOpen:false, tlSugAt:0,
@@ -3105,6 +3146,16 @@ class Component extends DCLogic {
     /* One row per page view. Fire and forget: db.js swallows every failure,
        because counting visits is not worth a visitor seeing an error. */
     if (window.DB && DB.trackVisit) DB.trackVisit(location.pathname);
+    /* Which songs are already on the device. The worker answers when it is
+       ready, which on a first visit is a moment after this. */
+    this.refreshSavedAudio();
+    setTimeout(() => this.refreshSavedAudio(), 2500);
+    /* The browser decides whether installing is on offer, and tells pwa.js;
+       pwa.js tells the page. Nothing is drawn until it says yes. */
+    const inst = () => { const A=window.Emortia;
+      this.setState({ canInstall: !!(A && A.canInstall && A.canInstall() && !A.installed()) }); };
+    addEventListener('emortia:install-state', inst);
+    inst();
     this.bindAudioEvents();
     /* The player used to open with the first track already loaded, so the
        bar read 'Harana Hitha' and row one sat highlighted before anyone had
@@ -4388,6 +4439,44 @@ class Component extends DCLogic {
     }
     return React.createElement('div',{key:'stars'}, arr);
   }
+  /* ---- keeping a song on the phone ----
+
+     The tracks are WAVs of several megabytes each. Caching them because
+     somebody once pressed play would quietly eat a phone, so nothing is
+     kept unless it is asked for here, one song at a time, and the arrow
+     says which way it would go. The worker does the fetching; this only
+     rings the bell and redraws. */
+  offlineBits(x){
+    const api = window.Emortia, path = new URL(x.src, location.href).pathname;
+    if (!api || !api.save) return { offShow:false, offCls:'', offGlyph:'', offTitle:'' };
+    const busy = !!(this.state.audioBusy || {})[path];
+    const kept = (this.state.audioSaved || []).indexOf(path) > -1;
+    return {
+      offShow: true,
+      offCls: 'mt-off' + (kept ? ' on' : '') + (busy ? ' busy' : ''),
+      offGlyph: busy ? '⋯' : kept ? '✓' : '↓',
+      offTitle: busy ? 'Working…'
+        : kept ? x.t + ' is on this device – click to remove it'
+               : 'Keep ' + x.t + ' on this device for offline',
+      onOffline: (e) => {
+        if (e){ e.preventDefault(); e.stopPropagation(); }
+        if (busy) return;
+        const mark = (v) => this.setState({ audioBusy: { ...(this.state.audioBusy||{}), [path]: v } });
+        mark(true);
+        const after = () => api.saved().then(list => this.setState({
+          audioSaved: list, audioBusy: { ...(this.state.audioBusy||{}), [path]: false } }));
+        (kept ? api.drop(path) : api.save(path))
+          .then(after)
+          .catch(err => { mark(false); console.warn('[offline] ' + x.t + ': ' + err.message); });
+      },
+    };
+  }
+  refreshSavedAudio(){
+    const api = window.Emortia;
+    if (!api || !api.saved) return;
+    api.saved().then(list => { if ((list||[]).join() !== (this.state.audioSaved||[]).join())
+      this.setState({ audioSaved: list }); });
+  }
   renderMusicBg(){
     const idx=this.state.idx;
     if(this._sceneIdx===idx && this._sceneEl) return this._sceneEl;  // cache per track so particles don't teleport each render
@@ -5618,6 +5707,8 @@ class Component extends DCLogic {
 
     return {
       isHome:s.page==='home' || (s.page==='poetry' && !may('journal')),
+      canInstall: !!s.canInstall,
+      doInstall: () => { const A=window.Emortia; if (A && A.install) A.install(); },
       isPoetry: s.page==='poetry' && may('journal'),
       poetryContent: this.renderPoetry(),
       isMusic:s.page==='music', isTools:s.page==='tools', isAbout:s.page==='about', isContact:s.page==='contact',
@@ -5702,7 +5793,8 @@ class Component extends DCLogic {
       tracks: this.sortedTracks().map((x,pos)=>{ const cur=s.picked && x.i===s.idx; const pn=cur&&s.playing; return { ...x, num:String(pos+1).padStart(2,'0'), artReady:(typeof x.img==='string' && x.img.length>0), artImg:this.artImg(x.img,{width:'42px',height:'42px',borderRadius:'7px'}), artImgSm:this.artImg(x.img,{width:'34px',height:'34px',borderRadius:'8px'}), artImgRow:this.artImg(x.img,{width:'100%',height:'100%'}), rowOn: cur?'on':'',
         queued: s.queue.indexOf(x.i) > -1, queuedAt: String(s.queue.indexOf(x.i)+1),
         onMenu:(e)=>{ e.preventDefault(); e.stopPropagation();
-          this.setState({ rowMenu:{ i:x.i, x:e.clientX, y:e.clientY }, sortOpen:false }); }, current:cur, notCurrent:!cur, playingNow:pn, notPlayingNow:!pn, titleColor: cur?'var(--accent)':'var(--text)', onPlay:this.play(x.i), hasArt:!!x.img, noArt:!x.img }; }),
+          this.setState({ rowMenu:{ i:x.i, x:e.clientX, y:e.clientY }, sortOpen:false }); }, current:cur, notCurrent:!cur, playingNow:pn, notPlayingNow:!pn, titleColor: cur?'var(--accent)':'var(--text)', onPlay:this.play(x.i), hasArt:!!x.img, noArt:!x.img,
+        ...this.offlineBits(x) }; }),
 
       sortOpen: s.sortOpen, sortShut: !s.sortOpen,
       sortLabel: (SORTS.find(x=>x[0]===s.sortBy)||SORTS[0])[1],
