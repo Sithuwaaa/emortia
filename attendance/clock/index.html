@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c1619">
+<meta name="robots" content="noindex, nofollow">
+<title>Tooway Clock</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tooway Clock">
+
+<!-- No sign-in, and no access.js, on purpose: the crews have no account and
+     are not going to be given one. What lets this page write is the token in
+     the link, and all a token can do is file a photograph for itself, read
+     the list of names, and ask about one person's own day. See the note at
+     the top of supabase/031_attendance_clock.sql.
+
+     No db.js and no supabase-js either. Three RPC calls do not need a
+     library, and a field app that fetches nothing from a CDN is one that
+     still opens at a site with no signal. -->
+<script src="../../tools/_lib/supabase-config.js"></script>
+
+<style>
+  :root{
+    --bg:#0b1418;--card:#132227;--card2:#0f1d21;--line:#20383f;--line2:#2c4a53;
+    --text:#eaf4f6;--muted:#7f9aa2;--accent:#18a999;--accentB:#2ad0bb;--ink:#04191d;
+    --ok:#38c172;--bad:#ff7d92;--warn:#f0b429;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{background:var(--bg);color:var(--text);
+    font:16px/1.5 'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    display:flex;flex-direction:column;overscroll-behavior:none;}
+  button,input{font:inherit;color:inherit;}
+
+  /* Everything is sized for a thumb in daylight, at arm's length, in a hurry. */
+  .wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:22px;padding:calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 24px);
+    text-align:center;width:100%;max-width:460px;margin:0 auto;}
+
+  .clock{font-family:'Space Mono',ui-monospace,monospace;font-weight:700;
+    font-size:clamp(54px,19vw,84px);line-height:1;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;}
+  .clock small{font-size:.42em;color:var(--muted);margin-left:.18em;letter-spacing:.04em;}
+  .date{font-family:'Space Mono',ui-monospace,monospace;font-size:13px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);}
+
+  .who{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .who b{font-size:25px;font-weight:700;letter-spacing:-.01em;}
+  .notyou{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;
+    text-underline-offset:3px;cursor:pointer;padding:6px 10px;}
+  .notyou:active{color:var(--text);}
+
+  .state{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:52px;justify-content:center;}
+  .since{font-size:16px;color:var(--muted);}
+  .since b{color:var(--text);font-family:'Space Mono',monospace;}
+  .elapsed{font-family:'Space Mono',monospace;font-size:31px;font-weight:700;color:var(--accentB);
+    font-variant-numeric:tabular-nums;}
+
+  .go{width:100%;max-width:330px;min-height:96px;border:0;border-radius:22px;cursor:pointer;
+    font-weight:800;font-size:25px;letter-spacing:-.01em;display:flex;align-items:center;
+    justify-content:center;gap:13px;background:var(--accent);color:var(--ink);
+    box-shadow:0 14px 34px rgba(24,169,153,.3);transition:transform .12s ease,filter .12s ease;}
+  .go:active{transform:scale(.975);filter:brightness(1.08);}
+  .go[disabled]{opacity:.55;cursor:default;box-shadow:none;}
+  .go.out{background:#e2604a;color:#fff;box-shadow:0 14px 34px rgba(226,96,74,.28);}
+
+  .note{font-size:14px;color:var(--muted);min-height:20px;}
+  .note.bad{color:var(--bad);}
+
+  /* The queue is loud on purpose. A record that has not reached the server is
+     the one thing on this screen somebody needs to know about. */
+  .queue{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 12px);
+    background:rgba(240,180,41,.13);border:1px solid var(--warn);border-radius:14px;
+    padding:11px 15px;display:none;align-items:center;gap:11px;font-size:14px;color:#ffd77a;}
+  .queue.on{display:flex;}
+  .queue b{font-family:'Space Mono',monospace;}
+  .queue .spin{width:15px;height:15px;border:2px solid rgba(255,215,122,.3);
+    border-top-color:#ffd77a;border-radius:50%;animation:spin .9s linear infinite;flex:none;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .queue button{margin-left:auto;background:none;border:1px solid var(--warn);color:#ffd77a;
+    border-radius:9px;padding:5px 11px;font-size:13px;cursor:pointer;}
+
+  /* the name picker */
+  .sheet{position:fixed;inset:0;z-index:40;background:var(--bg);display:none;flex-direction:column;}
+  .sheet.on{display:flex;}
+  .sheet header{padding:calc(env(safe-area-inset-top) + 18px) 18px 12px;border-bottom:1px solid var(--line);}
+  .sheet h2{font-size:20px;font-weight:700;margin-bottom:12px;}
+  .sheet input{width:100%;background:var(--card2);border:1px solid var(--line2);border-radius:13px;
+    padding:15px 16px;font-size:17px;outline:none;}
+  .sheet input:focus{border-color:var(--accent);}
+  .names{flex:1;overflow-y:auto;padding:8px 14px calc(env(safe-area-inset-bottom) + 18px);-webkit-overflow-scrolling:touch;}
+  .name{width:100%;text-align:left;background:var(--card);border:1px solid var(--line);
+    border-radius:13px;padding:17px 17px;margin-top:9px;font-size:18px;cursor:pointer;
+    display:flex;flex-direction:column;gap:3px;}
+  .name:active{border-color:var(--accent);}
+  .name span{font-size:12.5px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.08em;text-transform:uppercase;}
+  .empty{color:var(--muted);text-align:center;padding:34px 10px;font-size:15px;}
+
+  /* the camera */
+  .cam{position:fixed;inset:0;z-index:60;background:#000;display:none;flex-direction:column;}
+  .cam.on{display:flex;}
+  .cam video{flex:1;width:100%;object-fit:cover;background:#000;}
+  .cam .bar{padding:18px 18px calc(env(safe-area-inset-bottom) + 22px);display:flex;
+    align-items:center;justify-content:space-between;gap:16px;background:#000;}
+  .shutter{width:76px;height:76px;border-radius:50%;border:5px solid rgba(255,255,255,.85);
+    background:#fff;cursor:pointer;flex:none;}
+  .shutter:active{transform:scale(.94);}
+  .cam .txt{background:none;border:0;color:#fff;font-size:16px;padding:12px;cursor:pointer;min-width:74px;}
+  .cam .msg{position:absolute;top:calc(env(safe-area-inset-top) + 16px);left:16px;right:16px;
+    text-align:center;color:#fff;font-size:15px;text-shadow:0 1px 6px rgba(0,0,0,.8);}
+
+  .install{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 12px);
+    background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:13px 15px;
+    display:none;align-items:center;gap:12px;font-size:14.5px;z-index:30;}
+  .install.on{display:flex;}
+  .install button{background:var(--accent);color:var(--ink);border:0;border-radius:10px;
+    padding:9px 15px;font-weight:700;cursor:pointer;margin-left:auto;flex:none;}
+  .install .x{background:none;color:var(--muted);border:0;padding:9px 4px;margin-left:0;font-size:18px;}
+
+  .gate{padding:32px 24px;text-align:center;display:flex;flex-direction:column;gap:14px;
+    align-items:center;justify-content:center;flex:1;}
+  .gate h1{font-size:23px;font-weight:800;}
+  .gate p{color:var(--muted);font-size:15.5px;max-width:330px;line-height:1.65;}
+  .gate code{font-family:'Space Mono',monospace;font-size:13px;background:var(--card);
+    border:1px solid var(--line);border-radius:8px;padding:3px 8px;color:var(--accentB);
+    display:inline-block;margin-top:2px;word-break:break-all;}
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+
+<!-- No token, and none remembered: say so, rather than showing a clock that
+     cannot file anything. -->
+<div class="gate" id="gate" hidden>
+  <h1>This link is incomplete</h1>
+  <p>The clock needs the device link Sithara set up. Open the full link you
+     were sent – it ends with <code>?d=…</code> – and this screen will
+     remember it for next time.</p>
+  <p id="gateWhy" style="color:var(--bad)"></p>
+</div>
+
+<div class="install" id="install">
+  <span>Add the clock to your home screen.</span>
+  <button id="installGo">Install</button>
+  <button class="x" id="installNo" aria-label="Not now">&times;</button>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <div>
+    <div class="clock" id="clock">--:--<small id="sec">--</small></div>
+    <div class="date" id="date"></div>
+  </div>
+
+  <div class="who">
+    <b id="name">—</b>
+    <button class="notyou" id="notyou">Not you?</button>
+  </div>
+
+  <div class="state" id="state"></div>
+
+  <button class="go" id="go" disabled>Loading…</button>
+  <div class="note" id="note"></div>
+</div>
+
+<div class="queue" id="queue">
+  <span class="spin"></span>
+  <span><b id="qn">0</b> waiting to sync</span>
+  <button id="qgo">Retry</button>
+</div>
+
+<div class="sheet" id="sheet">
+  <header>
+    <h2>Who is clocking in?</h2>
+    <input id="find" type="search" placeholder="Type your name" autocomplete="off" spellcheck="false" enterkeyhint="search">
+  </header>
+  <div class="names" id="names"></div>
+</div>
+
+<div class="cam" id="cam">
+  <div class="msg" id="camMsg">Hold still</div>
+  <video id="vid" playsinline muted autoplay></video>
+  <div class="bar">
+    <button class="txt" id="camX">Cancel</button>
+    <button class="shutter" id="shot" aria-label="Take the photo"></button>
+    <button class="txt" id="camFlip">Flip</button>
+  </div>
+</div>
+
+<script>
+/* ────────────────────────────────────────────────────────────── the clock
+
+   One person, one button. Everything that can be decided on the server is
+   decided on the server: the time that gets recorded, and whether they are
+   clocked in. The device decides two things only - which name, and what the
+   camera saw - and it keeps a failed save until the server has said yes.
+
+   Nothing here talks to db.js or supabase-js. Three RPC calls are three
+   POSTs, and a field app that pulls nothing from a CDN is one that still
+   opens at a site with no signal. */
+'use strict';
+
+var CFG = window.SUPABASE_CONFIG || {};
+var $ = function (id) { return document.getElementById(id); };
+
+/* ---- what the device remembers ---- */
+var K = { token:'tw.clock.token', person:'tw.clock.person', queue:'tw.clock.queue', noInstall:'tw.clock.noinstall' };
+function get(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : v; } catch(e){ return d; } }
+function put(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+function drop(k){ try { localStorage.removeItem(k); } catch(e){} }
+
+/* The token arrives in the address once and is kept, so the installed icon -
+   which opens the start_url with no query on it - still works. */
+var TOKEN = (function () {
+  var q = new URLSearchParams(location.search).get('d');
+  if (q) { put(K.token, q);
+    /* and taken back out of the address, so it is not sitting in a
+       screenshot or a shoulder-surfed address bar all day */
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+    return q; }
+  return get(K.token, '');
+})();
+
+var PERSON = { id: get(K.person + '.id', ''), name: get(K.person + '.name', '') };
+
+/* ---- talking to the server ---- */
+function rpc(fn, args){
+  if (!CFG.url || !CFG.anonKey) return Promise.reject(new Error('This app is not configured.'));
+  return fetch(CFG.url + '/rest/v1/rpc/' + fn, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', apikey: CFG.anonKey, Authorization:'Bearer ' + CFG.anonKey },
+    body: JSON.stringify(args)
+  }).then(function (r) {
+    if (!r.ok) return r.text().then(function (t) { throw new Error('Server said ' + r.status + (t ? ' · ' + t.slice(0,120) : '')); });
+    return r.json();
+  });
+}
+
+/* ────────────────────────────────────────────── the face of it */
+
+var STATE = { state:'out', since:null, skew:0, ready:false };
+
+/* The big clock may come from the handset - it is only being read. What gets
+   recorded never does. The offset between the two is kept so the elapsed
+   time is honest even when the phone's clock is not. */
+function serverNow(){ return new Date(Date.now() + STATE.skew); }
+
+function two(n){ return (n < 10 ? '0' : '') + n; }
+function hhmm(d){ return two(d.getHours()) + ':' + two(d.getMinutes()); }
+
+function tick(){
+  var d = new Date();
+  $('clock').innerHTML = two(d.getHours()) + ':' + two(d.getMinutes()) +
+    '<small>' + two(d.getSeconds()) + '</small>';
+  $('date').textContent = d.toLocaleDateString(undefined,
+    { weekday:'long', day:'numeric', month:'long' });
+  if (STATE.state === 'in' && STATE.since){
+    var s = Math.max(0, Math.floor((serverNow() - STATE.since) / 1000));
+    $('elapsed') && ($('elapsed').textContent =
+      two(Math.floor(s / 3600)) + ':' + two(Math.floor(s / 60) % 60) + ':' + two(s % 60));
+  }
+}
+
+function paint(){
+  $('name').textContent = PERSON.name || '—';
+  var st = $('state'), go = $('go');
+
+  if (!STATE.ready){ st.innerHTML = ''; go.textContent = 'Loading…'; go.disabled = true; return; }
+
+  if (STATE.state === 'in'){
+    st.innerHTML = '<div class="since">Clocked in at <b>' + hhmm(STATE.since) + '</b></div>' +
+                   '<div class="elapsed" id="elapsed">00:00:00</div>';
+    go.textContent = 'Clock out';
+    go.className = 'go out';
+  } else {
+    st.innerHTML = '<div class="since">Not clocked in yet</div>';
+    go.textContent = 'Clock in';
+    go.className = 'go';
+  }
+  go.disabled = false;
+  tick();
+}
+
+function note(msg, bad){
+  $('note').textContent = msg || '';
+  $('note').className = 'note' + (bad ? ' bad' : '');
+}
+
+/* ────────────────────────────────────────────── whose day is it */
+
+var ROSTER = [];
+
+function askStatus(){
+  if (!PERSON.id) { STATE.ready = false; return Promise.resolve(); }
+  return rpc('attend_status', { p_token: TOKEN, p_person: PERSON.id }).then(function (r) {
+    if (!r || !r.ok){
+      /* the roster changed under them, or the link was turned off */
+      note((r && r.why) || 'Could not check with the server.', true);
+      if (r && /roster/i.test(r.why || '')) forget();
+      return;
+    }
+    STATE.skew = new Date(r.now) - Date.now();
+    STATE.state = r.state;
+    STATE.since = r.since ? new Date(r.since) : null;
+    STATE.ready = true;
+    if (r.name && r.name !== PERSON.name){ PERSON.name = r.name; put(K.person + '.name', r.name); }
+    note('');
+    paint();
+  }).catch(function (e) {
+    /* No signal. Say so, and leave the button usable - a clock-in that
+       cannot be checked is still a clock-in that can be queued. */
+    STATE.ready = true;
+    note('Offline – the server will be asked again when there is signal.');
+    paint();
+  });
+}
+
+function forget(){
+  PERSON = { id:'', name:'' };
+  drop(K.person + '.id'); drop(K.person + '.name');
+  STATE = { state:'out', since:null, skew:STATE.skew, ready:false };
+  openSheet();
+}
+
+/* ---- the name picker ---- */
+function openSheet(){
+  $('sheet').classList.add('on');
+  $('find').value = '';
+  drawNames('');
+  setTimeout(function(){ try { $('find').focus(); } catch(e){} }, 120);
+  if (!ROSTER.length) loadRoster();
+}
+function closeSheet(){ $('sheet').classList.remove('on'); }
+
+function loadRoster(){
+  $('names').innerHTML = '<div class="empty">Loading the names…</div>';
+  return rpc('attend_roster', { p_token: TOKEN }).then(function (r) {
+    if (!r || !r.ok){ $('names').innerHTML = '<div class="empty">' + esc((r && r.why) || 'Could not load the names.') + '</div>'; return; }
+    ROSTER = r.people || [];
+    drawNames($('find').value);
+  }).catch(function () {
+    $('names').innerHTML = '<div class="empty">No signal. The list of names needs the internet once – after that the clock works offline.</div>';
+  });
+}
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+  return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+
+function drawNames(q){
+  var s = (q || '').trim().toLowerCase();
+  var list = ROSTER.filter(function (p) { return !s || p.name.toLowerCase().indexOf(s) > -1; });
+  if (!ROSTER.length) return;
+  if (!list.length){ $('names').innerHTML = '<div class="empty">Nobody by that name.</div>'; return; }
+  $('names').innerHTML = list.map(function (p) {
+    return '<button class="name" data-id="' + esc(p.id) + '" data-name="' + esc(p.name) + '">' +
+      esc(p.name) + (p.role ? '<span>' + esc(p.role) + '</span>' : '') + '</button>';
+  }).join('');
+}
+
+$('find').addEventListener('input', function (e) { drawNames(e.target.value); });
+$('names').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-id]'); if (!b) return;
+  PERSON = { id: b.dataset.id, name: b.dataset.name };
+  put(K.person + '.id', PERSON.id); put(K.person + '.name', PERSON.name);
+  closeSheet();
+  paint();
+  askStatus();
+});
+$('notyou').addEventListener('click', forget);
+
+/* ────────────────────────────────────────────── the camera */
+
+var CAM = { stream:null, facing:'user', then:null };
+
+function openCam(then){
+  CAM.then = then;
+  $('cam').classList.add('on');
+  $('camMsg').textContent = 'Hold still';
+  start();
+}
+function start(){
+  stop();
+  navigator.mediaDevices.getUserMedia({ video:{ facingMode: CAM.facing, width:{ ideal:1280 } }, audio:false })
+    .then(function (s) { CAM.stream = s; var v = $('vid'); v.srcObject = s; v.play().catch(function(){}); })
+    .catch(function () { $('camMsg').textContent = 'No camera here. Cancel and tell the office.'; });
+}
+function stop(){ if (CAM.stream){ CAM.stream.getTracks().forEach(function (t) { t.stop(); }); CAM.stream = null; } }
+function closeCam(){ stop(); $('cam').classList.remove('on'); $('vid').srcObject = null; }
+
+$('camX').addEventListener('click', function () { closeCam(); CAM.then = null; note(''); });
+$('camFlip').addEventListener('click', function () { CAM.facing = CAM.facing === 'user' ? 'environment' : 'user'; start(); });
+$('shot').addEventListener('click', function () {
+  var v = $('vid');
+  if (!v.videoWidth){ $('camMsg').textContent = 'The camera is not ready yet.'; return; }
+  /* 560 wide, which is what the row is sized for: the picture is proof that
+     a person was there, not a portrait. */
+  var w = 560, h = Math.round(v.videoHeight * (560 / v.videoWidth));
+  var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  cv.getContext('2d').drawImage(v, 0, 0, w, h);
+  var data = cv.toDataURL('image/jpeg', 0.72);
+  var then = CAM.then; CAM.then = null;
+  closeCam();
+  if (then) then(data);
+});
+
+/* ────────────────────────────────────────────── where they are */
+
+function where(){
+  return new Promise(function (resolve) {
+    if (!navigator.geolocation) return resolve('');
+    var done = false;
+    var t = setTimeout(function () { if (!done){ done = true; resolve(''); } }, 8000);
+    navigator.geolocation.getCurrentPosition(
+      function (p) { if (done) return; done = true; clearTimeout(t);
+        resolve(p.coords.latitude.toFixed(5) + ', ' + p.coords.longitude.toFixed(5)); },
+      function () { if (done) return; done = true; clearTimeout(t); resolve(''); },
+      { enableHighAccuracy:true, timeout:7000, maximumAge:30000 });
+  });
+}
+
+/* ────────────────────────────────────────────── the queue
+
+   A save that fails stays here, with its photograph, and is sent again. The
+   local copy is only ever removed once the server has said yes - this site
+   has already lost a field record to a save that failed quietly, and the
+   whole point of the queue is that it cannot happen twice.
+
+   Every queued item carries the id it will be filed under, made before the
+   first attempt and reused on every retry. The server treats a second
+   arrival of the same id as a no-op that still answers yes, so a reply lost
+   on the way back costs one more request and never a duplicate row. */
+
+function newId(){
+  var b = new Uint8Array(16), i;
+  if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(b);
+  else for (i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+  var s = '';
+  for (i = 0; i < 16; i++) s += ('0' + b[i].toString(16)).slice(-2);
+  return 'C' + s;                      // C + 32 hex, the shape the server checks
+}
+
+function queue(){ try { return JSON.parse(get(K.queue, '[]')) || []; } catch(e){ return []; } }
+function setQueue(q){ put(K.queue, JSON.stringify(q)); showQueue(); }
+function showQueue(){
+  var n = queue().length;
+  $('qn').textContent = n;
+  $('queue').classList.toggle('on', n > 0);
+}
+
+function enqueue(item){ var q = queue(); q.push(item); setQueue(q); }
+
+var sending = false;
+function flush(){
+  if (sending) return Promise.resolve();
+  var q = queue();
+  if (!q.length) return Promise.resolve();
+  sending = true;
+
+  var item = q[0];
+  return rpc('attend_clock', {
+      p_token: item.token, p_person: item.person, p_kind: item.kind,
+      p_geo: item.geo || '', p_photo: item.photo, p_id: item.id })
+    .then(function (r) {
+      if (r && r.ok){
+        /* confirmed, and only now */
+        var cur = queue().filter(function (x) { return x.id !== item.id; });
+        setQueue(cur);
+        sending = false;
+        return askStatus().then(function () { if (queue().length) return flush(); });
+      }
+      /* The server answered and refused. Keeping it would mean retrying for
+         ever, so it comes out - but the person is told what happened. */
+      var cur2 = queue().filter(function (x) { return x.id !== item.id; });
+      setQueue(cur2);
+      sending = false;
+      note((r && r.why) || 'The server would not take that one.', true);
+      /* the screen said "clocked in" a moment ago on the strength of the
+         photograph being taken; the server has now disagreed, so put the
+         screen back to what the server actually holds */
+      return askStatus();
+    })
+    .catch(function () {
+      /* no signal, or the reply went missing - it stays exactly where it is */
+      sending = false;
+    });
+}
+
+$('qgo').addEventListener('click', function () { note('Trying again…'); flush(); });
+addEventListener('online', flush);
+setInterval(function () { if (navigator.onLine && queue().length) flush(); }, 20000);
+
+/* ────────────────────────────────────────────── the one button */
+
+$('go').addEventListener('click', function () {
+  if (!PERSON.id) return openSheet();
+  var kind = STATE.state === 'in' ? 'out' : 'in';
+  openCam(function (photo) {
+    note('Saving…');
+    $('go').disabled = true;
+    where().then(function (geo) {
+      var item = { id:newId(), token:TOKEN, person:PERSON.id, kind:kind, geo:geo, photo:photo, at:Date.now() };
+      /* Queued first, then sent. If the browser is killed between the two,
+         the record is already on the device rather than nowhere. */
+      enqueue(item);
+      /* Shown as done straight away: the photograph is taken and it is on
+         the device, so from here it is the queue's job, not theirs. */
+      STATE.state = kind === 'in' ? 'in' : 'out';
+      STATE.since = kind === 'in' ? serverNow() : null;
+      paint();
+      note(kind === 'in' ? 'Clocked in.' : 'Clocked out.');
+      return flush();
+    }).then(function () { $('go').disabled = false; })
+      .catch(function () { $('go').disabled = false; });
+  });
+});
+
+/* ────────────────────────────────────────────── installing */
+
+var deferred = null;
+addEventListener('beforeinstallprompt', function (e) {
+  e.preventDefault(); deferred = e;
+  if (!get(K.noInstall, '')) $('install').classList.add('on');
+});
+$('installGo').addEventListener('click', function () {
+  $('install').classList.remove('on');
+  if (!deferred) return;
+  var p = deferred; deferred = null;
+  p.prompt();
+});
+$('installNo').addEventListener('click', function () {
+  $('install').classList.remove('on'); put(K.noInstall, '1');
+});
+addEventListener('appinstalled', function () { $('install').classList.remove('on'); });
+
+/* ────────────────────────────────────────────── start */
+
+(function () {
+  if (!TOKEN){
+    $('gate').hidden = false;
+    if (!CFG.url) $('gateWhy').textContent = '';
+    return;
+  }
+  $('app').hidden = false;
+  setInterval(tick, 1000); tick();
+  showQueue();
+  paint();
+
+  if (!PERSON.id) openSheet(); else askStatus();
+  if (queue().length) flush();
+
+  /* The server is asked again whenever the app comes back to the front: a
+     phone that was closed all night, or died, comes back to the truth. */
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') return;
+    if (PERSON.id) askStatus();
+    if (queue().length) flush();
+  });
+
+  if ('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js', { scope:'./', updateViaCache:'none' })
+      .catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>

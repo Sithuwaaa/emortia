@@ -31,7 +31,7 @@
 
    Anything not matched by those falls through to the network untouched. */
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 
 const SHELL   = 'emortia-shell-' + VERSION;   // HTML and JS, the fallback copy
 const STATIC  = 'emortia-static-' + VERSION;  // images and fonts
@@ -78,8 +78,14 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
+    /* Only this worker's own names. The clock at /attendance/clock/ is a
+       separate installed app with its own worker and its own caches, and a
+       janitor that sweeps every name it does not recognise would empty them
+       every time somebody opened the main site. */
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => !MINE.includes(k)).map(k => caches.delete(k)));
+    await Promise.all(keys
+      .filter(k => /^emortia-(shell|static)-/.test(k) && !MINE.includes(k))
+      .map(k => caches.delete(k)));
     /* Older navigation preloads can outlive their worker; clear it so the
        first navigation after an update is not answered by the last one. */
     if (self.registration.navigationPreload) {

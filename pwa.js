@@ -19,10 +19,18 @@
   var API = window.Emortia = window.Emortia || {};
   var ready = null;
 
+  /* Scopes that are allowed to keep their own worker. The clock at
+     /attendance/clock/ is a separate installed app with its own manifest,
+     its own icon and its own cache, so that the crews get the clock on the
+     home screen rather than the whole site - and its worker must survive
+     this sweep. Anything not on this list, and not the root, is from the
+     era of one worker per tool and goes. */
+  var KEEP = [ROOT, new URL('/attendance/clock/', location.origin).href];
+
   /* ---- 1. the old ones ---- */
   function sweep() {
     return navigator.serviceWorker.getRegistrations().then(function (regs) {
-      var old = regs.filter(function (r) { return r.scope !== ROOT; });
+      var old = regs.filter(function (r) { return KEEP.indexOf(r.scope) < 0; });
       if (!old.length) return 0;
       console.info('[pwa] removing ' + old.length + ' worker(s) from before the root one');
       return Promise.all(old.map(function (r) { return r.unregister().catch(function () {}); }))
@@ -36,7 +44,9 @@
     if (!window.caches || !caches.keys) return Promise.resolve();
     return caches.keys().then(function (keys) {
       return Promise.all(keys.filter(function (k) {
-        return k.indexOf('emortia-') !== 0;
+        /* ours, and the clock's - which is a separate app with its own
+           worker and must not be emptied by this one */
+        return k.indexOf('emortia-') !== 0 && k.indexOf('tooway-clock-') !== 0;
       }).map(function (k) {
         console.info('[pwa] dropping stale cache ' + k);
         return caches.delete(k);
