@@ -56,8 +56,20 @@ create table if not exists attend_sites (
   created_at timestamptz not null default now()
 );
 
-alter table attend_sites add constraint attend_sites_name_shape
-  check (length(btrim(name)) between 1 and 80) not valid;
+-- Guarded, because "add constraint" is the one piece of DDL with no
+-- "if not exists" form: a second run throws and takes the rest of the file
+-- with it, which made the promise at the top of this file false. This one is
+-- already applied, so the guard is for anybody re-running it later.
+do $$
+begin
+  if not exists (select 1 from pg_constraint
+                  where conname = 'attend_sites_name_shape'
+                    and conrelid = 'public.attend_sites'::regclass)
+  then
+    alter table attend_sites add constraint attend_sites_name_shape
+      check (length(btrim(name)) between 1 and 80) not valid;
+  end if;
+end $$;
 
 alter table attend_sites enable row level security;
 

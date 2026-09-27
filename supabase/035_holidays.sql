@@ -24,10 +24,11 @@
 -- worse than no holiday - it would mark a working day as a day off and quietly
 -- take it out of everybody's attendance.
 --
--- So the table ships empty and the office fills it from the gazette. There is
--- a screen for it on the dashboard; the SQL at the bottom is for doing a whole
--- year in one go. Do not take the dates from memory, including mine. Take them
--- from the published list.
+-- So the table ships empty and the office fills it from the gazette, using the
+-- SQL at the bottom of this file. There is no screen for it yet - the page
+-- reads the table and colours the day, but nothing writes to it from the
+-- browser. Do not take the dates from memory, including mine. Take them from
+-- the published list.
 
 create table if not exists attend_holidays (
   day        date primary key,
@@ -36,8 +37,19 @@ create table if not exists attend_holidays (
   created_at timestamptz not null default now()
 );
 
-alter table attend_holidays add constraint attend_holidays_name_shape
-  check (length(btrim(name)) between 1 and 80) not valid;
+-- Guarded, because "add constraint" is the one piece of DDL with no
+-- "if not exists" form: a second run throws and takes the rest of the file
+-- with it, which makes the promise at the top of this file false.
+do $$
+begin
+  if not exists (select 1 from pg_constraint
+                  where conname = 'attend_holidays_name_shape'
+                    and conrelid = 'public.attend_holidays'::regclass)
+  then
+    alter table attend_holidays add constraint attend_holidays_name_shape
+      check (length(btrim(name)) between 1 and 80) not valid;
+  end if;
+end $$;
 
 comment on table attend_holidays is
   'The days the country is not working. A day here is neither an absence nor leave. Filled from the gazette by the office; the dates cannot be computed.';
