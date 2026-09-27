@@ -403,6 +403,38 @@
     return { id: s(p.id) || ('P' + Date.now() + Math.random().toString(36).slice(2, 6)),
              name: name, role: s(p && p.role), sort: Number(p && p.sort) || 0 };
   }
+  /* ---- a photograph's place, by name ----
+
+     A record carries 'lat, lng' and nothing else. A name for that spot is a
+     separate fact, kept in attend_sites, so this measures rather than guesses:
+     the nearest site inside its own radius wins, and when nothing is near
+     enough the answer is no name at all. Somebody clocking in from a site
+     nobody has written down should see coordinates, not the wrong village.
+
+     Equirectangular rather than haversine - at a few hundred metres the
+     difference is centimetres, and this runs once per row on screen. */
+  function parseGeo(g) {
+    var m = String(g || '').match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+    return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null;
+  }
+  function metresBetween(a, b) {
+    var R = 6371000, rad = Math.PI / 180;
+    var x = (b.lng - a.lng) * rad * Math.cos((a.lat + b.lat) / 2 * rad);
+    var y = (b.lat - a.lat) * rad;
+    return Math.sqrt(x * x + y * y) * R;
+  }
+  function placeOf(geo, sites) {
+    var p = parseGeo(geo);
+    if (!p || !sites || !sites.length) return '';
+    var best = null, bestD = Infinity;
+    sites.forEach(function (s) {
+      if (s.lat == null || s.lng == null) return;
+      var d = metresBetween(p, { lat: s.lat, lng: s.lng });
+      if (d < bestD) { bestD = d; best = s; }
+    });
+    return best && bestD <= (best.radius_m || 400) ? best.name : '';
+  }
+
   function sortPeople(people) {
     return (people || []).slice().sort(function (a, b) {
       return (a.sort - b.sort) || String(a.name).localeCompare(String(b.name));
@@ -419,6 +451,7 @@
     monthLabel: monthLabel, weekdayOf: weekdayOf,
     nextDay: nextDay, dayRange: dayRange, groupLeave: groupLeave,
     dayCode: dayCode, monthSheets: monthSheets,
+    parseGeo: parseGeo, metresBetween: metresBetween, placeOf: placeOf,
     monthTeamRows: monthTeamRows, monthPersonRows: monthPersonRows,
     cleanPerson: cleanPerson, sortPeople: sortPeople
   };

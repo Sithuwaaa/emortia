@@ -24,6 +24,10 @@
 <script src="../_lib/db.js"></script>
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
+<!-- The QR codes are drawn here rather than fetched from a drawing service:
+     a device link is a capability, and handing it to somebody else's server
+     to render would put it in their logs. -->
+<script src="../_lib/qr.js"></script>
 <script>Access.protect({ feature: 'tool:attendance' });</script>
 <script src="attendance.js"></script>
 <style>
@@ -83,6 +87,156 @@
 
   /* One tab per thing the office does, because the day is read every morning
      and the other three are touched once a month between them. */
+  /* ---- clock in and out ---- */
+  .lg-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .lg-t{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:26px;letter-spacing:-.02em}
+  .lg-sum{font-size:13px;color:var(--muted)}
+  .lg-q{margin-left:auto;background:var(--card);border:1px solid var(--line3);border-radius:10px;
+    padding:9px 12px;color:var(--text);font-size:14px;width:220px;outline:none}
+  .lg-q:focus{border-color:var(--accent)}
+  .lg-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
+  .lg-day{flex:none;display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 12px;
+    border-radius:12px;cursor:pointer;border:1px solid var(--line3);background:var(--card);color:var(--muted)}
+  .lg-day .wd{font-size:10.5px;letter-spacing:.06em}
+  .lg-day .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px;color:var(--text)}
+  .lg-day.on{background:var(--accent);border-color:var(--accent)}
+  .lg-day.on .wd,.lg-day.on .n{color:var(--ink)}
+  .lg-panel{padding:0;overflow:hidden}
+  .lg-grid{min-width:1160px}
+  .lg-hrow,.lg-row{display:grid;grid-template-columns:230px minmax(230px,1fr) minmax(230px,1fr) 70px 100px 150px;
+    gap:12px;align-items:center;padding:11px 18px}
+  .lg-hrow{border-bottom:1px solid var(--line);font-family:'Space Mono',monospace;font-size:10.5px;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .lg-row{border-bottom:1px solid var(--line)}
+  .lg-row:hover{background:rgba(var(--accentRGB,234,132,250),.04)}
+  .lg-who{display:flex;align-items:center;gap:10px;min-width:0}
+  .av{width:32px;height:32px;border-radius:50%;color:#130a12;font:700 11px/1 'Space Mono',monospace;
+    display:flex;align-items:center;justify-content:center;flex:none}
+  .av.lg{width:44px;height:44px;font-size:14px}
+  .lg-who .nm,.tm-top .nm{display:flex;flex-direction:column;min-width:0}
+  .lg-who .nm b{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lg-who .nm i{font-style:normal;font-size:11.5px;color:var(--muted)}
+  .lg-when{display:flex;align-items:center;gap:10px;min-width:0}
+  .lg-when .t{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;width:48px;flex:none}
+  .lg-when .t.late{color:var(--warn)}
+  .lg-geo{display:flex;flex-direction:column;min-width:0;color:var(--text);text-decoration:none}
+  .lg-geo .pl{font-size:13px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lg-geo .pl i{font-style:normal;color:var(--muted)}
+  .lg-geo .gg{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted);white-space:nowrap}
+  a.lg-geo:hover .pl{color:var(--accentB)}
+  .lg-h{font-family:'Space Mono',monospace;font-size:13px}
+  .lg-st{justify-self:start;white-space:nowrap;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px}
+  .lg-st.ok{background:rgba(95,193,137,.14);color:var(--ok)}
+  .lg-st.lt{background:rgba(242,184,75,.14);color:var(--warn)}
+  .lg-st.os{background:rgba(95,193,137,.14);color:var(--ok)}
+  .lg-st.ab{background:rgba(226,96,122,.14);color:var(--bad)}
+  .lg-st.lv{background:rgba(226,96,122,.10);color:var(--bad)}
+  .lg-ref{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)}
+
+  /* ---- leave ---- */
+  .lv-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start}
+  .lv-form{display:flex;flex-direction:column;gap:14px}
+  .lv-h{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px}
+  .lv-p{font-size:13px;color:var(--muted);line-height:1.5}
+  .lv-l{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+  .lv-l input,.lv-l select{background:var(--card2);border:1px solid var(--line3);border-radius:10px;
+    padding:10px 12px;color:var(--text);font-size:14px;color-scheme:dark;outline:none}
+  .lv-l input:focus,.lv-l select:focus{border-color:var(--accent)}
+  .lv-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .lv-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .lv-chip,.tm-chip{flex:none;white-space:nowrap;padding:7px 12px;border-radius:999px;cursor:pointer;
+    font-size:13px;font-weight:600;border:1px solid var(--line3);background:transparent;color:var(--muted)}
+  .lv-chip.on,.tm-chip.on{border-color:var(--accent);background:rgba(var(--accentRGB,234,132,250),.16);color:var(--accentB)}
+  .lv-add{padding:13px;border:0;border-radius:12px;background:var(--accent);color:var(--ink);
+    font-weight:700;font-size:15px;cursor:pointer}
+  .lv-add:hover{filter:brightness(1.08)}
+  .lv-list{padding:0;overflow:hidden}
+  .lv-lh{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .lv-lh h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px}
+  .lv-lh span{font-size:13px;color:var(--muted)}
+  .lv-nav{display:flex;align-items:center;gap:10px}
+  .lv-mon{width:28px;height:28px;border-radius:8px;border:1px solid var(--line3);background:transparent;
+    color:var(--muted);cursor:pointer;font-size:15px;line-height:1}
+  .lv-mon:hover{border-color:var(--accent);color:var(--accentB)}
+  .lv-row{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line)}
+  .lv-date{width:46px;flex:none;display:flex;flex-direction:column;align-items:center;border-radius:10px;
+    border:1.5px solid var(--bad);background:repeating-linear-gradient(135deg,rgba(226,96,122,.18) 0 3px,transparent 3px 7px);padding:4px 0}
+  .lv-date .m{font-size:10px;color:var(--bad);letter-spacing:.06em}
+  .lv-date .d{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px;line-height:1.1}
+  .lv-who{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+  .lv-who b{font-weight:600;font-size:14px}
+  .lv-who i{font-style:normal;font-size:12.5px;color:var(--muted)}
+  .lv-n{font-family:'Space Mono',monospace;font-size:12px;color:var(--bad)}
+  .lv-x{width:32px;height:32px;border-radius:8px;border:1px solid var(--line3);background:transparent;
+    color:var(--muted);cursor:pointer;font-size:16px;flex:none}
+  .lv-x:hover{border-color:var(--bad);color:var(--bad)}
+
+  /* ---- team ---- */
+  .tm-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .tm-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .tm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .tm-card,.tm-new{background:var(--card);border:1px solid var(--line3);border-radius:16px;padding:16px;
+    display:flex;flex-direction:column;gap:14px}
+  .tm-new{border-style:dashed;justify-content:center}
+  .tm-new b{font-weight:700;font-size:15px}
+  .tm-new input{background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;
+    color:var(--text);font-size:14px;outline:none;width:100%;box-sizing:border-box}
+  .tm-new input:focus{border-color:var(--accent)}
+  .tm-new .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tm-new button{padding:11px;border-radius:10px;border:1px solid var(--accent);background:transparent;
+    color:var(--accent);font-weight:700;font-size:14px;cursor:pointer}
+  .tm-new button:hover{background:rgba(var(--accentRGB,234,132,250),.10)}
+  .tm-top{display:flex;align-items:center;gap:12px}
+  .tm-top .nm b{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tm-top .nm i{font-style:normal;font-size:12px;color:var(--muted)}
+  .tm-top .lg-st{margin-left:auto;font-size:11.5px}
+  .tm-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;font-size:12.5px}
+  .tm-fact{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px;color:var(--text);text-decoration:none;white-space:nowrap;overflow:hidden}
+  .tm-fact.dim{color:var(--muted)}
+  .tm-fact .mono{font-family:'Space Mono',monospace;font-size:11.5px}
+  a.tm-fact:hover{border-color:var(--accent)}
+  .tm-mon{display:flex;flex-direction:column;gap:6px}
+  .tm-mh{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+  .tm-bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;display:flex}
+  .tm-nums{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .tm-nums b{color:var(--text)}
+  .tm-nums b.w{color:var(--warn)}
+  .tm-nums b.b{color:var(--bad)}
+  .tm-rm{align-self:flex-start;font-size:12.5px}
+  @media (max-width:640px){ .lg-q{margin-left:0;width:100%} }
+  /* ---- mobile links ---- */
+  .lk-head{margin-bottom:16px}
+  .lk-sub{font-size:13px;color:var(--muted);line-height:1.55;max-width:60ch;margin-top:4px}
+  .lk-panel{background:var(--card);border:1px solid var(--line3);border-radius:16px;padding:18px;
+    display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+  .lk-qr{background:#fff;border-radius:12px;padding:10px;width:186px;flex:none}
+  .lk-qr svg{width:100%;height:auto;display:block}
+  .lk-noqr{width:100%;aspect-ratio:1;display:grid;place-items:center;color:#777;font-size:12px}
+  .lk-side{flex:1;min-width:260px;display:flex;flex-direction:column;gap:8px}
+  .lk-lab{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted)}
+  .lk-panel .url{font-family:'Space Mono',monospace;font-size:13px;word-break:break-all;
+    line-height:1.55;background:var(--card2);border:1px solid var(--line);border-radius:10px;
+    padding:11px 12px;user-select:all}
+  .lk-when{font-size:12.5px;color:var(--muted)}
+  .lk-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .lk-btn{font:inherit;font-size:13.5px;font-weight:600;padding:10px 16px;border-radius:10px;
+    border:1px solid var(--line3);background:transparent;color:var(--text);cursor:pointer;white-space:nowrap}
+  .lk-btn.go{border-color:var(--accent);color:var(--accent)}
+  .lk-btn.go:hover{background:rgba(var(--accentRGB,234,132,250),.10)}
+  .lk-btn.warn{border-color:rgba(226,96,122,.45);color:var(--bad)}
+  .lk-btn.warn:hover{background:rgba(226,96,122,.10);border-color:var(--bad)}
+  .lk-note{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:4px;max-width:58ch}
+  .lk-warn{margin-top:14px;border:1px solid rgba(242,184,75,.4);background:rgba(242,184,75,.06);
+    border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.6;color:var(--muted)}
+  .lk-warn b{color:var(--warn);font-weight:700}
+  .lk-extras{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .lk-ex{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line3);
+    border-radius:999px;padding:6px 12px;font-size:12.5px;color:var(--text)}
+  .lk-tail{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+  @media (max-width:560px){ .lk-qr{width:100%;max-width:240px;margin:0 auto} }
+
   /* ---- the month view ----
      A person a row, a day a column. The first column and the header row stay
      put while the month scrolls sideways under them, because a square with
@@ -321,6 +475,11 @@ let TAB = 'dash';                               // dash | day | leave | team | l
 /* the month view: which month, which shape, and the month itself once it
    has been fetched - kept so flipping grid/tiles does not re-query */
 let DYM = A.dstr(new Date()).slice(0, 7), DDAYS = null, DSHAPE = 'grid', DBUSY = false, DERR = '';
+let Q = '';                                     // the name search, shared by the log and the team
+let ROLEF = '';                                 // which role chip is on
+let SITES = [];                                 // the places, for naming a photograph's coordinates
+let LVTYPE = 'Annual';                          // which leave chip is on
+let LVSPAN = {};                                // booking id -> its real {from, to, n}
 let AHEAD = [];                                 // leave marked for the days to come
 let BELL = false, SEEN = null;                  // SEEN: the ids already known, so an arrival is an arrival
 let LV_WHO = '', LV_FROM = '', LV_TO = '', LV_NOTE = '';
@@ -481,27 +640,37 @@ function renderOffice(){
   const day = A.ofDay(RECS, DAY);
   const st = A.stats(sheet, day);
 
-  const tabs = [['dash','The month', 0], ['day','The day', day.length],
-                ['leave','Leave', AHEAD.length], ['team','Team members', PEOPLE.length]];
+  /* the design's names, and a glyph apiece */
+  const TABI = {
+    dash:  'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
+    day:   'M12 7v5l3 2 M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0 -18',
+    leave: 'M3 5h18v16H3z M3 9h18 M8 3v4 M16 3v4 M9 14l2 2 4-4',
+    team:  'M6 8a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6 M15.5 5.3a3 3 0 0 1 0 5.4 M18 14.4c1.8.9 3 2.9 3 5.6',
+    links: 'M7 2h10v20H7z M11 18h2',
+  };
+  const tabs = [['dash','Dashboard', 0], ['day','Clock in/out', day.length],
+                ['leave','Leave', AHEAD.length], ['team','Team', PEOPLE.length]];
   /* CAN_EDIT rather than IS_OWNER: an office admin runs this tool, and running
      it includes handing a phone its link and taking it back when the phone is
      lost. Everything else on the page already asks CAN_EDIT; this one tab was
      left behind, so the admin could name faces and mark leave but not issue the
      link the faces arrive through. */
-  if (window.CAN_EDIT) tabs.push(['links','Device links', DEVICES.length]);
+  if (window.CAN_EDIT) tabs.push(['links','Mobile links', DEVICES.length]);
 
   let h = '<div class="tabs">' + tabs.map(t =>
-    '<button class="tab' + (TAB===t[0]?' on':'') + '" data-tab="'+t[0]+'">' + esc(t[1]) +
-    (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>').join('') + '</div>';
+    '<button class="tab' + (TAB===t[0]?' on':'') + '" data-tab="'+t[0]+'">' +
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round"><path d="' + TABI[t[0]] + '"></path></svg>' +
+    esc(t[1]) + (t[2] ? '<span class="n">' + t[2] + '</span>' : '') + '</button>').join('') + '</div>';
 
   if (BELL) h += bellPanel(day);
   if (ERR) h += '<div class="empty">' + esc(ERR) + '</div>';
 
   h += TAB === 'dash'  ? viewDash()
-     : TAB === 'leave' ? viewLeave()
-     : TAB === 'team'  ? viewTeam()
+     : TAB === 'leave' ? viewLeaveNew()
+     : TAB === 'team'  ? viewTeamNew()
      : TAB === 'links' ? viewLinks()
-     : viewDay(sheet, day, st, late);
+     : viewDayNew(sheet, day, st, late);
 
   $('main').innerHTML = h;
   wireOffice(sheet, late);
@@ -521,12 +690,25 @@ async function loadDash(force){
   try {
     const [r, l] = await Promise.all([window.DB.attendRange(from, to), window.DB.attendLeaveRange(from, to)]);
     if (r.error) throw new Error(r.error);
-    DDAYS = { ym: DYM,
-      days: A.monthSheets(PEOPLE, r.records, (l && l.leave) || [], DYM,
+    const leave = (l && l.leave) || [];
+    /* The month's leave is kept rather than only folded into the sheets. The
+       leave list is a view of the month on screen, and it used to be built
+       from today's marks plus sixty days ahead - so stepping back to March or
+       on to December showed an empty list under a heading naming that month. */
+    const bks = [];
+    leave.forEach(x => { if (x.booking && bks.indexOf(x.booking) < 0) bks.push(x.booking); });
+    const sp = bks.length ? (await window.DB.attendBookingSpans(bks)).spans || {} : {};
+    Object.keys(sp).forEach(k => { LVSPAN[k] = sp[k]; });
+    DDAYS = { ym: DYM, leave: leave,
+      days: A.monthSheets(PEOPLE, r.records, leave, DYM,
                           A.lateAfter(SHIFT, GRACE), A.dstr(new Date())) };
   } catch (e){ DERR = e.message || 'Could not read that month.'; DDAYS = null; }
   DBUSY = false; paint();
 }
+
+/* Leave was written or cancelled, so whatever month is cached is out of date.
+   Without this the list goes on showing the count it had before the change. */
+async function leaveChanged(){ DDAYS = null; await refresh(); }
 
 function shiftMonth(by){
   const [y, m] = DYM.split('-').map(Number);
@@ -677,6 +859,278 @@ function viewDash(){
   return h + '</div></div></div>';
 }
 
+
+/* ------------------------------------------------------- clock in and out
+
+   The day, a person a row: when they came, where from, when they went, and
+   how long that was. The place beside each time is the nearest site on the
+   list to the coordinates the phone recorded - and where nothing is near
+   enough, the coordinates stand on their own rather than being given a name
+   they have not earned. */
+function initialOf(name){ return (String(name || '?').trim()[0] || '?').toUpperCase(); }
+function avatarOf(id){
+  /* a steady colour per person, from the tool's own family */
+  const P = ['#ea84fa','#f1a2fd','#de68f1','#c9a3f5','#f7b6d9'];
+  let n = 0; String(id || '').split('').forEach(c => { n = (n * 31 + c.charCodeAt(0)) >>> 0; });
+  return P[n % P.length];
+}
+/* the sheet row carries neither of these: the crew is a fact about the
+   person, and the reference is stamped on the photograph. */
+function crewOf(id){ const p = PEOPLE.find(x => x.id === id); return p ? (p.crew || '') : ''; }
+function refOf(recId){ const u = RECS.find(x => x.id === recId); return u ? (u.ref || '') : ''; }
+function mapHref(geo){
+  const p = A.parseGeo(geo);
+  return p ? 'https://www.google.com/maps?q=' + p.lat + ',' + p.lng : '';
+}
+function geoCell(geo, colour){
+  /* Three different things, and the cell should not blur them. A photograph
+     with no coordinates on it is not the same as one taken somewhere nobody
+     has written down – the sheet stores an em dash for the first, so the test
+     is whether the string parses, not whether it is empty. */
+  const at = A.parseGeo(geo);
+  const place = at ? A.placeOf(geo, SITES) : '', href = mapHref(geo);
+  const pin = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + colour +
+    '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11.5a7 7 0 0 1 14 0C19 15 12 21 12 21z M9.5 9.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0"></path></svg>';
+  const inner = '<span class="pl">' + pin +
+      (place ? esc(place) : at ? '<i>not a known site</i>' : '<i>no location on the photo</i>') + '</span>' +
+    '<span class="gg">' + (at ? esc(geo) : '') + '</span>';
+  return href ? '<a class="lg-geo" href="' + href + '" target="_blank" rel="noopener">' + inner + '</a>'
+              : '<span class="lg-geo">' + inner + '</span>';
+}
+
+function viewDayNew(sheet, day, st, late){
+  const q = Q.trim().toLowerCase();
+  const rows = sheet.filter(r => !q || String(r.name).toLowerCase().indexOf(q) > -1);
+  const inCount = sheet.filter(r => r.present).length;
+
+  /* the fortnight behind today, to step back through */
+  const strip = [];
+  for (let i = 0; i < 14; i++){
+    const d = new Date(DAY + 'T12:00:00'); d.setDate(d.getDate() - i);
+    const ds = A.dstr(d);
+    strip.push({ ds, n: d.getDate(), wd: ['SUN','MON','TUE','WED','THU','FRI','SAT'][d.getDay()],
+      on: ds === DAY, today: ds === A.dstr(new Date()) });
+  }
+
+  let h = '<div class="lg-head">' +
+    '<h2 class="lg-t">Clock in &amp; out</h2>' +
+    '<span class="lg-sum">' + esc(A.monthLabel(DAY.slice(0,7)).split(' ')[0]) + ' ' +
+      parseInt(DAY.slice(8), 10) + ' &#183; ' + inCount + ' clocked in &#183; ' +
+      (sheet.length - inCount) + ' not in</span>' +
+    '<input id="q" class="lg-q" placeholder="Search a name" value="' + esc(Q) + '">' +
+    '</div>';
+
+  h += '<div class="lg-strip">' + strip.map(d =>
+    '<button class="lg-day' + (d.on ? ' on' : '') + '" data-day="' + d.ds + '">' +
+    '<span class="wd">' + (d.today ? 'TODAY' : d.wd) + '</span>' +
+    '<span class="n">' + d.n + '</span></button>').join('') + '</div>';
+
+  h += '<div class="panel lg-panel"><div class="wrap-x"><div class="lg-grid">' +
+    '<div class="lg-hrow"><span>Person</span><span>Clock in &#183; location</span>' +
+    '<span>Clock out &#183; location</span><span>Hours</span><span>Status</span><span>Record</span></div>';
+
+  if (!rows.length){
+    h += '<div class="empty">' + (q ? 'Nobody by that name.' : 'Nobody on the roster yet.') + '</div>';
+  } else rows.forEach(r => {
+    const on = r.present && !r.closed;
+    const status = !r.present ? (r.leave ? 'On leave' : 'Absent')
+                 : on ? 'On site' : (r.late ? 'Late' : 'On time');
+    const sk = !r.present ? (r.leave ? 'lv' : 'ab') : on ? 'os' : (r.late ? 'lt' : 'ok');
+    h += '<div class="lg-row">' +
+      '<div class="lg-who"><span class="av" style="background:' + avatarOf(r.id) + '">' +
+        esc(initialOf(r.name)) + '</span>' +
+        '<span class="nm"><b>' + esc(r.name) + '</b><i>' + (esc([r.role, crewOf(r.id)].filter(Boolean).join(' \u00b7 ')) || '&#8212;') + '</i></span></div>' +
+      '<div class="lg-when"><span class="t' + (r.late ? ' late' : '') + '">' + (esc(r.in) || '&#8212;') + '</span>' +
+        (r.present ? geoCell(r.inGeo, 'var(--accent)') : '<span class="lg-geo"><span class="gg">&#8212;</span></span>') + '</div>' +
+      '<div class="lg-when"><span class="t">' + (esc(r.out) || '&#8212;') + '</span>' +
+        (r.closed ? geoCell(r.outGeo, 'var(--accent)')
+         : '<span class="lg-geo"><span class="pl" style="color:var(--ok)">' + (on ? 'Still on site' : '&#8212;') + '</span>' +
+           '<span class="gg">' + (on ? 'No clock-out photo yet' : '') + '</span></span>') + '</div>' +
+      '<span class="lg-h">' + (r.hours === '—' ? '&#8212;' : esc(r.hours) + 'h') + '</span>' +
+      '<span class="lg-st ' + sk + '">' + status + '</span>' +
+      '<span class="lg-ref">' + (esc(refOf(r.inId)) || '&#8212;') + '</span>' +
+      '</div>';
+  });
+  return h + '</div></div></div>';
+}
+
+/* ------------------------------------------------------------------ leave */
+function viewLeaveNew(){
+  const ym = DYM, from = A.monthStart(ym), to = A.monthEnd(ym);
+  /* The month being shown, read from the month that was fetched. AHEAD and
+     LEAVE only ever cover today and the sixty days after it, so they cannot
+     answer for a month the office has stepped to. */
+  const loaded = (DDAYS && DDAYS.ym === DYM) ? (DDAYS.leave || []) : null;
+  if (!loaded && DBUSY) return '<div class="panel"><div class="empty">Reading ' +
+    esc(A.monthLabel(ym)) + '&#8230;</div></div>';
+
+  const mine = (loaded || (AHEAD || []).concat(LEAVE || []))
+    .filter(l => l.day >= from && l.day <= to)
+    .filter((l, i, a) => a.findIndex(x => x.day === l.day && x.person === l.person) === i)
+    .sort((a, b) => String(a.day).localeCompare(String(b.day)));
+
+  /* One booking is one row here, and which days belong to it is read off the
+     booking id rather than guessed from runs of consecutive dates. The guess
+     could only ever see the month on screen, so a booking running 29 Sep to
+     1 Oct looked like two days and cancelled as two days, leaving 1 Oct
+     marked on a person who was working.
+
+     LVSPAN carries the real first and last day from the table, so a booking
+     that runs past the edge of the month says so instead of shrinking to fit. */
+  const byBooking = {}, runs = [];
+  mine.forEach(l => {
+    const key = l.booking || ('~' + l.person + '|' + (l.label || 'Leave') + '|' + l.day);
+    let r = byBooking[key];
+    if (!r){
+      const span = LVSPAN[l.booking] || null;
+      r = byBooking[key] = { booking: l.booking || '', person: l.person,
+        label: l.label || 'Leave', note: l.note || '',
+        from: span ? span.from : l.day, to: span ? span.to : l.day,
+        n: span ? span.n : 0, shown: 0, whole: !!span };
+      runs.push(r);
+    }
+    r.shown++;
+    if (!r.whole){
+      if (l.day < r.from) r.from = l.day;
+      if (l.day > r.to) r.to = l.day;
+      r.n++;
+    }
+  });
+  runs.sort((a, b) => String(a.from).localeCompare(String(b.from)));
+  const nameOf = id => (PEOPLE.find(p => p.id === id) || {}).name || id;
+  const days = runs.reduce((a, r) => a + r.n, 0);
+
+  const TYPES = ['Annual','Casual','Medical','Half day','No pay'];
+  let h = '<div class="lv-wrap">';
+
+  if (window.CAN_EDIT){
+    h += '<div class="panel lv-form"><h2 class="lv-h">Mark leave</h2>' +
+      '<p class="lv-p">Leave shows in red on the month view. A clock-in photo on the same day still counts as present.</p>' +
+      '<label class="lv-l">Team member<select id="lvWho">' +
+        (PEOPLE.length ? PEOPLE.map(p => '<option value="' + esc(p.id) + '"' +
+          (LV_WHO === p.id ? ' selected' : '') + '>' + esc(p.name) +
+          (p.role ? ' &#183; ' + esc(p.role) : '') + '</option>').join('')
+         : '<option value="">Nobody on the roster</option>') + '</select></label>' +
+      '<div class="lv-two">' +
+        '<label class="lv-l">From<input type="date" id="lvFrom" value="' + esc(LV_FROM) + '" max="' + esc(A.dstr(new Date(Date.now() + 365*86400000))) + '"></label>' +
+        '<label class="lv-l">To<input type="date" id="lvTo" value="' + esc(LV_TO) + '" max="' + esc(A.dstr(new Date(Date.now() + 365*86400000))) + '"></label>' +
+      '</div>' +
+      '<div class="lv-l">Type<div class="lv-chips">' + TYPES.map(t =>
+        '<button class="lv-chip' + (LVTYPE === t ? ' on' : '') + '" data-lvtype="' + esc(t) + '">' + esc(t) + '</button>').join('') +
+      '</div></div>' +
+      '<label class="lv-l">Note<input type="text" id="lvNote" placeholder="Optional" value="' + esc(LV_NOTE) + '"></label>' +
+      '<button class="lv-add" id="lvAdd">Add leave &#183; ' + plural(lvDays(), 'day', 'days') + '</button>' +
+      '</div>';
+  }
+
+  /* The list is a month, so the month has to be steppable from here. It was
+     only steppable from the dashboard, which left this heading naming a month
+     the office had no way to change without leaving the tab. */
+  h += '<div class="panel lv-list"><div class="lv-lh">' +
+    '<h2>Leave in ' + esc(A.monthLabel(ym)) + '</h2>' +
+    '<span class="lv-nav"><button class="lv-mon" data-mon="-1" aria-label="The month before">&#8249;</button>' +
+      plural(runs.length, 'mark', 'marks') + ' &#183; ' + plural(days, 'day', 'days') +
+      '<button class="lv-mon" data-mon="1" aria-label="The month after">&#8250;</button></span></div>';
+  if (!runs.length) h += '<div class="empty">No leave marked this month.</div>';
+  else runs.forEach(r => {
+    const d = new Date(r.from + 'T12:00:00');
+    const range = r.n === 1 ? fmtD(r.from) : fmtD(r.from) + ' &#8211; ' + fmtD(r.to);
+    h += '<div class="lv-row">' +
+      '<div class="lv-date"><span class="m">' + ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][d.getMonth()] + '</span>' +
+        '<span class="d">' + d.getDate() + '</span></div>' +
+      '<div class="lv-who"><b>' + esc(nameOf(r.person)) + '</b>' +
+        '<i>' + range + ' &#183; ' + esc(r.label) + (r.note ? ' &#183; ' + esc(r.note) : '') +
+        /* said plainly, so nobody is surprised by what cancelling takes */
+        (r.shown < r.n ? ' &#183; runs past this month' : '') + '</i></div>' +
+      '<span class="lv-n">' + plural(r.n, 'day', 'days') + '</span>' +
+      (window.CAN_EDIT ? '<button class="lv-x" data-lvbook="' + esc(r.booking) +
+        '" data-lvwho="' + esc(r.person) + '" aria-label="Cancel this leave">&#215;</button>' : '') +
+      '</div>';
+  });
+  return h + '</div></div>';
+}
+function fmtD(ds){
+  const d = new Date(ds + 'T12:00:00');
+  return d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+}
+function lvDays(){
+  if (!LV_FROM || !LV_TO) return 1;
+  const a = new Date(LV_FROM + 'T12:00:00'), b = new Date(LV_TO + 'T12:00:00');
+  return Math.max(1, Math.round((b - a) / 86400000) + 1);
+}
+
+/* ------------------------------------------------------------------- team */
+function viewTeamNew(){
+  const q = Q.trim().toLowerCase();
+  const roles = {};
+  PEOPLE.forEach(p => { const r = p.role || 'Team'; roles[r] = (roles[r] || 0) + 1; });
+  const chips = [['', 'All', PEOPLE.length]].concat(Object.keys(roles).map(r => [r, r, roles[r]]));
+  const list = PEOPLE.filter(p => (!ROLEF || (p.role || 'Team') === ROLEF) &&
+                                  (!q || String(p.name).toLowerCase().indexOf(q) > -1));
+  const days = (DDAYS && DDAYS.ym === DYM) ? dashDays() : null;
+  const today = A.dstr(new Date());
+  const inToday = {};
+  A.ofDay(RECS, DAY).forEach(u => (u.members || []).forEach(id => { inToday[id] = true; }));
+
+  let h = '<div class="tm-head"><h2 class="lg-t">Team</h2>' +
+    '<div class="tm-chips">' + chips.map(c =>
+      '<button class="tm-chip' + (ROLEF === c[0] ? ' on' : '') + '" data-role="' + esc(c[0]) + '">' +
+      esc(c[1]) + ' &#183; ' + c[2] + '</button>').join('') + '</div>' +
+    '<input id="q" class="lg-q" placeholder="Search a name" value="' + esc(Q) + '"></div>';
+
+  h += '<div class="tm-grid">';
+  if (!list.length) h += '<div class="empty">' + (q || ROLEF ? 'Nobody matches that.' : 'Nobody on the roster yet.') + '</div>';
+  list.forEach(p => {
+    /* the month, for this one person */
+    let t = { p:0, late:0, lv:0, a:0, mins:0, n:0 };
+    if (days) days.forEach(day => {
+      const row = day.sheet ? day.sheet.find(x => x.id === p.id) : null;
+      if (day.fut || !row) return;
+      if (row.present){ t.p++; if (row.late) t.late++;
+        if (row.in && row.in !== '—'){ const hm = String(row.in).split(':'); t.mins += (+hm[0]) * 60 + (+hm[1]); t.n++; }
+      } else if (row.leave) t.lv++; else if (!day.sun) t.a++;
+    });
+    const worked = t.p + t.a, rate = worked ? Math.round(t.p / worked * 100) : null;
+    const avg = t.n ? A.hm(Math.round(t.mins / t.n)) : '—';
+    const tot = Math.max(1, t.p + t.lv + t.a);
+    const here = !!inToday[p.id];
+    h += '<div class="tm-card">' +
+      '<div class="tm-top"><span class="av lg" style="background:' + avatarOf(p.id) + '">' + esc(initialOf(p.name)) + '</span>' +
+        '<span class="nm"><b>' + esc(p.name) + '</b><i>' + (esc(p.role) || '&#8212;') +
+          (p.crew ? ' &#183; ' + esc(p.crew) : '') + '</i></span>' +
+        '<span class="lg-st ' + (here ? 'ok' : 'ab') + '">' + (here ? 'In today' : 'Not in') + '</span></div>' +
+      '<div class="tm-facts">' +
+        (p.phone ? '<a class="tm-fact" href="tel:' + esc(p.phone.replace(/\s+/g,'')) + '">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg>' +
+          '<span class="mono">' + esc(p.phone) + '</span></a>'
+         : '<span class="tm-fact dim">No phone on file</span>') +
+        (p.site ? '<span class="tm-fact dim">' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11.5a7 7 0 0 1 14 0C19 15 12 21 12 21z M9.5 9.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0"></path></svg>' +
+          esc(p.site) + '</span>'
+         : '<span class="tm-fact dim">No site on file</span>') +
+      '</div>' +
+      '<div class="tm-mon"><div class="tm-mh"><span>' + esc(A.monthLabel(DYM).split(' ')[0]) + ' attendance</span>' +
+        '<b>' + (rate == null ? '&#8212;' : rate + '%') + '</b></div>' +
+        '<div class="tm-bar"><span style="width:' + (t.p / tot * 100) + '%;background:var(--ok)"></span>' +
+          '<span style="width:' + (t.lv / tot * 100) + '%;background:var(--bad);opacity:.55"></span>' +
+          '<span style="width:' + (t.a / tot * 100) + '%;background:var(--bad)"></span></div>' +
+        '<div class="tm-nums"><span><b>' + t.p + '</b> days</span><span><b class="w">' + t.late + '</b> late</span>' +
+          '<span><b>' + t.lv + '</b> leave</span><span><b class="b">' + t.a + '</b> absent</span>' +
+          '<span><b>' + avg + '</b> avg in</span></div></div>' +
+      (window.CAN_EDIT ? '<button class="link tm-rm" data-rm="' + esc(p.id) + '">take off the roster</button>' : '') +
+      '</div>';
+  });
+  /* the last card in the grid is the one that makes a new person */
+  if (window.CAN_EDIT){
+    h += '<div class="tm-new"><b>Add a team member</b>' +
+      '<input type="text" id="pn" placeholder="Name">' +
+      '<div class="two"><input type="text" id="pr" placeholder="Role"><input type="text" id="pc" placeholder="Crew"></div>' +
+      '<div class="two"><input type="text" id="pp" placeholder="Phone"><input type="text" id="ps" placeholder="Site"></div>' +
+      '<button id="padd">Add to the roster</button></div>';
+  }
+  return h + '</div>';
+}
+
 /* What is waiting, and what happens when the next one lands. */
 function bellPanel(day){
   const w = waiting(day);
@@ -700,231 +1154,6 @@ function bellPanel(day){
   return h;
 }
 
-function viewDay(sheet, day, st, late){
-  const opts = A.dateOpts(A.dstr(new Date()), 10);
-
-  /* The date and the clock, because this is a screen somebody stands in front
-     of at nine in the morning and the first question is always which day it is
-     showing. It says "Today" only when it is: reading Tuesday's sheet on
-     Thursday and seeing a live clock tick would be the wrong thing entirely. */
-  const now = new Date(), today = A.dstr(now);
-  const shown = new Date(DAY + 'T12:00:00');
-  const clockBar = '<div class="clockbar"><div>' +
-    '<div class="dnum">' + esc(shown.toLocaleDateString(undefined,
-        { weekday:'long', day:'numeric', month:'long', year:'numeric' })) + '</div>' +
-    '<div class="dsub">' + (DAY === today
-      ? 'Today · the shift starts at ' + SHIFT + ', late after ' + A.hm(late)
-      : 'Looking back · today is ' + esc(now.toLocaleDateString(undefined,
-          { weekday:'long', day:'numeric', month:'long' }))) + '</div></div>' +
-    (DAY === today ? '<div class="clock" id="clock">' + esc(now.toLocaleTimeString(undefined,
-      { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })) + '</div>' : '') +
-    '</div>';
-
-  let h = '<div class="obar"><div><div class="kicker">The office</div>' +
-    '<h2>Name the faces, and the sheet fills itself in.</h2></div>' +
-    '<div class="ctl"><select id="day" title="Which day the screen shows">' +
-      opts.map(o => '<option value="'+o.value+'"'+(o.value===DAY?' selected':'')+'>'+esc(o.label)+'</option>').join('') +
-    '</select>' +
-    '<select id="xscope" title="What the export covers">' +
-      [['day','This day – the team'],['month','A month – the team'],['person','A month – one person']]
-        .map(o => '<option value="'+o[0]+'"'+(XSCOPE===o[0]?' selected':'')+'>'+o[1]+'</option>').join('') +
-    '</select>' +
-    (XSCOPE === 'day' ? '' : '<input type="month" id="xmonth" value="'+esc(XMONTH)+'">') +
-    (XSCOPE === 'person' ? '<select id="xwho">' + (PEOPLE.length
-        ? PEOPLE.map(p => '<option value="'+esc(p.id)+'"'+(XWHO===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')
-        : '<option value="">Nobody on the roster</option>') + '</select>' : '') +
-    '<button class="btn" id="xls" style="min-height:0;padding:9px 14px">' +
-      (BUSY ? 'Building…' : 'Export Excel') + '</button></div></div>';
-
-  h += clockBar;
-  if (ERR) h += '<div class="empty">' + esc(ERR) + '</div>';
-
-  h += '<div class="tiles">' +
-    tile('Photos', st.photos) + tile('Names ticked', st.named) +
-    tile('Present', st.present + '/' + st.roster) +
-    tile('Late', st.late, st.late ? 'var(--bad)' : '') + '</div>';
-
-  h += '<div class="sec">Photos – ' + st.photos + '</div>';
-  if (!day.length){
-    h += '<div class="empty" style="border-top:1px solid var(--line)">No photos for this date. ' +
-      'Open the device screen on the shared phone, submit a clock-in photo, and it appears here to be named.</div>';
-  } else {
-    h += day.map(u => {
-      const on = u.members || [];
-      return '<div class="up"><div>' +
-        (u.photo
-          ? '<div class="shot" style="background-image:url(' + u.photo + ')" role="img" aria-label="Attendance photo"></div>'
-          : '<div class="shot gone">The picture has been removed. The time, the place and the names stay.</div>') +
-        '<div class="when"><span class="tag ' + (u.kind==='in'?'tag-in':'') + '">' +
-          (u.kind==='in'?'Clock in':'Clock out') + '</span><span class="t">' + A.fmt(u.ts) + '</span></div>' +
-        '<div class="fine2">' + esc(u.geo || 'location unavailable') + '<br>' + esc(deviceOf(u)) +
-        /* Two different acts, so two buttons: the picture goes and the day
-           still adds up, or the whole record goes because it should never
-           have been filed. Owner only, and the delete is owner-only in the
-           database too - a shared phone cannot erase what it filed. */
-        (window.CAN_EDIT ? '<div class="del">' +
-          (u.photo ? '<button class="link" data-delpic="'+esc(u.id)+'">Delete the picture</button>' : '') +
-          '<button class="link" data-delrec="'+esc(u.id)+'" style="color:var(--bad)">Delete the record</button>' +
-        '</div>' : '') +
-        '</div></div>' +
-        '<div><div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px">' +
-          '<div class="kicker" style="color:var(--muted)">Who is in this photo – ' + on.length + ' ticked</div>' +
-          (on.length ? '<button class="link" data-clear="'+esc(u.id)+'">Clear</button>' : '') +
-        '</div><div class="chips">' +
-          (PEOPLE.length ? PEOPLE.map(p =>
-            '<button class="chip' + (on.indexOf(p.id)>-1?' on':'') + '" data-u="'+esc(u.id)+'" data-p="'+esc(p.id)+'">' +
-            (on.indexOf(p.id)>-1 ? '✓ ' : '') + esc(p.name) + '</button>').join('')
-            : '<span class="empty" style="padding:0">No names on the roster yet. Add one below.</span>') +
-        '</div></div></div>';
-    }).join('');
-  }
-
-  h += '<div class="sec">Attendance sheet – ' +
-    esc(new Date(DAY+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})) + '</div>';
-  /* A time cell. Either a stamp - with a mark on it if the office typed it
-     rather than a camera taking it - or, where there is nothing yet, the
-     button that puts one there. The crews often do not send a photograph, and
-     a sheet that can only record what arrived by camera records the days the
-     camera was used rather than the days people worked. */
-  const timeCell = (r, kind) => {
-    const at = kind === 'in' ? r.in : r.out;
-    const typed = kind === 'in' ? r.inTyped : r.outTyped;
-    if (at !== '—'){
-      return '<td class="num">' + at +
-        (typed ? '<span class="typed" title="Entered by the office, not photographed">typed</span>' : '') +
-        (window.CAN_EDIT ? '<button class="link tw" data-untime="' +
-          esc(kind === 'in' ? r.inId : r.outId) + '" title="Undo this entry">×</button>' : '') +
-        '</td>';
-    }
-    /* no clocking out before clocking in - an out with no in is not a shift,
-       it is a mistake waiting to be argued about */
-    if (!window.CAN_EDIT || (kind === 'out' && r.in === '—')) return '<td class="num">—</td>';
-    return '<td class="num"><button class="link addt" data-add="' + esc(r.id) +
-      '" data-kind="' + kind + '">+ ' + kind + '</button></td>';
-  };
-
-  h += '<div class="wrap-x"><table><thead><tr><th>Staff</th><th>Clock in</th><th>In location</th>' +
-    '<th>Clock out</th><th>Out location</th><th>Hours</th><th style="text-align:right">Status</th></tr></thead><tbody>' +
-    (sheet.length ? A.groupSheet(sheet).map(g =>
-      /* twenty-five names in one column is a list to scroll; the same names
-         under Office, Supervisor, Trainee and Field is a sheet to read */
-      '<tr class="grp"><td colspan="7">' + esc(g.role) + ' – ' + g.rows.length +
-      '<span class="grpn">' + g.rows.filter(r => r.present).length + ' in</span></td></tr>' +
-      g.rows.map(r =>
-      '<tr><td class="who"><div class="n">'+esc(r.name)+'</div><div class="r">'+esc(r.role)+'</div></td>' +
-      timeCell(r, 'in') + '<td class="geo">'+esc(r.inGeo)+'</td>' +
-      timeCell(r, 'out') + '<td class="geo">'+esc(r.outGeo)+'</td>' +
-      '<td class="num">'+r.hours+'</td>' +
-      '<td style="text-align:right"><span class="tag '+r.tagClass+'">'+esc(r.status)+'</span>' +
-      /* only where it can mean anything: somebody who was photographed was
-         here, and marking them on leave would be a note contradicting a fact */
-      (r.present ? '' :
-        '<button class="link lv" data-lv="'+esc(r.id)+'" data-on="'+(r.leave?'1':'0')+'">' +
-        (r.leave ? 'not on leave' : 'on leave') + '</button>') +
-      (r.leave && r.note ? '<div class="geo" style="margin-top:3px">'+esc(r.note)+'</div>' : '') +
-      '</td></tr>').join('')).join('')
-      : '<tr><td colspan="7" class="empty">No names on the roster yet.</td></tr>') +
-    '</tbody></table></div>';
-  const nTyped = sheet.filter(r => r.inTyped || r.outTyped).length;
-  h += '<div class="foot"><span>A row fills in from a photo somebody has named, or from a time ' +
-    'the office entered where no photo came. Late is any clock-in after ' + A.hm(late) + '. ' +
-    (st.leave ? st.leave + ' on leave, ' : '') + st.absent + ' unaccounted for' +
-    (nTyped ? ', ' + nTyped + ' entered by hand' : '') + '.</span></div>';
-  return h;
-}
-
-/* ---------------------------------------------------------------- leave
-
-   The sheet marks leave for the day being read, after the fact. This is the
-   other half: somebody says on Friday that they are away next week, and it
-   gets written down on Friday. Same rows, same table - just reachable before
-   the day arrives rather than only on it. */
-function viewLeave(){
-  const today = A.dstr(new Date());
-  const from = LV_FROM || today, to = LV_TO || from;
-  const days = A.dayRange(from, to);
-  const nameOf = id => { const p = PEOPLE.find(x => x.id === id); return p ? p.name : id; };
-  const pretty = d => new Date(d + 'T12:00:00')
-    .toLocaleDateString(undefined, { weekday:'short', day:'numeric', month:'short' });
-
-  let h = '<div class="obar"><div><div class="kicker">Leave</div>' +
-    '<h2>Write it down before the day, not after it.</h2></div></div>';
-
-  if (!PEOPLE.length){
-    return h + '<div class="empty">Nobody on the roster yet. Add the team first, ' +
-      'and leave can be marked against them.</div>';
-  }
-
-  h += '<div class="ctl" style="margin-bottom:10px">' +
-    '<select id="lvWho">' + PEOPLE.map(p =>
-      '<option value="'+esc(p.id)+'"'+(LV_WHO===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('') +
-    '</select>' +
-    '<input type="date" id="lvFrom" value="'+esc(from)+'" title="From">' +
-    '<input type="date" id="lvTo" value="'+esc(to)+'" title="To">' +
-    '<input type="text" id="lvNote" placeholder="A note (optional)" value="'+esc(LV_NOTE)+'" style="min-width:200px">' +
-    '<button class="btn" id="lvAdd" style="min-height:0;padding:9px 14px">Mark leave</button></div>';
-  h += '<div class="foot" style="margin-top:0"><span>' +
-    (days.length > 1 ? days.length + ' days – ' + pretty(days[0]) + ' to ' + pretty(days[days.length-1])
-                     : 'One day – ' + pretty(from)) +
-    '. A photograph always outranks this: if they are marked away and turn up, the sheet says they were here.' +
-    '</span></div>';
-
-  const runs = A.groupLeave(AHEAD);
-  h += '<div class="sec">Marked from today on – ' + AHEAD.length +
-    (AHEAD.length === 1 ? ' day' : ' days') + '</div>';
-  h += '<div class="chips">' + (runs.length ? runs.map(r =>
-      '<span class="chip" style="cursor:default">' + esc(nameOf(r.person)) +
-      ' <span style="opacity:.65">· ' + esc(pretty(r.from)) +
-      (r.to !== r.from ? ' to ' + esc(pretty(r.to)) : '') + '</span>' +
-      (r.note ? ' <span style="opacity:.5">· ' + esc(r.note) + '</span>' : '') +
-      ' <button class="link" data-lvdrop="' + esc(r.person + '|' + r.days.join(',')) +
-      '" title="Take this leave off" style="color:inherit;opacity:.5">×</button>' +
-      '</span>').join('')
-    : '<span class="empty" style="padding:0">Nothing marked. Anybody absent without a mark here ' +
-      'shows on the sheet as unaccounted for.</span>') + '</div>';
-  return h;
-}
-
-/* -------------------------------------------------------- the team members */
-function viewTeam(){
-  let h = '<div class="obar"><div><div class="kicker">Team members</div>' +
-    '<h2>Everyone the sheet is measured against.</h2></div></div>';
-  h += '<div class="sec">The roster – ' + PEOPLE.length + '</div>';
-  if (window.CAN_EDIT){
-    h += '<div class="ctl" style="margin-bottom:12px">' +
-      '<input type="text" id="pn" placeholder="Name" style="min-width:180px">' +
-      '<input type="text" id="pr" placeholder="Role (optional)" style="min-width:150px">' +
-      '<button class="btn" id="padd" style="min-height:0;padding:9px 14px">Add to the roster</button></div>';
-  }
-  /* Who is on the roster, and nothing about any particular day. Whether these
-     people turned up is the whole of the tab next door, and answering it twice
-     meant this one changed under you every time the date did - a list of who
-     works here should read the same on a Sunday.
-
-     Grouped straight off PEOPLE rather than through a sheet: groupSheet only
-     needs the role, and there is no day here to build a sheet for. No column
-     for the group either, since it would repeat the heading above every row. */
-  h += '<div class="wrap-x"><table><thead><tr><th style="width:3em">#</th><th>Name</th>' +
-    (window.CAN_EDIT ? '<th style="text-align:right">On the roster</th>' : '') +
-    '</tr></thead><tbody>' +
-    (PEOPLE.length ? A.groupSheet(PEOPLE).map(g =>
-      '<tr class="grp"><td colspan="' + (window.CAN_EDIT ? 3 : 2) + '">' + esc(g.role) +
-      '<span class="grpn">' + plural(g.rows.length, 'person', 'people') + '</span></td></tr>' +
-      g.rows.map((p, i) =>
-        '<tr><td class="num geo">' + (i + 1) + '</td>' +
-        '<td class="who"><div class="n">' + esc(p.name) + '</div></td>' +
-        (window.CAN_EDIT ? '<td style="text-align:right">' +
-          '<button class="link" data-rm="' + esc(p.id) + '">take off</button></td>' : '') +
-        '</tr>').join('')).join('')
-      : '<tr><td colspan="3" class="empty">Nobody yet. ' +
-        (window.CAN_EDIT ? 'Add the first name above.' : 'Ask Sithara to add the team.') +
-        '</td></tr>') +
-    '</tbody></table></div>';
-  h += '<div class="foot"><span>Taking somebody off marks them away rather than deleting them – ' +
-    'a name removed outright would take every past absence of that person with it.</span></div>';
-  return h;
-}
-
 /* The device links. A crew phone opens /attendance/ with its token in the
    address and files a photograph; it cannot read a record, a name or another
    device. The token is shown in full when it is made and abbreviated after,
@@ -934,47 +1163,89 @@ function viewTeam(){
    photographs are both things to arrive at deliberately, not to scroll past
    on the way to the morning's sheet. */
 function viewLinks(){
-  let h = '<div class="obar"><div><div class="kicker">Device links</div>' +
-    '<h2>One link per phone. It files photos and reads nothing.</h2></div></div>';
-  {
-    h += '<div class="sec">The links – ' + DEVICES.length + '</div>';
-    h += '<div class="ctl" style="margin-bottom:12px">' +
-      '<input type="text" id="dl" placeholder="Which phone (e.g. Janaka crew)" style="min-width:220px">' +
-      '<button class="btn" id="dadd" style="min-height:0;padding:9px 14px">Make a link</button></div>';
-    if (MADE){
-      const url = location.origin + '/attendance/?d=' + MADE.token;
-      h += '<div class="madelink"><div class="kicker" style="color:var(--accent)">' +
-        esc(MADE.label || 'New device') + ' – copy this now</div>' +
-        '<div class="url" id="madeurl">' + esc(url) + '</div>' +
-        '<div class="ctl" style="margin-top:10px">' +
-          '<button class="btn" id="dcopy" style="min-height:0;padding:8px 13px">Copy the link</button>' +
-        '</div>' +
-        '<div class="fine2" style="margin-top:9px">Open it once on the phone and add it to the home screen. ' +
-        'Whoever has this link can file a photo for this device and nothing else – it cannot read the sheet, ' +
-        'the roster or any name. If a phone is lost, drop the link here and make another.</div></div>';
-    }
-    h += '<div class="chips">' + (DEVICES.length ? DEVICES.map(d =>
-        '<span class="chip" style="cursor:default">' + esc(d.label || d.id) +
-        ' <span style="opacity:.5;font-family:\'Space Mono\',monospace;font-size:11px">…' + esc(String(d.token).slice(-6)) + '</span>' +
-        (d.last_used ? ' <span style="opacity:.5">· used ' + esc(new Date(d.last_used).toLocaleDateString()) + '</span>' : ' <span style="opacity:.5">· never used</span>') +
-        ' <button class="link" data-dd="' + esc(d.id) + '" title="Stop this link working" style="color:inherit;opacity:.5">×</button>' +
-        '</span>').join('')
-      : '<span class="empty" style="padding:0">No device links yet. Make one and open it on the crew phone.</span>') + '</div>';
+  /* One link. Everybody opens the same one and picks their name, so there is
+     nothing here to make a grid of: one panel, the link, a code to point a
+     camera at, and the two things that can be done to it.
 
-    /* Housekeeping. A face and a coordinate together are the most personal
-       thing this site holds, and there is no reason to hold them once the
-       month they belong to has been read and exported. The rows stay, so an
-       old month still exports; only the pictures go. */
-    h += '<div class="sec">Stored pictures</div>';
-    h += '<div class="ctl"><select id="pold">' +
-      [[30,'older than 30 days'],[60,'older than 60 days'],[90,'older than 90 days'],
-       [365,'older than a year']].map(o =>
-        '<option value="'+o[0]+'"'+(o[0]===OLD?' selected':'')+'>Pictures '+o[1]+'</option>').join('') +
-      '</select><button class="btn" id="pclear" style="min-height:0;padding:9px 14px">' +
-      (BUSY ? 'Working…' : 'Delete them') + '</button></div>';
-    h += '<div class="foot"><span>Only the photograph goes. The time, the place, the device and the ' +
-      'names ticked on it stay, so a month that has already been read still exports the same figures.</span></div>';
+     The link is a capability - whoever holds it can file attendance as anyone
+     on the roster. It is shown as text here because this screen is behind the
+     owner's sign-in and the office has to be able to read it out. It is not
+     sent anywhere from this page: there is no share button, because a link in
+     a group chat stays in that chat forever and stays on the phone of
+     everybody who ever leaves. The QR is how it gets onto a phone - printed
+     and stuck on the office wall, which reaches the people standing in the
+     office and nobody else. */
+  const live = DEVICES.filter(d => d.active !== false);
+  const one = MADE || live.slice().sort((x, y) =>
+    String(y.last_used || '').localeCompare(String(x.last_used || '')))[0] || null;
+
+  let h = '<div class="lk-head"><div><h2 class="lg-t">Mobile links</h2>' +
+    '<p class="lk-sub">One link for the whole team. Everybody opens it, picks their own name ' +
+    'and clocks in. It files photographs and can read nothing else &#8211; not the sheet, ' +
+    'not a record, not another day.</p></div></div>';
+
+  if (!one){
+    h += '<div class="lk-panel"><div class="empty" style="padding:26px 4px">' +
+      'No link yet.' + (window.CAN_EDIT ? ' Make one and print the code for the office wall.' : '') +
+      '</div>' +
+      (window.CAN_EDIT ? '<div class="lk-acts"><button class="lk-btn go" id="dadd">Make the link</button></div>' : '') +
+      '</div>';
+    return h + housekeeping();
   }
+
+  const url = location.origin + '/attendance/clock/?d=' + one.token;
+  const qr = (window.QR && window.QR.svg)
+    ? window.QR.svg(url, { dark: '#0d0a0c', light: '#ffffff', quiet: 3,
+                           label: 'Point the phone camera here' })
+    : '<div class="lk-noqr">No code</div>';
+
+  h += '<div class="lk-panel">' +
+    '<div class="lk-qr">' + qr + '</div>' +
+    '<div class="lk-side">' +
+      '<div class="lk-lab">The link</div>' +
+      '<div class="url" id="theurl">' + esc(url) + '</div>' +
+      '<div class="lk-when">' + (one.last_used
+        ? 'Last used ' + esc(fmtD(String(one.last_used).slice(0, 10)))
+        : 'Not used since it was last issued') + '</div>' +
+      (window.CAN_EDIT
+        ? '<div class="lk-acts"><button class="lk-btn go" id="dcopy">Copy link</button>' +
+          '<button class="lk-btn warn" id="drot">Rotate link</button></div>' +
+          '<p class="lk-note">Rotating issues a new link and stops the old one immediately. ' +
+          'It is how somebody who has left loses access &#8211; and it means every phone on ' +
+          'the team has to open the new link again. Clock-ins already filed are not touched.</p>'
+        : '<div class="lk-acts"><button class="lk-btn go" id="dcopy">Copy link</button></div>') +
+    '</div></div>';
+
+  /* More than one live token when the model says there is one is worth saying
+     out loud: each of the others is a way in that nobody is watching. */
+  const extra = live.filter(d => d.id !== one.id);
+  if (extra.length){
+    h += '<div class="lk-warn"><b>' + plural(extra.length, 'other link is', 'other links are') +
+      ' still live.</b> This tool expects one. Each of these still works and rotating the link ' +
+      'above will not touch them.' +
+      '<div class="lk-extras">' + extra.map(d =>
+        '<span class="lk-ex">' + esc(d.label || d.id) +
+        '<span class="lk-tail">ends ' + esc(String(d.token).slice(-6)) + '</span>' +
+        (window.CAN_EDIT ? '<button class="link" data-dd="' + esc(d.id) + '">stop it</button>' : '') +
+        '</span>').join('') + '</div></div>';
+  }
+  return h + housekeeping();
+}
+
+/* Housekeeping. A face and a coordinate together are the most personal thing
+   this site holds, and there is no reason to hold them once the month they
+   belong to has been read and exported. The rows stay, so an old month still
+   exports; only the pictures go. */
+function housekeeping(){
+  let h = '<div class="sec">Stored pictures</div>';
+  h += '<div class="ctl"><select id="pold">' +
+    [[30,'older than 30 days'],[60,'older than 60 days'],[90,'older than 90 days'],
+     [365,'older than a year']].map(o =>
+      '<option value="'+o[0]+'"'+(o[0]===OLD?' selected':'')+'>Pictures '+o[1]+'</option>').join('') +
+    '</select><button class="btn" id="pclear" style="min-height:0;padding:9px 14px">' +
+    (BUSY ? 'Working\u2026' : 'Delete them') + '</button></div>';
+  h += '<div class="foot"><span>Only the photograph goes. The time, the place, the device and the ' +
+    'names ticked on it stay, so a month that has already been read still exports the same figures.</span></div>';
   return h;
 }
 /* The crews do not sign in, so what ties a photograph to a phone is the
@@ -999,7 +1270,7 @@ function wireOffice(sheet, late){
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
     TAB = b.dataset.tab; BELL = false; paint();
     /* the month is only fetched when somebody asks to see it */
-    if (TAB === 'dash') loadDash();
+    if (TAB === 'dash' || TAB === 'leave') loadDash();
   });
   /* the month view's own controls */
   document.querySelectorAll('[data-mon]').forEach(b => b.onclick = () => shiftMonth(+b.dataset.mon));
@@ -1042,8 +1313,8 @@ function wireOffice(sheet, late){
     if (!days.length){ toast('Pick a date'); return; }
     const name = (PEOPLE.find(p => p.id === who) || {}).name || 'They';
     try {
-      await window.DB.attendSetLeaveRange(days, who, ln ? ln.value : LV_NOTE);
-      LV_NOTE = ''; await refresh();
+      await window.DB.attendSetLeaveRange(days, who, ln ? ln.value : LV_NOTE, LVTYPE);
+      LV_NOTE = ''; await leaveChanged();
       toast(name + ' is marked off for ' + days.length + (days.length>1 ? ' days' : ' day'));
     } catch (e){ toast(e.message, 5000); }
   };
@@ -1220,12 +1491,74 @@ function wireOffice(sheet, late){
   });
   const add = $('padd');
   if (add) add.onclick = async () => {
-    const p = A.cleanPerson({ name: $('pn').value, role: $('pr').value, sort: PEOPLE.length + 1 });
+    const val = id => { const el = $(id); return el ? el.value : ''; };
+    const p = A.cleanPerson({ name: val('pn'), role: val('pr'), sort: PEOPLE.length + 1 });
     if (!p){ toast('A name, at least'); return; }
-    try { await window.DB.attendAddPerson(p); $('pn').value=''; $('pr').value='';
+    /* crew, phone and site are optional and go in beside the name rather than
+       in a second screen – four fields is not enough to make a form of. */
+    /* A phone number is written a dozen ways here and none of them is wrong.
+       It is kept as typed – stripping the hyphen out of 077-555 0101 only
+       makes the office wonder what else the page has quietly changed. */
+    p.crew = val('pc').trim(); p.site = val('ps').trim(); p.phone = val('pp').trim();
+    try { await window.DB.attendAddPerson(p);
+      ['pn','pr','pc','pp','ps'].forEach(id => { const el = $(id); if (el) el.value = ''; });
       await refresh(); toast(p.name + ' is on the roster'); }
     catch (e){ toast(e.message, 5000); }
   };
+  /* the search box keeps the caret where it was: repainting the whole view on
+     every keystroke would throw it back to the start of the word */
+  const qb = $('q');
+  if (qb) qb.oninput = () => {
+    const at = qb.selectionStart; Q = qb.value; paint();
+    const again = $('q');
+    if (again){ again.focus(); try { again.setSelectionRange(at, at); } catch (e){} }
+  };
+  document.querySelectorAll('[data-day]').forEach(el => el.onclick = async () => {
+    if (el.dataset.day === DAY) return;
+    /* SEEN belongs to the day it was read on. Clearing it is what stops a
+       different day's photographs being announced as ones that just landed. */
+    DAY = el.dataset.day; SEEN = null;
+    await refresh();
+  });
+  document.querySelectorAll('[data-role]').forEach(el => el.onclick = () => {
+    ROLEF = ROLEF === el.dataset.role ? '' : el.dataset.role; paint();
+  });
+  document.querySelectorAll('[data-lvtype]').forEach(el => el.onclick = () => {
+    LVTYPE = el.dataset.lvtype; paint();
+  });
+  document.querySelectorAll('[data-lvbook]').forEach(el => el.onclick = async () => {
+    const booking = el.dataset.lvbook;
+    const who = (PEOPLE.find(p => p.id === el.dataset.lvwho) || {}).name || 'this person';
+    if (!booking){ toast('That leave has no booking on it – run migration 033.', 6000); return; }
+
+    /* Asked of the table, not of the screen. The list holds one month and a
+       booking may run past both ends of it, so the only number worth putting
+       in front of somebody about to cancel is the one the table gives. */
+    const got = await window.DB.attendBooking(booking);
+    if (got.error){ toast('Could not read that booking: ' + got.error, 6000); return; }
+    const days = got.days || [];
+    if (!days.length){ await refresh(); toast('That leave is already gone'); return; }
+    /* ask() writes text, not markup, so the dash is the character itself -
+       an entity here reaches the screen spelled out as "&#8211;". */
+    const span = days.length === 1 ? fmtD(days[0].day)
+               : fmtD(days[0].day) + ' – ' + fmtD(days[days.length - 1].day);
+    const crosses = String(days[0].day).slice(0, 7) !== String(days[days.length - 1].day).slice(0, 7);
+
+    const ok = await ask([
+      { title: 'Cancel leave for ' + who + ', ' + span + '?',
+        body: plural(days.length, 'day comes', 'days come') + ' off' +
+              (crosses ? ', across both months – including the days not shown on this list.' : '.'),
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Those days count as absent again.',
+        body: 'Unless a photograph or a typed time covers each one, the sheet shows ' + who +
+              ' as not there. The note on the leave is gone with it.',
+        no: 'No, keep the leave', yes: 'Cancel the leave' }
+    ]);
+    if (!ok) return;
+    try { await window.DB.attendClearBooking(booking); await leaveChanged();
+      toast('Leave cancelled · ' + plural(days.length, 'day', 'days') + ' off'); }
+    catch (e){ toast(e.message, 5000); }
+  });
   document.querySelectorAll('[data-lv]').forEach(b => b.onclick = async () => {
     const on = b.dataset.on !== '1';
     if (!on){
@@ -1241,21 +1574,56 @@ function wireOffice(sheet, late){
       if (!ok) return;
     }
     const note = on ? (prompt('A note, if there is one (optional)') || '') : '';
-    try { await window.DB.attendSetLeave(DAY, b.dataset.lv, on, note); await refresh();
+    try { await window.DB.attendSetLeave(DAY, b.dataset.lv, on, note); await leaveChanged();
       toast(on ? 'Marked on leave' : 'Leave taken off'); }
     catch (e){ toast(e.message, 5000); }
   });
   const dadd = $('dadd');
   if (dadd) dadd.onclick = async () => {
-    try { MADE = await window.DB.attendMakeDevice($('dl').value.trim());
-      $('dl').value = ''; await refresh(); toast('Link made. Copy it now – it is shown in full once.', 6000); }
+    try { MADE = await window.DB.attendMakeDevice('Team link');
+      await refresh(); toast('Link made. Print the code for the office wall.', 6000); }
     catch (e){ toast(e.message, 5000); }
   };
+
+  /* Copying is the only way the link leaves this page under its own steam,
+     and it goes straight to the clipboard. */
   const dcopy = $('dcopy');
   if (dcopy) dcopy.onclick = () => {
-    const url = $('madeurl').textContent;
+    const url = ($('theurl') || {}).textContent || '';
     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
-      .then(() => toast('Link copied')).catch(() => toast('Select it and copy by hand'));
+      .then(() => toast('Link copied'))
+      .catch(() => toast('This browser would not copy it – select the link and copy it by hand.', 6000));
+  };
+
+  /* Rotating is the only revocation this tool has. There is one link and the
+     whole team holds it, so taking it back from one person takes it back from
+     all of them. That is not a thing to do by accident. */
+  const drot = $('drot');
+  if (drot) drot.onclick = async () => {
+    const live = DEVICES.filter(d => d.active !== false);
+    const one = MADE || live.slice().sort((x, y) =>
+      String(y.last_used || '').localeCompare(String(x.last_used || '')))[0];
+    if (!one){ toast('There is no link to rotate.'); return; }
+    const n = PEOPLE.length;
+    const ok = await ask([
+      { title: 'Issue a new link and stop this one?',
+        body: 'Do this when somebody has left the team, or if the link has gone somewhere it ' +
+              'should not have. It is the only way to take access back.',
+        no: 'Cancel', yes: 'Yes, go on' },
+      { title: 'Every phone will stop working and everyone must open the new link again.',
+        body: 'The old link stops the moment you confirm – ' +
+              (n ? 'all ' + n + ' people on the roster ' : 'everybody ') +
+              'will find the clock app dead until they open the new one and add it to the home ' +
+              'screen again. Clock-ins already recorded are not touched and nothing on any sheet ' +
+              'changes. Have the new code ready to put up before you do this.',
+        no: 'No, keep this link', yes: 'Rotate the link' }
+    ]);
+    if (!ok) return;
+    try {
+      const next = await window.DB.attendRotateDevice(one.id);
+      MADE = null; await refresh();
+      toast('New link issued. The old one has stopped – put the new code up.', 7000);
+    } catch (e){ toast(e.message, 6000); }
   };
   document.querySelectorAll('[data-dd]').forEach(b => b.onclick = async () => {
     const d = DEVICES.find(x => x.id === b.dataset.dd) || {};
@@ -1366,9 +1734,10 @@ async function refresh(){
      the day being read: sixty days is far enough ahead to plan and near enough
      that the list stays a list */
   const ahead = A.dstr(new Date(Date.now() + 60 * 86400000));
-  const [p, r, d, l, a] = await Promise.all([
+  const [p, r, d, l, a, si] = await Promise.all([
     window.DB.attendPeople(), window.DB.attendDay(DAY), window.DB.attendDevices(),
-    window.DB.attendLeave(DAY), window.DB.attendLeaveRange(today, ahead)
+    window.DB.attendLeave(DAY), window.DB.attendLeaveRange(today, ahead),
+    window.DB.attendSites()
   ]);
   ERR = p.error || r.error || '';
   PEOPLE = A.sortPeople(p.people || []);
@@ -1376,6 +1745,13 @@ async function refresh(){
   DEVICES = d.devices || [];
   LEAVE = l.leave || [];
   AHEAD = a.leave || [];
+  SITES = si.sites || [];
+
+  /* The true first and last day of every booking on screen. Without it the
+     list can only draw the part of a booking that falls inside the month. */
+  const bks = [];
+  LEAVE.concat(AHEAD).forEach(l => { if (l.booking && bks.indexOf(l.booking) < 0) bks.push(l.booking); });
+  LVSPAN = bks.length ? (await window.DB.attendBookingSpans(bks)).spans || {} : {};
 
   /* An arrival is an id that was not here a moment ago. SEEN is null on the
      first load, so opening the page is not itself news. */
@@ -1389,7 +1765,7 @@ async function refresh(){
   /* The month opens on the month, so it has to fetch itself rather than
      wait for a tab to be clicked - and it needs PEOPLE, which is why it is
      asked for here and not at boot. */
-  if (TAB === 'dash') loadDash();
+  if (TAB === 'dash' || TAB === 'leave') loadDash();
 }
 
 /* The clock ticks by writing into the one element, not by painting the page:

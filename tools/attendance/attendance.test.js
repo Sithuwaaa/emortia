@@ -346,5 +346,47 @@ console.log('\nleave marked in advance');
   is('and a mark with no day is skipped', A.groupLeave([{person:'p1'}]), []);
 }
 
+/* ------------------------------------------------------------ where it was
+
+   A photograph carries a pair of coordinates and nothing else. Turning that
+   into a place name is a lookup against the sites the office has written
+   down, and it has to be willing to say it does not know.
+
+   These exist because the parsing expression once lost every backslash on its
+   way into the file and still passed the whole suite: it matched nothing,
+   every clock-in on the screen read "not a known site", and no test noticed. */
+{
+  console.log('\n  where it was');
+  const SITES = [
+    { id:'s2', name:'Kollupitiya', lat:6.9161, lng:79.8506, radius_m:400 },
+    { id:'s3', name:'Moratuwa',    lat:6.7714, lng:79.8835, radius_m:400 }
+  ];
+  is('a plain pair parses',           A.parseGeo('6.9161,79.8506'), { lat:6.9161, lng:79.8506 });
+  is('spaces around the comma',       A.parseGeo('6.9161 , 79.8506'), { lat:6.9161, lng:79.8506 });
+  is('south and west are negative',   A.parseGeo('-33.8688,-151.2093'), { lat:-33.8688, lng:-151.2093 });
+  is('whole numbers are a pair',      A.parseGeo('7,80'), { lat:7, lng:80 });
+  is('an em dash is not a place',     A.parseGeo('—'), null);
+  is('nor is nothing at all',         A.parseGeo(''), null);
+  is('nor is undefined',              A.parseGeo(undefined), null);
+  is('nor is prose',                  A.parseGeo('near the office'), null);
+
+  const near = A.metresBetween({ lat:6.9161, lng:79.8506 }, { lat:6.9163, lng:79.8510 });
+  is('a few dozen metres reads so',   near > 5 && near < 60, true);
+  is('Moratuwa is about 16 km away',
+     Math.round(A.metresBetween({ lat:6.9161, lng:79.8506 }, { lat:6.7714, lng:79.8835 }) / 1000), 16);
+  is('a place is no distance from itself',
+     Math.round(A.metresBetween({ lat:6.9, lng:79.8 }, { lat:6.9, lng:79.8 })), 0);
+
+  is('inside the radius gets a name', A.placeOf('6.9163,79.8510', SITES), 'Kollupitiya');
+  is('the nearer site wins',          A.placeOf('6.7715,79.8836', SITES), 'Moratuwa');
+  is('outside every radius is blank', A.placeOf('6.8412,79.9720', SITES), '');
+  is('no coordinates, no name',       A.placeOf('—', SITES), '');
+  is('no site list, no name',         A.placeOf('6.9163,79.8510', []), '');
+  is('a site with no coordinates is skipped',
+     A.placeOf('6.9163,79.8510', [{ id:'x', name:'Nowhere' }]), '');
+  is('a tight radius can miss',
+     A.placeOf('6.9163,79.8510', [{ id:'s2', name:'Kollupitiya', lat:6.9161, lng:79.8506, radius_m:10 }]), '');
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);

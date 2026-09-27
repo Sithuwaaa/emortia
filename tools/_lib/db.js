@@ -1217,18 +1217,43 @@
   async function attendPeople(){
     const c = await client(); if (!c) return { people: [], error: 'offline' };
     const { data, error } = await c.from('attend_people')
-      .select('id,name,role,sort,active').order('sort').order('name');
+      .select('id,name,role,sort,active,crew,phone,site').order('sort').order('name');
     if (error) return { people: [], error: tidyAttend(error.message) };
     return { people: (data || []).filter(p => p.active !== false), error: null };
   }
   async function attendAddPerson(p){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
     const { error } = await c.from('attend_people').upsert(
-      { id: p.id, name: p.name, role: p.role || '', sort: p.sort || 0, active: true },
+      { id: p.id, name: p.name, role: p.role || '', sort: p.sort || 0, active: true,
+        crew: p.crew || '', phone: p.phone || '', site: p.site || '' },
       { onConflict: 'id' });
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
       ? 'Only Sithara or an office admin can change the roster.' : error.message);
   }
+  /* The places the work happens, by name. A record carries coordinates; a
+     name for them is a separate fact, and looking it up is the only honest
+     way to put one on a screen. */
+  async function attendSites(){
+    const c = await client(); if (!c) return { sites: [], error: 'offline' };
+    const { data, error } = await c.from('attend_sites')
+      .select('id,name,lat,lng,radius_m,active').order('name');
+    if (error) return { sites: [], error: tidyAttend(error.message) };
+    return { sites: (data || []).filter(x => x.active !== false), error: null };
+  }
+  async function attendSiteSave(x){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('attend_sites').upsert(
+      { id: x.id, name: x.name, lat: x.lat, lng: x.lng,
+        radius_m: x.radius_m || 400, active: true }, { onConflict: 'id' });
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only Sithara can change the site list.' : error.message);
+  }
+  async function attendSiteRemove(id){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('attend_sites').update({ active: false }).eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
   async function attendRemovePerson(id){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
     /* Marked away rather than deleted: a name removed outright would take
@@ -1334,10 +1359,10 @@
   async function attendLeaveRange(from, to){
     const c = await client(); if (!c) return { leave: [], error: 'offline' };
     const { data, error } = await c.from('attend_leave')
-      .select('day,person,label,note').gte('day', from).lte('day', to);
+      .select('day,person,label,note,booking').gte('day', from).lte('day', to);
     if (error) return { leave: [], error: tidyAttend(error.message) };
     return { leave: (data || []).map(l => ({ day: l.day, person: l.person,
-      label: l.label || 'Leave', note: l.note || '' })), error: null };
+      label: l.label || 'Leave', note: l.note || '', booking: l.booking || '' })), error: null };
   }
 
   /* -------------------------------------------------- getting rid of a photo
@@ -1380,11 +1405,20 @@
   async function attendLeave(day){
     const c = await client(); if (!c) return { leave: [], error: 'offline' };
     const { data, error } = await c.from('attend_leave')
-      .select('day,person,label,note').eq('day', day);
+      .select('day,person,label,note,booking').eq('day', day);
     if (error) return { leave: [], error: tidyAttend(error.message) };
     return { leave: (data || []).map(l => ({ day: l.day, person: l.person,
-      label: l.label || 'Leave', note: l.note || '' })), error: null };
+      label: l.label || 'Leave', note: l.note || '', booking: l.booking || '' })), error: null };
   }
+
+  /* One act of booking, however many days it covers. The id is made here
+     rather than by the database because the days are written in one upsert
+     and they all have to carry the same one. */
+  function bookingId(){
+    return 'lv-' + Date.now().toString(36) + '-' +
+           Math.random().toString(36).slice(2, 8);
+  }
+
   async function attendSetLeave(day, person, on, note){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
     if (!on){
@@ -1392,22 +1426,72 @@
       if (error) throw new Error(tidyAttend(error.message));
       return;
     }
+    /* A single day ticked on the sheet is still a booking - of one day. It
+       gets an id like any other so nothing in the table is ever without one. */
     const { error } = await c.from('attend_leave')
-      .upsert({ day, person, label: 'Leave', note: note || '' }, { onConflict: 'day,person' });
+      .upsert({ day, person, label: 'Leave', note: note || '', booking: bookingId() },
+              { onConflict: 'day,person' });
     if (error) throw new Error(tidyAttend(error.message));
   }
 
   /* A stretch of days off, written in one go. Somebody says on Friday that
      they are away all next week, and that is one act by the office even though
      it is five rows. */
-  async function attendSetLeaveRange(days, person, note){
+  async function attendSetLeaveRange(days, person, note, label){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
-    const rows = (days || []).map(day => ({ day, person, label: 'Leave', note: note || '' }));
-    if (!rows.length) return 0;
+    /* The kind of leave, when the office says which. Older callers pass three
+       arguments and keep the plain word they always wrote. */
+    const kind = String(label || 'Leave').trim().slice(0, 40) || 'Leave';
+    const booking = bookingId();
+    const rows = (days || []).map(day => ({ day, person, label: kind, note: note || '', booking }));
+    if (!rows.length) return { booking: '', days: 0 };
     const { error } = await c.from('attend_leave').upsert(rows, { onConflict: 'day,person' });
     if (error) throw new Error(tidyAttend(error.message));
-    return rows.length;
+    return { booking, days: rows.length };
   }
+
+  /* Every day of one booking, whatever months it runs across. The screen only
+     ever holds a month, so the question "how much am I about to cancel" has to
+     be asked of the table rather than of what happens to be rendered. */
+  async function attendBooking(booking){
+    const c = await client(); if (!c) return { days: [], error: 'offline' };
+    if (!booking) return { days: [], error: null };
+    const { data, error } = await c.from('attend_leave')
+      .select('day,person,label,note').eq('booking', booking).order('day');
+    if (error) return { days: [], error: tidyAttend(error.message) };
+    return { days: data || [], error: null };
+  }
+
+  /* The true span of each of a set of bookings, in one query. The month view
+     holds a month, so without this a booking that runs past the edge would be
+     drawn as the part that fits - which is the half-truth the booking id was
+     added to get rid of. Cheap enough to ask for every render. */
+  async function attendBookingSpans(ids){
+    const c = await client(); if (!c) return { spans: {}, error: 'offline' };
+    const want = (ids || []).filter(Boolean);
+    if (!want.length) return { spans: {}, error: null };
+    const { data, error } = await c.from('attend_leave')
+      .select('day,booking').in('booking', want).order('day');
+    if (error) return { spans: {}, error: tidyAttend(error.message) };
+    const spans = {};
+    (data || []).forEach(r => {
+      const s = spans[r.booking] || (spans[r.booking] = { from: r.day, to: r.day, n: 0 });
+      if (r.day < s.from) s.from = r.day;
+      if (r.day > s.to) s.to = r.day;
+      s.n++;
+    });
+    return { spans, error: null };
+  }
+
+  /* Cancelling is one delete on the booking id. No day list, so no way for it
+     to remove only the part that was on screen. */
+  async function attendClearBooking(booking){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    if (!booking) throw new Error('That leave has no booking on it.');
+    const { error } = await c.from('attend_leave').delete().eq('booking', booking);
+    if (error) throw new Error(tidyAttend(error.message));
+  }
+
   async function attendClearLeaveRange(days, person){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
     if (!(days || []).length) return;
@@ -1425,15 +1509,40 @@
     if (error) return { devices: [], error: tidyAttend(error.message) };
     return { devices: (data || []).filter(d => d.active), error: null };
   }
+  function freshToken(){
+    const bytes = new Uint8Array(18); crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
   async function attendMakeDevice(label){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
-    const bytes = new Uint8Array(18); crypto.getRandomValues(bytes);
-    const token = Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+    const token = freshToken();
     const id = 'd' + Date.now().toString(36);
     const { error } = await c.from('attend_devices').insert({ id, label: label || '', token });
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
-      ? 'Only Sithara or an office admin can make a device link.' : tidyAttend(error.message));
+      ? 'Only Sithara or an office admin can make the link.' : tidyAttend(error.message));
     return { id, label, token };
+  }
+
+  /* Rotating is how somebody loses access. There is one link and everybody
+     holds it, so the only way to take it back from a person who has left is
+     to take it back from all of them and hand the rest a new one.
+
+     The row keeps its id and only the token changes. That matters: a clock-in
+     is stamped 'C:<device id>:<person>', so every record ever filed still
+     points at this row afterwards. Nothing already written moves, and nothing
+     already written is lost. The old token stops working the instant this
+     returns, because every device call looks the row up BY token and the old
+     one now matches nothing. */
+  async function attendRotateDevice(id){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    if (!id) throw new Error('There is no link to rotate.');
+    const token = freshToken();
+    const { error } = await c.from('attend_devices')
+      .update({ token, last_used: null }).eq('id', id);
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only Sithara can rotate the link.' : tidyAttend(error.message));
+    return { id, token };
   }
   async function attendDropDevice(id){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
@@ -1566,10 +1675,13 @@
                 trackVisit, trackSignIn, insightSummary, insightDaily, insightBy, insightDevices,
                 revokeDevice, unrevokeDevice, revokedAt, myVisitor,
                 attendPeople, attendAddPerson, attendRemovePerson, attendDay,
+                attendSites, attendSiteSave, attendSiteRemove,
                 attendFile, attendName, attendSubscribe,
                 attendSubmit, attendDeviceToday, attendDevices, attendMakeDevice, attendDropDevice,
+                attendRotateDevice,
                 attendLeave, attendSetLeave, attendRange, attendLeaveRange,
                 attendSetLeaveRange, attendClearLeaveRange, attendManual,
+                attendBooking, attendClearBooking, attendBookingSpans,
                 attendClearPhoto, attendDropRecord, attendClearBefore,
                 featureLocks, setFeatureLock, onFeatureLocks,
                 teamLoad, teamAddGroup, teamRenameGroup, teamDeleteGroup,
