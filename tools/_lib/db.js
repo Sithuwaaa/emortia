@@ -1230,6 +1230,49 @@
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
       ? 'Only Sithara or an office admin can change the roster.' : error.message);
   }
+  /* The days the country is not working. Read for whatever span is on screen,
+     because a sheet that does not know about Poya reads it as an absence. */
+  async function attendHolidays(from, to){
+    const c = await client(); if (!c) return { days: [], error: 'offline' };
+    let q = c.from('attend_holidays').select('day,name,kind');
+    if (from) q = q.gte('day', from);
+    if (to)   q = q.lte('day', to);
+    const { data, error } = await q.order('day');
+    if (error) return { days: [], error: tidyAttend(error.message) };
+    return { days: data || [], error: null };
+  }
+  async function attendHolidaySave(day, name, kind){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    if (!day || !String(name || '').trim()) throw new Error('A date and a name, at least.');
+    const { error } = await c.from('attend_holidays').upsert(
+      { day, name: String(name).trim().slice(0, 80), kind: kind || 'public' },
+      { onConflict: 'day' });
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'You do not have permission to change the holidays.' : tidyAttend(error.message));
+  }
+  async function attendHolidayRemove(day){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error } = await c.from('attend_holidays').delete().eq('day', day);
+    if (error) throw new Error(tidyAttend(error.message));
+  }
+
+  /* Editing somebody already on the roster. Separate from adding one, because
+     an update that silently created a second person would be a quiet disaster
+     in a table every attendance figure is counted against. */
+  async function attendEditPerson(id, fields){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    if (!id) throw new Error('There is nobody to change.');
+    const patch = {};
+    ['name','role','crew','phone','site'].forEach(k => {
+      if (fields && fields[k] != null) patch[k] = String(fields[k]).trim();
+    });
+    if (patch.name === '') throw new Error('A name, at least.');
+    if (!Object.keys(patch).length) return;
+    const { error } = await c.from('attend_people').update(patch).eq('id', id);
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'You do not have permission to change the roster.' : tidyAttend(error.message));
+  }
+
   /* The places the work happens, by name. A record carries coordinates; a
      name for them is a separate fact, and looking it up is the only honest
      way to put one on a screen. */
@@ -1676,6 +1719,8 @@
                 revokeDevice, unrevokeDevice, revokedAt, myVisitor,
                 attendPeople, attendAddPerson, attendRemovePerson, attendDay,
                 attendSites, attendSiteSave, attendSiteRemove,
+                attendHolidays, attendHolidaySave, attendHolidayRemove,
+                attendEditPerson,
                 attendFile, attendName, attendSubscribe,
                 attendSubmit, attendDeviceToday, attendDevices, attendMakeDevice, attendDropDevice,
                 attendRotateDevice,

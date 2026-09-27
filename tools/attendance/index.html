@@ -101,6 +101,11 @@
   .lg-day .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px;color:var(--text)}
   .lg-day.on{background:var(--accent);border-color:var(--accent)}
   .lg-day.on .wd,.lg-day.on .n{color:var(--ink)}
+  .lg-page{flex:none;align-self:stretch;min-width:34px;padding:0 10px;border-radius:12px;
+    border:1px solid var(--line3);background:var(--card);color:var(--muted);cursor:pointer;
+    font:inherit;font-size:15px;line-height:1}
+  .lg-page:hover{border-color:var(--accent);color:var(--accentB)}
+  .lg-page.today{font-size:12.5px;font-weight:600}
   .lg-panel{padding:0;overflow:hidden}
   .lg-grid{min-width:1160px}
   .lg-hrow,.lg-row{display:grid;grid-template-columns:230px minmax(230px,1fr) minmax(230px,1fr) 70px 100px 150px;
@@ -142,6 +147,16 @@
   .lv-l input,.lv-l select{background:var(--card2);border:1px solid var(--line3);border-radius:10px;
     padding:10px 12px;color:var(--text);font-size:14px;color-scheme:dark;outline:none}
   .lv-l input:focus,.lv-l select:focus{border-color:var(--accent)}
+  /* The open list of a native select is drawn by the operating system, which
+     ignores the control's own colours and uses the page's colour scheme. On a
+     light desktop that made a white list with near-white text - the roster was
+     there and unreadable. These two say what the list itself should be. */
+  .lv-l select{color-scheme:dark}
+  .lv-l select option{background:#1b1420;color:#f3e9f2}
+  .lv-l select optgroup{background:#1b1420;color:#b9a7b8}
+  /* A date input's calendar button is black on a dark field without this. */
+  .lv-l input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.65)}
+  .lv-l input[type="date"]::-webkit-calendar-picker-indicator:hover{filter:invert(1) opacity(1)}
   .lv-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .lv-chips{display:flex;gap:6px;flex-wrap:wrap}
   .lv-chip,.tm-chip{flex:none;white-space:nowrap;padding:7px 12px;border-radius:999px;cursor:pointer;
@@ -203,7 +218,38 @@
   .tm-nums b{color:var(--text)}
   .tm-nums b.w{color:var(--warn)}
   .tm-nums b.b{color:var(--bad)}
-  .tm-rm{align-self:flex-start;font-size:12.5px}
+  .tm-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .tm-rm{font-size:12.5px}
+  .tm-foot .link{font-size:12.5px}
+  .tm-edit{border-color:var(--accent)}
+  .tm-edit input{background:var(--card2);border:1px solid var(--line3);border-radius:10px;
+    padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;box-sizing:border-box}
+  .tm-edit input:focus{border-color:var(--accent)}
+  .tm-edit .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tm-eacts{display:flex;gap:8px}
+  .tm-eacts .lk-btn{flex:1;padding:9px 12px;font-size:13px}
+  .tm-enote{font-size:11.5px;color:var(--muted);line-height:1.55}
+
+  /* ---- the export panel ---- */
+  .xp{background:var(--card);border:1px solid var(--line3);border-radius:16px;padding:16px 18px;
+    display:flex;flex-direction:column;gap:12px;max-width:660px}
+  .xp-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .xp-lab{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);width:76px;flex:none}
+  .xp-seg{display:flex;background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:3px;gap:2px}
+  .xp-b{font:inherit;font-size:13px;font-weight:600;padding:7px 13px;border:0;border-radius:7px;
+    background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .xp-b.on{background:var(--accent);color:var(--ink)}
+  .xp-in{background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:9px 12px;
+    color:var(--text);font:inherit;font-size:14px;color-scheme:dark;outline:none;min-width:190px}
+  .xp-in:focus{border-color:var(--accent)}
+  .xp-in option{background:#1b1420;color:#f3e9f2}
+  .xp-in[type="date"]::-webkit-calendar-picker-indicator,
+  .xp-in[type="month"]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.65)}
+  .xp-out{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    border-top:1px solid var(--line);padding-top:12px;margin-top:2px}
+  .xp-out span{font-size:13px;color:var(--muted)}
+  @media (max-width:540px){ .xp-lab{width:100%} .xp-in{width:100%} }
   @media (max-width:640px){ .lg-q{margin-left:0;width:100%} }
   /* ---- mobile links ---- */
   .lk-head{margin-bottom:16px}
@@ -280,8 +326,20 @@
   .dsh-dh .wd{font-size:10px;color:var(--muted)}
   .dsh-dh .dn{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
     font-size:12px;font-weight:700;color:var(--dim)}
-  .dsh-dh.sun .wd,.dsh-dh.sun .dn{color:var(--mute,#7d6479);opacity:.7}
-  .dsh-dh.now .dn{background:var(--accent);color:var(--ink)}
+  /* Sunday in red and Saturday in ash, so the shape of a week is readable
+     before a single cell is. A holiday takes the red too - it is the same
+     kind of day - and a dot under it, because the name will not fit in a
+     thirty-pixel column; the name is on the hover instead.
+
+     These come after the plain .dn rule on purpose. They used to sit above it
+     and lost every time. */
+  .dsh-dh.sat .wd,.dsh-dh.sat .dn{color:#8b8792}
+  .dsh-dh.sun .wd,.dsh-dh.sun .dn{color:var(--bad);opacity:.85}
+  .dsh-dh.hol{position:relative}
+  .dsh-dh.hol .wd,.dsh-dh.hol .dn{color:var(--bad);opacity:1}
+  .dsh-dh.hol::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+    width:4px;height:4px;border-radius:50%;background:var(--bad)}
+  .dsh-dh.now .dn{background:var(--accent);color:var(--ink);opacity:1}
   .dsh-c{width:30px;min-width:30px;flex:none;display:flex;justify-content:center;padding:3px 0}
   .dsh-row:hover{background:rgba(var(--accentRGB,234,132,250),.05)}
   .dsh-role{position:sticky;left:0;width:max-content;white-space:nowrap;padding:14px 14px 6px;
@@ -469,7 +527,13 @@ let DEVICES = [], MADE = null, LEAVE = [];      // MADE: a link just created, sh
 /* What the export covers. The day is what is on screen; the two monthly ones
    are asked for by a month rather than read off it, because a month is not a
    thing this page shows and pretending otherwise would mean loading one. */
-let XSCOPE = 'day', XMONTH = DAY.slice(0, 7), XWHO = '';
+/* Two questions, asked separately: who the sheet is about, and how long a
+   stretch it covers. Keeping them apart is what makes one person's week and
+   the whole team's month the same piece of code. */
+let XWHOM = 'team';          // team | person
+let XPERIOD = 'month';       // day | week | month
+let XDATE = DAY;             // any date inside the stretch being asked for
+let XWHO = '';               // which person, when XWHOM is 'person'
 let OLD = 90;                                   // how old a picture has to be to be swept
 let TAB = 'dash';                               // dash | day | leave | team | links
 /* the month view: which month, which shape, and the month itself once it
@@ -480,6 +544,9 @@ let ROLEF = '';                                 // which role chip is on
 let SITES = [];                                 // the places, for naming a photograph's coordinates
 let LVTYPE = 'Annual';                          // which leave chip is on
 let LVSPAN = {};                                // booking id -> its real {from, to, n}
+let HOLS = {};                                  // date -> the holiday on it, if any
+let STRIP = '';                                 // newest day the strip is showing
+let EDITP = '';                                 // which team card is open for editing
 let AHEAD = [];                                 // leave marked for the days to come
 let BELL = false, SEEN = null;                  // SEEN: the ids already known, so an arrival is an arrival
 let LV_WHO = '', LV_FROM = '', LV_TO = '', LV_NOTE = '';
@@ -688,9 +755,15 @@ async function loadDash(force){
   if (!from || !to) return;
   DBUSY = true; DERR = ''; paint();
   try {
-    const [r, l] = await Promise.all([window.DB.attendRange(from, to), window.DB.attendLeaveRange(from, to)]);
+    const [r, l, hd] = await Promise.all([
+      window.DB.attendRange(from, to), window.DB.attendLeaveRange(from, to),
+      window.DB.attendHolidays(from, to)]);
     if (r.error) throw new Error(r.error);
     const leave = (l && l.leave) || [];
+    /* The holidays for the month on screen. Without them a Poya day reads as
+       twenty-five people who did not turn up. */
+    const hols = (hd && hd.days) || [];
+    HOLS = {}; hols.forEach(h => { HOLS[h.day] = h; });
     /* The month's leave is kept rather than only folded into the sheets. The
        leave list is a view of the month on screen, and it used to be built
        from today's marks plus sixty days ahead - so stepping back to March or
@@ -699,9 +772,9 @@ async function loadDash(force){
     leave.forEach(x => { if (x.booking && bks.indexOf(x.booking) < 0) bks.push(x.booking); });
     const sp = bks.length ? (await window.DB.attendBookingSpans(bks)).spans || {} : {};
     Object.keys(sp).forEach(k => { LVSPAN[k] = sp[k]; });
-    DDAYS = { ym: DYM, leave: leave,
+    DDAYS = { ym: DYM, leave: leave, holidays: hols,
       days: A.monthSheets(PEOPLE, r.records, leave, DYM,
-                          A.lateAfter(SHIFT, GRACE), A.dstr(new Date())) };
+                          A.lateAfter(SHIFT, GRACE), A.dstr(new Date()), hols) };
   } catch (e){ DERR = e.message || 'Could not read that month.'; DDAYS = null; }
   DBUSY = false; paint();
 }
@@ -730,8 +803,14 @@ function dashDays(){
   for (let n = 1; n <= last; n++){
     const ds = DYM + '-' + String(n).padStart(2, '0');
     const dt = new Date(y, m - 1, n);
+    const src = ((DDAYS && DDAYS.days) || []).find(x => x.date === ds) || null;
     out.push({ n, ds, wd: ['Su','Mo','Tu','We','Th','Fr','Sa'][dt.getDay()],
-      sun: dt.getDay() === 0, today: ds === today, fut: ds > today,
+      sun: dt.getDay() === 0, sat: dt.getDay() === 6,
+      today: ds === today, fut: ds > today,
+      /* a day nobody filed anything on is a gap in the record, and the grid
+         has to show a gap rather than twenty-five absences */
+      noData: src ? !!src.noData : true,
+      holiday: src ? (src.holiday || '') : (HOLS[ds] ? HOLS[ds].name : ''),
       sheet: byDate[ds] || null, dow: dt.getDay() });
   }
   return out;
@@ -739,19 +818,28 @@ function dashDays(){
 
 /* One square. The states are the sheet's own, not a second opinion. */
 function dashCell(day, row, name){
-  const tip = name + ' · ' + day.wd + ' ' + day.n + ' · ';
+  const tip = name + ' \u00b7 ' + day.wd + ' ' + day.n + ' \u00b7 ';
   const base = 'width:24px;height:24px;box-sizing:border-box;border-radius:6px;font:700 9.5px/1 ' +
     "'Space Mono',monospace;display:flex;align-items:center;justify-content:center;";
-  if (day.fut) return { st:base + 'background:transparent;border:1px dashed rgba(255,255,255,.09);color:#4a3748', t:'', tip:tip + 'Not yet' };
-  if (!row)    return { st:base + 'background:rgba(255,255,255,.05);color:#5a4458', t:'', tip:tip + (day.sun ? 'Sunday' : 'No sheet') };
+  /* Sunday and a holiday are days off and read the same as each other. A
+     Saturday is a working day here, so it is only tinted, not emptied. */
+  const off  = base + 'background:rgba(255,255,255,.05);color:#5a4458';
+  const gap  = base + 'background:transparent;border:1px dashed rgba(255,255,255,.07);color:#3f2e3d';
+
+  if (day.fut)     return { st:gap, t:'', tip:tip + 'Not yet' };
+  if (day.holiday) return { st:base + 'background:rgba(226,96,122,.13);border:1px solid rgba(226,96,122,.35);color:var(--bad)',
+                            t:'H', tip:tip + day.holiday };
+  if (day.sun)     return { st:off, t:'', tip:tip + 'Sunday' };
+  if (!row)        return { st:gap, t:'', tip:tip + 'Nothing filed' };
   if (row.present) return {
     st: base + 'background:var(--ok);color:#0b1a12' + (row.late ? ';box-shadow:inset 0 -4px 0 var(--warn)' : ''),
-    t: row.closed ? '' : '·',
-    tip: tip + (row.late ? 'Late' : 'Present') + (row.closed ? '' : ' · no clock-out') };
+    t: row.closed ? '' : '\u00b7',
+    tip: tip + (row.late ? 'Late' : 'Present') + (row.closed ? '' : ' \u00b7 no clock-out') };
   if (row.leave) return {
     st: base + 'background:repeating-linear-gradient(135deg,rgba(226,96,122,.45) 0 2px,transparent 2px 5px);' +
         'border:1.5px solid var(--bad);color:#ffd2dc', t:'L', tip:tip + 'On leave' };
-  if (day.sun) return { st:base + 'background:rgba(255,255,255,.05);color:#5a4458', t:'', tip:tip + 'Sunday' };
+  /* Nothing was filed by anybody that day. Not an absence - a blank. */
+  if (row.noData || day.noData) return { st:gap, t:'', tip:tip + 'Nothing filed that day' };
   return { st:base + 'background:var(--bad);color:#2a0610', t:'A', tip:tip + 'Absent' };
 }
 
@@ -763,7 +851,10 @@ function dashRow(p, days){
     if (!day.fut && row){
       if (row.present){ t.p++; if (row.late) t.late++; }
       else if (row.leave) t.lv++;
-      else if (!day.sun) t.a++;
+      /* a holiday, a Sunday and a day with nothing filed are all days this
+         person was not expected, so none of them is an absence */
+      else if (day.holiday || day.sun || row.noData || day.noData) { /* not counted */ }
+      else t.a++;
     }
     cells.push(dashCell(day, row, p.name));
   });
@@ -839,7 +930,9 @@ function viewDash(){
 
   h += '<div class="panel">' + legend + '<div class="dsh-wrap"><div class="dsh-grid">' +
     '<div class="dsh-hrow"><div class="dsh-who">' + days.length + ' days</div>' +
-    days.map(d => '<div class="dsh-dh' + (d.today ? ' now' : '') + (d.sun ? ' sun' : '') + '">' +
+    days.map(d => '<div class="dsh-dh' + (d.today ? ' now' : '') + (d.sun ? ' sun' : '') +
+      (d.sat ? ' sat' : '') + (d.holiday ? ' hol' : '') + '" title="' +
+      esc(d.holiday || (d.sun ? 'Sunday' : d.sat ? 'Saturday' : '')) + '">' +
       '<span class="wd">' + d.wd + '</span><span class="dn">' + d.n + '</span></div>').join('') +
     '<div class="dsh-tot"><span>P</span><span>A</span><span>LV</span><span>RATE</span></div></div>';
 
@@ -856,7 +949,9 @@ function viewDash(){
         '<b>' + (r.rate == null ? '—' : r.rate + '%') + '</b></div></div>';
     });
   });
-  return h + '</div></div></div>';
+  /* The export panel lives under the month, because that is where the office
+     is standing when it decides it wants one. */
+  return h + '</div></div></div>' + viewExport();
 }
 
 
@@ -903,10 +998,13 @@ function viewDayNew(sheet, day, st, late){
   const rows = sheet.filter(r => !q || String(r.name).toLowerCase().indexOf(q) > -1);
   const inCount = sheet.filter(r => r.present).length;
 
-  /* the fortnight behind today, to step back through */
+  /* A fortnight at a time, walked back from wherever the office has paged to.
+     It used to be the fortnight behind the selected day and nothing else, so
+     anything older than two weeks could not be reached at all. */
+  const anchor = STRIP || DAY;
   const strip = [];
   for (let i = 0; i < 14; i++){
-    const d = new Date(DAY + 'T12:00:00'); d.setDate(d.getDate() - i);
+    const d = new Date(anchor + 'T12:00:00'); d.setDate(d.getDate() - i);
     const ds = A.dstr(d);
     strip.push({ ds, n: d.getDate(), wd: ['SUN','MON','TUE','WED','THU','FRI','SAT'][d.getDay()],
       on: ds === DAY, today: ds === A.dstr(new Date()) });
@@ -920,10 +1018,22 @@ function viewDayNew(sheet, day, st, late){
     '<input id="q" class="lg-q" placeholder="Search a name" value="' + esc(Q) + '">' +
     '</div>';
 
-  h += '<div class="lg-strip">' + strip.map(d =>
+  const shift = (from, by) => { const d = new Date(from + 'T12:00:00');
+    d.setDate(d.getDate() + by); return A.dstr(d); };
+  const todayS = A.dstr(new Date());
+  const newer = shift(anchor, 14), canFwd = anchor < todayS;
+  h += '<div class="lg-strip">' +
+    '<button class="lg-page" data-strip="' + esc(shift(anchor, -14)) + '" ' +
+      'aria-label="Two weeks earlier" title="Two weeks earlier">&#8249;</button>' +
+    strip.map(d =>
     '<button class="lg-day' + (d.on ? ' on' : '') + '" data-day="' + d.ds + '">' +
     '<span class="wd">' + (d.today ? 'TODAY' : d.wd) + '</span>' +
-    '<span class="n">' + d.n + '</span></button>').join('') + '</div>';
+    '<span class="n">' + d.n + '</span></button>').join('') +
+    (canFwd ? '<button class="lg-page" data-strip="' +
+      esc(newer > todayS ? todayS : newer) + '" aria-label="Two weeks later" ' +
+      'title="Two weeks later">&#8250;</button>' : '') +
+    (anchor !== todayS ? '<button class="lg-page today" data-strip="' + esc(todayS) +
+      '" title="Back to today">Today</button>' : '') + '</div>';
 
   h += '<div class="panel lg-panel"><div class="wrap-x"><div class="lg-grid">' +
     '<div class="lg-hrow"><span>Person</span><span>Clock in &#183; location</span>' +
@@ -1082,18 +1192,45 @@ function viewTeamNew(){
   if (!list.length) h += '<div class="empty">' + (q || ROLEF ? 'Nobody matches that.' : 'Nobody on the roster yet.') + '</div>';
   list.forEach(p => {
     /* the month, for this one person */
-    let t = { p:0, late:0, lv:0, a:0, mins:0, n:0 };
+    /* Only days that say something about this person. A Sunday, a holiday and
+       a day nobody filed on are not absences, and counting them as such is
+       what put everyone on 0% with twenty-three absences apiece. */
+    let t = { p:0, late:0, lv:0, a:0, hol:0, mins:0, n:0 };
     if (days) days.forEach(day => {
       const row = day.sheet ? day.sheet.find(x => x.id === p.id) : null;
       if (day.fut || !row) return;
       if (row.present){ t.p++; if (row.late) t.late++;
         if (row.in && row.in !== '—'){ const hm = String(row.in).split(':'); t.mins += (+hm[0]) * 60 + (+hm[1]); t.n++; }
-      } else if (row.leave) t.lv++; else if (!day.sun) t.a++;
+      } else if (row.leave) t.lv++;
+      else if (day.holiday) t.hol++;
+      else if (row.noData || day.noData) { /* a gap in the record, not a day off */ }
+      else if (!day.sun) t.a++;
     });
     const worked = t.p + t.a, rate = worked ? Math.round(t.p / worked * 100) : null;
     const avg = t.n ? A.hm(Math.round(t.mins / t.n)) : '—';
     const tot = Math.max(1, t.p + t.lv + t.a);
     const here = !!inToday[p.id];
+    /* Editing happens on the card rather than in a dialog. The details are
+       four short facts and they are already laid out here; lifting them into
+       a modal would only make the office look away from the thing it is
+       changing. */
+    if (EDITP === p.id){
+      h += '<div class="tm-card tm-edit">' +
+        '<div class="tm-top"><span class="av lg" style="background:' + avatarOf(p.id) + '">' +
+          esc(initialOf(p.name)) + '</span>' +
+          '<b style="font-size:14px">Edit these details</b></div>' +
+        '<input type="text" id="e-name" placeholder="Name" value="' + esc(p.name || '') + '">' +
+        '<div class="two"><input type="text" id="e-role" placeholder="Role" value="' + esc(p.role || '') + '">' +
+          '<input type="text" id="e-crew" placeholder="Crew" value="' + esc(p.crew || '') + '"></div>' +
+        '<div class="two"><input type="text" id="e-phone" placeholder="Phone" value="' + esc(p.phone || '') + '">' +
+          '<input type="text" id="e-site" placeholder="Site" value="' + esc(p.site || '') + '"></div>' +
+        '<div class="tm-eacts"><button class="lk-btn go" data-psave="' + esc(p.id) + '">Save</button>' +
+          '<button class="lk-btn" data-pcancel="1">Cancel</button></div>' +
+        '<p class="tm-enote">The name is what every past record is listed under, so changing ' +
+        'it changes how those read too. Attendance already filed is not touched.</p>' +
+        '</div>';
+      return;
+    }
     h += '<div class="tm-card">' +
       '<div class="tm-top"><span class="av lg" style="background:' + avatarOf(p.id) + '">' + esc(initialOf(p.name)) + '</span>' +
         '<span class="nm"><b>' + esc(p.name) + '</b><i>' + (esc(p.role) || '&#8212;') +
@@ -1117,7 +1254,10 @@ function viewTeamNew(){
         '<div class="tm-nums"><span><b>' + t.p + '</b> days</span><span><b class="w">' + t.late + '</b> late</span>' +
           '<span><b>' + t.lv + '</b> leave</span><span><b class="b">' + t.a + '</b> absent</span>' +
           '<span><b>' + avg + '</b> avg in</span></div></div>' +
-      (window.CAN_EDIT ? '<button class="link tm-rm" data-rm="' + esc(p.id) + '">take off the roster</button>' : '') +
+      (window.CAN_EDIT
+        ? '<div class="tm-foot"><button class="link" data-pedit="' + esc(p.id) + '">edit details</button>' +
+          '<button class="link tm-rm" data-rm="' + esc(p.id) + '">take off the roster</button></div>'
+        : '') +
       '</div>';
   });
   /* the last card in the grid is the one that makes a new person */
@@ -1383,14 +1523,22 @@ function wireOffice(sheet, late){
   });
 
   const sel = $('day'); if (sel) sel.onchange = () => { DAY = sel.value; refresh(); };
-  const sc = $('xscope'); if (sc) sc.onchange = () => {
-    XSCOPE = sc.value;
-    if (XSCOPE === 'person' && !XWHO && PEOPLE.length) XWHO = PEOPLE[0].id;
+  document.querySelectorAll('[data-xwhom]').forEach(b => b.onclick = () => {
+    XWHOM = b.dataset.xwhom;
+    if (XWHOM === 'person' && !XWHO && PEOPLE.length) XWHO = PEOPLE[0].id;
+    paint();
+  });
+  document.querySelectorAll('[data-xper]').forEach(b => b.onclick = () => {
+    XPERIOD = b.dataset.xper; paint();
+  });
+  const xd = $('xdate');
+  if (xd) xd.onchange = () => {
+    /* a month input gives YYYY-MM, the rest give a whole date */
+    XDATE = xd.value.length === 7 ? xd.value + '-01' : (xd.value || XDATE);
     paint();
   };
-  const mo = $('xmonth'); if (mo) mo.onchange = () => { XMONTH = mo.value || XMONTH; };
   const wh = $('xwho'); if (wh) wh.onchange = () => { XWHO = wh.value; };
-  const x = $('xls'); if (x) x.onclick = () => exportXlsx(sheet, late);
+  const x = $('xls'); if (x) x.onclick = () => exportXlsx();
 
   document.querySelectorAll('[data-delpic]').forEach(b => b.onclick = async () => {
     const rec = RECS.find(r => r.id === b.dataset.delpic);
@@ -1489,6 +1637,24 @@ function wireOffice(sheet, late){
     try { await window.DB.attendName(rec.id, []); }
     catch (e){ RECS = RECS.map(r => r.id === rec.id ? rec : r); paint(); toast(e.message, 5000); }
   });
+  document.querySelectorAll('[data-pedit]').forEach(b => b.onclick = () => {
+    EDITP = b.dataset.pedit; paint();
+    const f = $('e-name'); if (f) f.focus();
+  });
+  document.querySelectorAll('[data-pcancel]').forEach(b => b.onclick = () => {
+    EDITP = ''; paint();
+  });
+  document.querySelectorAll('[data-psave]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.psave;
+    const val = k => { const el = $('e-' + k); return el ? el.value.trim() : ''; };
+    const name = val('name');
+    if (!name){ toast('A name, at least'); return; }
+    try {
+      await window.DB.attendEditPerson(id, { name: name, role: val('role'),
+        crew: val('crew'), phone: val('phone'), site: val('site') });
+      EDITP = ''; await refresh(); toast('Saved');
+    } catch (e){ toast(e.message, 5000); }
+  });
   const add = $('padd');
   if (add) add.onclick = async () => {
     const val = id => { const el = $(id); return el ? el.value : ''; };
@@ -1513,6 +1679,12 @@ function wireOffice(sheet, late){
     const again = $('q');
     if (again){ again.focus(); try { again.setSelectionRange(at, at); } catch (e){} }
   };
+  /* Paging the strip moves the window, not the day being read - the office
+     is looking for a date, and jumping the sheet on every arrow press would
+     fire a fetch for a day nobody asked about. */
+  document.querySelectorAll('[data-strip]').forEach(el => el.onclick = () => {
+    STRIP = el.dataset.strip; paint();
+  });
   document.querySelectorAll('[data-day]').forEach(el => el.onclick = async () => {
     if (el.dataset.day === DAY) return;
     /* SEEN belongs to the day it was read on. Clearing it is what stops a
@@ -1668,6 +1840,61 @@ function wireOffice(sheet, late){
   });
 }
 
+/* The export panel. Five shapes the office actually asks for - one person's
+   week or month, and the team's day, week or month - out of two choices
+   rather than a list of five, because they are two questions. */
+function viewExport(){
+  const who = PEOPLE.find(p => p.id === XWHO) || PEOPLE[0] || null;
+  const span = exportSpan();
+  let h = '<div class="sec">Export</div><div class="xp">';
+
+  h += '<div class="xp-row"><span class="xp-lab">About</span><div class="xp-seg">' +
+    [['team','The whole team'],['person','One person']].map(o =>
+      '<button class="xp-b' + (XWHOM === o[0] ? ' on' : '') + '" data-xwhom="' + o[0] + '">' +
+      o[1] + '</button>').join('') + '</div></div>';
+
+  if (XWHOM === 'person'){
+    h += '<div class="xp-row"><span class="xp-lab">Who</span>' +
+      '<select id="xwho" class="xp-in">' + (PEOPLE.length
+        ? PEOPLE.map(p => '<option value="' + esc(p.id) + '"' +
+            ((who && who.id === p.id) ? ' selected' : '') + '>' + esc(p.name) +
+            (p.role ? ' \u00b7 ' + esc(p.role) : '') + '</option>').join('')
+        : '<option value="">Nobody on the roster</option>') + '</select></div>';
+  }
+
+  h += '<div class="xp-row"><span class="xp-lab">Covering</span><div class="xp-seg">' +
+    [['day','A day'],['week','A week'],['month','A month']].map(o =>
+      '<button class="xp-b' + (XPERIOD === o[0] ? ' on' : '') + '" data-xper="' + o[0] + '">' +
+      o[1] + '</button>').join('') + '</div></div>';
+
+  h += '<div class="xp-row"><span class="xp-lab">' +
+    (XPERIOD === 'month' ? 'Month' : XPERIOD === 'week' ? 'Week of' : 'Date') + '</span>' +
+    (XPERIOD === 'month'
+      ? '<input type="month" id="xdate" class="xp-in" value="' + esc(XDATE.slice(0, 7)) + '">'
+      : '<input type="date" id="xdate" class="xp-in" value="' + esc(XDATE) + '" max="' +
+        esc(A.dstr(new Date())) + '">') + '</div>';
+
+  h += '<div class="xp-out"><span>' + esc(span.words) + '</span>' +
+    '<button class="lk-btn go" id="xls">' + (BUSY ? 'Working\u2026' : 'Export to Excel') +
+    '</button></div>';
+  return h + '</div>';
+}
+
+/* The stretch the panel is currently asking for, and how to say it in words. */
+function exportSpan(){
+  if (XPERIOD === 'month'){
+    const ym = XDATE.slice(0, 7);
+    return { from: A.monthStart(ym), to: A.monthEnd(ym), ym,
+             words: A.monthLabel(ym) };
+  }
+  if (XPERIOD === 'week'){
+    const w = A.weekOf(XDATE) || { from: XDATE, to: XDATE };
+    return { from: w.from, to: w.to,
+             words: 'Monday ' + fmtD(w.from) + ' to Sunday ' + fmtD(w.to) };
+  }
+  return { from: XDATE, to: XDATE, words: fmtD(XDATE) + ', one day' };
+}
+
 /* One writer for all three shapes, because a title line, a note line and a
    frozen heading row are what makes any of them readable, and three copies of
    that would drift apart. */
@@ -1683,46 +1910,45 @@ function writeXlsx(x, cols, tab, file){
   XLSX.writeFile(wb, file);
 }
 
-async function exportXlsx(sheet, late){
+async function exportXlsx(){
   if (!window.XLSX){ toast('The spreadsheet library is still loading'); return; }
+  if (!PEOPLE.length){ toast('Nobody on the roster yet'); return; }
+  const span = exportSpan();
+  if (!span.from || !span.to){ toast('Pick a date'); return; }
 
-  if (XSCOPE === 'day'){
-    const x = A.exportRows(sheet, DAY, late);
-    writeXlsx(x, [{wch:22},{wch:16},{wch:11},{wch:22},{wch:11},{wch:22},{wch:8},{wch:14}],
-      'Attendance', 'Attendance ' + DAY + '.xlsx');
-    return;
-  }
-
-  /* A month is not on screen, so it is fetched - without the photographs,
-     which the spreadsheet has no use for and which would be tens of
-     megabytes of them. */
   /* Both ends counted, never assumed. A range that ends on the 31st of a
      30-day month is not a range with a late row in it - Postgres throws the
      whole query out as a date out of range, and the export simply fails. */
-  const ym = XMONTH, from = A.monthStart(ym), to = A.monthEnd(ym);
-  if (!from || !to){ toast('Pick a month'); return; }
   BUSY = true; paint();
-  let r, l;
-  try { [r, l] = await Promise.all([window.DB.attendRange(from, to), window.DB.attendLeaveRange(from, to)]); }
-  catch (e){ BUSY = false; paint(); toast(e.message, 5000); return; }
+  let r, l, hd;
+  try {
+    [r, l, hd] = await Promise.all([
+      window.DB.attendRange(span.from, span.to),
+      window.DB.attendLeaveRange(span.from, span.to),
+      window.DB.attendHolidays(span.from, span.to)]);
+  } catch (e){ BUSY = false; paint(); toast(e.message, 5000); return; }
   BUSY = false; paint();
   if (r.error){ toast(r.error, 5000); return; }
 
-  const today = A.dstr(new Date());
-  if (XSCOPE === 'month'){
-    if (!PEOPLE.length){ toast('Nobody on the roster yet'); return; }
-    const x = A.monthTeamRows(PEOPLE, r.records, l.leave || [], ym, late, today);
-    const cols = [{wch:22},{wch:14}].concat(
-      new Array(x.days).fill({wch:5}), [{wch:9},{wch:7},{wch:10},{wch:8},{wch:9}]);
-    writeXlsx(x, cols, 'The month', 'Attendance – team – ' + ym + '.xlsx');
+  const late = A.lateAfter(SHIFT, GRACE), today = A.dstr(new Date());
+  const leave = l.leave || [], hols = (hd && hd.days) || [];
+  const tidy = t => String(t).replace(/[\\\/:*?"<>|]/g, '-');
+
+  if (XWHOM === 'person'){
+    const who = PEOPLE.find(p => p.id === XWHO) || PEOPLE[0];
+    if (!who){ toast('Nobody on the roster yet'); return; }
+    const x = A.rangePersonRows(who, r.records, leave, span.from, span.to,
+      late, today, hols, 'Daily attendance \u2013 ' + who.name + ' \u2013 ' + span.words);
+    writeXlsx(x, [{wch:12},{wch:6},{wch:11},{wch:22},{wch:11},{wch:22},{wch:8},{wch:15},{wch:26}],
+      'Attendance', tidy('Attendance – ' + who.name + ' – ' + span.words) + '.xlsx');
     return;
   }
 
-  const who = PEOPLE.find(p => p.id === XWHO) || PEOPLE[0];
-  if (!who){ toast('Nobody on the roster yet'); return; }
-  const x = A.monthPersonRows(who, r.records, l.leave || [], ym, late, today);
-  writeXlsx(x, [{wch:12},{wch:6},{wch:11},{wch:22},{wch:11},{wch:22},{wch:8},{wch:15},{wch:24}],
-    'The month', 'Attendance – ' + who.name + ' – ' + ym + '.xlsx');
+  const x = A.rangeTeamRows(PEOPLE, r.records, leave, span.from, span.to,
+    late, today, hols, 'Daily attendance \u2013 the team \u2013 ' + span.words);
+  const cols = [{wch:22},{wch:14}].concat(
+    new Array(x.days).fill({wch:6}), [{wch:9},{wch:7},{wch:10},{wch:8},{wch:9},{wch:9}]);
+  writeXlsx(x, cols, 'Attendance', tidy('Attendance – the team – ' + span.words) + '.xlsx');
 }
 
 /* ------------------------------------------------------------------ wiring */

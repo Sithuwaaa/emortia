@@ -346,6 +346,115 @@ console.log('\nleave marked in advance');
   is('and a mark with no day is skipped', A.groupLeave([{person:'p1'}]), []);
 }
 
+/* ------------------------------------------- days nobody said anything about
+
+   The sheet used to answer "was this person absent" for every day of the
+   month, including every day before the tool existed. Twenty-five people times
+   a month of nothing filed is six hundred absences that never happened, on a
+   screen the office reads to decide who is not turning up. A day with nothing
+   filed by anybody is a gap in the record, and it has to look like one. */
+{
+  console.log('\n  days nobody said anything about');
+  const PPL = [{ id:'p1', name:'Nilruk', role:'Office' }, { id:'p2', name:'Hashan', role:'Office' }];
+  const at = (d, h, m) => new Date(2026, 8, d, h, m, 0).getTime();
+  const RECS = [
+    { id:'r1', date:'2026-09-08', kind:'in',  ts:at(8, 8, 55), members:['p2'], geo:'', ref:'' },
+    { id:'r2', date:'2026-09-08', kind:'out', ts:at(8,17,10), members:['p2'], geo:'', ref:'' }
+  ];
+  is('the days with anything filed', Object.keys(A.daysWithRecords(RECS)), ['2026-09-08']);
+  is('nothing filed, nothing seen',  A.daysWithRecords([]), {});
+
+  const days = A.monthSheets(PPL, RECS, [], '2026-09', 555, '2026-09-27');
+  const on = d => days.find(x => x.date === d);
+  const row = (d, id) => on(d).sheet.find(r => r.id === id);
+
+  is('a day nobody filed on is flagged',   on('2026-09-07').noData, true);
+  is('and the day that was filed is not',  on('2026-09-08').noData, false);
+  is('nobody is absent on a blank day',    row('2026-09-07','p1').status, 'No record');
+  is('and it is not counted as absence',   row('2026-09-07','p1').noData, true);
+  is('nor as leave',                       row('2026-09-07','p1').leave, false);
+  is('the person who did clock in is present', row('2026-09-08','p2').present, true);
+  is('and the one who did not, on that day, is absent',
+     [row('2026-09-08','p1').status, row('2026-09-08','p1').noData], ['Absent', false]);
+
+  /* The whole point: the total the office reads. */
+  const rep = A.rangeTeamRows(PPL, RECS, [], '2026-09-01', '2026-09-27', 555, '2026-09-27');
+  const nilruk = rep.rows.find(r => r[0] === 'Nilruk');
+  const absentCol = rep.head.indexOf('Absent');
+  is('one real absence, not twenty-six', nilruk[absentCol], 1);
+  is('and the note says how much is blank',
+     /1 of 27 days have anything filed/.test(rep.note), true);
+}
+
+/* ------------------------------------------------------------- the holidays
+
+   A Poya day is not a day somebody failed to turn up. The dates follow the
+   moon and the rest are gazetted, so they are read from a list the office
+   keeps rather than worked out here. */
+{
+  console.log('\n  the holidays');
+  const PPL = [{ id:'p1', name:'Nilruk', role:'Office' }];
+  const HOL = [{ day:'2026-09-25', name:'Binara Full Moon Poya', kind:'poya' }];
+  const at = (d, h, m) => new Date(2026, 8, d, h, m, 0).getTime();
+  /* something filed on both days, so neither is a blank day */
+  const RECS = [
+    { id:'r1', date:'2026-09-24', kind:'in', ts:at(24, 8, 50), members:['p1'], geo:'', ref:'' },
+    { id:'r9', date:'2026-09-25', kind:'in', ts:at(25, 9, 0),  members:[],     geo:'', ref:'' }
+  ];
+  is('a date on the list is found',   A.holidayOn('2026-09-25', HOL).name, 'Binara Full Moon Poya');
+  is('a date that is not, is not',    A.holidayOn('2026-09-24', HOL), null);
+  is('no list, no holiday',           A.holidayOn('2026-09-25', []), null);
+
+  const days = A.monthSheets(PPL, RECS, [], '2026-09', 555, '2026-09-27', HOL);
+  const row = d => days.find(x => x.date === d).sheet[0];
+  is('the day carries its name',      days.find(x => x.date === '2026-09-25').holiday,
+     'Binara Full Moon Poya');
+  is('and nobody is absent on it',    row('2026-09-25').status, 'Binara Full Moon Poya');
+  is('the flag is set',               row('2026-09-25').holiday, 'Binara Full Moon Poya');
+  is('the day before is normal',      row('2026-09-24').present, true);
+
+  const rep = A.rangeTeamRows(PPL, RECS, [], '2026-09-24', '2026-09-25', 555, '2026-09-27', HOL);
+  is('a holiday is its own column, not an absence',
+     [rep.rows[0][rep.head.indexOf('Absent')], rep.rows[0][rep.head.indexOf('Holiday')]], [0, 1]);
+
+  /* Somebody who came in anyway was here, whatever the calendar says. */
+  const worked = RECS.concat([{ id:'r2', date:'2026-09-25', kind:'in', ts:at(25, 8, 40),
+                                members:['p1'], geo:'', ref:'' }]);
+  const d2 = A.monthSheets(PPL, worked, [], '2026-09', 555, '2026-09-27', HOL);
+  is('a photograph outranks the holiday',
+     d2.find(x => x.date === '2026-09-25').sheet[0].present, true);
+}
+
+/* --------------------------------------------------------- a week at a time */
+{
+  console.log('\n  a week at a time');
+  is('Monday starts the week',   A.weekOf('2026-09-23'), { from:'2026-09-21', to:'2026-09-27' });
+  is('so does a Monday itself',  A.weekOf('2026-09-21'), { from:'2026-09-21', to:'2026-09-27' });
+  is('and Sunday ends it',       A.weekOf('2026-09-27'), { from:'2026-09-21', to:'2026-09-27' });
+  is('across a month boundary',  A.weekOf('2026-10-01'), { from:'2026-09-28', to:'2026-10-04' });
+  is('nonsense in, nothing out',  A.weekOf('not a date'), null);
+
+  is('one day reads as one day',  A.rangeLabel('2026-09-27','2026-09-27'), 'Sun 2026-09-27');
+  is('a span reads as a span',    A.rangeLabel('2026-09-21','2026-09-27'), '2026-09-21 to 2026-09-27');
+
+  const PPL = [{ id:'p1', name:'Nilruk', role:'Office' }];
+  const at = (d, h, m) => new Date(2026, 8, d, h, m, 0).getTime();
+  const RECS = [
+    { id:'r1', date:'2026-09-22', kind:'in',  ts:at(22, 8, 50), members:['p1'], geo:'', ref:'' },
+    { id:'r2', date:'2026-09-22', kind:'out', ts:at(22,17, 0),  members:['p1'], geo:'', ref:'' }
+  ];
+  const w = A.rangePersonRows(PPL[0], RECS, [], '2026-09-21', '2026-09-27', 555, '2026-09-27');
+  is('a week is seven days plus a blank and a total', w.rows.length, 9);
+  is('the columns are the day columns', w.head[0] + '/' + w.head[6], 'Date/Hours');
+  is('the hours add up',                w.rows[8][6], 8.17);
+  is('and the day worked is counted',   /1 present/.test(w.rows[8][7]), true);
+  is('Sunday is not an absence',        /0 absent/.test(w.rows[8][7]), true);
+
+  const t = A.rangeTeamRows(PPL, RECS, [], '2026-09-21', '2026-09-27', 555, '2026-09-27');
+  is('the team week has a column a day', t.days, 7);
+  is('headed by weekday and date',       t.head.slice(2, 5), ['Mo 21','Tu 22','We 23']);
+}
+
 /* ------------------------------------------------------------ where it was
 
    A photograph carries a pair of coordinates and nothing else. Turning that

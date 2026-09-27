@@ -74,7 +74,32 @@
      same fact as not turning up, and a sheet that calls them both Absent is
      wrong about somebody who asked in advance. A photograph outranks it - if
      they were marked on leave and came in anyway, they were here. */
-  function buildSheet(people, records, date, lateMins, leave) {
+  /* Which days the tool has anything at all for. A day nobody filed on is not
+     a day twenty-five people were absent - it is a day the tool was not being
+     used, and painting it red says something about people that is not true.
+     Before any of this was switched on every day would have read as a full
+     team absence, which is worse than showing nothing. */
+  function daysWithRecords(records) {
+    var seen = {};
+    (records || []).forEach(function (r) { if (r && r.date) seen[r.date] = true; });
+    return seen;
+  }
+
+  /* A public holiday is a fact about the country, not about a person. It has
+     to be written down somewhere - Poya days follow the moon and the rest are
+     gazetted - so it is read from a list rather than worked out. */
+  function holidayOn(date, holidays) {
+    var hit = null;
+    (holidays || []).forEach(function (h) { if (h && h.day === date && !hit) hit = h; });
+    return hit;
+  }
+
+  function buildSheet(people, records, date, lateMins, leave, opts) {
+    var o = opts || {};
+    var hol = o.holiday || null;
+    /* noData is decided by the caller, which can see the whole month; a single
+       day cannot tell "nobody came" from "nothing was filed". */
+    var blank = !!o.noData;
     var marks = {};
     (leave || []).forEach(function (l) { if (l && l.day === date) marks[l.person] = l; });
     var ups = ofDay(records, date);
@@ -92,7 +117,17 @@
       var late = !!i && minsOf(i.ts) > la;
       var mark = marks[p.id] || null;
       var status = 'Absent', tag = 'tag-out';
-      if (mark && !i) { status = mark.label || 'Leave'; tag = 'tag-leave'; }
+      /* The order matters, weakest claim first.
+
+         "Nothing was filed" is the weakest thing the sheet can say, so
+         anything else outranks it - a leave mark is the office stating a fact
+         about this person on this day, and it stays visible whether or not
+         anybody else clocked in. A holiday outranks both. And a photograph
+         outranks everything: somebody who came in on a Poya day, or on a day
+         marked leave, was here, and the sheet says so. */
+      if (blank && !i) { status = 'No record'; tag = 'tag-none'; }
+      if (hol && !i)   { status = hol.name || 'Holiday'; tag = 'tag-holiday'; }
+      if (mark && !i)  { status = mark.label || 'Leave'; tag = 'tag-leave'; }
       if (i) { status = late ? 'Late' : 'On time'; tag = late ? 'tag-late' : 'tag-ok'; }
       /* still on site: clocked in, no photo out yet */
       if (i && !o) { status = status + ' · in'; }
@@ -114,7 +149,14 @@
         hours: i && o ? ((o.ts - i.ts) / 3600000).toFixed(2) : '—',
         status: status, tagClass: tag, late: late, present: !!i, closed: !!(i && o),
         /* on leave and not here: the one case an empty row is accounted for */
-        leave: !!(mark && !i), note: mark ? (mark.note || '') : ''
+        leave: !!(mark && !i), note: mark ? (mark.note || '') : '',
+        /* Nothing was filed that day by anybody, so this row is a gap in the
+           record rather than a statement about this person. Everything that
+           counts days has to skip it or the figures are fiction. A leave mark
+           or a holiday is not a gap - somebody wrote those down. */
+        noData: blank && !i && !mark && !hol,
+        /* A day off for the country. Not present, and not absent either. */
+        holiday: (!i && !!hol) ? (hol.name || 'Holiday') : ''
       };
     });
   }
@@ -274,15 +316,136 @@
     return row.leave ? 'LV' : 'A';
   }
 
-  function monthSheets(people, records, leave, ym, lateMins, today) {
+  function monthSheets(people, records, leave, ym, lateMins, today, holidays) {
     var la = lateMins == null ? lateAfter() : lateMins;
+    var filed = daysWithRecords(records);
     return monthDays(ym, today).map(function (d) {
-      return { date: d, sheet: buildSheet(people, records, d, la, leave) };
+      var hol = holidayOn(d, holidays);
+      var blank = !filed[d];
+      return { date: d, noData: blank, holiday: hol ? (hol.name || 'Holiday') : '',
+        holidayKind: hol ? (hol.kind || '') : '',
+        sheet: buildSheet(people, records, d, la, leave, { holiday: hol, noData: blank }) };
     });
   }
 
   /* The team, a month across: a person a row, a day a column, and the counts
      somebody would otherwise reach for a calculator to get. */
+  /* ------------------------------------------------------ a stretch of days
+
+     A month is one kind of question and a week is another, and the office asks
+     both. Rather than a second copy of the counting for every shape, the range
+     is the general case and the month is a range that happens to start on the
+     first. */
+
+  /* The week a date falls in, Monday to Sunday - the week the crews work to,
+     not the American week that starts on Sunday. */
+  function weekOf(date) {
+    var d = new Date(String(date) + 'T12:00:00');
+    if (isNaN(d)) return null;
+    var back = (d.getDay() + 6) % 7;            // Monday is 0
+    var from = new Date(d); from.setDate(d.getDate() - back);
+    var to = new Date(from); to.setDate(from.getDate() + 6);
+    return { from: dstr(from), to: dstr(to) };
+  }
+
+  function rangeLabel(from, to) {
+    if (from === to) return weekdayOf(from) + ' ' + from;
+    return from + ' to ' + to;
+  }
+
+  function rangeSheets(people, records, leave, from, to, lateMins, today, holidays) {
+    var la = lateMins == null ? lateAfter() : lateMins;
+    var filed = daysWithRecords(records);
+    var now = today || dstr(new Date());
+    return dayRange(from, to).map(function (d) {
+      var hol = holidayOn(d, holidays);
+      var blank = !filed[d];
+      var dt = new Date(d + 'T12:00:00');
+      return { date: d, noData: blank, fut: d > now,
+        sun: dt.getDay() === 0, sat: dt.getDay() === 6,
+        holiday: hol ? (hol.name || 'Holiday') : '',
+        holidayKind: hol ? (hol.kind || '') : '',
+        sheet: buildSheet(people, records, d, la, leave, { holiday: hol, noData: blank }) };
+    });
+  }
+
+  /* One row per person, one column per day. Days that are not a statement
+     about anybody - nothing filed, a Sunday, a holiday, a day not yet reached
+     - are counted in their own buckets and never as an absence. */
+  function tallyInto(t, row, day) {
+    if (!row || day.fut) return '';
+    if (row.present) { t.present++; if (row.late) t.late++;
+      if (row.hours !== '—') t.hours += parseFloat(row.hours);
+      return dayCode(row); }
+    if (row.noData) { t.nodata++; return ''; }
+    if (row.leave)  { t.leave++;  return dayCode(row); }
+    if (day.holiday){ t.holiday++; return 'H'; }
+    if (day.sun)    { t.off++;    return ''; }
+    t.absent++; return dayCode(row);
+  }
+  function blankTally() {
+    return { present: 0, late: 0, leave: 0, absent: 0, holiday: 0, off: 0, nodata: 0, hours: 0 };
+  }
+
+  function rangeTeamRows(people, records, leave, from, to, lateMins, today, holidays, title) {
+    var la = lateMins == null ? lateAfter() : lateMins;
+    var days = rangeSheets(people, records, leave, from, to, la, today, holidays);
+    var head = ['Staff', 'Role']
+      .concat(days.map(function (d) {
+        return weekdayOf(d.date).slice(0, 2) + ' ' + parseInt(d.date.slice(8), 10); }))
+      .concat(['Present', 'Late', 'On leave', 'Absent', 'Holiday', 'Hours']);
+    var rows = (people || []).map(function (p) {
+      var t = blankTally();
+      var cells = days.map(function (d) {
+        var r = null;
+        d.sheet.forEach(function (x) { if (x.id === p.id) r = x; });
+        return tallyInto(t, r, d);
+      });
+      return [p.name, p.role || ''].concat(cells)
+        .concat([t.present, t.late, t.leave, t.absent, t.holiday,
+                 Number(t.hours.toFixed(2))]);
+    });
+    var filed = days.filter(function (d) { return !d.noData && !d.fut; }).length;
+    return {
+      title: title || ('Daily attendance – the team – ' + rangeLabel(from, to)),
+      note: 'P present · L late · LV on leave · A absent · H holiday · a dot means no ' +
+            'clock-out was photographed, so that day has no hours. Late is any clock-in ' +
+            'after ' + hm(la) + '. ' + filed + ' of ' + days.length +
+            ' days have anything filed; the rest are blank rather than absent.',
+      head: head, rows: rows, days: days.length
+    };
+  }
+
+  function rangePersonRows(person, records, leave, from, to, lateMins, today, holidays, title) {
+    var la = lateMins == null ? lateAfter() : lateMins;
+    var days = rangeSheets([person], records, leave, from, to, la, today, holidays);
+    var t = blankTally();
+    var rows = days.map(function (d) {
+      var r = d.sheet[0] || null;
+      tallyInto(t, r, d);
+      return [d.date, weekdayOf(d.date), r ? r.in : '—', r ? r.inGeo : '—',
+              r ? r.out : '—', r ? r.outGeo : '—', r ? r.hours : '—',
+              d.fut ? 'Not yet' : (r ? r.status : ''),
+              d.holiday || (r ? r.note : '')];
+    });
+    rows.push(['', '', '', '', '', '', '', '', '']);
+    rows.push(['Total', days.length + ' days', '', '', '', '',
+               Number(t.hours.toFixed(2)),
+               t.present + ' present · ' + t.late + ' late · ' + t.leave +
+               ' on leave · ' + t.absent + ' absent',
+               t.holiday + ' holiday · ' + t.nodata + ' with nothing filed']);
+    return {
+      title: title || ('Daily attendance – ' + s(person && person.name) + ' – ' + rangeLabel(from, to)),
+      note: (person && person.role ? person.role + ' · ' : '') +
+            'Late is any clock-in after ' + hm(la) + '. Hours are counted only where both ' +
+            'a clock-in and a clock-out were photographed. Days with nothing filed by ' +
+            'anybody are left blank rather than counted as an absence.',
+      head: ['Date', 'Day', 'Clock in', 'In location', 'Clock out', 'Out location',
+             'Hours', 'Status', 'Note'],
+      rows: rows, totals: t
+    };
+  }
+
   function monthTeamRows(people, records, leave, ym, lateMins, today) {
     var la = lateMins == null ? lateAfter() : lateMins;
     var days = monthSheets(people, records, leave, ym, la, today);
@@ -452,6 +615,9 @@
     nextDay: nextDay, dayRange: dayRange, groupLeave: groupLeave,
     dayCode: dayCode, monthSheets: monthSheets,
     parseGeo: parseGeo, metresBetween: metresBetween, placeOf: placeOf,
+    daysWithRecords: daysWithRecords, holidayOn: holidayOn,
+    weekOf: weekOf, rangeLabel: rangeLabel, rangeSheets: rangeSheets,
+    rangeTeamRows: rangeTeamRows, rangePersonRows: rangePersonRows,
     monthTeamRows: monthTeamRows, monthPersonRows: monthPersonRows,
     cleanPerson: cleanPerson, sortPeople: sortPeople
   };
