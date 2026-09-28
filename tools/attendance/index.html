@@ -36,7 +36,19 @@
      own; the rest is theme.css, like every other tool. */
   :root,html[data-theme="dark"]{--accent:#6b7fd7;--accentB:#8b9cf0;--accentD:#4a5cae;
     --accent-ink:#0b0e1c;--glow:rgba(107,127,215,.5);--glowSoft:rgba(107,127,215,.24);
-    --bad:#e2607a;--ok:#5fc189;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
+    --bad:#e2607a;--ok:#5fc189;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB);
+    /* The two holiday colours. Lemon is 11.8:1 on the card and sits at 58deg,
+       forty degrees clear of the late orange, and it is the brightest thing in
+       the grid by a long way - it survives greyscale and both kinds of
+       red-green blindness on lightness alone.
+
+       Rose is 7.2:1 and deliberately stays in the red family, because in this
+       grid red already means "not at work" - absent, on leave, Sunday. What it
+       cannot do is separate from those by hue: every red that clears 6:1 on
+       this background lands either beside the absent red or beside the late
+       orange, so the ring and the glyph carry that distinction and the colour
+       only supports it. */
+    --holPoya:#e6e27e;--holPub:#ff8aa4}
   html[data-theme="light"]{--accent:#414f9c;--accentB:#4a5cae;--accentD:#2c3670;
     --accent-ink:#ffffff;--glow:rgba(65,79,156,.4);--glowSoft:rgba(65,79,156,.16);
     --bad:#c2405c;--ok:#217a4a;--zebra:rgba(0,0,0,.024);--goHover:#2c3670}
@@ -129,6 +141,20 @@
   .lg-geo .pl i{font-style:normal;color:var(--muted)}
   .lg-geo .gg{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted);white-space:nowrap}
   a.lg-geo:hover .pl{color:var(--accentB)}
+  /* The controls sit quiet until the row is under the pointer. They are on a
+     screen somebody scans down, and a column of buttons would read as louder
+     than the times they belong to. Always visible on a touch screen, where
+     there is no hover to reveal them with. */
+  .lg-cts{display:flex;gap:2px;margin-left:auto}
+  .lg-ct{flex:none;width:24px;height:24px;border-radius:7px;border:1px solid transparent;
+    background:transparent;color:var(--muted);cursor:pointer;font:inherit;font-size:14px;
+    line-height:1;display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .12s}
+  .lg-ct.add{margin-left:auto;font-size:17px}
+  .lg-row:hover .lg-ct,.lg-ct:focus-visible{opacity:1}
+  .lg-ct:hover{border-color:var(--accent);color:var(--accentB)}
+  .lg-ct.off:hover{border-color:var(--bad);color:var(--bad)}
+  @media (hover:none){ .lg-ct{opacity:.7} }
   .lg-h{font-family:'Space Mono',monospace;font-size:13px}
   .lg-st{justify-self:start;white-space:nowrap;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px}
   .lg-st.ok{background:rgba(95,193,137,.14);color:var(--ok)}
@@ -335,10 +361,22 @@
      and lost every time. */
   .dsh-dh.sat .wd,.dsh-dh.sat .dn{color:#8b8792}
   .dsh-dh.sun .wd,.dsh-dh.sun .dn{color:var(--bad);opacity:.85}
-  .dsh-dh.hol{position:relative}
-  .dsh-dh.hol .wd,.dsh-dh.hol .dn{color:var(--bad);opacity:1}
-  .dsh-dh.hol::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);
-    width:4px;height:4px;border-radius:50%;background:var(--bad)}
+  /* The dot says a holiday is here; its colour says which kind. Presence or
+     absence of the dot is the signal that does not depend on seeing colour at
+     all, which is why it is bigger than it was and has a dark ring round it so
+     it reads on top of whatever the number is doing. A holiday that falls on a
+     Sunday shows both, because it is both. */
+  /* Two independent facts, two channels. The number goes on saying which
+     weekday it is - red for Sunday, ash for Saturday - and the dot says a
+     holiday is on it. Recolouring the number as well would mean a Poya that
+     falls on a Saturday had to choose which of the two to tell you, and both
+     matter. Presence of the dot is the signal that needs no colour vision at
+     all; its colour only says which kind. */
+  .dsh-dh.hol{position:relative;cursor:help}
+  .dsh-dh.hol::after{content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+    width:7px;height:7px;border-radius:50%;background:var(--holPub);
+    box-shadow:0 0 0 2px var(--card),0 0 0 3px rgba(0,0,0,.35)}
+  .dsh-dh.hol.poya::after{background:var(--holPoya)}
   .dsh-dh.now .dn{background:var(--accent);color:var(--ink);opacity:1}
   .dsh-c{width:30px;min-width:30px;flex:none;display:flex;justify-content:center;padding:3px 0}
   .dsh-row:hover{background:rgba(var(--accentRGB,234,132,250),.05)}
@@ -811,6 +849,7 @@ function dashDays(){
          has to show a gap rather than twenty-five absences */
       noData: src ? !!src.noData : true,
       holiday: src ? (src.holiday || '') : (HOLS[ds] ? HOLS[ds].name : ''),
+      holidayKind: src ? (src.holidayKind || '') : (HOLS[ds] ? (HOLS[ds].kind || '') : ''),
       sheet: byDate[ds] || null, dow: dt.getDay() });
   }
   return out;
@@ -821,24 +860,42 @@ function dashCell(day, row, name){
   const tip = name + ' \u00b7 ' + day.wd + ' ' + day.n + ' \u00b7 ';
   const base = 'width:24px;height:24px;box-sizing:border-box;border-radius:6px;font:700 9.5px/1 ' +
     "'Space Mono',monospace;display:flex;align-items:center;justify-content:center;";
-  /* Sunday and a holiday are days off and read the same as each other. A
-     Saturday is a working day here, so it is only tinted, not emptied. */
   const off  = base + 'background:rgba(255,255,255,.05);color:#5a4458';
   const gap  = base + 'background:transparent;border:1px dashed rgba(255,255,255,.07);color:#3f2e3d';
 
-  if (day.fut)     return { st:gap, t:'', tip:tip + 'Not yet' };
-  if (day.holiday) return { st:base + 'background:rgba(226,96,122,.13);border:1px solid rgba(226,96,122,.35);color:var(--bad)',
-                            t:'H', tip:tip + day.holiday };
-  if (day.sun)     return { st:off, t:'', tip:tip + 'Sunday' };
-  if (!row)        return { st:gap, t:'', tip:tip + 'Nothing filed' };
-  if (row.present) return {
-    st: base + 'background:var(--ok);color:#0b1a12' + (row.late ? ';box-shadow:inset 0 -4px 0 var(--warn)' : ''),
-    t: row.closed ? '' : '\u00b7',
-    tip: tip + (row.late ? 'Late' : 'Present') + (row.closed ? '' : ' \u00b7 no clock-out') };
-  if (row.leave) return {
+  /* A holiday is a ring, never a flood. Absent is the flood, and the two must
+     not be able to trade places: a colour-blind eye, a photocopier or a bad
+     screen can all take one red for another, but none of them can turn a ring
+     into a solid square. The glyph does the same job twice over - a filled
+     disc for the full moon of a Poya, a letter for everything else. */
+  const poya = (day.holidayKind || '') === 'poya';
+  const hue = poya ? 'var(--holPoya)' : 'var(--holPub)';
+  const holTile = base + 'background:transparent;border:2px solid ' + hue + ';color:' + hue;
+
+  if (day.fut) return { st:gap, t:'', tip:tip + 'Not yet' };
+
+  /* A photograph outranks the calendar. Somebody who came in on a Poya was
+     here, and the day counts as worked - the holiday is noted with a ring
+     round the green rather than replacing it. This order used to be the other
+     way round, which quietly turned a day worked into a day off. */
+  if (row && row.present) {
+    const ring = day.holiday ? ';box-shadow:0 0 0 2px ' + hue + ' inset' : '';
+    return {
+      st: base + 'background:var(--ok);color:#0b1a12' +
+          (row.late && !day.holiday ? ';box-shadow:inset 0 -4px 0 var(--warn)' : '') + ring,
+      t: row.closed ? '' : '\u00b7',
+      tip: tip + (row.late ? 'Late' : 'Present') + (row.closed ? '' : ' \u00b7 no clock-out') +
+           (day.holiday ? ' \u00b7 worked on ' + day.holiday : '') };
+  }
+  if (row && row.leave) return {
     st: base + 'background:repeating-linear-gradient(135deg,rgba(226,96,122,.45) 0 2px,transparent 2px 5px);' +
         'border:1.5px solid var(--bad);color:#ffd2dc', t:'L', tip:tip + 'On leave' };
-  /* Nothing was filed by anybody that day. Not an absence - a blank. */
+
+  if (day.holiday) return { st: holTile, t: poya ? '\u25cf' : 'H',
+    tip: tip + day.holiday + (poya ? '' : ' \u00b7 holiday') };
+
+  if (day.sun) return { st:off, t:'', tip:tip + 'Sunday' };
+  if (!row)    return { st:gap, t:'', tip:tip + 'Nothing filed' };
   if (row.noData || day.noData) return { st:gap, t:'', tip:tip + 'Nothing filed that day' };
   return { st:base + 'background:var(--bad);color:#2a0610', t:'A', tip:tip + 'Absent' };
 }
@@ -906,6 +963,12 @@ function viewDash(){
     '<span><i style="background:var(--ok);box-shadow:inset 0 -3px 0 var(--warn)"></i>Late</span>' +
     '<span><i style="background:var(--bad)"></i>Absent</span>' +
     '<span><i style="border:1.5px solid var(--bad);background:repeating-linear-gradient(135deg,rgba(226,96,122,.45) 0 2px,transparent 2px 5px)"></i>Leave</span>' +
+    '<span><i style="background:transparent;border:2px solid var(--holPoya);color:var(--holPoya);' +
+      'display:flex;align-items:center;justify-content:center;font-size:7px;line-height:1">' +
+      '\u25cf</i>Poya</span>' +
+    '<span><i style="background:transparent;border:2px solid var(--holPub);color:var(--holPub);' +
+      'display:flex;align-items:center;justify-content:center;font:700 7px/1 ' +
+      "'Space Mono',monospace" + '">H</i>Holiday</span>' +
     '<span><i style="background:rgba(255,255,255,.06)"></i>Sunday</span></div>';
 
   if (DSHAPE === 'tiles'){
@@ -931,7 +994,9 @@ function viewDash(){
   h += '<div class="panel">' + legend + '<div class="dsh-wrap"><div class="dsh-grid">' +
     '<div class="dsh-hrow"><div class="dsh-who">' + days.length + ' days</div>' +
     days.map(d => '<div class="dsh-dh' + (d.today ? ' now' : '') + (d.sun ? ' sun' : '') +
-      (d.sat ? ' sat' : '') + (d.holiday ? ' hol' : '') + '" title="' +
+      (d.sat ? ' sat' : '') + (d.holiday ? ' hol' : '') +
+      (d.holidayKind === 'poya' ? ' poya' : '') +
+      (d.holiday ? '" data-hol="' + esc(d.holiday) : '') + '" title="' +
       esc(d.holiday || (d.sun ? 'Sunday' : d.sat ? 'Saturday' : '')) + '">' +
       '<span class="wd">' + d.wd + '</span><span class="dn">' + d.n + '</span></div>').join('') +
     '<div class="dsh-tot"><span>P</span><span>A</span><span>LV</span><span>RATE</span></div></div>';
@@ -977,6 +1042,39 @@ function mapHref(geo){
   const p = A.parseGeo(geo);
   return p ? 'https://www.google.com/maps?q=' + p.lat + ',' + p.lng : '';
 }
+/* Entering a time by hand, and correcting one already there.
+
+   The crews often do not send a picture, so a day worked with no photograph
+   still has to be a day worked - and a camera clock that is an hour out makes
+   a photographed stamp wrong in a way that looks like evidence. Both need the
+   office to be able to reach in.
+
+   What it never does is hide which is which. A typed stamp carries M: in its
+   ref and the row says so; correcting a photographed time leaves the ref
+   alone, so it goes on being a photographed stamp with a corrected clock. */
+function timeCtl(r, kind){
+  if (!window.CAN_EDIT) return '';
+  const has = kind === 'in' ? r.present : r.closed;
+  const id = kind === 'in' ? r.inId : r.outId;
+  const typed = kind === 'in' ? r.inTyped : r.outTyped;
+  if (!has){
+    /* no clock-out is offered until there is a clock-in: an out with no in is
+       not a shape the sheet can do anything with */
+    if (kind === 'out' && !r.present) return '';
+    return '<button class="lg-ct add" data-add="' + esc(r.id) + '" data-kind="' + kind +
+      '" title="Enter a time by hand">+</button>';
+  }
+  return '<span class="lg-cts">' +
+    '<button class="lg-ct" data-retime="' + esc(id) + '" data-rk="' + kind +
+      '" data-rname="' + esc(r.name) + '" title="Correct this time">' +
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"></path></svg></button>' +
+    (typed ? '<button class="lg-ct off" data-untime="' + esc(id) +
+      '" title="Take this typed stamp off">&#215;</button>' : '') +
+    '</span>';
+}
+
 function geoCell(geo, colour){
   /* Three different things, and the cell should not blur them. A photograph
      with no coordinates on it is not the same as one taken somewhere nobody
@@ -1051,11 +1149,13 @@ function viewDayNew(sheet, day, st, late){
         esc(initialOf(r.name)) + '</span>' +
         '<span class="nm"><b>' + esc(r.name) + '</b><i>' + (esc([r.role, crewOf(r.id)].filter(Boolean).join(' \u00b7 ')) || '&#8212;') + '</i></span></div>' +
       '<div class="lg-when"><span class="t' + (r.late ? ' late' : '') + '">' + (esc(r.in) || '&#8212;') + '</span>' +
-        (r.present ? geoCell(r.inGeo, 'var(--accent)') : '<span class="lg-geo"><span class="gg">&#8212;</span></span>') + '</div>' +
+        (r.present ? geoCell(r.inGeo, 'var(--accent)') : '<span class="lg-geo"><span class="gg">&#8212;</span></span>') +
+        timeCtl(r, 'in') + '</div>' +
       '<div class="lg-when"><span class="t">' + (esc(r.out) || '&#8212;') + '</span>' +
         (r.closed ? geoCell(r.outGeo, 'var(--accent)')
          : '<span class="lg-geo"><span class="pl" style="color:var(--ok)">' + (on ? 'Still on site' : '&#8212;') + '</span>' +
-           '<span class="gg">' + (on ? 'No clock-out photo yet' : '') + '</span></span>') + '</div>' +
+           '<span class="gg">' + (on ? 'No clock-out photo yet' : '') + '</span></span>') +
+        timeCtl(r, 'out') + '</div>' +
       '<span class="lg-h">' + (r.hours === '—' ? '&#8212;' : esc(r.hours) + 'h') + '</span>' +
       '<span class="lg-st ' + sk + '">' + status + '</span>' +
       '<span class="lg-ref">' + (esc(refOf(r.inId)) || '&#8212;') + '</span>' +
@@ -1414,6 +1514,9 @@ function wireOffice(sheet, late){
   });
   /* the month view's own controls */
   document.querySelectorAll('[data-mon]').forEach(b => b.onclick = () => shiftMonth(+b.dataset.mon));
+  /* A title attribute never opens on a phone, and the holiday name is the
+     whole point of marking the day. Tapping the header says it out loud. */
+  document.querySelectorAll('[data-hol]').forEach(el => el.onclick = () => toast(el.dataset.hol, 4000));
   document.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => {
     DSHAPE = b.dataset.shape; paint();
   });
@@ -1492,6 +1595,24 @@ function wireOffice(sheet, late){
     const by = (window.Access && Access.currentUser && Access.currentUser()) || 'office';
     try { await window.DB.attendManual(DAY, kind, b.dataset.add, at, by);
       await refresh(); toast(p.name + ' – ' + kind + ' at ' + at); }
+    catch (e){ toast(e.message, 5000); }
+  });
+  document.querySelectorAll('[data-retime]').forEach(b => b.onclick = async () => {
+    const rec = RECS.find(x => x.id === b.dataset.retime);
+    if (!rec){ toast('That stamp is not on this day any more'); return; }
+    const who = b.dataset.rname || 'this person';
+    const photographed = !/^M:/.test(rec.ref || '');
+    const at = await askTime(
+      'Correct the clock ' + b.dataset.rk + ' \u2013 ' + who,
+      photographed
+        ? 'This one came with a photograph. The picture and the names ticked on it are kept ' +
+          'exactly as they are \u2013 only the time moves, for when the camera\u2019s clock was wrong.'
+        : 'This one was typed. Changing it changes the hours on the sheet for this day.',
+      A.fmt(rec.ts));
+    if (!at || at === A.fmt(rec.ts)) return;
+    const by = (window.Access && Access.currentUser && Access.currentUser()) || 'office';
+    try { await window.DB.attendRetime(rec.id, DAY, at, by);
+      await refresh(); toast(who + ' \u2013 ' + b.dataset.rk + ' now ' + at); }
     catch (e){ toast(e.message, 5000); }
   });
   /* and undoing one. Asked twice either way: a typed entry is not evidence,

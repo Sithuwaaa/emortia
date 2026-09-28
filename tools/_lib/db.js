@@ -1344,6 +1344,29 @@
      photograph is a single fact about several people; a typed entry is a
      separate claim about each, made at a different moment, and it should be
      correctable one person at a time. */
+  /* Changing the time on a stamp that is already there. The record keeps its
+     id, so whatever is attached to it - the names ticked on a photograph,
+     which other people share it - stays attached. Only the clock moves.
+
+     A photographed stamp can be corrected too. The camera's clock is not
+     always right, and a time that is wrong by an hour is worse than one the
+     office typed: it looks like evidence. The row goes on saying which it
+     was, because ref is untouched. */
+  async function attendRetime(recId, day, hhmm, by){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const t = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ''));
+    if (!t) throw new Error('A time like 09:05.');
+    const h = +t[1], m = +t[2];
+    if (h > 23 || m > 59) throw new Error('A time like 09:05.');
+    const when = new Date(day + 'T00:00:00');
+    when.setHours(h, m, 0, 0);
+    const { error } = await c.from('attend_records')
+      .update({ taken_at: when.toISOString() }).eq('id', recId);
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'You do not have permission to change a time.' : tidyAttend(error.message));
+    return when.toISOString();
+  }
+
   async function attendManual(day, kind, personId, hhmm, by){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
     const t = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ''));
@@ -1725,7 +1748,7 @@
                 attendSubmit, attendDeviceToday, attendDevices, attendMakeDevice, attendDropDevice,
                 attendRotateDevice,
                 attendLeave, attendSetLeave, attendRange, attendLeaveRange,
-                attendSetLeaveRange, attendClearLeaveRange, attendManual,
+                attendSetLeaveRange, attendClearLeaveRange, attendManual, attendRetime,
                 attendBooking, attendClearBooking, attendBookingSpans,
                 attendClearPhoto, attendDropRecord, attendClearBefore,
                 featureLocks, setFeatureLock, onFeatureLocks,
