@@ -244,6 +244,41 @@
   .fv{font-size:12.5px;font-weight:500;line-height:1.5;min-width:0;text-wrap:pretty;word-break:break-word}
   .fv.mono{font-family:'IBM Plex Mono',monospace}
   @media (max-width:760px){ #detail{position:static} }
+  .ghost,.fp{white-space:nowrap}
+  #plan .ph>span{white-space:nowrap}
+  .gm{text-decoration:none;color:var(--sa-ink)}
+  main a.gm{color:var(--sa-ink)}
+  .planb{font-size:12px;font-weight:700;border:1px solid var(--sa-line2);background:none;color:var(--sa-soft);border-radius:9px;height:38px;padding:0 12px;cursor:pointer;flex:0 0 auto;white-space:nowrap}
+  .planb:hover{border-color:var(--sa-acc)}
+  .planb.on{border-color:var(--sa-ok);color:var(--sa-ok);background:var(--sa-okBg)}
+  #plan{margin-top:11px;background:var(--sa-bar);border:1px solid var(--sa-line2);border-radius:13px;padding:12px;display:flex;flex-direction:column;gap:10px}
+  #plan .ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  #plan .ph b{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sa-accL)}
+  #plan .ph>span{font-size:12.5px;color:var(--sa-mute)}
+  #plan .ph .sp{flex:1}
+  #plan .pnote{font-size:12px;color:var(--sa-warn)}
+  .vtabs{display:inline-flex;gap:3px;padding:3px;border:1px solid var(--sa-line2);border-radius:11px;background:var(--sa-bar);margin-bottom:11px}
+  .vtabs button{border:none;background:none;color:var(--sa-mute);font-size:13px;font-weight:600;padding:7px 20px;border-radius:8px;cursor:pointer}
+  .vtabs button:hover{color:var(--sa-ink)}
+  .vtabs button.on{background:var(--sa-acc);color:var(--sa-accInk)}
+  #bigLeaf{height:calc(100vh - 250px);min-height:380px;border-radius:12px;border:1px solid var(--sa-line);overflow:hidden;z-index:0;background:var(--sa-card)}
+  #bigLeaf .nomap{height:100%;display:flex;align-items:center;justify-content:center;color:var(--sa-mute);font-size:13px}
+  #dLeaf{height:230px;border-radius:11px;border:1px solid var(--sa-line);overflow:hidden;z-index:0;background:var(--sa-card)}
+  #dLeaf .nomap{height:100%;display:flex;align-items:center;justify-content:center;color:var(--sa-mute);font-size:12.5px}
+  #pLeaf{height:340px;border-radius:10px;border:1px solid var(--sa-line);overflow:hidden;z-index:0}
+  .pl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:300px;overflow:auto}
+  .pl li{display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px solid var(--sa-line)}
+  .pl li:first-child{border-top:none}
+  .pn{flex:0 0 22px;height:22px;border-radius:50%;background:var(--sa-soft2);color:var(--sa-ink);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .pt{flex:1;min-width:0;text-align:left;background:none;border:none;cursor:pointer;font-size:13px;color:var(--sa-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0}
+  .pt b{font-family:'IBM Plex Mono',monospace;color:var(--sa-accL);font-weight:600}
+  .pt i{font-style:normal;color:var(--sa-mute);font-size:11.5px;margin-left:6px}
+  .pt:hover{color:var(--sa-ink)}
+  .pk{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--sa-mute);white-space:nowrap;min-width:52px;text-align:right}
+  .pi{flex:0 0 28px;height:28px;border-radius:7px;border:1px solid var(--sa-line);background:var(--sa-card);color:var(--sa-soft);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;text-decoration:none}
+  .pi:hover{border-color:var(--sa-acc)}
+  .pi:disabled{opacity:.3;cursor:default}
+  @media (max-width:560px){ .pk{display:none} .pt i{display:none} }
 </style>
 <script src="../_lib/skins/aurora.js?v=3" defer></script>
 <script src="../_lib/owner-config.js"></script>
@@ -272,6 +307,7 @@
 
 <main>
   <div class="top"><div class="wrap">
+    <div class="vtabs" id="vtabs" role="tablist"><button type="button" data-v="list">List</button><button type="button" data-v="map">Map</button></div>
     <div class="search" id="search">
       <span class="ic" aria-hidden="true">⌕</span>
       <input id="q" type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
@@ -287,12 +323,14 @@
       <button class="fp" id="nearBtn" type="button" aria-pressed="false">◎ Near me</button>
       <span id="tokens"></span>
       <span class="sp"></span>
+      <button class="ghost sm" id="planAll" type="button" hidden title="Add these results to the list">+ Add all to list</button>
       <button class="ghost sm" id="mapBtn" type="button" hidden title="Save these sites as a KML for Google Earth or My Maps">Map these</button>
       <span id="count"></span>
     </div>
 
     <div id="fPanel" hidden></div>
     <div id="tray" hidden></div>
+    <div id="plan" hidden></div>
   </div></div>
 
   <div class="body">
@@ -304,7 +342,7 @@
 <div class="toast" id="toast"></div>
 <input type="file" id="file" accept=".xlsx,.xls">
 
-<script src="unified.js?v=2"></script>
+<script src="unified.js?v=6"></script>
 <script>
 window.LOOKUP_CONFIG = {
   sheetName:'Sheet1',

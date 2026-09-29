@@ -46,6 +46,13 @@ let A = null, SITES = [], BY_ID = {};
 const st = { q:'', filters:{}, open:false, expanded:{}, near:null, nearOn:false,
              selId:'', listOnly:true, limit:PAGE };
 let PAIR = [];
+const PLAN_KEY = 'site_access_plan';
+let PLAN = (() => { try { return JSON.parse(localStorage.getItem(PLAN_KEY)) || []; } catch(e){ return []; } })();
+let PLAN_MAP = false, LMAP = null, LLAYER = null, DMAP = null;
+const VIEW_KEY = 'site_access_view';
+st.view = (() => { try { return localStorage.getItem(VIEW_KEY) === 'map' ? 'map' : 'list'; } catch(e){ return 'list'; } })();
+let BMAP = null, BLAYER = null, BSEL = null, BKEY = '', BEL = null;
+const LK_BOUNDS = [[5.85, 79.5], [9.9, 81.95]];   // Sri Lanka
 const narrowMq = matchMedia('(max-width: 760px)');
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
@@ -148,11 +155,13 @@ function remember(s){
 const navUrl = s => s.coord
   ? 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(s.coord.la + ',' + s.coord.ln)
   : '';
+const gmUrl = s => s.coord ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.coord.la + ',' + s.coord.ln) : '';
+const PIN = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="#ea4335" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>';
 const telUrl = s => s.contact ? 'tel:' + s.contact.replace(/[^0-9+]/g,'') : '';
 
 /* ------------------------------------------------------------------ drawing */
 function draw(){
-  drawFresh(); drawBar(); drawPanel(); drawTray(); drawBody();
+  drawFresh(); drawTabs(); drawBar(); drawPanel(); drawTray(); drawPlan(); drawBody();
 }
 
 /* the pill in the tools' own header, worded the way every other tool words it */
@@ -166,6 +175,15 @@ function drawFresh(){
     : '<b>0</b> sites · ' + (A.connected() ? 'nothing published yet' : 'not connected');
 }
 
+function drawTabs(){
+  const t = $('vtabs'); if (!t) return;
+  [...t.querySelectorAll('[data-v]')].forEach(b => {
+    b.classList.toggle('on', b.dataset.v === st.view);
+    b.onclick = () => { if (st.view === b.dataset.v) return; st.view = b.dataset.v;
+      try { localStorage.setItem(VIEW_KEY, st.view); } catch(e){}
+      st.listOnly = true; draw(); };
+  });
+}
 function drawBar(){
   const active = Object.keys(st.filters);
   const fb = $('fBtn');
@@ -188,6 +206,7 @@ function drawBar(){
   const n = rowsExcept(null).length;
   $('count').textContent = SITES.length ? n.toLocaleString() + (n === 1 ? ' site' : ' sites') : '';
   $('mapBtn').hidden = !(narrowed() && n);
+  const pa = $('planAll'); if (pa){ pa.hidden = !(narrowed() && n); pa.textContent = '+ Add all ' + Math.min(n, 60) + ' to list'; }
 }
 
 function drawPanel(){
@@ -281,7 +300,9 @@ function drawBody(){
   const showDet  = !!sel && (!narrow || !st.listOnly);
   list.hidden = !showList; det.hidden = !showDet;
 
-  if (showList){
+  if (showList && st.view === 'map'){
+    drawBigMap(list, sel);
+  } else if (showList){
     const shown = rows.slice(0, st.limit);
     let h = '<div class="ll">' + esc(label) + '</div>';
     if (!rows.length){
@@ -306,6 +327,7 @@ function drawBody(){
           '<span class="tone ' + tone.cls + '">' + tone.label + '</span>' +
           (s.tower ? '<span class="tw">' + esc(s.tower) + '</span>' : '') +
           '<span class="sp"></span>' +
+          (s.coord ? '<button class="planb' + (inPlan(s) ? ' on' : '') + '" data-plan="' + esc(s.id) + '" title="' + (inPlan(s) ? 'Remove from list' : 'Add to list') + '">' + (inPlan(s) ? '✓ In list' : '+ Add to list') + '</button>' : '') +
           (nav ? '<a class="navb" href="' + nav + '" target="_blank" rel="noopener">Navigate</a>' : '') +
         '</div></div>';
     }).join('');
@@ -317,9 +339,10 @@ function drawBody(){
     list.innerHTML = h;
     [...list.querySelectorAll('.card')].forEach(el => {
       const go = () => open(BY_ID[el.dataset.id.toLowerCase()]);
-      el.onclick = e => { if (e.target.closest('a')) return; go(); };
+      el.onclick = e => { if (e.target.closest('a,[data-plan]')) return; go(); };
       el.onkeydown = e => { if (e.key === 'Enter') go(); };
     });
+    [...list.querySelectorAll('[data-plan]')].forEach(b => b.onclick = () => togglePlan(BY_ID[b.dataset.plan.toLowerCase()]));
     const mr = $('moreRows'); if (mr) mr.onclick = () => { st.limit += PAGE; drawBody(); };
   }
 
@@ -358,10 +381,13 @@ function drawDetail(s, narrow){
            : '<span class="bs dis" title="No contact number on the list">Call depot officer</span>') +
     '</div>' +
     '<div class="dmini">' +
+      (s.coord ? '<a class="ghost sm gm" href="' + gmUrl(s) + '" target="_blank" rel="noopener" title="Open this location in Google Maps">' + PIN + 'Google Maps</a>' : '') +
+      (s.coord ? '<button class="ghost sm' + (inPlan(s) ? ' on' : '') + '" id="dPlan">' + (inPlan(s) ? '✓ In list' : '+ Add to list') + '</button>' : '') +
       '<button class="ghost sm" id="dCopy">Copy details</button>' +
       (s.coord ? '<button class="ghost sm' + (picked ? ' on' : '') + '" id="dMeas">' +
         (picked ? 'Picked for the hop' : 'Measure from here') + '</button>' : '') +
     '</div>' +
+    (s.coord && st.view !== 'map' ? '<div id="dLeaf"></div>' : '') +
     (accessRows ? '<div class="sec"><div class="sh">Access</div>' + accessRows + '</div>' : '') +
     (techRows ? '<div class="sec rule"><div class="sh">Technical</div>' + techRows + '</div>' : '');
 
@@ -371,6 +397,8 @@ function drawDetail(s, narrow){
     const text = C.copyText ? C.copyText(s.raw, A.fieldVal) : s.id + ' - ' + s.name;
     if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => A.toast('Details copied')).catch(() => {});
   };
+  if (st.view !== 'map') drawDetailMap(s); else if (DMAP){ DMAP.remove(); DMAP = null; }
+  const dp = $('dPlan'); if (dp) dp.onclick = () => togglePlan(s);
   const m = $('dMeas');
   if (m) m.onclick = () => {
     const at = PAIR.indexOf(s);
@@ -378,6 +406,180 @@ function drawDetail(s, narrow){
     else { if (PAIR.length >= 2) PAIR.shift(); PAIR.push(s); }
     drawTray(); drawDetail(s, narrowMq.matches);
   };
+}
+
+/* ------------------------------------------------------------------ the plan
+   A short list of sites to review on a map and turn into a day's route. Kept
+   on this device, in the order you set. */
+const inPlan = s => PLAN.indexOf(s.id) >= 0;
+const planSites = () => PLAN.map(id => BY_ID[String(id).toLowerCase()]).filter(s => s && s.coord);
+function savePlan(){ try { localStorage.setItem(PLAN_KEY, JSON.stringify(PLAN)); } catch(e){} }
+function togglePlan(s){
+  if (!s || !s.coord) return;
+  const i = PLAN.indexOf(s.id);
+  if (i >= 0) PLAN.splice(i, 1); else PLAN.push(s.id);
+  savePlan(); draw();
+  A.toast(i >= 0 ? s.id + ' removed from the list' : s.id + ' added · ' + PLAN.length + ' in list');
+}
+function planKm(list){
+  let t = 0; for (let i = 1; i < list.length; i++) t += A.airKm(list[i-1].coord, list[i].coord); return t;
+}
+/* nearest next, starting from where you are if the browser knows, else the first */
+function bestOrder(){
+  const list = planSites(); if (list.length < 3 && !st.near) return;
+  let cur = st.near || list[0].coord, left = list.slice(), out = [];
+  if (!st.near){ out.push(left.shift()); cur = out[0].coord; }
+  while (left.length){
+    let bi = 0, bd = Infinity;
+    left.forEach((s, i) => { const d = A.airKm(cur, s.coord); if (d < bd){ bd = d; bi = i; } });
+    const nx = left.splice(bi, 1)[0]; out.push(nx); cur = nx.coord;
+  }
+  PLAN = out.map(s => s.id); savePlan(); draw();
+  A.toast('Sorted by nearest next' + (st.near ? ', from where you are' : ''));
+}
+function routeUrl(list){
+  return 'https://www.google.com/maps/dir//' + list.map(s => s.coord.la + ',' + s.coord.ln).join('/');
+}
+function drawPlan(){
+  const p = $('plan'); if (!p) return;
+  const list = planSites();
+  if (!list.length){ p.hidden = true; p.innerHTML = ''; if (LMAP){ LMAP.remove(); LMAP = null; } return; }
+  p.hidden = false;
+  const km = planKm(list);
+  p.innerHTML = '<div class="ph"><b>My list</b><span>' + list.length + (list.length === 1 ? ' site' : ' sites') +
+      (list.length > 1 ? ' · ' + km.toFixed(1) + ' km straight-line' : '') + '</span><span class="sp"></span>' +
+      '<button class="ghost sm' + (PLAN_MAP ? ' on' : '') + '" id="pMap">' + (PLAN_MAP ? 'Hide map' : 'Show on map') + '</button>' +
+      '<a class="ghost sm gm" id="pRoute" href="' + routeUrl(list.slice(0, 9)) + '" target="_blank" rel="noopener" title="Route from your location through these, in order">' + PIN + 'Route in Google Maps</a>' +
+      (list.length > 2 ? '<button class="ghost sm" id="pBest">Best order</button>' : '') +
+      '<button class="ghost sm" id="pKml">KML</button>' +
+      '<button class="ghost sm" id="pClr">Clear</button></div>' +
+      (list.length > 9 ? '<div class="pnote">Google Maps takes 9 stops at a time — the route opens with the first 9.</div>' : '') +
+      (PLAN_MAP ? '<div id="pLeaf"></div>' : '') +
+      '<ol class="pl">' + list.map((s, i) =>
+        '<li><span class="pn">' + (i + 1) + '</span>' +
+        '<button class="pt" data-open="' + esc(s.id) + '"><b>' + esc(s.id) + '</b> ' + esc(s.name || '') +
+          '<i>' + esc([s.district, TONE[s.kind].label].filter(Boolean).join(' · ')) + '</i></button>' +
+        (i ? '<span class="pk">' + A.airKm(list[i-1].coord, s.coord).toFixed(1) + ' km</span>' : '<span class="pk"></span>') +
+        '<a class="pi" href="' + gmUrl(s) + '" target="_blank" rel="noopener" title="Google Maps">' + PIN + '</a>' +
+        '<button class="pi" data-up="' + i + '" title="Earlier"' + (i ? '' : ' disabled') + '>↑</button>' +
+        '<button class="pi" data-dn="' + i + '" title="Later"' + (i < list.length - 1 ? '' : ' disabled') + '>↓</button>' +
+        '<button class="pi" data-rm="' + esc(s.id) + '" title="Remove">×</button></li>').join('') + '</ol>';
+  const mv = (i, d) => { const ids = list.map(s => s.id); const t = ids[i]; ids[i] = ids[i + d]; ids[i + d] = t; PLAN = ids; savePlan(); draw(); };
+  p.querySelectorAll('[data-up]').forEach(b => b.onclick = () => mv(+b.dataset.up, -1));
+  p.querySelectorAll('[data-dn]').forEach(b => b.onclick = () => mv(+b.dataset.dn, 1));
+  p.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => togglePlan(BY_ID[b.dataset.rm.toLowerCase()]));
+  p.querySelectorAll('[data-open]').forEach(b => b.onclick = () => open(BY_ID[b.dataset.open.toLowerCase()]));
+  $('pMap').onclick = () => { PLAN_MAP = !PLAN_MAP; if (!PLAN_MAP && LMAP){ LMAP.remove(); LMAP = null; } drawPlan(); };
+  const pb = $('pBest'); if (pb) pb.onclick = bestOrder;
+  $('pKml').onclick = () => A.saveKml(list.map(s => s.raw), 'Site list · ' + list.length + ' sites', list.map(s => s.raw));
+  $('pClr').onclick = () => { if (!confirm('Clear all ' + list.length + ' sites from the list?')) return; PLAN = []; savePlan(); PLAN_MAP = false; draw(); };
+  if (PLAN_MAP) drawLeaf(list);
+}
+/* The map on a site's page. The site itself is the big pin; while a search is
+   on, every other result that has coordinates sits round it as a small dot, so
+   you can see what else is nearby and jump to it. */
+const toneCol = s => s.kind === 'open' ? '#4fc39a' : s.kind === 'restricted' ? '#e0a23c' : '#8098bd';
+function drawDetailMap(s){
+  if (DMAP){ DMAP.remove(); DMAP = null; }
+  if (!s || !s.coord) return;
+  loadLeaf().then(() => {
+    const el = $('dLeaf'); if (!el || el._leaflet_id) return;
+    DMAP = L.map(el, { scrollWheelZoom: false, zoomControl: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(DMAP);
+    const others = (narrowed() || st.nearOn) ? results().filter(x => x.coord && x !== s).slice(0, 300) : [];
+    others.forEach(x => {
+      L.circleMarker([x.coord.la, x.coord.ln], { radius: 6, color: '#0a1729', weight: 1.5, fillColor: toneCol(x), fillOpacity: .9 })
+        .addTo(DMAP).bindTooltip('<b>' + esc(x.id) + '</b> ' + esc(x.name || ''), { direction: 'top' })
+        .on('click', () => open(x));
+    });
+    const big = L.divIcon({ className: '', iconSize: [30, 40], iconAnchor: [15, 38],
+      html: '<svg viewBox="0 0 24 32" width="30" height="40"><path fill="' + toneCol(s) + '" stroke="#fff" stroke-width="1.6" d="M12 1C6 1 1.5 5.4 1.5 11.2 1.5 19 12 31 12 31s10.5-12 10.5-19.8C22.5 5.4 18 1 12 1z"/><circle cx="12" cy="11" r="4" fill="#0a1729"/></svg>' });
+    L.marker([s.coord.la, s.coord.ln], { icon: big, zIndexOffset: 1000 }).addTo(DMAP)
+      .bindPopup('<b>' + esc(s.id) + '</b><br>' + esc(s.name || '') + '<br><a href="' + gmUrl(s) + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+    if (st.near) L.circleMarker([st.near.la, st.near.ln], { radius: 7, color: '#fff', weight: 2, fillColor: '#3f7fd8', fillOpacity: 1 }).addTo(DMAP).bindTooltip('You');
+    /* close in on the site, but wide enough to take in its nearest neighbours */
+    const near = others.map(x => ({ x, d: A.airKm(s.coord, x.coord) })).sort((a, b) => a.d - b.d).slice(0, 6).map(o => [o.x.coord.la, o.x.coord.ln]);
+    if (near.length) DMAP.fitBounds([[s.coord.la, s.coord.ln]].concat(near), { padding: [28, 28], maxZoom: 15 });
+    else DMAP.setView([s.coord.la, s.coord.ln], 14);
+  }).catch(() => { const el = $('dLeaf'); if (el) el.innerHTML = '<div class="nomap">Map could not load</div>'; });
+}
+/* ------------------------------------------------------------ the Map tab
+   The same search, drawn on Sri Lanka instead of down a list. With nothing
+   typed every site is on it; type anything and only the matches stay, and the
+   map closes in on them. The one that is open is the big pin. */
+function drawBigMap(list, sel){
+  if (!BEL){ BEL = document.createElement('div'); BEL.id = 'bigLeaf'; }
+  const rows = (narrowed() || st.nearOn) ? results() : SITES;
+  const pts = rows.filter(s => s.coord);
+  const head = '<div class="ll">' + (narrowed() || st.nearOn
+      ? pts.length.toLocaleString() + ' of ' + rows.length.toLocaleString() + ' results on the map'
+      : 'All ' + pts.length.toLocaleString() + ' sites · search to narrow') +
+    (rows.length > pts.length ? ' · ' + (rows.length - pts.length) + ' without coordinates' : '') + '</div>';
+  if (!list.contains(BEL)){ list.innerHTML = head; list.appendChild(BEL); }
+  else list.firstChild.outerHTML = head;
+  loadLeaf().then(() => {
+    if (!BMAP){
+      BMAP = L.map(BEL, { preferCanvas: true, zoomSnap: .5 });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(BMAP);
+      BMAP.fitBounds(LK_BOUNDS);
+    }
+    BMAP.invalidateSize();
+    if (BLAYER) BLAYER.remove();
+    BLAYER = L.layerGroup().addTo(BMAP);
+    const r = pts.length > 800 ? 4 : 6;
+    pts.forEach(s => {
+      if (s === sel) return;
+      L.circleMarker([s.coord.la, s.coord.ln], { radius: r, color: '#0a1729', weight: 1, fillColor: toneCol(s), fillOpacity: .9 })
+        .addTo(BLAYER).bindTooltip('<b>' + esc(s.id) + '</b> ' + esc(s.name || ''), { direction: 'top' })
+        .on('click', () => { st.selId = s.id; st.listOnly = false; remember(s); drawBody(); if (narrowMq.matches) scrollTo(0, 0); });
+    });
+    if (sel && sel.coord){
+      const big = L.divIcon({ className: '', iconSize: [30, 40], iconAnchor: [15, 38],
+        html: '<svg viewBox="0 0 24 32" width="30" height="40"><path fill="' + toneCol(sel) + '" stroke="#fff" stroke-width="1.6" d="M12 1C6 1 1.5 5.4 1.5 11.2 1.5 19 12 31 12 31s10.5-12 10.5-19.8C22.5 5.4 18 1 12 1z"/><circle cx="12" cy="11" r="4" fill="#0a1729"/></svg>' });
+      L.marker([sel.coord.la, sel.coord.ln], { icon: big, zIndexOffset: 1000 }).addTo(BLAYER)
+        .bindTooltip('<b>' + esc(sel.id) + '</b> ' + esc(sel.name || ''), { direction: 'top', offset: [0, -34] });
+    }
+    if (st.near) L.circleMarker([st.near.la, st.near.ln], { radius: 7, color: '#fff', weight: 2, fillColor: '#3f7fd8', fillOpacity: 1 }).addTo(BLAYER).bindTooltip('You');
+    /* move the view only when the set changes, or when a different site is opened */
+    const key = st.q + '|' + JSON.stringify(st.filters) + '|' + st.nearOn;
+    const selKey = sel ? sel.id : '';
+    if (key !== BKEY){
+      BKEY = key; BSEL = selKey;
+      if (!(narrowed() || st.nearOn) || !pts.length) BMAP.fitBounds(LK_BOUNDS);
+      else if (pts.length === 1) BMAP.setView([pts[0].coord.la, pts[0].coord.ln], 14);
+      else BMAP.fitBounds(pts.map(s => [s.coord.la, s.coord.ln]), { padding: [30, 30], maxZoom: 14 });
+    } else if (selKey !== BSEL){
+      BSEL = selKey;
+      if (sel && sel.coord && !BMAP.getBounds().pad(-.1).contains([sel.coord.la, sel.coord.ln])) BMAP.panTo([sel.coord.la, sel.coord.ln]);
+    }
+  }).catch(() => { BEL.innerHTML = '<div class="nomap">Map could not load - check the connection</div>'; });
+}
+let leafLoading = null;
+function loadLeaf(){
+  if (window.L) return Promise.resolve();
+  if (leafLoading) return leafLoading;
+  const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
+  leafLoading = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+  return leafLoading;
+}
+function drawLeaf(list){
+  loadLeaf().then(() => {
+    const el = $('pLeaf'); if (!el) return;
+    if (LMAP){ LMAP.remove(); LMAP = null; }
+    LMAP = L.map(el, { scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(LMAP);
+    const pts = list.map(s => [s.coord.la, s.coord.ln]);
+    if (pts.length > 1) L.polyline(pts, { color: '#3f7fd8', weight: 3, opacity: .75, dashArray: '6 6' }).addTo(LMAP);
+    list.forEach((s, i) => {
+      const col = s.kind === 'open' ? '#4fc39a' : s.kind === 'restricted' ? '#e0a23c' : '#8098bd';
+      const ic = L.divIcon({ className: '', iconSize: [26, 26], iconAnchor: [13, 13],
+        html: '<div style="width:26px;height:26px;border-radius:50%;background:' + col + ';color:#04101f;font:700 12px IBM Plex Sans,sans-serif;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (i + 1) + '</div>' });
+      L.marker([s.coord.la, s.coord.ln], { icon: ic }).addTo(LMAP)
+        .bindPopup('<b>' + esc(s.id) + '</b><br>' + esc(s.name || '') + '<br><span style="color:#666">' + esc(TONE[s.kind].label) + '</span><br><a href="' + gmUrl(s) + '" target="_blank" rel="noopener">Open in Google Maps</a>');
+    });
+    if (st.near) L.circleMarker([st.near.la, st.near.ln], { radius: 7, color: '#fff', weight: 2, fillColor: '#3f7fd8', fillOpacity: 1 }).addTo(LMAP).bindPopup('You');
+    LMAP.fitBounds(pts.concat(st.near ? [[st.near.la, st.near.ln]] : []), { padding: [30, 30], maxZoom: 14 });
+  }).catch(() => A.toast('The map could not load - check the connection'));
 }
 
 function open(s){
@@ -426,6 +628,8 @@ function wire(){
   $('qClr').onclick = () => { q.value = ''; st.q = ''; $('qClr').hidden = true; $('search').classList.remove('on'); q.focus(); draw(); };
   $('fBtn').onclick = () => { st.open = !st.open; drawBar(); drawPanel(); };
   $('nearBtn').onclick = toggleNear;
+  const pa = $('planAll');
+  if (pa) pa.onclick = () => { let n = 0; results().slice(0, 60).forEach(s => { if (s.coord && PLAN.indexOf(s.id) < 0){ PLAN.push(s.id); n++; } }); savePlan(); draw(); A.toast(n + ' added · ' + PLAN.length + ' in list'); };
   $('mapBtn').onclick = () => {
     const rows = results();
     const name = Object.keys(st.filters).map(k => st.filters[k]).concat(st.q.trim() ? [st.q.trim()] : []).join(' · ') || 'Sites';
