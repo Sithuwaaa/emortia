@@ -57,7 +57,9 @@
      edge to edge, lit up a letter at a time, with the O being the mark itself:
      the burgundy disc from the header, its four bars playing. A scroll, a
      swipe, a tap or a key takes them through it into the home page - the name
-     lifts and comes apart while the page rises up behind it, as one movement.
+     leans back and is torn out sideways, blurred, while the mark turns a
+     circle into its seat in the header and the page rises up behind it, as one
+     movement.
 
      Every address, not only the short one. Somebody who was sent straight to
      /music or /tools, or who lands back on one through 404.html, is arriving
@@ -82,7 +84,9 @@
   font-family:'Bricolage Grotesque','Hanken Grotesk',system-ui,sans-serif;font-weight:800;
   font-size:15.5vw;line-height:.86;letter-spacing:-.02em;color:#fff;white-space:nowrap;
   will-change:transform,opacity,filter;}
-.sp-word span{display:block;will-change:transform,opacity;}
+/* filter is named as well as transform: the exit blurs to sixteen pixels, and
+   a letter that was not promised a filter gets re-rastered on every frame of it */
+.sp-word span{display:block;will-change:transform,opacity,filter;}
 /* the letters simply arrive - no slide, no bounce, light coming up, 110ms
    apart so the name spells itself left to right */
 .sp-word span{animation:spIn 1.6s cubic-bezier(.22,.61,.36,1) both;}
@@ -409,7 +413,14 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       bn.style.letterSpacing = cs.letterSpacing;
       bn.style.lineHeight = cs.lineHeight;
     }
+    /* Read with the flight taken off. paint() writes a transform on the disc
+       every frame, and from here on that transform carries a rotation - a rect
+       read through one is the bounding box of the tilted disc, a good deal
+       wider than the disc, which would seat it small and to the left. */
+    var held = disc.style.transform;
+    disc.style.transform = 'none';
     var a = disc.getBoundingClientRect();
+    disc.style.transform = held;
     seat = { dx: cx - (a.left + a.width / 2), dy: cy - (a.top + a.height / 2), k: W / a.width };
     return seat;
   }
@@ -722,29 +733,75 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var clamp = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
   var ease = function (v) { return v * v * (3 - 2 * v); };
 
+  /* ---- the blur rush ----
+     The name does not drift apart, it is torn out sideways. Every letter leans
+     back into the word first - twenty-six pixels against the way it is about
+     to go, skewed the same way, so there is something to be pulled out of -
+     and then goes the other way hard: past the edge of the screen, stretched
+     along its own travel and blurred to sixteen pixels. The blur is what makes
+     a fast move read as fast; without it a letter crossing the screen in a
+     third of a second is just a letter somewhere else.
+
+     The ends go first. The furthest letter has no wait at all and the two
+     beside the logo wait longest, so the word empties inwards and the mark is
+     the last thing standing - which it has to be, because it is not leaving,
+     it is going to the header.
+
+     It is a function of progress, not a canned animation, like everything else
+     on this sheet: a half scroll holds the rush half done and a scroll back
+     puts the word straight again. SPAN is the design's own length for the
+     whole thing, and the numbers below are its milliseconds measured against
+     it - letters 900 after a wait of up to 240, the mark 1100 after 150. The
+     whole of it is then played out over TRIP, whatever TRIP is set to. */
+  var SPAN = 1250;
+
   function paint() {
     if (!settled) return;                                   /* nothing has been asked of it yet */
     var e = ease(cur);                                      /* smoothstep: no hard start */
+    var vw = innerWidth, ms = e * SPAN;                     /* read before anything is written */
     if (!seat) seatBrand();                                 /* the header may still have been booting */
-    /* The name empties from the outside in - the A and the E go first and go
-       furthest - and the O is left standing, because it is not leaving. */
     for (var i = 0; i < letters.length; i++) {
       if (i === oAt) continue;
-      var d = Math.abs(i - oAt);
-      var le = clamp(e * (1 + d * 0.26));
-      letters[i].style.transform = 'translate3d(' + ((i - oAt) * 7 * le).toFixed(2) +
-        'vw,' + (-d * 3.4 * le).toFixed(2) + 'vh,0)';
-      letters[i].style.opacity = (1 - clamp(le * 1.5)).toFixed(3);
-      letters[i].style.filter = 'blur(' + (7 * le).toFixed(2) + 'px)';
+      var d = Math.abs(i - oAt), side = i < oAt ? -1 : 1;
+      var p = clamp((ms - Math.max(0, 4 - d) * 80) / 900);
+      var x, sk, sx, bl, lo;
+      if (p < 0.3) {                                        /* the lean back */
+        var a = ease(p / 0.3);
+        x = -side * 26 * a; sk = side * 8 * a; sx = 1; bl = 0; lo = 1;
+      } else {                                              /* and out */
+        var b = (p - 0.3) / 0.7, far = side * (vw * 0.8 + 250);
+        x = -side * 26 + (far + side * 26) * b;
+        sk = side * (8 - 36 * b);
+        sx = 1 + 0.3 * b;
+        bl = 16 * b;
+        /* it is well past the edge by the time this bites - it is only here so
+           that a scrub left standing three quarters of the way through is not
+           a wall of blur parked over the question */
+        lo = 1 - clamp((b - 0.62) / 0.38);
+      }
+      letters[i].style.transform = 'translate3d(' + x.toFixed(1) + 'px,0,0) skewX(' +
+        sk.toFixed(2) + 'deg) scaleX(' + sx.toFixed(3) + ')';
+      letters[i].style.opacity = lo.toFixed(3);
+      letters[i].style.filter = bl ? 'blur(' + bl.toFixed(2) + 'px)' : 'none';
     }
-    /* the O goes to its seat in the header - a shade behind the letters, so it
-       is seen to be left behind before it moves */
+    /* The mark winds up the other way from the letters - bigger, and back
+       twenty-five degrees - and then turns a whole circle on its way to the
+       seat. A whole circle, so it arrives square: the header's own mark is not
+       turned, and the moment the flying copy is taken away the two have to be
+       the same thing in the same place at the same angle. */
     if (seat) {
-      /* e is already eased; easing the window again on top of it would hold
-         the logo still for half a second after the tap and then hurry it */
-      var oe = clamp((e - 0.08) / 0.92);
-      disc.style.transform = 'translate3d(' + (seat.dx * oe).toFixed(2) + 'px,' +
-        (seat.dy * oe).toFixed(2) + 'px,0) scale(' + (1 + (seat.k - 1) * oe).toFixed(4) + ')';
+      var lp = clamp((ms - 150) / 1100), odx = 0, ody = 0, ok = 1, orot = 0;
+      if (lp < 0.3) {
+        var oa = ease(lp / 0.3);
+        ok = 1 + 0.12 * oa; orot = -25 * oa;
+      } else {
+        var ob = (lp - 0.3) / 0.7;
+        odx = seat.dx * ob; ody = seat.dy * ob;
+        ok = 1.12 + (seat.k - 1.12) * ob;
+        orot = -25 + 385 * ob;
+      }
+      disc.style.transform = 'translate3d(' + odx.toFixed(2) + 'px,' + ody.toFixed(2) +
+        'px,0) scale(' + ok.toFixed(4) + ') rotate(' + orot.toFixed(2) + 'deg)';
     }
     /* the ground under the name is the ground under the gate, to the
        percentage, so this is a fade between two identical things */
