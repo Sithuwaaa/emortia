@@ -1551,6 +1551,19 @@ body.music-playing .ground .g-name,
 [data-bg="music-bg on"] .ground .g-halo,
 [data-bg="music-bg on"] .ground .g-mark,
 [data-bg="music-bg on"] .ground .g-name{opacity:0;}
+/* The mark, the halo and the name stepping back is not enough: the sky under
+   them is an opaque gradient, and so is the foot of the fade. The ground and
+   the album backdrop are both position:fixed at z-index 0, and the ground is
+   written second, so on equal footing it is the ground that paints on top -
+   the whole cover was behind an opaque sheet.
+
+   The ground fills the room other things leave, and with a song up the room
+   is not empty any more, so the whole layer goes rather than three of its six
+   parts. Only where the backdrop actually covers the screen: body.music-playing
+   is also true on the poetry page with a song going, and there the backdrop is
+   off and the ground is all there is behind the words. */
+.ground{transition:opacity .9s ease;}
+[data-bg="music-bg on"] .ground{opacity:0;}
 @media (max-width:900px){
   .ground .g-mark{right:-30vmin;opacity:.5;}
   .ground .g-name{font-size:min(11vmin,9vh);color:rgba(247,237,240,.07);right:12px;}
