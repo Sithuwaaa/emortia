@@ -648,11 +648,39 @@
     return data;
   }
 
+  /* When WorkHub was last ASKED, which is not when a ticket last changed. A
+     sync that finds nothing writes no rows, so synced_at does not move and the
+     header cannot tell "checked a minute ago" from "nobody has synced today".
+     One row, migration 038. Null all round until that is run, and the page
+     draws what it has - the tool must not break waiting for a migration. */
+  const WH24S = 'wh24_sync';
+  async function wh24Checked(){
+    const c = await client(); if (!c) return null;
+    const { data, error } = await c.from(WH24S).select('*').eq('id', 1).maybeSingle();
+    if (error) return null;                       /* 038 not run yet: say nothing */
+    return data || null;
+  }
+  /* Written on every sync, including one that changes nothing - that is the
+     whole reason it exists. published_at only moves when something did. */
+  async function wh24NoteCheck(info){
+    const c = await client(); if (!c) return null;
+    const s = await session(); if (!s) return null;
+    const row = { id: 1, checked_at: new Date().toISOString(),
+                  tickets: info && info.tickets != null ? info.tickets : null,
+                  changed: info && info.changed != null ? info.changed : null,
+                  checked_by: (info && info.by) || null };
+    if (info && info.published) row.published_at = row.checked_at;
+    const { data, error } = await c.from(WH24S).upsert(row, { onConflict: 'id' }).select().maybeSingle();
+    if (error) return null;                       /* never fail a sync over its own timestamp */
+    return data || null;
+  }
+
   async function wh24Subscribe(fn){
     const c = await client(); if (!c) return;
     c.channel('wh24_live')
       .on('postgres_changes', { event: '*', schema: 'public', table: WH24T }, () => fn('tickets'))
       .on('postgres_changes', { event: '*', schema: 'public', table: WH24M }, () => fn('marks'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: WH24S }, () => fn('sync'))
       .subscribe();
   }
 
@@ -1833,7 +1861,7 @@
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
-                wh24Load, wh24Publish, wh24Mark, wh24Subscribe,
+                wh24Load, wh24Publish, wh24Mark, wh24Subscribe, wh24Checked, wh24NoteCheck,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
                 load, publish, subscribe,
                 publishBook, loadBook, subscribeBook,

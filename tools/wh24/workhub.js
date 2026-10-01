@@ -194,13 +194,33 @@
   /* The Emortia tab speaks first: it has to be loaded and signed in before
      there is anywhere to send anything. Only that tab, on that origin, is
      listened to. */
+  /* Three minutes was as good as silence. By then whoever clicked has gone
+     back to what they were doing, the WorkHub tab is behind something else,
+     and the panel that would have said so takes itself away fifteen seconds
+     later - so a sync that never started looked exactly like one that worked.
+     Twenty-five seconds is long enough for a tab to load and sign in, short
+     enough that the person is still watching, and this one stays up until it
+     is clicked away rather than timing out in an empty room. */
+  var nudge = setTimeout(function () {
+    say('Still waiting for the Emortia tab… open it and sign in.');
+  }, 9000);
   var timer = setTimeout(function () {
+    clearTimeout(nudge);
     window.removeEventListener('message', onMsg);
-    finish('The Emortia tab did not answer. Sign in there, then click WH24 Sync again.', true);
-  }, 180000);
+    window.__wh24Running = false;
+    say('Sync started but didn\'t finish — open the WH24 tab after clicking the bookmark, ' +
+        'sign in there, then click WH24 Sync again.');
+    box.style.borderColor = '#ff7d92';
+    var b = document.createElement('button');
+    b.textContent = 'Close';
+    b.style.cssText = 'margin-top:10px;background:#6b3a10;color:#f8ecdc;border:0;border-radius:8px;' +
+      'padding:6px 14px;font:inherit;cursor:pointer';
+    b.onclick = function () { box.remove(); };
+    box.appendChild(b);
+  }, 25000);
   function onMsg(e) {
     if (e.origin !== EMORTIA || e.source !== win || !e.data || e.data.type !== 'wh24:hello') return;
-    clearTimeout(timer);
+    clearTimeout(timer); clearTimeout(nudge);
     window.removeEventListener('message', onMsg);
     run(e.data).catch(function (err) {
       try { win.postMessage({ type: 'wh24:error', message: err.message }, EMORTIA); } catch (x) {}

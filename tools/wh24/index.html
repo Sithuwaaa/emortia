@@ -116,6 +116,17 @@
   .tile.hero .v{font-size:52px;color:var(--ok)}
   .tile.hero.none{background:var(--card);border-color:var(--line)}
   .tile.hero.none .v{color:var(--muted)}
+  /* How old the number is, on the number. Not colour alone: each one says in
+     words how stale it is and what to do, so it reads the same to somebody
+     who cannot tell the amber from the red. */
+  .tile .stale{display:block;margin-top:7px;font-weight:700;font-size:12px;line-height:1.35}
+  .tile .stale.warn{color:var(--warn,#e8a33d)}
+  .tile .stale.bad{color:var(--err,#ff7d92)}
+  .tile.hero.s-warn{border-color:var(--warn,#e8a33d);
+    background:linear-gradient(135deg,rgba(232,163,61,.14),var(--card) 70%)}
+  .tile.hero.s-bad,.tile.hero.s-never{border-color:var(--err,#ff7d92);
+    background:linear-gradient(135deg,rgba(255,125,146,.15),var(--card) 70%)}
+  .tile.hero.s-bad .v,.tile.hero.s-never .v{color:var(--err,#ff7d92)}
   .tile.hero .s b{color:var(--text)}
   .tile.t-issuing .v{color:var(--warn)}
   .tile.t-reserving .v{color:var(--info)}
@@ -393,7 +404,8 @@ const ago = v => {
   const m = Math.round((Date.now() - new Date(v).getTime()) / 60000);
   if (m < 1) return 'just now'; if (m < 60) return m + ' min ago';
   const h = Math.round(m / 60); if (h < 24) return h + ' h ago';
-  return Math.round(h / 24) + ' days ago';
+  const d = Math.round(h / 24);
+  return d + ' ' + dayWord(d) + ' ago';      /* "1 day ago", not "1 days ago" */
 };
 const dayWord = n => n === 1 ? 'day' : 'days';
 
@@ -428,9 +440,22 @@ function board(){
   const wk = (by.collected || []).filter(t => W.daysBetween(W.collectedOn(t, MARKS[t.id]), T) <= 7).length;
   const tile = (f, cls, k, v, s) =>
     `<button class="tile ${cls}${FILTER === f ? ' on' : ''}" data-f="${f}"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></button>`;
+  /* How old this number is, said ON the number. Three of us read this on
+     three laptops and one of them syncs, so nobody else can tell whether
+     "Can collect now: 5" was true this minute or yesterday morning - and it
+     is the one number anybody acts on. Past half a day it is worth a look;
+     past a day it should stop you. Never synced reads as unknown, not fresh. */
+  const sh = staleHours();
+  const stale = sh == null ? 'never' : sh >= 24 ? 'bad' : sh >= 12 ? 'warn' : '';
+  const staleNote =
+    stale === 'bad'   ? `<span class="stale bad">This may be out of date — sync before acting on it</span>`
+  : stale === 'warn'  ? `<span class="stale warn">Last checked ${esc(ago((CHECKED && CHECKED.checked_at) || lastWrite()))} — worth a sync</span>`
+  : stale === 'never' ? `<span class="stale bad">Never synced — this is not a real number yet</span>`
+  : '';
   $('board').innerHTML =
-    tile('ready', 'hero' + (ready.length ? '' : ' none'), 'Can collect now', ready.length,
-      ready.length ? `waiting at the warehouse · oldest <b>${oldest} ${dayWord(oldest)}</b>` : 'nothing waiting at the warehouse') +
+    tile('ready', 'hero' + (ready.length ? '' : ' none') + (stale && stale !== '' ? ' s-' + stale : ''),
+      'Can collect now', ready.length,
+      (ready.length ? `waiting at the warehouse · oldest <b>${oldest} ${dayWord(oldest)}</b>` : 'nothing waiting at the warehouse') + staleNote) +
     tile('issuing', 't-issuing', 'With ACE', issuing.length,
       issuing.length ? 'issuance pending · longest ' + Math.max.apply(null, ace.concat([0])) + ' ' + dayWord(Math.max.apply(null, ace.concat([0]))) : 'none pending') +
     tile('reserving', 't-reserving', 'Reserving', (by.reserving || []).length, 'with Infomate') +
@@ -675,9 +700,50 @@ async function loadAll(){
   const r = await window.DB.wh24Load();
   if (r.error && r.error !== 'offline'){ $('list').innerHTML = `<div class="empty">${esc(r.error)}</div>`; $('pill').textContent = 'error'; return; }
   TICKETS = r.tickets; MARKS = r.marks; LOADED = true;
-  const last = TICKETS.reduce((a, t) => !a || t.synced_at > a ? t.synced_at : a, null);
-  $('when').innerHTML = last ? `Synced from WorkHub24 <b>${esc(ago(last))}</b> · ${TICKETS.length} tickets` : 'Not synced from WorkHub24 yet.';
+  await refreshChecked();
   render(true);
+}
+
+/* ---- how old is this? ----
+   Two times, because they answer two questions. CHECKED is when WorkHub was
+   last asked; UPDATED is when a ticket last actually changed. A sync that
+   finds nothing moves the first and not the second, and before this the
+   header showed only the second - so a sync that ran perfectly a minute ago
+   and a sync that never ran at all looked identical. */
+let CHECKED = null;
+async function refreshChecked(){
+  try { CHECKED = await window.DB.wh24Checked(); } catch(e){ CHECKED = null; }
+  drawWhen();
+}
+/* the newest write across the rows; what "updated" means */
+function lastWrite(){
+  return TICKETS.reduce((a, t) => !a || t.synced_at > a ? t.synced_at : a, null);
+}
+/* Age in hours of what is on screen, counted from the CHECK where there is
+   one. Null when nothing has ever been synced - that is "unknown", not
+   "fresh", and the caller must not treat it as zero. */
+function staleHours(){
+  const at = (CHECKED && CHECKED.checked_at) || lastWrite();
+  if (!at) return null;
+  return (Date.now() - new Date(at).getTime()) / 3600000;
+}
+function drawWhen(){
+  const upd = lastWrite();
+  if (!upd && !(CHECKED && CHECKED.checked_at)){
+    $('when').innerHTML = 'Not synced from WorkHub24 yet.';
+    return;
+  }
+  const bits = [];
+  if (CHECKED && CHECKED.checked_at){
+    bits.push(`Checked <b>${esc(ago(CHECKED.checked_at))}</b>`);
+    /* said out loud, because "checked, and nothing had moved" is a real and
+       reassuring answer that an unchanged timestamp cannot give */
+    if (CHECKED.changed === 0) bits.push('no changes');
+    else if (CHECKED.changed > 0) bits.push(`${CHECKED.changed} changed`);
+  }
+  if (upd) bits.push(`updated <b>${esc(ago(upd))}</b>`);
+  bits.push(`${TICKETS.length} ticket${TICKETS.length === 1 ? '' : 's'}`);
+  $('when').innerHTML = bits.join(' · ');
 }
 
 /* ================================================================ syncing
@@ -769,8 +835,25 @@ async function receive(data){
     const was = old ? W.state(old, MARKS[old.id]) : null, now = W.state(rec, MARKS[rec.id]);
     lines.push(`<span>#${rec.id} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(STATES[was].label) + ' → <b>' + esc(STATES[now].label) + '</b>') : 'new · <b>' + esc(STATES[now].label) + '</b>'}</span>`);
   });
+  /* Two different nothings, and they used to print the same sentence.
+     Nothing CAME BACK is not nothing CHANGED: with "Tickets since" set to
+     today, WorkHub lists only tickets raised today, so a sync can fetch zero
+     and report "All 0 tickets already match" - which reads as "everything is
+     up to date" while the 107 tickets already here were never looked at. */
+  if (!raws.length){
+    await window.DB.wh24NoteCheck({ tickets: 0, changed: 0, by: ME || null }).catch(() => {});
+    dlg(`WorkHub24 returned <b>no tickets</b> raised on or after <b>${esc(sinceVal())}</b>, ` +
+        `so nothing was compared — the ${TICKETS.length} ticket${TICKETS.length === 1 ? '' : 's'} ` +
+        `already here ${TICKETS.length === 1 ? 'was' : 'were'} not checked.<br>` +
+        `Move <b>Tickets since</b> back to cover the tickets you want and sync again.` +
+        (failed.length ? `<br>${failed.length} GIN(s) could not be read: ${esc(failed.join(', '))}.` : ''));
+    await refreshChecked();
+    return;
+  }
   if (!out.length){
+    await window.DB.wh24NoteCheck({ tickets: raws.length, changed: 0, by: ME || null }).catch(() => {});
     dlg(`All ${raws.length} tickets already match WorkHub24. Nothing to publish.` + (failed.length ? ` ${failed.length} GIN(s) could not be read: ${esc(failed.join(', '))}.` : ''));
+    await refreshChecked();
     return;
   }
   PENDING = out;
@@ -784,6 +867,10 @@ $('syncGo').onclick = async () => {
   BUSY = true; $('syncGo').disabled = true;
   try {
     await window.DB.wh24Publish(PENDING, (n, of) => dlg(`Publishing ${n} of ${of}…`, { pct: n / of }));
+    /* published:true moves BOTH times - this is the one case where checking
+       and changing happened together */
+    await window.DB.wh24NoteCheck({ tickets: TICKETS.length, changed: PENDING.length,
+                                    by: ME || null, published: true }).catch(() => {});
     dlg(`Published ${PENDING.length} tickets.`);
     PENDING = null;
     await loadAll();
