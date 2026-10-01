@@ -663,13 +663,45 @@
      site has its own, in the nav.
 
      Not called on the site: it renders its own and this would be a second one. */
+  /* The same account control the site's own header carries: the mark of the
+     account you are on, tilted, with a green dot and the name on a half-round
+     pill hung off the back of it, opening who you are, who else you could be,
+     and the way out. Written once here rather than fifteen times, so a tool
+     cannot drift away from it.
+
+     34px, which is exactly the size of the logo at the other end of the same
+     bar. The bar is a FIXED height - 66, or 60 under 760px - with 14px of
+     padding, so there are 38px to work in and nothing in the row is allowed
+     to change the bar. A 34px box rotated six degrees paints 37.4 wide, which
+     is the most that fits.
+
+     Colours: the gradients carry meaning - they say which of the four
+     accounts you are on, matching the tiles on the front door - so they are
+     fixed. Everything round them is the tool's own theme, because the menu
+     has to sit on fifteen skins, light ones included. */
   var CHIP_CSS = [
-    '.acc-chip{display:inline-flex;align-items:center;gap:7px;padding:4px 5px 4px 10px;',
-    '  border:1px solid var(--line3,rgba(255,255,255,.2));border-radius:999px;',
-    '  background:rgba(0,0,0,.28);white-space:nowrap;flex-shrink:0;}',
-    '.acc-chip-d{width:6px;height:6px;border-radius:50%;background:#7fdc8a;flex-shrink:0}',
-    '.acc-chip-n{font-family:"Space Mono",ui-monospace,monospace;font-size:11.5px;color:#fff;opacity:.9;',
-    '  max-width:12ch;overflow:hidden;text-overflow:ellipsis}',
+    '.acc-chip{position:relative;display:inline-flex;align-items:center;flex-shrink:0;',
+    '  --a1:#d0587a;--a2:#8e2344;--ap1:#521323;--ap2:#6d1a2e;--cc:#c4526d;}',
+    '.acc-chip[data-role="admin"]{--a1:#8576f2;--a2:#5a3fc8;--ap1:#241a44;--ap2:#39268c;--cc:#3a2a55}',
+    '.acc-chip[data-role="staff"]{--a1:#3bbcc8;--a2:#1a7f8c;--ap1:#10343a;--ap2:#17616b;--cc:#1f4a4f}',
+    '.acc-chip[data-role="guest"]{--a1:#3a2328;--a2:#28151a;--ap1:#241519;--ap2:#352025;--cc:#3a2328}',
+    '.acc-face{all:unset;cursor:pointer;display:flex;align-items:center}',
+    '.acc-av{position:relative;z-index:1;width:34px;height:34px;flex:none;border-radius:31%;',
+    '  background:linear-gradient(160deg,var(--a1),var(--a2));',
+    '  display:flex;align-items:center;justify-content:center;gap:7.1%;',
+    '  box-shadow:0 8px 20px rgba(0,0,0,.45);transform:rotate(-6deg);',
+    '  transition:transform .35s cubic-bezier(.3,1.6,.5,1)}',
+    '.acc-chip.open .acc-av{transform:rotate(4deg) scale(1.06)}',
+    '.acc-face:focus-visible .acc-av{box-shadow:0 0 0 2px var(--bg,#120a0d),0 0 0 4px rgba(247,237,240,.85)}',
+    '.acc-av i{display:block;width:8.33%;border-radius:999px;background:#1c070d}',
+    '.acc-av i:nth-child(1){height:19.05%} .acc-av i:nth-child(2){height:40.48%}',
+    '.acc-av i:nth-child(3){height:28.57%} .acc-av i:nth-child(4){height:50%}',
+    '.acc-chip[data-role="guest"] .acc-av i{background:#7a6662}',
+    '.acc-dot{position:absolute;right:-3px;bottom:-3px;width:9px;height:9px;border-radius:50%;',
+    '  background:#4ade80;box-shadow:0 0 0 2px var(--bg,#120a0d)}',
+    '.acc-pill{display:flex;align-items:center;gap:10px;margin-left:-12px;',
+    '  padding:7px 14px 7px 21px;border-radius:0 99px 99px 0;',
+    '  background:linear-gradient(90deg,var(--ap1),var(--ap2))}',
     /* Longhands, not the `font` shorthand. It used to say
          font:600 11.5px/1 inherit
        and `inherit` is not a legal family name inside that shorthand, so the
@@ -680,13 +712,52 @@
        made that one header 70.5 instead of 66.
        Written out, it applies, it is the size it was meant to be, and no
        page's button rule can reach past it again. */
-    '.acc-chip-o{background:none;border:1px solid var(--line3,rgba(255,255,255,.24));border-radius:999px;',
-    '  color:#fff;opacity:.72;cursor:pointer;padding:4px 9px;',
-    '  font-family:inherit;font-weight:600;font-size:11.5px;line-height:1;',
-    '  transition:opacity .16s ease,border-color .16s ease}',
-    '.acc-chip-o:hover{opacity:1;border-color:var(--accent,#b03a56)}',
-    '@media (max-width:560px){.acc-chip-n{display:none}}'
+    '.acc-who{font-family:"Space Mono",ui-monospace,monospace;font-weight:400;font-size:13px;',
+    '  line-height:1;color:#f7f1e8;max-width:13ch;overflow:hidden;text-overflow:ellipsis;',
+    '  white-space:nowrap}',
+    '.acc-caret{font-size:10px;line-height:1;color:#e6bdc4;display:inline-block;',
+    '  transition:transform .25s ease}',
+    '.acc-chip.open .acc-caret{transform:rotate(180deg)}',
+    /* Fixed, not absolute. This has to open inside fifteen headers written by
+       fifteen different days of mine, any of which may clip or stack its
+       children; measured off the pill and placed against the window, it
+       cannot be trapped by one of them. */
+    '.acc-menu{position:fixed;width:248px;border-radius:14px;z-index:2147483000;',
+    '  background:var(--card,#24090f);color:var(--text,#f7f1e8);',
+    '  box-shadow:inset 0 0 0 1px var(--line3,rgba(196,82,109,.25)),0 20px 40px rgba(0,0,0,.5);',
+    '  padding:8px;display:grid;gap:2px;opacity:0;transform:translateY(-8px);',
+    '  pointer-events:none;transition:opacity .2s ease,transform .25s cubic-bezier(.2,.8,.2,1)}',
+    '.acc-chip.open .acc-menu{opacity:1;transform:none;pointer-events:auto}',
+    '.acc-head{display:flex;gap:10px;align-items:center;padding:8px 10px 10px;',
+    '  border-bottom:1px solid var(--line,rgba(168,152,134,.15));margin-bottom:4px;',
+    '  font-family:"Space Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.2em;',
+    '  color:var(--muted,#a89886)}',
+    '.acc-head b{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}',
+    '.acc-lbl{padding:6px 10px;font-family:"Space Mono",ui-monospace,monospace;font-size:10px;',
+    '  letter-spacing:.24em;color:var(--muted,#a89886)}',
+    '.acc-row{all:unset;cursor:pointer;display:flex;gap:12px;align-items:center;padding:8px 10px;',
+    '  border-radius:10px;color:var(--text,#f7f1e8);font-family:inherit;font-size:13.5px;line-height:1.2}',
+    '.acc-row:hover,.acc-row:focus-visible{background:var(--line,rgba(196,82,109,.14))}',
+    /* named, not "the span in the row": a bare descendant selector would also
+       paint the name beside the chip */
+    '.acc-swatch{width:26px;height:26px;border-radius:8px;flex:none;',
+    '  background:linear-gradient(160deg,var(--r1),var(--r2))}',
+    '.acc-foot{border-top:1px solid var(--line,rgba(168,152,134,.15));margin-top:4px;padding-top:4px}',
+    '.acc-out{all:unset;cursor:pointer;display:block;box-sizing:border-box;width:100%;padding:10px;',
+    '  border-radius:10px;color:#d18f9c;font-family:inherit;font-size:13.5px;line-height:1.2}',
+    '.acc-out:hover,.acc-out:focus-visible{background:var(--line,rgba(196,82,109,.14))}',
+    '@media (max-width:560px){.acc-who{display:none}',
+    '  .acc-pill{padding:7px 12px 7px 19px}}',
+    '@media (prefers-reduced-motion:reduce){',
+    '  .acc-av,.acc-caret,.acc-menu{transition:none !important}}'
   ].join('\n');
+
+  var ROLES = [
+    ['owner', 'Sithara', '#d0587a', '#8e2344'],
+    ['admin', 'Admin',   '#8576f2', '#5a3fc8'],
+    ['staff', 'Tooway',  '#3bbcc8', '#1a7f8c'],
+    ['guest', 'Guest',   '#3a2328', '#28151a']
+  ];
 
   function chip() {
     if (document.getElementById('__accChip')) return;
@@ -695,23 +766,127 @@
     if (!who) return;
     var st = document.createElement('style'); st.textContent = CHIP_CSS; document.head.appendChild(st);
 
-    var c = document.createElement('span');
-    c.id = '__accChip'; c.className = 'acc-chip';
-    var d = document.createElement('span'); d.className = 'acc-chip-d';
-    var n = document.createElement('span'); n.className = 'acc-chip-n'; n.textContent = who;
-    var b = document.createElement('button'); b.className = 'acc-chip-o'; b.type = 'button';
-    b.textContent = 'Sign out';
+    var role = isOwner() ? 'owner' : (myRole() || 'guest');
     var left = daysLeft();
-    b.title = 'Signed in as ' + who + (left != null ? ' · ' + left + ' day' + (left === 1 ? '' : 's') + ' left' : '');
-    b.onclick = function () { signOut(); };
-    c.appendChild(d); c.appendChild(n); c.appendChild(b);
+    var el = function (tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; };
 
-    var theme = document.querySelector('.hdr .theme') || document.querySelector('.hdr button:last-of-type');
-    if (theme && theme.parentNode) theme.parentNode.insertBefore(c, theme);
-    else {                                                  // no header to sit in
-      c.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:9999;' +
-        'background:rgba(18,15,12,.92);backdrop-filter:blur(8px);box-shadow:0 8px 26px rgba(0,0,0,.45)';
+    var c = el('span', 'acc-chip');
+    c.id = '__accChip';
+    c.setAttribute('data-role', role);
+
+    var face = el('button', 'acc-face'); face.type = 'button';
+    face.title = 'Signed in as ' + who +
+      (left != null ? ' · ' + left + ' day' + (left === 1 ? '' : 's') + ' left' : '');
+    face.setAttribute('aria-haspopup', 'menu');
+    face.setAttribute('aria-expanded', 'false');
+
+    var av = el('span', 'acc-av');
+    for (var i = 0; i < 4; i++) av.appendChild(el('i'));
+    av.appendChild(el('b', 'acc-dot'));
+    var pill = el('span', 'acc-pill');
+    var nm = el('span', 'acc-who'); nm.textContent = who;
+    var car = el('span', 'acc-caret'); car.textContent = '▾'; car.setAttribute('aria-hidden', 'true');
+    pill.appendChild(nm); pill.appendChild(car);
+    face.appendChild(av); face.appendChild(pill);
+
+    var menu = el('div', 'acc-menu'); menu.setAttribute('role', 'menu');
+    var head = el('div', 'acc-head');
+    head.appendChild(el('b'));
+    var mine = null;
+    ROLES.forEach(function (r) { if (r[0] === role) mine = r; });
+    head.appendChild(document.createTextNode(((mine ? mine[1] : who) + ' · ' + role).toUpperCase()));
+    menu.appendChild(head);
+
+    var lbl = el('span', 'acc-lbl'); lbl.textContent = 'Switch to';
+    menu.appendChild(lbl);
+    /* The three you are not. A tool cannot swap an account in place - what a
+       person may open is decided by the account they hold - so this signs out
+       and goes to the front door, where being asked is the whole point. The
+       card they were heading for is lit when they get there. */
+    ROLES.forEach(function (r) {
+      if (r[0] === role) return;
+      var b = el('button', 'acc-row'); b.type = 'button'; b.setAttribute('role', 'menuitem');
+      var sw = el('span', 'acc-swatch');
+      sw.style.setProperty('--r1', r[2]); sw.style.setProperty('--r2', r[3]);
+      if (r[0] === 'guest') sw.style.boxShadow = 'inset 0 0 0 1px rgba(168,152,134,.2)';
+      b.appendChild(sw); b.appendChild(document.createTextNode(r[1]));
+      b.onclick = function () {
+        close();
+        try { sessionStorage.setItem('em-gate-want', r[0]); } catch (e) {}
+        try { signOut(); } catch (e) {}
+        setTimeout(function () { location.assign('/'); }, 120);
+      };
+      menu.appendChild(b);
+    });
+
+    var foot = el('div', 'acc-foot');
+    var out = el('button', 'acc-out'); out.type = 'button'; out.setAttribute('role', 'menuitem');
+    out.textContent = 'Sign out';
+    out.onclick = function () { close(); signOut(); };
+    foot.appendChild(out); menu.appendChild(foot);
+
+    c.appendChild(face); c.appendChild(menu);
+
+    /* Measured off the pill and placed against the window. Flipped above when
+       there is not room below, which is what the corner fallback needs. */
+    function place() {
+      var r = face.getBoundingClientRect(), W = 248;
+      menu.style.left = Math.round(Math.min(Math.max(8, r.right - W), innerWidth - W - 8)) + 'px';
+      var h = menu.offsetHeight || 240;
+      if (innerHeight - r.bottom > h + 16) { menu.style.top = Math.round(r.bottom + 10) + 'px'; menu.style.bottom = ''; }
+      else { menu.style.bottom = Math.round(innerHeight - r.top + 10) + 'px'; menu.style.top = ''; }
+    }
+    function open() { c.classList.add('open'); face.setAttribute('aria-expanded', 'true'); place(); }
+    function close() { c.classList.remove('open'); face.setAttribute('aria-expanded', 'false'); }
+    face.onclick = function (e) { e.stopPropagation(); if (c.classList.contains('open')) close(); else open(); };
+    document.addEventListener('pointerdown', function (e) {
+      if (!c.classList.contains('open')) return;
+      if (e.target && e.target.closest && e.target.closest('#__accChip')) return;
+      close();
+    }, true);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && c.classList.contains('open')) close();
+    });
+    addEventListener('resize', function () { if (c.classList.contains('open')) place(); });
+
+    /* Where it goes. Beside the theme button if there is one, otherwise at the
+       end of the header row - but NOT into a header that is still empty.
+       Several tools build their bar after this runs, and appending to an empty
+       one puts the account at the far LEFT, with the tool's own logo and title
+       landing to the right of it a moment later. */
+    function anchor() {
+      var hdr = document.querySelector('header.hdr') || document.querySelector('.hdr');
+      if (!hdr) return null;
+      var t = hdr.querySelector('.theme');
+      if (t && t.parentNode) return { parent: t.parentNode, before: t };
+      var bs = hdr.querySelectorAll('button');
+      for (var i = bs.length - 1; i >= 0; i--) {
+        if (bs[i] !== face && !c.contains(bs[i])) return { parent: bs[i].parentNode, before: bs[i] };
+      }
+      if (hdr.children.length) return { parent: hdr, before: null };
+      return null;                                          /* not built yet */
+    }
+    function put() {
+      var a = anchor();
+      if (!a) return false;
+      c.style.cssText = '';
+      a.parent.insertBefore(c, a.before);
+      return true;
+    }
+
+    if (!put()) {
+      /* The corner, so it is reachable meanwhile rather than absent, and a
+         watch on the header so that the moment the tool finishes building its
+         bar the account moves up into it. Given up on after fifteen seconds:
+         a header that has not appeared by then is not going to. */
+      c.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:9999';
       document.body.appendChild(c);
+      var hdr = document.querySelector('header.hdr') || document.querySelector('.hdr') || document.body;
+      if (window.MutationObserver) {
+        var mo = new MutationObserver(function () { if (put()) mo.disconnect(); });
+        mo.observe(hdr, { childList: true, subtree: true });
+        setTimeout(function () { mo.disconnect(); }, 15000);
+      }
     }
   }
   function showChip() {
