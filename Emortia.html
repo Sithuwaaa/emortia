@@ -537,6 +537,20 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       gKey.classList.remove('gt-show');
       if (gRow) gRow.classList.remove('gt-asking');
     };
+    /* Somebody who asked to become somebody else was signed out and sent back
+       here. Their card is lit so it is obvious where they were going - lit,
+       not pressed: being asked is the whole point of coming back. Read once
+       and thrown away, so a later visit is not still answering an old
+       question. */
+    try {
+      var want = sessionStorage.getItem('em-gate-want');
+      if (want) {
+        sessionStorage.removeItem('em-gate-want');
+        var lit = cards.filter(function (c) { return c.getAttribute('data-who') === want; })[0];
+        if (lit) lit.classList.add('gt-on');
+      }
+    } catch (e) {}
+
     /* A class that is already on does not replay its animation. Taken off,
        read back - which is what forces the frame - and put on again. */
     var shake = function () {
@@ -630,7 +644,11 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       var a = av.getBoundingClientRect();
       if (!a.width) return;
       var hdr = document.querySelector('header');
-      var to = document.querySelector('header .acct') ||
+      /* The mark on the tile and the mark in the bar are the same mark, so the
+         flight ends on the avatar itself rather than on the pill around it -
+         land on the pill and it arrives the width of the name too wide. */
+      var to = document.querySelector('header [data-acctav]') ||
+               document.querySelector('header .acct') ||
                document.querySelector('header .nav-toggle');
       var t = to && to.getBoundingClientRect();
       if (!t || !t.width) {
@@ -908,7 +926,8 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     scatL: bez(.55, 0, .8, .3), scatM: bez(.45, 0, .25, 1),
     elA: bez(.3, 0, .2, 1),    elB: bez(.8, 0, .2, 1),
     elIO: bez(.42, 0, .58, 1), elOut: bez(0, 0, .58, 1), elPop: bez(.4, 0, .1, 1.25),
-    beatP: bez(.2, .9, .3, 1), beatE: bez(.7, 0, .3, 1),  beatM: bez(0, 0, .58, 1)
+    beatP: bez(.2, .9, .3, 1), beatE: bez(.7, 0, .3, 1),  beatM: bez(0, 0, .58, 1),
+    zoom: bez(.5, 0, .2, 1)
   };
   var mix = function (a, b, t) { return a + (b - a) * t; };
   var seg = function (p, a, b) { return clamp((p - a) / (b - a)); };
@@ -1077,6 +1096,53 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       }
     },
 
+    /* The mark does not travel to the header, it goes through. It swells, then
+       rushes at you to nearly three times its size, blurring out of focus and
+       out of sight - and comes back out at the seat from nothing, turning a
+       turn and a half the other way, overshooting half again its size before
+       it settles. The letters leave on a tighter, quicker Blur rush, because
+       the mark is the thing to watch and they should be gone before it goes.
+       It waits most of a second before any of it starts, so the word is seen
+       whole first. */
+    zoomportal: {
+      span: 2400, mDelay: 950, mDur: 1450,
+      lDelay: function (c) { return Math.max(0, 4 - c.d) * 60; }, lDur: function () { return 800; },
+      letter: function (p, c) {
+        var x, sk, sx, bl = 0, op = 1;
+        if (p < .3) { var a = p / .3;
+          x = -c.side * 22 * a; sk = c.side * 6 * a; sx = 1; }
+        else { var b = EZ.rushL(seg(p, .3, 1));
+          x = mix(-c.side * 22, c.far, b); sk = mix(c.side * 6, -c.side * 24, b);
+          sx = mix(1, 1.25, b); bl = 14 * b; op = 1 - clamp((b - .62) / .38); }
+        return { tr: 'translate3d(' + px(x) + ',0,0) skewX(' + sk.toFixed(2) +
+                     'deg) scaleX(' + sx.toFixed(3) + ')', op: op, bl: bl };
+      },
+      mark: function (p, s) {
+        var q = EZ.zoom(p), x = 0, y = 0, k, r, bl = 0, op = 1;
+        if (q < .14) { var a = seg(q, 0, .14); k = mix(1, 1.12, a); r = mix(0, -10, a); }
+        else if (q < .42) { var b = seg(q, .14, .42);
+          k = mix(1.12, 2.8, b); r = mix(-10, 25, b); bl = 16 * b; op = 1 - b; }
+        else if (q < .5) { var c2 = seg(q, .42, .5);   /* through, and out the far side */
+          x = mix(0, s.dx, c2); y = mix(0, s.dy, c2);
+          k = mix(2.8, 0, c2); r = mix(25, -540, c2); bl = mix(16, 6, c2); op = 0; }
+        else if (q < .82) { var d2 = seg(q, .5, .82);
+          x = s.dx; y = s.dy; k = mix(0, s.k * 1.5, d2); r = mix(-540, -20, d2);
+          bl = 6 * (1 - d2); op = d2; }
+        else { var e2 = seg(q, .82, 1);
+          x = s.dx; y = s.dy; k = mix(s.k * 1.5, s.k, e2); r = mix(-20, 0, e2); }
+        return { tr: M(x, y, k, k, r, 0), op: op, bl: bl };
+      },
+      card: function (c) {
+        return { kf: [
+          { transform: 'none', filter: 'blur(0px)' },
+          { transform: 'translateX(' + px(-c.side * 22) + ') skewX(' + (c.side * 6) + 'deg)',
+            filter: 'blur(0px)', offset: .3, easing: 'cubic-bezier(.6,0,.4,1)' },
+          { transform: 'translateX(' + px(c.far) + ') skewX(' + (-c.side * 24) + 'deg) scaleX(1.25)',
+            filter: 'blur(14px)', opacity: 0 }
+        ], dur: 800, del: Math.max(0, 4 - c.d) * 60, ez: 'linear' };
+      }
+    },
+
     /* On the beat: out a step, hold, out a step, hold, gone - and the mark
        pumps on the same count, with its four bars playing the measure. */
     beat: {
@@ -1128,16 +1194,16 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     }
   };
 
-  /* Which of the six. Drawn once when the page loads and used by both halves,
-     so the door behaves as one thing. A visitor gets a different one each
-     time - six doors is the point of having six - and ?door=elastic pins it,
-     for testing or for showing somebody. To stop the rotation entirely,
-     replace the line below with the one name you want. */
-  var DOOR_NAMES = ['glide', 'rush', 'doors', 'scatter', 'elastic', 'beat'];
+  /* Which of the seven, chosen once when the page loads and used by both
+     halves so the door behaves as one thing. Zoom portal is the one the
+     design settles on, so it is what a visitor gets. ?door=beat shows any of
+     the others, and ?door=random takes a different one each time. */
+  var DOOR_NAMES = ['glide', 'rush', 'doors', 'scatter', 'elastic', 'beat', 'zoomportal'];
   var DOOR = (function () {
     var want = (/[?&]door=([a-z]+)/.exec(location.search) || [])[1];
     if (want && DOORS[want]) return want;
-    return DOOR_NAMES[Math.floor(Math.random() * DOOR_NAMES.length)];
+    if (want === 'random') return DOOR_NAMES[Math.floor(Math.random() * DOOR_NAMES.length)];
+    return 'zoomportal';
   }());
   /* Scatter's throw, drawn once. Read per frame it would shiver under a held
      scrub and land somewhere different every time it was painted. */
@@ -1173,7 +1239,16 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
        flying copy is taken away the header's own mark stands in its place. */
     if (seat) {
       var lp = clamp((ms - E.mDelay) / E.mDur);
-      disc.style.transform = E.mark(lp, seat);
+      /* Most of them only move the mark. Zoom portal also takes it out of
+         sight and out of focus on the way through, so a door may answer with
+         a transform alone or with all three. */
+      var mo = E.mark(lp, seat), ds = disc.style;
+      if (typeof mo === 'string') { ds.transform = mo; ds.opacity = ''; ds.filter = ''; }
+      else {
+        ds.transform = mo.tr;
+        ds.opacity = mo.op.toFixed(3);
+        ds.filter = mo.bl ? 'blur(' + mo.bl.toFixed(2) + 'px)' : 'none';
+      }
       if (E.barAt) for (var j = 0; j < bars.length; j++)
         bars[j].style.transform = 'scaleY(' + E.barAt(lp, j).toFixed(3) + ')';
     }
@@ -1647,15 +1722,71 @@ img.zoomable:focus-visible{outline:2px solid var(--accentB);outline-offset:4px;}
 .fs-inner{position:relative;z-index:3;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;padding:24px;text-align:center;}
 .fs-art{width:min(44vh,360px);height:min(44vh,360px);border-radius:18px;object-fit:cover;box-shadow:0 30px 80px rgba(0,0,0,0.62);}
 .hidden{display:none !important;}
-/* ---- who is signed in, sitting at the end of the nav ---- */
-.acct{display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:5px 6px 5px 11px;
-  border:1px solid var(--line2);border-radius:999px;background:var(--panelS);white-space:nowrap;}
-.acct-dot{width:7px;height:7px;border-radius:50%;background:#7fdc8a;flex-shrink:0;
-  box-shadow:0 0 8px rgba(127,220,138,.6);}
-.acct-who{font-family:'Space Mono',monospace;font-size:12px;color:var(--text2);
-  max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  background:none;border:none;padding:0;cursor:pointer;border-bottom:1px dotted transparent;}
-.acct-who:hover{color:var(--accentB);border-bottom-color:var(--accentB);}
+/* ---- who is signed in, sitting at the end of the nav ----
+   The same mark as the tile that was pressed to get in, at the size the
+   header keeps it: tilted a little so it reads as a thing rather than a
+   button, with the name on a pill that grows out from behind it. The pill is
+   drawn as a half-round so it is plainly hung off the mark and not a
+   separate control. Its colour is the colour of the account - the four are
+   the same four as on the front door, so the tile you pressed is the tile
+   you are wearing. */
+.acct{position:relative;display:inline-flex;align-items:center;margin-left:10px;white-space:nowrap;
+  --a1:#d0587a;--a2:#8e2344;--ap1:#521323;--ap2:#6d1a2e;}
+.acct[data-role="admin"]{--a1:#8576f2;--a2:#5a3fc8;--ap1:#241a44;--ap2:#39268c;}
+.acct[data-role="staff"]{--a1:#3bbcc8;--a2:#1a7f8c;--ap1:#10343a;--ap2:#17616b;}
+.acct[data-role="guest"]{--a1:#3a2328;--a2:#28151a;--ap1:#241519;--ap2:#352025;}
+.acct-face{all:unset;cursor:pointer;display:flex;align-items:center;}
+.acct-face:focus-visible .acct-av{box-shadow:0 0 0 2px var(--bg),0 0 0 4px rgba(247,237,240,.85);}
+/* 36px, not the 42 of the drawing. The drawing's header is 72px tall and this
+   one is 66, held there by nav.css so that all fifteen headers are the same
+   height; 38 pushes it to 67 and 40 to 69. The mark inside is sized as a
+   share of the tile instead of in pixels, so it keeps the drawn proportions
+   at whatever size the bar can afford. */
+.acct-av{position:relative;z-index:1;width:36px;height:36px;flex:none;border-radius:31%;
+  background:linear-gradient(160deg,var(--a1),var(--a2));
+  display:flex;align-items:center;justify-content:center;gap:7.1%;
+  box-shadow:0 8px 20px rgba(0,0,0,.45);transform:rotate(-6deg);
+  transition:transform .35s cubic-bezier(.3,1.6,.5,1),box-shadow .2s ease;}
+.acct.open .acct-av{transform:rotate(4deg) scale(1.06);}
+.acct-av i{display:block;width:8.33%;border-radius:999px;background:#1c070d;}
+.acct-av i:nth-child(1){height:19.05%} .acct-av i:nth-child(2){height:40.48%}
+.acct-av i:nth-child(3){height:28.57%} .acct-av i:nth-child(4){height:50%}
+.acct[data-role="guest"] .acct-av i{background:#7a6662;}
+.acct-dot{position:absolute;right:-3px;bottom:-3px;width:9px;height:9px;border-radius:50%;
+  background:#4ade80;box-shadow:0 0 0 2px var(--bar,#1c0b10);}
+.acct-pill{display:flex;align-items:center;gap:11px;margin-left:-13px;
+  padding:8px 15px 8px 23px;border-radius:0 99px 99px 0;
+  background:linear-gradient(90deg,var(--ap1),var(--ap2));transform-origin:left center;}
+.acct-who{font-family:'Space Mono',monospace;font-size:14px;color:#f7f1e8;
+  max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.acct-caret{font-size:11px;color:#e6bdc4;display:inline-block;
+  transition:transform .25s ease;}
+.acct.open .acct-caret{transform:rotate(180deg);}
+/* the menu it opens: who you are, who else you could be, and the way out */
+.acct-menu{position:absolute;right:0;top:calc(100% + 12px);width:252px;border-radius:14px;
+  background:#24090f;box-shadow:inset 0 0 0 1px rgba(196,82,109,.25),0 20px 40px rgba(0,0,0,.5);
+  padding:8px;display:grid;gap:2px;z-index:60;
+  opacity:0;transform:translateY(-8px);pointer-events:none;
+  transition:opacity .2s ease,transform .25s cubic-bezier(.2,.8,.2,1);}
+.acct.open .acct-menu{opacity:1;transform:none;pointer-events:auto;}
+.am-head{display:flex;gap:10px;align-items:center;padding:8px 10px 10px;
+  border-bottom:1px solid rgba(168,152,134,.15);margin-bottom:4px;
+  font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.24em;color:#a89886;}
+.am-head b{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none;}
+.am-lbl{padding:6px 10px;font-family:'Space Mono',monospace;font-size:10px;
+  letter-spacing:.28em;color:#a89886;}
+.am-row{all:unset;cursor:pointer;display:flex;gap:12px;align-items:center;padding:8px 10px;
+  border-radius:10px;color:#f7f1e8;font-size:14px;}
+.am-row:hover,.am-row:focus-visible{background:rgba(196,82,109,.14);}
+.am-row span{width:26px;height:26px;border-radius:8px;flex:none;
+  background:linear-gradient(160deg,var(--r1),var(--r2));}
+.am-foot{border-top:1px solid rgba(168,152,134,.15);margin-top:4px;padding-top:4px;}
+.am-out{all:unset;cursor:pointer;display:block;box-sizing:border-box;width:100%;padding:10px;
+  border-radius:10px;color:#d18f9c;font-size:14px;}
+.am-out:hover,.am-out:focus-visible{background:rgba(196,82,109,.14);}
+@media (prefers-reduced-motion:reduce){
+  .acct-av,.acct-caret,.acct-menu{transition:none !important;}
+}
 /* the profile panel */
 .prof-back{position:fixed;inset:0;z-index:70;background:rgba(10,6,8,.62);backdrop-filter:blur(4px);
   display:grid;place-items:center;padding:22px;animation:fadeUp .2s ease;}
@@ -1683,14 +1814,24 @@ img.zoomable:focus-visible{outline:2px solid var(--accentB);outline-offset:4px;}
   transition:color .16s ease,border-color .16s ease;}
 .acct-out:hover{color:var(--text);border-color:var(--accent);}
 /* In the stacked menu every nav button is stretched to full width with
-   !important padding — which swallowed the name and spread "Sign out" across
-   the row. The overrides have to be in the same breakpoint and just as loud. */
+   !important padding, so the pill has to be told, just as loudly, to stay a
+   pill. The menu it opens is dropped below it rather than floated over the
+   rest of the list, because at this width there is nothing to float over. */
 @media (max-width:940px){
-  .site-nav.open .acct{width:100%;margin-left:0;justify-content:space-between;
-    padding:8px 8px 8px 14px;margin-top:4px;}
-  .site-nav.open .acct-who{max-width:none;flex:1;font-size:14px;}
-  .site-nav.open .acct-out{width:auto !important;flex:0 0 auto;text-align:center !important;
-    font-size:14px !important;padding:8px 16px !important;}
+  /* The stacked menu never had to scroll: it was eight links and a one-line
+     account row. With the account menu opened inside it the list runs past
+     the bottom of the screen, where the player sits over it, so Guest and the
+     way out were unreachable. It is given the room between the two bars and
+     scrolls inside it. */
+  .site-nav.open{max-height:calc(100vh - 160px);overflow-y:auto;overscroll-behavior:contain;}
+  .site-nav.open .acct{width:100%;margin-left:0;margin-top:6px;flex-wrap:wrap;}
+  .site-nav.open .acct-face{width:100%;}
+  .site-nav.open .acct-pill{flex:1;justify-content:space-between;
+    padding:10px 16px 10px 23px !important;}
+  .site-nav.open .acct-who{max-width:none;flex:1;}
+  .site-nav.open .acct-menu{position:static;width:100%;box-sizing:border-box;margin-top:8px;
+    transform:none;box-shadow:inset 0 0 0 1px rgba(196,82,109,.25);}
+  .site-nav.open .acct:not(.open) .acct-menu{display:none;}
 }
 /* ---- the drawer: queue and words, down the right-hand side ----
    The glass is the sleeve of whatever is playing, blurred behind the panel,
@@ -2798,10 +2939,32 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         </sc-for>
         <!-- who is signed in, and the way out -->
         <sc-if value="{{ showAccount }}" hint-placeholder-val="{{ false }}">
-          <span class="acct">
-            <span class="acct-dot"></span>
-            <button class="acct-who" onClick="{{ openProfile }}" title="Change your name">{{ accountName }}</button>
-            <button class="acct-out" onClick="{{ doSignOut }}" title="{{ accountTitle }}">Sign out</button>
+          <span class="{{ acctClass }}" data-role="{{ accountRole }}">
+            <button class="acct-face" onClick="{{ toggleAcct }}" title="{{ accountTitle }}"
+              aria-haspopup="menu" aria-expanded="{{ acctExpanded }}">
+              <span class="acct-av" data-acctav>
+                <i></i><i></i><i></i><i></i><b class="acct-dot"></b>
+              </span>
+              <span class="acct-pill">
+                <span class="acct-who">{{ accountName }}</span>
+                <span class="acct-caret" aria-hidden="true">&#9662;</span>
+              </span>
+            </button>
+            <div class="acct-menu" role="menu">
+              <div class="am-head"><b></b>{{ accountStanding }}</div>
+              <button class="am-row" role="menuitem" onClick="{{ openProfile }}"
+                style="--r1:#2b1a1f;--r2:#1d1114;">
+                <span style="box-shadow:inset 0 0 0 1px rgba(168,152,134,.25);"></span>Change your name
+              </button>
+              <span class="am-lbl">Switch to</span>
+              <sc-for list="{{ switchRoles }}" as="r" hint-placeholder-count="3">
+                <button class="am-row" role="menuitem" onClick="{{ r.pick }}"
+                  style="--r1:{{ r.c1 }};--r2:{{ r.c2 }};"><span></span>{{ r.name }}</button>
+              </sc-for>
+              <div class="am-foot">
+                <button class="am-out" role="menuitem" onClick="{{ doSignOut }}">Sign out</button>
+              </div>
+            </div>
           </span>
         </sc-if>
       </nav>
@@ -3705,6 +3868,20 @@ class Component extends DCLogic {
     this.rollShuffle();
     this.shufTimer();
     this.watchSum();
+    /* The account menu closes the way every menu is expected to: a click
+       anywhere else, or Escape. Caught on the document rather than on a
+       backdrop, so it also closes for a click on the page behind it without
+       a sheet in the way swallowing that click. */
+    this._acctAway = (e) => {
+      if (!this.state.acctOpen) return;
+      if (e.target && e.target.closest && e.target.closest('.acct')) return;
+      this.setState({ acctOpen:false });
+    };
+    this._acctKey = (e) => {
+      if (e.key === 'Escape' && this.state.acctOpen) this.setState({ acctOpen:false });
+    };
+    document.addEventListener('pointerdown', this._acctAway, true);
+    document.addEventListener('keydown', this._acctKey);
     /* One row per page view. Fire and forget: db.js swallows every failure,
        because counting visits is not worth a visitor seeing an error. */
     if (window.DB && DB.trackVisit) DB.trackVisit(location.pathname);
@@ -6520,8 +6697,44 @@ class Component extends DCLogic {
       accountName: s.toolsIn && window.Access ? window.Access.currentUser() : '',
       accountTitle: (()=>{ const A=window.Access; if(!A||!s.toolsIn) return 'Sign out';
         const d=A.daysLeft(); return 'Signed in' + (d!=null ? ' · ' + d + ' day' + (d===1?'':'s') + ' left' : '') + ' — sign out'; })(),
-      doSignOut: ()=>{ if(window.Access) window.Access.signOut(); },
-      openProfile: ()=>this.setState({profOpen:true, profMsg:'', profOk:''}),
+      /* Which of the four is wearing the header. The role the owner gave the
+         account, not the tile that happened to be pressed to get in - the same
+         answer the gate uses, so the colour in the bar is the colour of what
+         you can actually open. */
+      accountRole: (()=>{ const A=window.Access;
+        if(!A||!s.toolsIn) return 'guest';
+        return A.isOwner() ? 'owner' : ((A.myRole && A.myRole()) || 'guest'); })(),
+      accountStanding: (()=>{ const A=window.Access;
+        if(!A||!s.toolsIn) return '';
+        const r = A.isOwner() ? 'owner' : ((A.myRole && A.myRole()) || 'guest');
+        const nm = {owner:'Sithara', admin:'Admin', staff:'Tooway', guest:'Guest'}[r] || 'Guest';
+        /* Name and standing only. How many days are left is already on the
+           pill's own title, and at this tracking a third clause runs off the
+           end of a 252px menu. */
+        return (nm + ' · ' + r).toUpperCase(); })(),
+      acctClass: s.acctOpen ? 'acct open' : 'acct',
+      acctExpanded: s.acctOpen ? 'true' : 'false',
+      toggleAcct: ()=>this.setState(st=>({acctOpen:!st.acctOpen})),
+      /* The three you are not. Choosing one cannot swap the account in place -
+         what a person may open is decided by the account they hold, so the
+         only honest way to become somebody else is to stop being this one and
+         be asked again. It signs out and goes back to the front door. */
+      switchRoles: (()=>{ const A=window.Access;
+        const here = (!A||!s.toolsIn) ? 'guest'
+          : (A.isOwner() ? 'owner' : ((A.myRole && A.myRole()) || 'guest'));
+        const all = [['owner','Sithara','#d0587a','#8e2344'],
+                     ['admin','Admin','#8576f2','#5a3fc8'],
+                     ['staff','Tooway','#3bbcc8','#1a7f8c'],
+                     ['guest','Guest','#3a2328','#28151a']];
+        return all.filter(r=>r[0]!==here).map(([key,name,c1,c2])=>({
+          key, name, c1, c2,
+          pick: ()=>{ this.setState({acctOpen:false});
+            try { sessionStorage.setItem('em-gate-want', key); } catch(e){}
+            try { if(window.Access) window.Access.signOut(); } catch(e){}
+            setTimeout(()=>location.assign('/'), 120); }
+        })); })(),
+      doSignOut: ()=>{ this.setState({acctOpen:false}); if(window.Access) window.Access.signOut(); },
+      openProfile: ()=>this.setState({acctOpen:false, profOpen:true, profMsg:'', profOk:''}),
       profilePanel: this.renderProfile(),
       navClass: s.menuOpen ? 'site-nav open' : 'site-nav',
       menuOpen:!!s.menuOpen, menuClosed:!s.menuOpen,
