@@ -786,7 +786,9 @@
     { key:'tool:rf-jumper', name:'RF Jumper Codes', since:'2026-09-15', tier:'tooway', group:'Field operations',
       what:'The jumper colour code for every band combination, and the labelling scenarios, from the Huawei SOP.' },
     { key:'tool:gin-extractor', name:'GIN Extractor', since:'2026-07-26', tier:'tooway', group:'Design & materials',
-      what:'Pulling material lines out of SAP notes.' }
+      what:'Pulling material lines out of SAP notes.' },
+    { key:'tool:wh24', name:'WH24 Material Checker', since:'2026-10-01', tier:'tooway', group:'Design & materials',
+      what:'What can be collected from the warehouse, off WorkHub24. Anyone who can open it can mark a ticket collected; syncing from WorkHub is mine.' }
   ];
   var BY_KEY = {};
   FEATURES.forEach(function (f) { BY_KEY[f.key] = f; });

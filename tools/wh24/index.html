@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Every Material Reservation PH1 ticket from WorkHub24, and the one question that matters about each: can it be collected yet, and for how long has it been waiting…">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Emortia">
+<meta property="og:title" content="WH24 Material Checker · Emortia">
+<meta property="og:description" content="Every Material Reservation PH1 ticket from WorkHub24, and the one question that matters about each: can it be collected yet, and for how long has it been waiting…">
+<meta property="og:url" content="https://emortia.com/tools/wh24/">
+<meta property="og:image" content="https://emortia.com/og/og-field.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Emortia – WH24 Material Checker">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="WH24 Material Checker · Emortia">
+<meta name="twitter:description" content="Every Material Reservation PH1 ticket from WorkHub24, and the one question that matters about each: can it be collected yet…">
+<meta name="twitter:image" content="https://emortia.com/og/og-field.png">
+<meta name="theme-color" content="#3a1a05">
+<title>WH24 Material Checker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Emortia">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script src="/pwa.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script src="../_lib/owner-config.js"></script>
+<script src="../_lib/owner.js"></script>
+<script src="../_lib/supabase-config.js"></script>
+<script src="../_lib/db.js"></script>
+<script src="../_lib/access-config.js"></script>
+<script src="../_lib/access.js"></script>
+<script>Access.protect({ feature: 'tool:wh24' });</script>
+<script src="wh24.js?v=1"></script>
+<style>
+  :root{
+    --navy:#3a1a05;--accent:#ff9a3c;--accentB:#ffb877;--ink:#1e0e00;
+    --bg:#1c0700;--card:#2a1206;--card2:#230d03;--line:#4a2400;--line3:#6b3a12;
+    --text:#f8ecdc;--muted:#bda183;--ok:#34c98b;--warn:#ffc634;--bad:#ff7d92;--info:#8fb8ff;
+  }
+  html[data-theme="light"]{
+    --navy:#4a2407;--accent:#b55a00;--accentB:#c96f12;--ink:#fff;
+    --bg:#fbf6f0;--card:#fff;--card2:#fdfaf6;--line:#ead9c9;--line3:#cdb49a;
+    --text:#2e1a05;--muted:#6d5a45;--ok:#1f9a68;--warn:#9a6c00;--bad:#c2405c;--info:#2f5fb3;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font:15px/1.5 'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif}
+  a{color:var(--accentB)} a:hover{color:var(--accent)}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .mono{font-family:'Space Mono',monospace}
+  [hidden]{display:none !important}
+
+  /* ---- the bar every tool wears, to the pixel ---- */
+  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--line3);
+    box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden}
+  .hdr>*{position:relative;z-index:1}
+  .hdr h1::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accentB);
+    margin-left:10px;vertical-align:middle;animation:whLed 1.5s ease-in-out infinite}
+  @keyframes whLed{0%,100%{opacity:.25;box-shadow:none}50%{opacity:1;box-shadow:0 0 10px var(--accentB)}}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:#fff;flex-shrink:0;transition:opacity .18s ease}
+  .brand:hover{opacity:.86}
+  .brand:focus-visible{outline:2px solid #f7edf0;outline-offset:4px;border-radius:10px}
+  .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:linear-gradient(150deg,#d15873,#87213c);
+    display:flex;align-items:center;justify-content:center;gap:2.4px;font-size:0;
+    box-shadow:0 0 22px rgba(176,58,86,.55);animation:whFloat 6s ease-in-out infinite;
+    transition:scale .18s ease,box-shadow .18s ease}
+  @keyframes whFloat{0%,100%{translate:0 0}50%{translate:0 -3px}}
+  .brand:hover .logo{scale:1.06;box-shadow:0 0 26px rgba(176,58,86,.8)}
+  .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
+  .logo i:nth-child(1){height:7px}.logo i:nth-child(2){height:12px}.logo i:nth-child(3){height:9px}.logo i:nth-child(4){height:13px}
+  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:#fff;white-space:nowrap}
+  .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0}
+  .hdr h1{font-size:18px;font-weight:700;line-height:1.5;margin-right:auto;white-space:nowrap;color:#fff;
+    overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
+  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:rgba(255,255,255,.06);border:1px solid var(--line3);
+    color:#f7ded2;border-radius:999px;padding:4px 11px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
+    flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .pill b{color:var(--accentB)}
+  .ibtn{background:none;border:1px solid var(--line3);color:#fff;border-radius:999px;width:34px;height:34px;padding:0;
+    font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;transition:transform .2s ease,border-color .2s ease}
+  .ibtn:hover{border-color:var(--accentB);transform:rotate(20deg)}
+  @media (max-width:900px){.bname,.hsep{display:none}}
+  @media (max-width:760px){.pill{display:none}}
+
+  @keyframes rise{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
+  main{max-width:1400px;margin:0 auto;padding:22px 18px 80px;display:flex;flex-direction:column;gap:18px;animation:rise .4s ease both}
+
+  .btn{border:1px solid var(--line3);background:transparent;border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--accentB)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#06200f;font-weight:700}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .mini{height:32px;border-radius:8px;border:1px solid var(--line3);background:var(--card2);padding:0 10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .mini:hover{border-color:var(--accentB)}
+
+  /* ---- the board: the answer first, in numbers you can read across a room ---- */
+  .board{display:grid;grid-template-columns:1.5fr repeat(4,minmax(0,1fr));gap:12px}
+  @media (max-width:1000px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}.board .hero{grid-column:1/-1}}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:4px;
+    cursor:pointer;text-align:left;transition:border-color .15s ease,transform .15s ease;position:relative;overflow:hidden}
+  .tile:hover{border-color:var(--line3);transform:translateY(-1px)}
+  .tile.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+  .tile .k{font:700 10.5px 'Space Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .tile .v{font:800 34px/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em}
+  .tile .s{font-size:12.5px;color:var(--muted)}
+  .tile.hero{background:linear-gradient(135deg,rgba(52,201,139,.16),var(--card) 70%);border-color:rgba(52,201,139,.45)}
+  .tile.hero .v{font-size:52px;color:var(--ok)}
+  .tile.hero.none{background:var(--card);border-color:var(--line)}
+  .tile.hero.none .v{color:var(--muted)}
+  .tile.hero .s b{color:var(--text)}
+  .tile.t-issuing .v{color:var(--warn)}
+  .tile.t-reserving .v{color:var(--info)}
+  .tile.t-problem .v{color:var(--bad)}
+  .tile.t-collected .v{color:var(--text)}
+
+  /* ---- the pipeline: every ticket, as one bar, in the order they move ----
+     Colour is not the only cue: each part is labelled with its count and its
+     name underneath, so it reads in greyscale and to a red-green eye too. */
+  .pipe{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 18px 12px}
+  .pipe h2,.panel h2{font:700 10.5px 'Space Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;
+    display:flex;align-items:baseline;gap:10px}
+  .pipe h2 span,.panel h2 span{margin-left:auto;letter-spacing:0;text-transform:none;font-weight:400}
+  .pbar{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:var(--card2)}
+  .pbar i{display:block;min-width:4px;transition:flex-grow .4s ease}
+  .pkey{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:9px;font-size:12.5px;color:var(--muted)}
+  .pkey button{background:none;border:0;padding:0;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:6px}
+  .pkey button:hover{color:var(--text)}
+  .pkey b{color:var(--text);font-variant-numeric:tabular-nums}
+  .pkey i{width:9px;height:9px;border-radius:2px;display:inline-block}
+  .c-reserving{background:var(--info)} .c-issuing{background:var(--warn)} .c-ready{background:var(--ok)}
+  .c-collected{background:var(--line3)} .c-shortage,.c-rejected{background:var(--bad)} .c-other{background:var(--muted)}
+
+  /* ---- the two panels: what is waiting, and what to ask for ---- */
+  .dash{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px}
+  @media (max-width:1000px){.dash{grid-template-columns:minmax(0,1fr)}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px 10px;min-width:0;overflow:hidden}
+  .rdy{display:grid;grid-template-columns:auto minmax(0,1fr) 120px auto;gap:4px 12px;align-items:center;
+    padding:9px 0;border-top:1px solid var(--line)}
+  .rdy:first-of-type{border-top:0}
+  .rdy .sid{font:700 14px 'Space Mono',monospace;color:var(--accentB);cursor:pointer}
+  .rdy .sid:hover{text-decoration:underline}
+  .rdy .meta{font-size:12.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rdy .meta b{color:var(--text);font-weight:600}
+  .age{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+  .age .tr{flex:1;height:6px;border-radius:3px;background:var(--card2);overflow:hidden}
+  .age .tr i{display:block;height:100%;border-radius:3px}
+  .age b{font:800 15px 'Bricolage Grotesque',sans-serif;min-width:2ch;text-align:right}
+  .age.hot b{color:var(--bad)} .age.hot i{background:var(--bad)}
+  .age.warm b{color:var(--warn)} .age.warm i{background:var(--warn)}
+  .age.cool b{color:var(--ok)} .age.cool i{background:var(--ok)}
+  @media (max-width:560px){.rdy{grid-template-columns:minmax(0,1fr) auto}.rdy .sid{grid-column:1}.rdy .meta{grid-column:1/-1;grid-row:2;white-space:normal}
+    .rdy .age{grid-column:1;grid-row:3}.rdy .go{grid-column:2;grid-row:1}.pick col.cm{width:0}.pick .m{display:none}}
+  .pick{width:100%;min-width:0;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  .pick col.cq{width:74px} .pick col.cm{width:96px}
+  .pick td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:top}
+  .pick tr:first-child td{border-top:0}
+  .pick .q{font:700 15px 'Space Mono',monospace;text-align:right;white-space:nowrap;color:var(--ok)}
+  .pick .q small{font-size:11px;color:var(--muted);font-weight:400;margin-left:3px}
+  .pick .d{min-width:0;overflow-wrap:anywhere}
+  .pick .d div{font-size:11.5px;color:var(--muted)}
+  .pick .m{font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);white-space:nowrap}
+  .panel .none{color:var(--muted);font-size:13.5px;padding:14px 0 10px}
+
+  /* ---- syncing, which is the owner's ---- */
+  .sync{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--card2);border:1px dashed var(--line3);border-radius:14px;padding:12px 16px;font-size:13.5px}
+  .sync .when{margin-right:auto;color:var(--muted)}
+  .sync .when b{color:var(--text);font-weight:600}
+  .sync label{font:700 10.5px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .sync input[type=date]{background:var(--card);border:1px solid var(--line3);border-radius:8px;padding:6px 8px;font:12.5px 'Space Mono',monospace;color-scheme:dark}
+  html[data-theme="light"] .sync input[type=date]{color-scheme:light}
+  .bm{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--ink);text-decoration:none;font-weight:700;
+    border-radius:10px;padding:8px 14px;cursor:grab;white-space:nowrap}
+  .bm:hover{color:var(--ink);filter:brightness(1.08)}
+  .how{flex-basis:100%;font-size:12.5px;color:var(--muted)}
+  .how ol{margin:6px 0 0 18px;display:flex;flex-direction:column;gap:2px}
+
+  /* ---- finding ---- */
+  .sbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .sbar input{flex:1;min-width:220px;background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;outline:none}
+  .sbar input:focus{border-color:var(--accent)}
+  .seg{display:flex;border:1px solid var(--line3);border-radius:10px;overflow:auto;max-width:100%}
+  .seg button{background:transparent;border:0;padding:10px 13px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .seg button+button{border-left:1px solid var(--line3)}
+  .seg button.on{background:var(--accent);color:var(--ink);font-weight:700}
+  .seg button b{font:700 11px 'Space Mono',monospace;margin-left:5px;opacity:.75}
+
+  /* ---- a ticket ---- */
+  #list{display:flex;flex-direction:column;gap:10px}
+  #list.fresh>*{animation:rise .36s ease both}
+  #list.fresh>*:nth-child(2){animation-delay:.04s} #list.fresh>*:nth-child(3){animation-delay:.08s}
+  #list.fresh>*:nth-child(n+4){animation-delay:.12s}
+  .tk{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line3);border-radius:14px;overflow:hidden}
+  .tk.s-ready{border-left-color:var(--ok)} .tk.s-issuing{border-left-color:var(--warn)}
+  .tk.s-reserving{border-left-color:var(--info)} .tk.s-shortage,.tk.s-rejected{border-left-color:var(--bad)}
+  .tk>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1.4fr) minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:13px 16px}
+  .tk>summary::-webkit-details-marker{display:none}
+  .tk[open]>summary{border-bottom:1px solid var(--line)}
+  @media (max-width:760px){.tk>summary{grid-template-columns:auto minmax(0,1fr) auto}.tk .wo{display:none}.tk .chev{display:none}}
+  .badge{font:700 11px 'Space Mono',monospace;letter-spacing:.03em;padding:4px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+  .badge.ready{color:var(--ok);background:rgba(52,201,139,.1)}
+  .badge.collected{color:var(--muted)}
+  .badge.issuing{color:var(--warn)}
+  .badge.reserving{color:var(--info)}
+  .badge.shortage,.badge.rejected{color:var(--bad)}
+  .badge.other{color:var(--muted)}
+  .who{min-width:0}
+  .who .l1{display:flex;align-items:baseline;gap:10px;min-width:0}
+  .who .sid{font:700 15px 'Space Mono',monospace;color:var(--accentB)}
+  .who .snm{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .who .l2{font:12px 'Space Mono',monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wo{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .days{text-align:right;white-space:nowrap}
+  .days b{font:800 22px 'Bricolage Grotesque',sans-serif}
+  .days span{display:block;font-size:11.5px;color:var(--muted)}
+  .days.hot b{color:var(--bad)} .days.warm b{color:var(--warn)} .days.cool b{color:var(--ok)}
+  .chev{color:var(--muted);transition:transform .2s ease}
+  .tk[open] .chev{transform:rotate(90deg)}
+
+  .tkb{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 18px;font-size:13.5px}
+  .facts div{display:flex;flex-direction:column;min-width:0}
+  .facts i{font:normal 700 10px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .facts span{overflow-wrap:anywhere}
+
+  /* collecting it: the one thing anybody does on this page */
+  .got{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .got .lbl{font-weight:700;margin-right:4px}
+  .got input{background:var(--card);border:1px solid var(--line3);border-radius:8px;padding:7px 9px;outline:none;min-width:0}
+  .got input[type=date]{font:12.5px 'Space Mono',monospace;color-scheme:dark}
+  html[data-theme="light"] .got input[type=date]{color-scheme:light}
+  .got input.nm{width:150px} .got input.nt{flex:1;min-width:160px}
+  .got .src{font-size:12px;color:var(--muted);flex-basis:100%}
+
+  .steps{display:flex;flex-wrap:wrap;gap:6px}
+  .stp{font:11.5px 'Space Mono',monospace;border:1px solid var(--line3);border-radius:8px;padding:4px 8px;color:var(--muted);white-space:nowrap}
+  .stp b{color:var(--text);font-weight:700}
+  .stp.open{border-color:var(--accent);color:var(--accentB)}
+  .stp.open b{color:var(--accentB)}
+
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;min-width:1100px}
+  th{font:700 12px 'Hanken Grotesk',sans-serif;text-align:left;background:var(--card2);padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{border-bottom:1px solid var(--line);padding:8px 10px;font-size:13.5px;vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td.m{font-family:'Space Mono',monospace;font-size:12.5px;white-space:nowrap}
+  td.num,th.num{text-align:right}
+  td.sn{font:12px 'Space Mono',monospace;max-width:360px}
+  .sns{display:flex;flex-wrap:wrap;gap:4px}
+  .sns span{border:1px solid var(--line3);border-radius:6px;padding:1px 6px;cursor:copy;white-space:nowrap}
+  .sns span:hover{border-color:var(--accentB);color:var(--accentB)}
+  .chk{font:700 11px 'Space Mono',monospace;white-space:nowrap}
+  .chk.Full{color:var(--ok)} .chk.Partial,.chk.Extra{color:var(--warn)} .chk.Not{color:var(--bad)}
+  .empty{color:var(--muted);font-size:14px;padding:28px;text-align:center;border:1px dashed var(--line3);border-radius:14px}
+
+  /* ---- arriving from WorkHub ---- */
+  #syncDlg{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:16px}
+  #syncDlg.on{display:flex}
+  #syncDlg .box{background:var(--card);border:1px solid var(--line3);border-radius:16px;padding:18px;width:min(620px,100%);max-height:86vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
+  #syncDlg h3{font:700 18px 'Bricolage Grotesque',sans-serif}
+  #syncDlg p{font-size:14px;color:var(--muted)}
+  #syncDlg .chg{font:12.5px 'Space Mono',monospace;display:flex;flex-direction:column;gap:3px;max-height:240px;overflow:auto;background:var(--card2);border-radius:10px;padding:10px}
+  #syncDlg .bar{display:flex;gap:10px;justify-content:flex-end}
+  .bar2{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+  .bar2 i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease}
+
+  #toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160px);background:var(--card);border:1px solid var(--accent);border-radius:12px;padding:10px 16px;z-index:90;transition:transform .25s ease;font-size:14px}
+  #toast.show{transform:translate(-50%,0)}
+  @media (prefers-reduced-motion:reduce){
+    *,.hdr h1::after{animation:none !important}
+    .ibtn:hover,.tile:hover{transform:none}
+  }
+</style>
+<link rel="stylesheet" href="../_lib/nav.css?v=1">
+</head>
+<body>
+<header class="hdr">
+  <a class="brand" href="../../" title="Emortia"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bname">Emortia</span></a>
+  <span class="hsep"></span>
+  <h1>WH24 Material Checker</h1>
+  <span class="pill" id="pill">loading</span>
+  <button class="ibtn" id="themeBtn" title="Light or dark" aria-label="Light or dark">◐</button>
+</header>
+
+<main>
+  <section class="board" id="board" aria-label="Where the tickets stand"></section>
+
+  <section class="pipe" aria-label="Every ticket by stage">
+    <h2>Where every ticket is <span id="pipeN"></span></h2>
+    <div class="pbar" id="pbar"></div>
+    <div class="pkey" id="pkey"></div>
+  </section>
+
+  <section class="dash">
+    <div class="panel" aria-label="Ready at the warehouse">
+      <h2>Ready at the warehouse <span>longest waiting first</span></h2>
+      <div id="rdy"></div>
+    </div>
+    <div class="panel" aria-label="What to pick up">
+      <h2>What to pick up <span id="pickN"></span></h2>
+      <table class="pick"><colgroup><col class="cq"><col><col class="cm"></colgroup><tbody id="pick"></tbody></table>
+    </div>
+  </section>
+
+  <section class="sync" id="sync">
+    <span class="when" id="when">Not synced yet.</span>
+    <span class="own-only" hidden>
+      <label for="since">Tickets since</label>
+      <input type="date" id="since">
+    </span>
+    <a class="bm own-only" id="bm" href="#" hidden title="Drag me to the bookmarks bar">⇅ WH24 Sync</a>
+    <button class="btn own-only" id="howBtn" hidden>How to sync</button>
+    <div class="how" id="how" hidden>
+      Syncing reads WorkHub24 as you, from your own browser. Nothing stores your WorkHub password.
+      <ol>
+        <li>Drag the orange <b>WH24 Sync</b> button onto Chrome's bookmarks bar. You only do this once.</li>
+        <li>Open WorkHub24 and sign in. Any page there will do.</li>
+        <li>Click the <b>WH24 Sync</b> bookmark. It opens this page, reads every ticket since the date above and any new GIN PDFs, and passes them across.</li>
+        <li>Check the changes it lists here and press <b>Publish</b>.</li>
+      </ol>
+      Moved the date? Drag the button to the bar again. Only GINs this page has not read before are downloaded, so a sync after the first is quick.
+    </div>
+  </section>
+
+  <div class="sbar">
+    <input id="find" placeholder="Find a ticket, site, code, reservation, GI number or serial" autocomplete="off" spellcheck="false">
+    <div class="seg" id="seg" role="tablist"></div>
+    <button class="btn" id="exportBtn">Export Excel</button>
+  </div>
+
+  <div id="list"><div class="empty">Loading tickets…</div></div>
+</main>
+
+<div id="syncDlg" role="dialog" aria-modal="true" aria-labelledby="syncTitle">
+  <div class="box">
+    <h3 id="syncTitle">Sync from WorkHub24</h3>
+    <p id="syncMsg">Waiting for the WorkHub24 tab…</p>
+    <div class="bar2" id="syncBarWrap" hidden><i id="syncBar"></i></div>
+    <div class="chg" id="syncChg" hidden></div>
+    <div class="bar">
+      <button class="btn" id="syncClose">Close</button>
+      <button class="btn pri" id="syncGo" hidden>Publish</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+const W = window.WH24;
+const $ = id => document.getElementById(id);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const WORKHUB = 'https://dialog.workhub24.com';
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/';
+/* Syncing is the owner's, and so is the switch that draws its controls.
+   Anybody with the tool can mark a ticket collected. The database agrees on
+   both - this only decides what is drawn. */
+const OWNER = !!(window.Access && Access.isOwner && Access.isOwner());
+const ME = (window.Access && Access.currentUser && Access.currentUser()) || '';
+
+let TICKETS = [], MARKS = {}, FILTER = 'ready', BUSY = false, LOADED = false;
+
+/* ---- theme ---- */
+function paintTheme(){
+  let t = 'dark'; try { t = localStorage.getItem('wh24.theme') || 'dark'; } catch(e){}
+  document.documentElement.dataset.theme = t;
+  $('themeBtn').textContent = t === 'light' ? '☀' : '◐';
+}
+$('themeBtn').onclick = () => {
+  const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  try { localStorage.setItem('wh24.theme', t); } catch(e){}
+  paintTheme();
+};
+paintTheme();
+function toast(t, ms){ const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), ms || 2600); }
+
+/* ---- dates, in Colombo, which is where the warehouse is ---- */
+const pad = n => String(n).padStart(2, '0');
+const today = () => W.localDay(new Date().toISOString());
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const nice = d => { if (!d) return '–'; const [y, m, dd] = d.split('-'); return +dd + ' ' + MON[+m - 1] + (y !== today().slice(0, 4) ? ' ' + y : ''); };
+const niceT = v => { if (!v) return '–'; const d = new Date(v); return nice(W.localDay(v)) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const ago = v => {
+  if (!v) return 'never';
+  const m = Math.round((Date.now() - new Date(v).getTime()) / 60000);
+  if (m < 1) return 'just now'; if (m < 60) return m + ' min ago';
+  const h = Math.round(m / 60); if (h < 24) return h + ' h ago';
+  return Math.round(h / 24) + ' days ago';
+};
+const dayWord = n => n === 1 ? 'day' : 'days';
+
+/* ---- the states, said the way the warehouse says them ---- */
+const STATES = {
+  ready:     { label: 'Can collect',  seg: 'Can collect' },
+  issuing:   { label: 'With ACE',     seg: 'With ACE' },
+  reserving: { label: 'Reserving',    seg: 'Reserving' },
+  shortage:  { label: 'Shortage',     seg: 'Problems' },
+  rejected:  { label: 'Rejected',     seg: 'Problems' },
+  collected: { label: 'Collected',    seg: 'Collected' },
+  other:     { label: 'Other',        seg: 'All' }
+};
+const stOf = t => W.state(t, MARKS[t.id]);
+const inFilter = (t, f) => {
+  const s = stOf(t);
+  if (f === 'all') return true;
+  if (f === 'problem') return s === 'shortage' || s === 'rejected';
+  return s === f;
+};
+
+/* ---- the board ---- */
+function board(){
+  const T = today(), by = {};
+  TICKETS.forEach(t => { const s = stOf(t); (by[s] = by[s] || []).push(t); });
+  const ready = by.ready || [];
+  const waits = ready.map(t => W.waiting(t, MARKS[t.id], T)).filter(v => v != null);
+  const oldest = waits.length ? Math.max.apply(null, waits) : null;
+  const issuing = by.issuing || [];
+  const ace = issuing.map(t => W.issuing(t, T)).filter(v => v != null);
+  const prob = (by.shortage || []).length + (by.rejected || []).length;
+  const wk = (by.collected || []).filter(t => W.daysBetween(W.collectedOn(t, MARKS[t.id]), T) <= 7).length;
+  const tile = (f, cls, k, v, s) =>
+    `<button class="tile ${cls}${FILTER === f ? ' on' : ''}" data-f="${f}"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></button>`;
+  $('board').innerHTML =
+    tile('ready', 'hero' + (ready.length ? '' : ' none'), 'Can collect now', ready.length,
+      ready.length ? `waiting at the warehouse · oldest <b>${oldest} ${dayWord(oldest)}</b>` : 'nothing waiting at the warehouse') +
+    tile('issuing', 't-issuing', 'With ACE', issuing.length,
+      issuing.length ? 'issuance pending · longest ' + Math.max.apply(null, ace.concat([0])) + ' ' + dayWord(Math.max.apply(null, ace.concat([0]))) : 'none pending') +
+    tile('reserving', 't-reserving', 'Reserving', (by.reserving || []).length, 'with Infomate') +
+    tile('problem', 't-problem', 'Problems', prob, prob ? 'shortage or rejected' : 'none') +
+    tile('collected', 't-collected', 'Collected', (by.collected || []).length, wk + ' in the last 7 days');
+  $('board').querySelectorAll('.tile').forEach(b => b.onclick = () => { FILTER = b.dataset.f; render(true); });
+  $('pill').innerHTML = ready.length ? `<b>${ready.length}</b> to collect` : `${TICKETS.length} tickets`;
+}
+
+/* ---- the dashboard under the tiles ---- */
+const PIPE = { reserving:'With Infomate', issuing:'With ACE', ready:'Can collect', collected:'Collected',
+               shortage:'Shortage', rejected:'Rejected', other:'Other' };
+const PIPE_F = { shortage:'problem', rejected:'problem', other:'all' };
+function dash(){
+  const T = today(), P = W.pipeline(TICKETS, MARKS).filter(p => p.n);
+  $('pipeN').textContent = TICKETS.length ? TICKETS.length + ' tickets' : '';
+  $('pbar').innerHTML = P.map(p => `<i class="c-${p.state}" style="flex-grow:${p.n}" title="${PIPE[p.state]}: ${p.n}"></i>`).join('');
+  $('pkey').innerHTML = P.map(p => `<button data-f="${PIPE_F[p.state] || p.state}"><i class="c-${p.state}"></i>${PIPE[p.state]} <b>${p.n}</b></button>`).join('');
+  $('pkey').querySelectorAll('button').forEach(b => b.onclick = () => { FILTER = b.dataset.f; $('find').value = ''; render(true); jump(); });
+
+  /* The waiting list, oldest first. The bar is scaled to the longest wait
+     on the list, with a week as the floor, so one ticket a day old does not
+     read as a full bar. */
+  const ready = TICKETS.filter(t => stOf(t) === 'ready')
+    .map(t => ({ t, d: W.waiting(t, MARKS[t.id], T) || 0 }))
+    .sort((a, b) => b.d - a.d || b.t.id - a.t.id);
+  const top = Math.max(7, ...ready.map(r => r.d));
+  $('rdy').innerHTML = ready.length ? ready.map(({ t, d }) => {
+    const items = (t.lines || []).filter(l => l.code).length;
+    const sns = (t.lines || []).reduce((n, l) => n + (l.gin && l.gin.sn ? l.gin.sn.length : 0), 0);
+    const heat = d >= 5 ? 'hot' : d >= 2 ? 'warm' : 'cool';
+    return `<div class="rdy" data-id="${t.id}">
+      <span class="sid" data-open="${t.id}" title="Show the materials">${esc(t.site || '#' + t.id)}</span>
+      <span class="meta"><b>${esc(t.site_name || '')}</b> · #${t.id}${t.wo ? ' · ' + esc(t.wo) : ''} · ${items} item${items === 1 ? '' : 's'}${sns ? ' · ' + sns + ' serial' + (sns === 1 ? '' : 's') : ''}</span>
+      <span class="age ${heat}"><span class="tr"><i style="width:${Math.max(4, d / top * 100)}%"></i></span><b>${d}</b>${dayWord(d)}</span>
+      <button class="mini go" data-id="${t.id}" title="Mark #${t.id} collected today">Collected today</button>
+    </div>`;
+  }).join('') : `<div class="none">${LOADED ? 'Nothing is waiting at the warehouse right now.' : 'Loading…'}</div>`;
+
+  const pk = W.pickList(TICKETS, MARKS);
+  $('pickN').textContent = pk.length ? pk.length + ' material' + (pk.length === 1 ? '' : 's') : '';
+  $('pick').innerHTML = pk.length ? pk.map(p => `<tr>
+      <td class="q">${+p.qty.toFixed(2)}<small>${esc(p.uom)}</small></td>
+      <td class="d">${esc(p.desc || p.code)}<div>${p.tickets.length} ticket${p.tickets.length === 1 ? '' : 's'}${p.sn ? ' · ' + p.sn + ' serial' + (p.sn === 1 ? '' : 's') : ''}</div></td>
+      <td class="m">${esc(p.code)}</td></tr>`).join('')
+    : `<tr><td class="none">${LOADED ? 'Nothing to pick up.' : 'Loading…'}</td></tr>`;
+}
+/* the site on a waiting row opens that ticket in the list below */
+function jump(id){
+  const el = id ? document.querySelector(`#list details[data-id="${id}"]`) : $('list');
+  if (!el) return;
+  if (id) el.open = true;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('rdy').addEventListener('click', async e => {
+  const open = e.target.closest('[data-open]');
+  if (open){ FILTER = 'ready'; $('find').value = ''; render(); jump(open.dataset.open); return; }
+  const go = e.target.closest('.go'); if (!go) return;
+  const id = Number(go.dataset.id);
+  go.disabled = true;
+  try {
+    MARKS[id] = await window.DB.wh24Mark(id, { collected_on: today(), collected_by: ME || null,
+                                                note: (MARKS[id] && MARKS[id].note) || null });
+    toast('#' + id + ' collected today');
+    render();
+  } catch(err){ toast(err.message, 5000); go.disabled = false; }
+});
+
+function segs(){
+  const n = f => TICKETS.filter(t => inFilter(t, f)).length;
+  const S = [['ready','Can collect'],['issuing','With ACE'],['reserving','Reserving'],['problem','Problems'],['collected','Collected'],['all','All']];
+  $('seg').innerHTML = S.map(([f, l]) => `<button role="tab" data-f="${f}" class="${FILTER === f ? 'on' : ''}">${l}<b>${n(f)}</b></button>`).join('');
+  $('seg').querySelectorAll('button').forEach(b => b.onclick = () => { FILTER = b.dataset.f; render(true); });
+}
+
+/* ---- the list ---- */
+/* What is waiting comes first, longest first: that is the order to go in. */
+function order(a, b){
+  const T = today(), sa = stOf(a), sb = stOf(b);
+  const rank = { ready: 0, issuing: 1, shortage: 2, rejected: 2, reserving: 3, other: 4, collected: 5 };
+  if (rank[sa] !== rank[sb]) return rank[sa] - rank[sb];
+  if (sa === 'ready') return W.waiting(b, MARKS[b.id], T) - W.waiting(a, MARKS[a.id], T) || b.id - a.id;
+  if (sa === 'issuing') return (W.issuing(b, T) || 0) - (W.issuing(a, T) || 0) || b.id - a.id;
+  if (sa === 'collected') return String(W.collectedOn(b, MARKS[b.id])).localeCompare(W.collectedOn(a, MARKS[a.id])) || b.id - a.id;
+  return b.id - a.id;
+}
+
+function daysCell(t){
+  const T = today(), s = stOf(t), mk = MARKS[t.id];
+  if (s === 'ready'){
+    const d = W.waiting(t, mk, T);
+    return `<div class="days ${d >= 5 ? 'hot' : d >= 2 ? 'warm' : 'cool'}"><b>${d}</b><span>${dayWord(d)} waiting</span></div>`;
+  }
+  if (s === 'collected'){
+    const d = W.waiting(t, mk, T);
+    return `<div class="days"><b style="font-size:15px">${nice(W.collectedOn(t, mk))}</b><span>${d == null ? 'collected' : 'after ' + d + ' ' + dayWord(d)}</span></div>`;
+  }
+  if (s === 'issuing'){
+    const d = W.issuing(t, T);
+    return `<div class="days"><b style="font-size:18px">${d == null ? '–' : d}</b><span>${dayWord(d)} with ACE</span></div>`;
+  }
+  return `<div class="days"><span>${esc(niceT(t.wh_updated_at))}</span></div>`;
+}
+
+function linesTable(t){
+  const issued = !!t.done_at;
+  const rows = (t.lines || []).map(l => {
+    const g = l.gin || {}, chk = issued ? W.issueCheck(l) : '';
+    const sn = (g.sn || []).map(x => `<span data-sn="${esc(x)}" title="Copy">${esc(x)}</span>`).join('');
+    return `<tr>
+      <td class="m">${esc(l.code)}</td><td>${esc(l.desc)}</td>
+      <td class="num m">${l.qty == null ? '' : esc(l.qty)}</td><td class="m">${esc(l.uom)}</td>
+      <td class="num m">${g.qty == null ? '' : esc(g.qty)}</td>
+      <td class="m">${esc(g.res || '')}</td><td class="m">${esc(g.gi || '')}</td><td class="m">${g.date ? nice(g.date) : ''}</td>
+      <td class="sn"><div class="sns">${sn}</div></td>
+      <td>${chk ? `<span class="chk ${chk.split(' ')[0]}">${esc(chk)}</span>` : ''}</td></tr>`;
+  }).join('');
+  return `<div class="wrap"><table><thead><tr>
+    <th>Code</th><th>Description</th><th class="num">Asked</th><th>UoM</th><th class="num">Issued</th>
+    <th>GIN reservation</th><th>GI number</th><th>GI date</th><th>Serial numbers</th><th>Check</th>
+    </tr></thead><tbody>${rows || '<tr><td colspan="10" style="color:var(--muted)">No material lines on this ticket.</td></tr>'}</tbody></table></div>`;
+}
+
+function steps(t){
+  return '<div class="steps">' + (t.timeline || []).map(x => {
+    const open = String(x.s).toUpperCase() !== 'DONE';
+    return `<span class="stp${open ? ' open' : ''}"><b>${esc(x.n)}</b> · ${esc(niceT(x.c))}${x.d ? ' → ' + esc(niceT(x.d)) : open ? ' · open' : ''}</span>`;
+  }).join('') + '</div>';
+}
+
+function gotBox(t){
+  const mk = MARKS[t.id] || {}, s = stOf(t);
+  if (!t.done_at && !mk.collected_on) return '';
+  const wh = W.localDay(t.wh_collected_at);
+  const on = mk.collected_on || wh || '';
+  const src = mk.collected_on
+    ? `Set by ${esc(mk.collected_by || 'someone')}${mk.updated_at ? ' · ' + esc(ago(mk.updated_at)) : ''}${wh && wh !== mk.collected_on ? ' · WorkHub says ' + nice(wh) : ''}`
+    : wh ? `From WorkHub24 – the Done task was closed on ${nice(wh)}. Change it if that is not the day.` : 'Not collected yet. The count stops once a date is here.';
+  return `<div class="got" data-id="${t.id}">
+    <span class="lbl">Collected on</span>
+    <input type="date" class="dt" value="${esc(on)}" max="${today()}">
+    <input class="nm" placeholder="who went" value="${esc(mk.collected_by || (s === 'ready' ? ME : ''))}">
+    <input class="nt" placeholder="note (optional)" value="${esc(mk.note || '')}">
+    ${s === 'ready' ? '<button class="mini go-today">Collected today</button>' : ''}
+    <button class="mini save">Save</button>
+    ${mk.collected_on ? '<button class="mini clear" title="Back to not collected">Clear</button>' : ''}
+    <span class="src">${src}</span>
+  </div>`;
+}
+
+function card(t){
+  const s = stOf(t), st = STATES[s] || STATES.other;
+  return `<details class="tk s-${s}" data-id="${t.id}">
+    <summary>
+      <span class="badge ${s}">${st.label}</span>
+      <div class="who"><div class="l1"><span class="sid">${esc(t.site || '–')}</span><span class="snm">${esc(t.site_name || '')}</span></div>
+        <div class="l2">#${t.id} · ${esc(t.stage || '')}${t.team ? ' – ' + esc(t.team) : ''}</div></div>
+      <div class="wo">${esc(t.wo || '')}</div>
+      ${daysCell(t)}
+      <span class="chev">›</span>
+    </summary>
+    <div class="tkb"></div>
+  </details>`;
+}
+function fill(el, t){
+  el.querySelector('.tkb').innerHTML = `
+    <div class="facts">
+      <div><i>Ticket</i><span class="mono">#${t.id}</span></div>
+      <div><i>Reservation</i><span class="mono">${esc(t.reservation || '–')}</span></div>
+      <div><i>Indent / WO</i><span>${esc(t.wo || '–')}</span></div>
+      <div><i>Ready to collect since</i><span>${esc(niceT(t.done_at))}</span></div>
+      <div><i>Last WorkHub update</i><span>${esc(niceT(t.wh_updated_at))}</span></div>
+      <div><i>Raised</i><span>${esc(niceT(t.wh_created_at))}</span></div>
+    </div>
+    ${gotBox(t)}
+    ${steps(t)}
+    ${linesTable(t)}`;
+}
+
+function render(fresh){
+  board(); dash(); segs();
+  const q = $('find').value;
+  const list = TICKETS.filter(t => inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
+  const el = $('list');
+  el.classList.toggle('fresh', !!fresh);
+  if (!LOADED){ el.innerHTML = '<div class="empty">Loading tickets…</div>'; return; }
+  if (!TICKETS.length){
+    el.innerHTML = `<div class="empty">No tickets yet. ${OWNER ? 'Sync from WorkHub24 with the WH24 Sync bookmark – “How to sync” above says how.' : 'Sithara syncs them from WorkHub24.'}</div>`;
+    return;
+  }
+  if (!list.length){
+    el.innerHTML = `<div class="empty">${q ? 'Nothing matches “' + esc(q) + '”.' : FILTER === 'ready' ? 'Nothing is waiting at the warehouse. 🎉' : 'Nothing here.'}</div>`;
+    return;
+  }
+  const open = new Set([...el.querySelectorAll('details[open]')].map(d => d.dataset.id));
+  el.innerHTML = list.map(card).join('');
+  el.querySelectorAll('details').forEach(d => {
+    const t = TICKETS.find(x => String(x.id) === d.dataset.id);
+    d.addEventListener('toggle', () => { if (d.open && !d.dataset.filled){ fill(d, t); d.dataset.filled = 1; } });
+    if (open.has(d.dataset.id) || (list.length === 1)) d.open = true;
+  });
+}
+
+/* ---- collecting ---- */
+$('list').addEventListener('click', async e => {
+  const sn = e.target.closest('.sns span');
+  if (sn){ try { await navigator.clipboard.writeText(sn.dataset.sn); toast('Copied ' + sn.dataset.sn); } catch(x){} return; }
+  const box = e.target.closest('.got'); if (!box) return;
+  const id = Number(box.dataset.id);
+  if (e.target.classList.contains('go-today')) box.querySelector('.dt').value = today();
+  if (!e.target.matches('.go-today,.save,.clear')) return;
+  const clear = e.target.classList.contains('clear');
+  const mark = { collected_on: clear ? null : (box.querySelector('.dt').value || null),
+                 collected_by: box.querySelector('.nm').value.trim() || ME || null,
+                 note: box.querySelector('.nt').value.trim() || null };
+  if (!clear && !mark.collected_on){ toast('Pick the day it was collected first.'); return; }
+  e.target.disabled = true;
+  try {
+    MARKS[id] = await window.DB.wh24Mark(id, mark);
+    toast(clear ? '#' + id + ' is back to not collected' : '#' + id + ' collected on ' + nice(mark.collected_on));
+    render();
+  } catch(err){ toast(err.message, 5000); e.target.disabled = false; }
+});
+$('find').addEventListener('input', () => render());
+
+/* ---- Excel, the same columns as the sheet it replaces ---- */
+$('exportBtn').onclick = () => {
+  if (!window.XLSX){ toast('Excel is still loading – try again in a second.'); return; }
+  const q = $('find').value;
+  const list = TICKETS.filter(t => inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
+  const aoa = W.sheet(list, MARKS, today());
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = W.HEADERS.map((h, i) => ({ wch: [8,22,16,18,22,9,22,12,40,8,6,12,11,10,12,12,10,12,12,11,8,40,8,24,12][i] || 12 }));
+  ws['!autofilter'] = { ref: 'A1:Y' + aoa.length };
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'To be Received');
+  XLSX.writeFile(wb, 'WH24-materials-' + today() + '.xlsx');
+};
+
+/* ---- loading ---- */
+async function loadAll(){
+  const r = await window.DB.wh24Load();
+  if (r.error && r.error !== 'offline'){ $('list').innerHTML = `<div class="empty">${esc(r.error)}</div>`; $('pill').textContent = 'error'; return; }
+  TICKETS = r.tickets; MARKS = r.marks; LOADED = true;
+  const last = TICKETS.reduce((a, t) => !a || t.synced_at > a ? t.synced_at : a, null);
+  $('when').innerHTML = last ? `Synced from WorkHub24 <b>${esc(ago(last))}</b> · ${TICKETS.length} tickets` : 'Not synced from WorkHub24 yet.';
+  render(true);
+}
+
+/* ================================================================ syncing
+
+   The bookmark (workhub.js) runs in the WorkHub24 tab. It opens this page
+   with #sync, waits for this page to say hello, then sends every ticket and
+   any GIN it has not seen as raw PDF bytes. Only that tab, on that origin, is
+   listened to; the hello goes to that origin and no other. The PDFs are read
+   here, with the parser the tests cover. */
+const SINCE_KEY = 'wh24.since';
+const sinceVal = () => { try { return localStorage.getItem(SINCE_KEY) || '2026-08-04'; } catch(e){ return '2026-08-04'; } };
+$('since').value = sinceVal();
+$('since').onchange = () => { try { localStorage.setItem(SINCE_KEY, $('since').value); } catch(e){} buildBookmark(); };
+$('howBtn').onclick = () => { $('how').hidden = !$('how').hidden; };
+
+async function buildBookmark(){
+  try {
+    const src = await (await fetch('workhub.js?v=' + Date.now())).text();
+    $('bm').href = 'javascript:' + encodeURIComponent(src);
+  } catch(e){ $('bm').removeAttribute('href'); }
+}
+$('bm').addEventListener('click', e => { e.preventDefault(); toast('Drag it to the bookmarks bar, then click it on WorkHub24.', 4200); });
+
+function knownFiles(){
+  const k = {};
+  TICKETS.forEach(t => { const f = (t.gins || []).map(g => g.file).filter(Boolean); if (f.length) k[t.id] = f; });
+  return k;
+}
+function hello(){
+  if (!window.opener || !OWNER || !LOADED) return;
+  const since = $('since').value || sinceVal();
+  const sinceIso = new Date(since + 'T00:00:00+05:30').toISOString();
+  try { window.opener.postMessage({ type: 'wh24:hello', since, sinceIso, known: knownFiles() }, WORKHUB); } catch(e){}
+}
+
+let pdfjs = null;
+async function readPdf(buf){
+  if (!pdfjs){
+    pdfjs = await import(PDFJS + 'pdf.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.mjs';
+  }
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  const pages = [];
+  for (let p = 1; p <= doc.numPages; p++){
+    const tc = await (await doc.getPage(p)).getTextContent();
+    pages.push(tc.items.map(i => ({ x: i.transform[4], y: i.transform[5], s: i.str })));
+  }
+  return W.readGin(pages);
+}
+
+/* What a ticket would be written as, without the stamp of when, so two syncs
+   of an unchanged ticket compare equal and are not written again. */
+const sig = t => JSON.stringify([t.site, t.site_name, t.wo, t.reservation, t.stage, t.team, t.status,
+  t.wh_created_at, t.wh_updated_at, t.done_at, t.wh_collected_at, t.timeline, t.lines, t.gins]);
+
+let PENDING = null;
+function dlg(msg, opts){
+  opts = opts || {};
+  $('syncDlg').classList.add('on');
+  $('syncMsg').innerHTML = msg;
+  $('syncBarWrap').hidden = opts.pct == null;
+  if (opts.pct != null) $('syncBar').style.width = Math.round(opts.pct * 100) + '%';
+  $('syncChg').hidden = !opts.changes;
+  if (opts.changes) $('syncChg').innerHTML = opts.changes;
+  $('syncGo').hidden = !opts.go;
+}
+$('syncClose').onclick = () => { $('syncDlg').classList.remove('on'); PENDING = null; };
+
+async function receive(data){
+  if (!OWNER){ dlg('Only Sithara can sync from WorkHub24.'); return; }
+  const raws = Array.isArray(data.tickets) ? data.tickets : [], pdfs = Array.isArray(data.pdfs) ? data.pdfs : [];
+  dlg(`Received ${raws.length} tickets and ${pdfs.length} new GIN${pdfs.length === 1 ? '' : 's'}. Reading the GINs…`, { pct: 0 });
+  const parsed = {}, failed = [];
+  for (let i = 0; i < pdfs.length; i++){
+    const p = pdfs[i];
+    try { const g = await readPdf(p.buf); g.file = p.file; (parsed[p.id] = parsed[p.id] || []).push(g); }
+    catch(e){ failed.push(p.file); }
+    dlg(`Reading GIN ${i + 1} of ${pdfs.length}…`, { pct: (i + 1) / pdfs.length });
+  }
+  const byId = {}; TICKETS.forEach(t => byId[t.id] = t);
+  const out = [], lines = [];
+  raws.forEach(raw => {
+    const old = byId[raw.id];
+    const files = raw.files || [];
+    const keep = ((old && old.gins) || []).filter(g => files.indexOf(g.file) >= 0 && !(parsed[raw.id] || []).some(n => n.file === g.file));
+    const rec = W.record({ ...raw, gins: keep.concat(parsed[raw.id] || []) });
+    if (old && sig(old) === sig(rec)) return;
+    out.push(rec);
+    const was = old ? W.state(old, MARKS[old.id]) : null, now = W.state(rec, MARKS[rec.id]);
+    lines.push(`<span>#${rec.id} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(STATES[was].label) + ' → <b>' + esc(STATES[now].label) + '</b>') : 'new · <b>' + esc(STATES[now].label) + '</b>'}</span>`);
+  });
+  if (!out.length){
+    dlg(`All ${raws.length} tickets already match WorkHub24. Nothing to publish.` + (failed.length ? ` ${failed.length} GIN(s) could not be read: ${esc(failed.join(', '))}.` : ''));
+    return;
+  }
+  PENDING = out;
+  const ready = out.filter(r => W.state(r, MARKS[r.id]) === 'ready').length;
+  dlg(`${out.length} of ${raws.length} tickets changed${ready ? ` – <b>${ready}</b> of them can be collected` : ''}.` +
+      (failed.length ? ` ${failed.length} GIN(s) could not be read and were left out: ${esc(failed.join(', '))}.` : ''),
+      { changes: lines.join(''), go: true });
+}
+$('syncGo').onclick = async () => {
+  if (!PENDING || BUSY) return;
+  BUSY = true; $('syncGo').disabled = true;
+  try {
+    await window.DB.wh24Publish(PENDING, (n, of) => dlg(`Publishing ${n} of ${of}…`, { pct: n / of }));
+    dlg(`Published ${PENDING.length} tickets.`);
+    PENDING = null;
+    await loadAll();
+    setTimeout(() => $('syncDlg').classList.remove('on'), 1600);
+  } catch(e){ dlg(esc(e.message), { go: true }); }
+  BUSY = false; $('syncGo').disabled = false;
+};
+
+window.addEventListener('message', e => {
+  if (e.origin !== WORKHUB || e.source !== window.opener || !e.data) return;
+  if (e.data.type === 'wh24:knock') hello();
+  else if (e.data.type === 'wh24:data') receive(e.data).catch(err => dlg('Could not read what WorkHub sent: ' + esc(err.message)));
+  else if (e.data.type === 'wh24:error') dlg('WorkHub24 stopped: ' + esc(e.data.message));
+});
+
+/* ---- start ---- */
+(async () => {
+  document.documentElement.classList.toggle('is-owner', OWNER);
+  document.querySelectorAll('.own-only').forEach(el => el.hidden = !OWNER);
+  $('how').hidden = true;
+  render();
+  if (OWNER) buildBookmark();
+  if (location.hash === '#sync'){
+    if (!OWNER) dlg('Only Sithara can sync from WorkHub24.');
+    else if (!window.opener) dlg('Open WorkHub24 and click the WH24 Sync bookmark there – this page has to be opened by it.');
+    else dlg('Connected to WorkHub24. Reading tickets there – the progress shows in the WorkHub24 tab.');
+  }
+  await loadAll();
+  hello();
+  try { window.DB.wh24Subscribe(() => { if (!BUSY) loadAll(); }); } catch(e){}
+  /* the day turns over while the page is open; the counts should too */
+  setInterval(() => render(), 600000);
+})();
+</script>
+<script src="../_lib/ask.js?v=1" defer></script>
+</body>
+</html>

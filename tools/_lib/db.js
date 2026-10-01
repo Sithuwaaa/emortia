@@ -582,6 +582,80 @@
       .subscribe();
   }
 
+  /* ------------------------------------------------ WH24 Material Checker
+
+     Two tables, because two different people write them: wh24_tickets is
+     what WorkHub24 says, rewritten by the owner's sync; wh24_marks is the
+     day the team actually collected, and a sync never touches it. The page
+     reads both and the mark wins. See supabase/036_wh24.sql. */
+  const WH24T = 'wh24_tickets', WH24M = 'wh24_marks';
+  const wh24Why = m =>
+      /does not exist|schema cache|could not find the table/i.test(m)
+        ? 'WH24 Material Checker is not switched on yet – run migration 036.'
+    : /jwt|not authenticated/i.test(m)
+        ? 'Your sign-in has run out. Reload the page and sign in again.'
+    : /fetch|network|failed to|timeout/i.test(m)
+        ? 'No connection just now. Try again in a moment.'
+    : m;
+
+  async function wh24Load(){
+    const c = await client(); if (!c) return { tickets: [], marks: {}, error: 'offline' };
+    const PAGE = 500; let from = 0, tickets = [];
+    for(;;){
+      const { data, error } = await c.from(WH24T).select('*')
+        .order('id', { ascending: false }).range(from, from + PAGE - 1);
+      if (error) return { tickets: [], marks: {}, error: wh24Why(error.message) };
+      tickets = tickets.concat(data || []);
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
+    const { data: m, error: me } = await c.from(WH24M).select('*');
+    if (me) return { tickets, marks: {}, error: wh24Why(me.message) };
+    const marks = {};
+    (m || []).forEach(r => { marks[r.ticket_id] = r; });
+    return { tickets, marks, error: null };
+  }
+
+  /* Only the tickets that changed - the page works out which - in chunks,
+     because a ticket with sixty serials is a few kilobytes of JSON and a
+     hundred of them in one request is more than PostgREST will take. */
+  async function wh24Publish(rows, onProgress){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const CHUNK = 40;
+    for (let i = 0; i < rows.length; i += CHUNK){
+      const part = rows.slice(i, i + CHUNK).map(r => ({ ...r, synced_at: new Date().toISOString() }));
+      const { error } = await c.from(WH24T).upsert(part, { onConflict: 'id' });
+      if (error) throw new Error(/row-level security|permission/i.test(error.message)
+        ? 'Only Sithara can sync from WorkHub24.' : wh24Why(error.message));
+      if (onProgress) onProgress(Math.min(i + CHUNK, rows.length), rows.length);
+    }
+    return rows.length;
+  }
+
+  /* The day it was collected, by whom, and a note. An empty date is "not
+     collected after all", and the count starts again. */
+  async function wh24Mark(ticketId, mark){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const row = { ticket_id: Number(ticketId),
+                  collected_on: mark.collected_on || null,
+                  collected_by: mark.collected_by || null,
+                  note: mark.note || null };
+    const { data, error } = await c.from(WH24M).upsert(row, { onConflict: 'ticket_id' }).select().single();
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'This account cannot mark tickets collected.' : wh24Why(error.message));
+    return data;
+  }
+
+  async function wh24Subscribe(fn){
+    const c = await client(); if (!c) return;
+    c.channel('wh24_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: WH24T }, () => fn('tickets'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: WH24M }, () => fn('marks'))
+      .subscribe();
+  }
+
   /* ---------------------------------------------------- lyric video projects
 
      Timing a song word by word is an hour that used to live in one browser.
@@ -1759,6 +1833,7 @@
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
+                wh24Load, wh24Publish, wh24Mark, wh24Subscribe,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
                 load, publish, subscribe,
                 publishBook, loadBook, subscribeBook,
