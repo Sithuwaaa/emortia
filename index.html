@@ -87,16 +87,20 @@
 /* filter is named as well as transform: the exit blurs to sixteen pixels, and
    a letter that was not promised a filter gets re-rastered on every frame of it */
 .sp-word span{display:block;will-change:transform,opacity,filter;}
-/* the letters simply arrive - no slide, no bounce, light coming up, 110ms
-   apart so the name spells itself left to right */
-.sp-word span{animation:spIn 1.6s cubic-bezier(.22,.61,.36,1) both;}
-.sp-word span:nth-child(2){animation-delay:.11s}
-.sp-word span:nth-child(3){animation-delay:.22s}
-.sp-word span:nth-child(4){animation-delay:.33s}
-.sp-word span:nth-child(5){animation-delay:.44s}
-.sp-word span:nth-child(6){animation-delay:.55s}
-.sp-word span:nth-child(7){animation-delay:.66s}
-@keyframes spIn{from{opacity:0;transform:scale(.985);filter:blur(6px)}
+/* The letters come up off the floor - fifty pixels, out of eight pixels of
+   blur - and they are ordered by their distance from the mark, not left to
+   right: the mark lands first and the name grows outward from it, which is
+   the exit run backwards. The two ends are the last to arrive and the first
+   to leave. 120ms before the mark, then 70ms per letter out. */
+.sp-word span{animation:spIn .9s cubic-bezier(.2,.8,.2,1) both;}
+.sp-word span:nth-child(1){animation-delay:.26s}
+.sp-word span:nth-child(2){animation-delay:.19s}
+.sp-word span:nth-child(3){animation:none}        /* the mark arrives its own way */
+.sp-word span:nth-child(4){animation-delay:.19s}
+.sp-word span:nth-child(5){animation-delay:.26s}
+.sp-word span:nth-child(6){animation-delay:.33s}
+.sp-word span:nth-child(7){animation-delay:.4s}
+@keyframes spIn{from{opacity:0;transform:translateY(50px);filter:blur(8px)}
   to{opacity:1;transform:none;filter:blur(0)}}
 /* The O is the mark itself: the disc from the header, bars playing. Sized in
    em, so it is always the size of the letters round it - and drawn to the
@@ -106,7 +110,13 @@
 .sp-word .sp-o{display:flex;align-items:center;justify-content:center;gap:.0588em;
   width:.8em;height:.8em;border-radius:50%;
   background:linear-gradient(150deg,#d15873,#87213c);
-  animation:spFloat 4.5s ease-in-out 1.6s infinite;}
+  /* It does not rise with the letters, it is wound on: out of nothing, a
+     third of a turn back, into place - so the thing the name is built around
+     is the thing that moves first and differently. The float comes in later
+     and wins on transform while it runs, which is what it is for. */
+  animation:spMark .9s cubic-bezier(.2,.8,.2,1) .12s both,
+            spFloat 4.5s ease-in-out 1.6s infinite;}
+@keyframes spMark{from{transform:scale(0) rotate(-120deg)}to{transform:scale(1) rotate(0)}}
 .sp-word .sp-o i{display:block;width:.0706em;border-radius:.047em;background:#170d10;
   transform-origin:center;animation:spEq .85s ease-in-out infinite;}
 .sp-word .sp-o i:nth-child(1){height:.1882em;animation-delay:0s}
@@ -189,53 +199,107 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 #gate.gt-leave{opacity:0;pointer-events:none;}
 .gt-inner{width:min(1040px,92vw);text-align:center;margin:auto;}
 .gt-ask{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;
-  font-size:clamp(30px,4.4vw,56px);letter-spacing:-.03em;margin:0;color:#f7edf0;}
+  font-size:clamp(34px,4.8vw,72px);letter-spacing:-.055em;line-height:1;margin:0;color:#f4e1e4;}
 /* it is given focus so a reader is taken to the question, not framed by it */
 .gt-ask:focus{outline:none;}
 /* who the page thinks you are, said before you are asked to choose */
-.gt-sub{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.06em;line-height:1.7;
-  color:#a07f8a;margin:12px 0 clamp(28px,4vh,48px);min-height:20px;}
-.gt-sub b{color:#e3cbd2;font-weight:400;}
-.gt-row{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(18px,3vw,40px);}
-.gt-p{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;
-  background:none;border:none;padding:6px;cursor:pointer;font:inherit;color:inherit;
-  transition:transform .22s cubic-bezier(.22,.61,.36,1);}
+.gt-sub{font-family:'Space Mono',monospace;font-size:clamp(12px,1.1vw,15px);letter-spacing:.05em;
+  line-height:1.7;color:#a89886;margin:14px 0 clamp(28px,4vh,48px);min-height:20px;}
+.gt-sub b{color:#f7f1e8;font-weight:400;}
+.gt-row{display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(24px,4vw,64px);
+  transition:none;}
+.gt-p{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;
+  background:none;border:none;padding:8px;cursor:pointer;font:inherit;color:inherit;
+  transition:transform .26s cubic-bezier(.2,.8,.2,1),opacity .26s ease;}
 .gt-p:hover,.gt-p:focus-visible,.gt-p.gt-on{transform:translateY(-6px);outline:none;}
-.gt-av{width:clamp(96px,11vw,132px);height:clamp(96px,11vw,132px);border-radius:26px;
-  display:flex;align-items:center;justify-content:center;gap:5px;
-  background:linear-gradient(150deg,var(--c1),var(--c2));
-  border:1px solid rgba(247,237,240,.08);
-  transition:box-shadow .22s ease,border-color .22s ease;}
-.gt-p:hover .gt-av,.gt-p:focus-visible .gt-av{border-color:rgba(247,237,240,.3);}
-.gt-p.gt-on .gt-av{border-color:rgba(247,237,240,.7);box-shadow:0 0 0 3px rgba(247,237,240,.12);}
-.gt-av i{display:block;width:6px;border-radius:3px;background:rgba(18,10,13,.82);
+/* The card is a tile, not a chip: big enough that the mark inside it is the
+   mark and not a bullet, with the shadow doing the lifting rather than a
+   border. Everything inside is a percentage of the tile, so it keeps its
+   proportions from a phone at 104px to a desktop at the drawn 165. */
+.gt-av{width:clamp(104px,13.75vw,165px);height:clamp(104px,13.75vw,165px);border-radius:18.2%;
+  display:flex;align-items:center;justify-content:center;gap:4.24%;
+  background:linear-gradient(160deg,var(--c1),var(--c2));
+  box-shadow:0 24px 50px rgba(0,0,0,.4);
+  transition:box-shadow .26s ease,transform .26s cubic-bezier(.2,.8,.2,1);}
+.gt-p:hover .gt-av{
+  box-shadow:0 0 0 3px #1c070d,0 0 0 5px rgba(247,237,240,.22),0 24px 50px rgba(0,0,0,.4);}
+/* Stronger than hover, and on purpose: the native outline is taken off these,
+   so for somebody arriving on the Tab key this ring is the only thing saying
+   where they are. A hover indicator can afford to be a hint; this cannot. */
+.gt-p:focus-visible .gt-av{
+  box-shadow:0 0 0 3px #1c070d,0 0 0 5px rgba(247,237,240,.85),0 24px 50px rgba(0,0,0,.45);}
+.gt-p.gt-on .gt-av{
+  box-shadow:0 0 0 3px #1c070d,0 0 0 5px rgba(247,237,240,.6),0 24px 50px rgba(0,0,0,.45);}
+.gt-av i{display:block;width:4.85%;border-radius:999px;background:#1c070d;
   transform-origin:center;animation:gtEq .9s ease-in-out infinite;animation-play-state:paused;}
-.gt-av.gt-open i{background:rgba(247,237,240,.45);}
+.gt-av.gt-open{box-shadow:inset 0 0 0 1px rgba(168,152,134,.12),0 24px 50px rgba(0,0,0,.4);}
+.gt-av.gt-open i{background:#7a6662;}
 .gt-p:hover .gt-av i,.gt-p:focus-visible .gt-av i,.gt-p.gt-on .gt-av i{animation-play-state:running;}
-.gt-av i:nth-child(1){height:20%;animation-delay:0s}
-.gt-av i:nth-child(2){height:38%;animation-delay:.18s}
-.gt-av i:nth-child(3){height:27%;animation-delay:.36s}
-.gt-av i:nth-child(4){height:42%;animation-delay:.1s}
+.gt-av i:nth-child(1){height:15.76%;animation-delay:0s}
+.gt-av i:nth-child(2){height:35.15%;animation-delay:.18s}
+.gt-av i:nth-child(3){height:23.03%;animation-delay:.36s}
+.gt-av i:nth-child(4){height:41.21%;animation-delay:.1s}
 @keyframes gtEq{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
-.gt-nm{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:700;font-size:17px;
-  color:#e3cbd2;transition:color .2s ease;}
-.gt-p:hover .gt-nm,.gt-p:focus-visible .gt-nm,.gt-p.gt-on .gt-nm{color:#fff;}
-.gt-rl{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;
-  text-transform:uppercase;color:#8d6a75;}
-/* the little word on the corner of a card: what pressing it is going to do */
-.gt-chip{position:absolute;top:0;right:0;padding:3px 8px;border-radius:999px;
-  border:1px solid #412730;background:rgba(18,10,13,.72);color:#a07f8a;
-  font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;
-  transition:color .2s ease,border-color .2s ease;}
+.gt-nm{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;
+  font-size:clamp(17px,1.72vw,22px);letter-spacing:-.02em;color:#f7f1e8;transition:color .2s ease;}
+.gt-rl{font-family:'Space Mono',monospace;font-size:clamp(10.5px,.94vw,12px);letter-spacing:.3em;
+  text-transform:uppercase;color:#a89886;}
+/* the little word on the corner of a card: what pressing it is going to do.
+   It sits off the corner rather than on it, and borrows the tile's own colour
+   so the four of them are told apart without reading a word. */
+/* top:0 of the button, not -8 of the tile: the button carries 8px of padding
+   and the tile starts inside it, so this is the same corner the design drew,
+   measured from the box that is actually the offset parent. */
+.gt-chip{position:absolute;top:0;right:0;padding:4px 10px;border-radius:99px;
+  border:1px solid var(--cc,#412730);background:#1c070d;color:#a89886;
+  font-family:'Space Mono',monospace;font-size:clamp(9.5px,.8vw,11px);letter-spacing:.2em;
+  text-transform:uppercase;transition:color .2s ease,border-color .2s ease;}
 .gt-chip.gt-free{border-color:#2f4a3c;color:#8fbfa4;}
 /* the card belonging to the account already signed in */
-.gt-p.gt-here .gt-av{border-color:rgba(247,237,240,.55);box-shadow:0 0 0 3px rgba(176,58,86,.24);}
-.gt-p.gt-here .gt-nm{color:#fff;}
-.gt-p.gt-here .gt-chip{border-color:#b03a56;color:#e87a94;}
+.gt-p.gt-here .gt-av{
+  box-shadow:0 0 0 3px #1c070d,0 0 0 5px rgba(196,82,109,.55),0 24px 50px rgba(0,0,0,.4);}
+.gt-p.gt-here .gt-chip{border-color:#c4526d;color:#e6bdc4;}
 .gt-p.gt-here .gt-av i{animation-play-state:running;}
-/* the sign-in only opens once a locked profile is chosen */
-.gt-key{max-height:0;opacity:0;overflow:hidden;transition:max-height .35s ease,opacity .3s ease,margin .35s ease;}
-.gt-key.gt-show{max-height:260px;opacity:1;margin-top:clamp(26px,4vh,44px);}
+/* ---- being asked for a password ----
+   Once a locked tile is chosen the question is no longer "which of these" but
+   "are you this one", so the other three step back and let it be the subject.
+   They are still there and still pressable - this is a dimming, not a lock. */
+.gt-row.gt-asking .gt-p:not(.gt-on){opacity:.4;transform:scale(.93);}
+.gt-row.gt-asking .gt-p:not(.gt-on):hover,
+.gt-row.gt-asking .gt-p:not(.gt-on):focus-visible{opacity:.8;transform:scale(.96) translateY(-4px);}
+/* In one row each card is as wide as its own longest label and nobody can
+   tell. Wrapped into two, they can: "Music & poetry" is half again as wide as
+   "Owner", so the four tiles sit at four different margins. Two equal columns
+   instead, and the tiles line up with each other rather than with their
+   captions. */
+@media (max-width:640px){
+  .gt-row{display:grid;grid-template-columns:repeat(2,1fr);justify-items:center;
+    gap:clamp(22px,5.5vw,34px) 10px;}
+}
+/* The sign-in only opens once a locked profile is chosen, and it opens by
+   rising rather than by unrolling: max-height has to be a guess, and a guess
+   eases wrongly, so the height is let out underneath while the opacity and
+   the lift - which are the two the eye actually reads - carry the move. */
+.gt-key{max-height:0;opacity:0;overflow:hidden;transform:translateY(12px);
+  transition:max-height .44s cubic-bezier(.2,.8,.2,1),opacity .3s ease,
+             transform .44s cubic-bezier(.2,.8,.2,1),margin .44s cubic-bezier(.2,.8,.2,1);}
+.gt-key.gt-show{max-height:320px;opacity:1;transform:none;margin-top:clamp(26px,4vh,44px);}
+/* and the three things it asks for arrive one after another, left to right,
+   which is the order they are going to be filled in */
+@keyframes gtRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.gt-key.gt-show .gt-kl{animation:gtRise .5s cubic-bezier(.2,.8,.2,1) .06s both;}
+.gt-key.gt-show .gt-kr>*:nth-child(1){animation:gtRise .5s cubic-bezier(.2,.8,.2,1) .13s both;}
+.gt-key.gt-show .gt-kr>*:nth-child(2){animation:gtRise .5s cubic-bezier(.2,.8,.2,1) .19s both;}
+.gt-key.gt-show .gt-kr>*:nth-child(3){animation:gtRise .5s cubic-bezier(.2,.8,.2,1) .25s both;}
+/* A refusal is said in words below, and the words are easy to miss when you
+   are already typing the next guess. The row moves, so the eye is taken back
+   to the thing that has to change. */
+@keyframes gtNo{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}
+  30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+.gt-kr.gt-no{animation:gtNo .5s cubic-bezier(.36,.07,.19,.97) both;}
+/* while the server is being asked */
+@keyframes gtWait{0%,100%{opacity:.5}50%{opacity:.78}}
+.gt-go:disabled{animation:gtWait 1s ease-in-out infinite;}
 .gt-kl{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.22em;
   text-transform:uppercase;color:#a07f8a;margin-bottom:12px;}
 .gt-kr{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;}
@@ -261,8 +325,11 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 /* display:block above would otherwise outrank the hidden attribute */
 .gt-skip[hidden]{display:none;}
 @media (prefers-reduced-motion:reduce){
-  #gate,.gt-p,.gt-key{transition:none !important;}
-  .gt-av i{animation:none !important;}
+  #gate,.gt-p,.gt-av,.gt-key,.gt-row .gt-p{transition:none !important;}
+  .gt-av i,.gt-kl,.gt-kr>*,.gt-kr,.gt-go:disabled{animation:none !important;}
+  /* the lift and the dimming are the state, not the motion, so they stay -
+     only the travel between states goes */
+  .gt-key{transform:none !important;}
 }
 </style>
 <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gtAsk" hidden>
@@ -270,23 +337,23 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     <h2 class="gt-ask" id="gtAsk">Who's coming in?</h2>
     <p class="gt-sub" id="gtSub">Pick a profile to open Emortia.</p>
     <div class="gt-row">
-      <button class="gt-p" type="button" data-who="owner" data-name="Sithara">
-        <span class="gt-av" style="--c1:#d15873;--c2:#87213c;"><i></i><i></i><i></i><i></i></span>
+      <button class="gt-p" type="button" data-who="owner" data-name="Sithara" style="--cc:#c4526d;">
+        <span class="gt-av" style="--c1:#d0587a;--c2:#8e2344;"><i></i><i></i><i></i><i></i></span>
         <span class="gt-nm">Sithara</span><span class="gt-rl">Owner</span>
         <span class="gt-chip">Sign in</span>
       </button>
-      <button class="gt-p" type="button" data-who="admin" data-name="Admin">
-        <span class="gt-av" style="--c1:#8a7cf0;--c2:#4a3cb8;"><i></i><i></i><i></i><i></i></span>
+      <button class="gt-p" type="button" data-who="admin" data-name="Admin" style="--cc:#3a2a55;">
+        <span class="gt-av" style="--c1:#8576f2;--c2:#5a3fc8;"><i></i><i></i><i></i><i></i></span>
         <span class="gt-nm">Admin</span><span class="gt-rl">Office tools</span>
         <span class="gt-chip">Sign in</span>
       </button>
-      <button class="gt-p" type="button" data-who="staff" data-name="Tooway">
-        <span class="gt-av" style="--c1:#3fbdd0;--c2:#12707e;"><i></i><i></i><i></i><i></i></span>
+      <button class="gt-p" type="button" data-who="staff" data-name="Tooway" style="--cc:#1f4a4f;">
+        <span class="gt-av" style="--c1:#3bbcc8;--c2:#1a7f8c;"><i></i><i></i><i></i><i></i></span>
         <span class="gt-nm">Tooway</span><span class="gt-rl">Team tools</span>
         <span class="gt-chip">Sign in</span>
       </button>
-      <button class="gt-p" type="button" data-who="guest" data-name="Guest">
-        <span class="gt-av gt-open" style="--c1:#40282f;--c2:#241419;"><i></i><i></i><i></i><i></i></span>
+      <button class="gt-p" type="button" data-who="guest" data-name="Guest" style="--cc:#3a2328;">
+        <span class="gt-av gt-open" style="--c1:#3a2328;--c2:#28151a;"><i></i><i></i><i></i><i></i></span>
         <span class="gt-nm">Guest</span><span class="gt-rl">Music &amp; poetry</span>
         <span class="gt-chip gt-free">No sign-in</span>
       </button>
@@ -457,8 +524,25 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     var gKey = document.getElementById('gtKey'), gUser = document.getElementById('gtUser'),
         gPass = document.getElementById('gtPass'), gKl = document.getElementById('gtKl'),
         gErr = document.getElementById('gtErr'), gGo = document.getElementById('gtGo'),
-        gSub = document.getElementById('gtSub'), gSkip = document.getElementById('gtSkip');
+        gSub = document.getElementById('gtSub'), gSkip = document.getElementById('gtSkip'),
+        gRow = gate.querySelector('.gt-row'), gKr = gate.querySelector('.gt-kr');
     var cards = [].slice.call(gate.querySelectorAll('.gt-p'));
+    /* The row has to be put back whenever the question stops being "are you
+       this one" - on the way out, and when the page works out that somebody
+       is already signed in and there is nothing left to ask. */
+    var stopAsking = function () {
+      gKey.classList.remove('gt-show');
+      if (gRow) gRow.classList.remove('gt-asking');
+    };
+    /* A class that is already on does not replay its animation. Taken off,
+       read back - which is what forces the frame - and put on again. */
+    var shake = function () {
+      if (!gKr) return;
+      gKr.classList.remove('gt-no');
+      void gKr.offsetWidth;
+      gKr.classList.add('gt-no');
+      setTimeout(function () { gKr.classList.remove('gt-no'); }, 560);
+    };
     var picked = null;
     var say = function (msg, note) { gErr.textContent = msg || ''; gErr.classList.toggle('gt-note', !!note); };
     var esc = function (s) {
@@ -495,7 +579,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       gSub.innerHTML = 'Signed in as <b>' + esc(A.currentUser() || '') + '</b>' +
         (mine ? ' – ' + esc(mine.getAttribute('data-name')) + '. Tap a card to carry on.'
               : ' – tap a card to carry on.');
-      gKey.classList.remove('gt-show');
+      stopAsking();
       if (gSkip) gSkip.hidden = true;
     };
 
@@ -629,13 +713,24 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       b.addEventListener('click', function () {
         cards.forEach(function (x) { x.classList.toggle('gt-on', x === b); });
         /* already in, or the door that asks nothing */
-        if (signedInAlready || b.getAttribute('data-who') === 'guest') { comeIn(b); return; }
+        if (signedInAlready || b.getAttribute('data-who') === 'guest') { stopAsking(); comeIn(b); return; }
         picked = b;
         say('');
         gKl.textContent = 'Sign in as ' + b.getAttribute('data-name');
         gKey.classList.add('gt-show');
+        gRow.classList.add('gt-asking');      /* the other three step back */
         gPass.value = '';
         setTimeout(function () { gUser.focus(); }, 60);
+        /* On a phone the four tiles already fill the screen, so the thing that
+           just opened is below the fold and it looks as though pressing the
+           card did nothing. Waited out first - the panel is still unrolling,
+           and scrolling to a box that has not finished growing stops short. */
+        if (gKey.scrollIntoView && matchMedia('(max-width:640px)').matches) {
+          setTimeout(function () {
+            try { gKey.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' }); }
+            catch (e) { gKey.scrollIntoView(false); }
+          }, 460);
+        }
       });
     });
     /* The account decides, not the tile. Signing in on the Owner tile with a
@@ -647,7 +742,7 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       gGo.disabled = true; say('');
       A.signIn(gUser.value, gPass.value).then(function (r) {
         gGo.disabled = false;
-        if (!r || !r.ok) { say((r && r.error) || 'That did not work.'); gPass.value = ''; gPass.focus(); return; }
+        if (!r || !r.ok) { say((r && r.error) || 'That did not work.'); shake(); gPass.value = ''; gPass.focus(); return; }
         document.dispatchEvent(new CustomEvent('emortia:signedin'));
         var role = A.isOwner() ? 'owner' : ((A.myRole && A.myRole()) || '');
         var asked = picked ? picked.getAttribute('data-who') : role;
@@ -660,11 +755,13 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       }, function () {
         gGo.disabled = false;
         say('That did not work – check the connection and try again.');
+        shake();
       });
     });
     gSkip.addEventListener('click', function () {
       var g = cards.filter(function (c) { return c.getAttribute('data-who') === 'guest'; })[0];
       cards.forEach(function (x) { x.classList.toggle('gt-on', x === g); });
+      stopAsking();
       comeIn(g);
     });
   }
@@ -809,9 +906,22 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     hint.style.opacity = hintGone ? '0' : (1 - clamp(e * 3.4)).toFixed(3);
     /* the question comes up as the name goes, and the name beside the logo
        with it */
-    var ge = clamp((e - 0.44) / 0.56);
-    if (gateInner) gateInner.style.opacity = ge.toFixed(3);
-    if (brandName) brandName.style.opacity = ge.toFixed(3);
+    /* The question does not simply appear where the name was: it comes up
+       from under the floor, a little short of full size, and settles. The
+       name beside the mark slides in from the mark's side at the same time,
+       so the lockup is assembled rather than switched on. Both are on the
+       progress value like everything else, so a scroll back takes the
+       question down again instead of leaving it stranded at full height. */
+    var ge = clamp((e - 0.44) / 0.56), gq = ease(ge);
+    if (gateInner) {
+      gateInner.style.opacity = ge.toFixed(3);
+      gateInner.style.transform = 'translateY(' + (24 * (1 - gq)).toFixed(2) +
+        'px) scale(' + (0.97 + 0.03 * gq).toFixed(4) + ')';
+    }
+    if (brandName) {
+      brandName.style.opacity = ge.toFixed(3);
+      brandName.style.transform = 'translateX(' + (-12 * (1 - gq)).toFixed(2) + 'px)';
+    }
     /* with a gate coming, what rises behind the name is the gate, not the page */
     if (!gateWanted && findStage()) {
       stage.style.opacity = (0.35 + 0.65 * e).toFixed(3);
