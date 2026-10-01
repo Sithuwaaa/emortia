@@ -718,16 +718,21 @@
     '.acc-caret{font-size:10px;line-height:1;color:#e6bdc4;display:inline-block;',
     '  transition:transform .25s ease}',
     '.acc-chip.open .acc-caret{transform:rotate(180deg)}',
-    /* Fixed, not absolute. This has to open inside fifteen headers written by
-       fifteen different days of mine, any of which may clip or stack its
-       children; measured off the pill and placed against the window, it
-       cannot be trapped by one of them. */
+    /* Fixed, measured off the pill - and hung on the BODY rather than inside
+       the chip. position:fixed escapes an ancestor's overflow but not its
+       stacking context, and header.hdr is position:sticky, which makes one.
+       Inside it the z-index below counts only against the header's own
+       children, so Site Access and Site Data - which both have a toolbar
+       stacked above the bar - drew straight over the open menu. On the body
+       it is in the root context and the z-index means what it says. */
     '.acc-menu{position:fixed;width:248px;border-radius:14px;z-index:2147483000;',
     '  background:var(--card,#24090f);color:var(--text,#f7f1e8);',
     '  box-shadow:inset 0 0 0 1px var(--line3,rgba(196,82,109,.25)),0 20px 40px rgba(0,0,0,.5);',
     '  padding:8px;display:grid;gap:2px;opacity:0;transform:translateY(-8px);',
     '  pointer-events:none;transition:opacity .2s ease,transform .25s cubic-bezier(.2,.8,.2,1)}',
-    '.acc-chip.open .acc-menu{opacity:1;transform:none;pointer-events:auto}',
+    /* on the menu itself, not ".acc-chip.open .acc-menu" - it is no longer a
+       descendant of the chip */
+    '.acc-menu.open{opacity:1;transform:none;pointer-events:auto}',
     '.acc-head{display:flex;gap:10px;align-items:center;padding:8px 10px 10px;',
     '  border-bottom:1px solid var(--line,rgba(168,152,134,.15));margin-bottom:4px;',
     '  font-family:"Space Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.2em;',
@@ -825,7 +830,8 @@
     out.onclick = function () { close(); signOut(); };
     foot.appendChild(out); menu.appendChild(foot);
 
-    c.appendChild(face); c.appendChild(menu);
+    c.appendChild(face);
+    document.body.appendChild(menu);           /* see the note on .acc-menu */
 
     /* Measured off the pill and placed against the window. Flipped above when
        there is not room below, which is what the corner fallback needs. */
@@ -836,12 +842,21 @@
       if (innerHeight - r.bottom > h + 16) { menu.style.top = Math.round(r.bottom + 10) + 'px'; menu.style.bottom = ''; }
       else { menu.style.bottom = Math.round(innerHeight - r.top + 10) + 'px'; menu.style.top = ''; }
     }
-    function open() { c.classList.add('open'); face.setAttribute('aria-expanded', 'true'); place(); }
-    function close() { c.classList.remove('open'); face.setAttribute('aria-expanded', 'false'); }
+    function open() {
+      c.classList.add('open'); menu.classList.add('open');
+      face.setAttribute('aria-expanded', 'true'); place();
+    }
+    function close() {
+      c.classList.remove('open'); menu.classList.remove('open');
+      face.setAttribute('aria-expanded', 'false');
+    }
     face.onclick = function (e) { e.stopPropagation(); if (c.classList.contains('open')) close(); else open(); };
     document.addEventListener('pointerdown', function (e) {
       if (!c.classList.contains('open')) return;
-      if (e.target && e.target.closest && e.target.closest('#__accChip')) return;
+      /* the menu is on the body now, so "inside the chip" is no longer the
+         whole of "inside this control" */
+      if (e.target && e.target.closest &&
+          (e.target.closest('#__accChip') || e.target.closest('.acc-menu'))) return;
       close();
     }, true);
     document.addEventListener('keydown', function (e) {
@@ -875,18 +890,27 @@
     }
 
     if (!put()) {
-      /* The corner, so it is reachable meanwhile rather than absent, and a
-         watch on the header so that the moment the tool finishes building its
-         bar the account moves up into it. Given up on after fifteen seconds:
-         a header that has not appeared by then is not going to. */
+      /* the corner, so it is reachable meanwhile rather than absent */
       c.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:9999';
       document.body.appendChild(c);
-      var hdr = document.querySelector('header.hdr') || document.querySelector('.hdr') || document.body;
-      if (window.MutationObserver) {
-        var mo = new MutationObserver(function () { if (put()) mo.disconnect(); });
-        mo.observe(hdr, { childList: true, subtree: true });
-        setTimeout(function () { mo.disconnect(); }, 15000);
-      }
+    }
+
+    /* And a watch that is never switched off, for two different headers.
+       Attendance writes its bar with $('hdr').innerHTML = ... on every render,
+       which throws this away each time - it was missing there completely, not
+       misplaced. Others build the bar after this runs, so there is nothing to
+       sit in yet. One rule covers both: if the account is no longer in the
+       document, put it back wherever the bar is now.
+
+       Re-entry is not a risk - putting it back is itself a mutation, but by
+       then it IS in the document, so the next pass does nothing. */
+    if (window.MutationObserver) {
+      var root = document.querySelector('header.hdr') || document.querySelector('.hdr');
+      var again = new MutationObserver(function () {
+        if (!document.contains(c)) put();
+      });
+      again.observe(document.body, { childList: true, subtree: true });
+      if (root && !document.body.contains(root)) again.observe(root, { childList: true });
     }
   }
   function showChip() {
