@@ -1559,8 +1559,8 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#170d10;--bg2:#221318;--surface:#2b171e;--surface2:#1c0f13;--line:#352027;--line2:#412730;--line3:#51313c;--text:#f7edf0;--text2:#e3cbd2;--dim:#c19da8;--mute:#8d6a75;--faint:#614851;--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--artA:#401d29;--panel:rgba(43,23,30,0.4);--panelS:rgba(43,23,30,0.5);--panel2:rgba(28,15,19,0.6);--bar:rgba(23,13,16,0.72);--bar2:rgba(23,13,16,0.92);--queueBg:rgba(28,15,19,0.96);--glow:rgba(176,58,86,0.5);--glow0:rgba(176,58,86,0);--glowSoft:rgba(176,58,86,0.28);--stripe:rgba(176,58,86,0.06);--dot:rgba(209,88,115,0.7);}
-[data-theme="burgundy"]{--bg:#170d10;--bg2:#221318;--surface:#2b171e;--surface2:#1c0f13;--line:#352027;--line2:#412730;--line3:#51313c;--text:#f7edf0;--text2:#e3cbd2;--dim:#c19da8;--mute:#8d6a75;--faint:#614851;--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--artA:#401d29;--panel:rgba(43,23,30,0.4);--panelS:rgba(43,23,30,0.5);--panel2:rgba(28,15,19,0.6);--bar:rgba(23,13,16,0.72);--bar2:rgba(23,13,16,0.92);--queueBg:rgba(28,15,19,0.96);--glow:rgba(176,58,86,0.5);--glow0:rgba(176,58,86,0);--glowSoft:rgba(176,58,86,0.28);--stripe:rgba(176,58,86,0.06);--dot:rgba(209,88,115,0.7);}
+:root{--bg:#170d10;--bg2:#221318;--surface:#2b171e;--surface2:#1c0f13;--line:#352027;--line2:#412730;--line3:#51313c;--text:#f7edf0;--text2:#e3cbd2;--dim:#c19da8;--navText:#c6b2c0;--gold:#d6b08c;--mute:#8d6a75;--faint:#614851;--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--artA:#401d29;--panel:rgba(43,23,30,0.4);--panelS:rgba(43,23,30,0.5);--panel2:rgba(28,15,19,0.6);--bar:rgba(23,13,16,0.72);--bar2:rgba(23,13,16,0.92);--queueBg:rgba(28,15,19,0.96);--glow:rgba(176,58,86,0.5);--glow0:rgba(176,58,86,0);--glowSoft:rgba(176,58,86,0.28);--stripe:rgba(176,58,86,0.06);--dot:rgba(209,88,115,0.7);}
+[data-theme="burgundy"]{--bg:#170d10;--bg2:#221318;--surface:#2b171e;--surface2:#1c0f13;--line:#352027;--line2:#412730;--line3:#51313c;--text:#f7edf0;--text2:#e3cbd2;--dim:#c19da8;--navText:#c6b2c0;--gold:#d6b08c;--mute:#8d6a75;--faint:#614851;--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--artA:#401d29;--panel:rgba(43,23,30,0.4);--panelS:rgba(43,23,30,0.5);--panel2:rgba(28,15,19,0.6);--bar:rgba(23,13,16,0.72);--bar2:rgba(23,13,16,0.92);--queueBg:rgba(28,15,19,0.96);--glow:rgba(176,58,86,0.5);--glow0:rgba(176,58,86,0);--glowSoft:rgba(176,58,86,0.28);--stripe:rgba(176,58,86,0.06);--dot:rgba(209,88,115,0.7);}
 [data-theme]{transition:background .35s ease,color .35s ease;}
 /* nav + player dock stay on the brand colour, whatever the section accent is */
 header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(176,58,86,0.5);--glow0:rgba(176,58,86,0);--glowSoft:rgba(176,58,86,0.28);--stripe:rgba(176,58,86,0.06);--dot:rgba(209,88,115,0.7);}
@@ -2719,8 +2719,10 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 .spin-now{display:flex;align-items:center;gap:11px;min-width:0}
 .spin-dot{width:9px;height:9px;border-radius:50%;background:var(--accentB);flex-shrink:0;
   box-shadow:0 0 0 4px var(--glowSoft);animation:termLed 1.9s ease-in-out infinite}
+/* gold, not the general dim: it is the one label on the hero that names what
+   the page is for, and the design lifts it out of the grey for that reason */
 .spin-lab{display:block;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--dim);text-shadow:0 2px 10px rgba(0,0,0,.9)}
+  text-transform:uppercase;color:var(--gold);text-shadow:0 2px 10px rgba(0,0,0,.9)}
 .spin-tit{display:block;font-size:16px;font-weight:700;color:#fff;margin-top:2px;
   text-shadow:0 2px 14px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,.9);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
@@ -2949,7 +2951,7 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
       </div>
       <nav class="{{ navClass }}" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
         <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
-          <button onClick="{{ item.onClick }}" style="position:relative;background:none;border:none;color:var(--dim);font-size:14.5px;font-weight:500;padding:8px 13px;cursor:pointer;border-radius:8px;letter-spacing:0.01em;" style-hover="color:var(--text);background:rgba(244,239,230,0.05);">
+          <button onClick="{{ item.onClick }}" style="position:relative;background:none;border:none;color:var(--navText);font-size:14.5px;font-weight:500;padding:8px 13px;cursor:pointer;border-radius:8px;letter-spacing:0.01em;" style-hover="color:var(--text);background:rgba(244,239,230,0.05);">
             {{ item.label }}
             <sc-if value="{{ item.active }}" hint-placeholder-val="{{ false }}">
               <span style="position:absolute;left:13px;right:13px;bottom:2px;height:2px;background:var(--accentB);border-radius:2px;box-shadow:0 0 10px var(--accentB);animation:navBreathe 2.6s ease-in-out infinite;"></span>
