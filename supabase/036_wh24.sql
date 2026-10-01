@@ -174,6 +174,35 @@ on conflict (feature) do nothing;
 --
 --   select state, count(*) from wh24_status group by state;
 --
--- And nothing without a session. From a signed-out console this must be empty:
+-- ─────────────────────────────────────────────── and nothing without a session
+--
+-- CAREFUL WITH THE OBVIOUS TEST. This one:
+--
 --   await (await fetch(URL + '/rest/v1/wh24_tickets?select=id&limit=1',
---          { headers: { apikey: ANON } })).json()
+--          { headers: { apikey: ANON } })).json()        -- []
+--
+-- passes on an empty table whether the policies work or not. A table with no
+-- rows returns [] to everybody, so run on a fresh migration it proves only
+-- that PostgREST can see the table. It is worth running - it is just not
+-- worth believing until there are rows. Come back to it after the first sync,
+-- when it has to return [] signed out and the tickets signed in.
+--
+-- Until then, test the WRITE instead, which does not need a single row to
+-- mean something. Signed out, with the anon key alone, this must be REFUSED -
+-- a 401 or 403 with 42501, "new row violates row-level security policy":
+--
+--   await fetch(URL + '/rest/v1/wh24_marks', { method:'POST',
+--     headers:{ apikey: ANON, 'Content-Type':'application/json' },
+--     body: JSON.stringify({ ticket_id: -1, collected_on: '2026-01-01' }) })
+--
+-- A 201 there means the marks table is open to the whole internet, and that
+-- is true at zero rows as much as at ten thousand.
+--
+-- And from SQL, where the answer does not depend on the data at all:
+--
+--   select relname, relrowsecurity, relforcerowsecurity from pg_class
+--    where relname in ('wh24_tickets','wh24_marks');     -- both t
+--   select tablename, policyname, cmd from pg_policies
+--    where tablename like 'wh24%' order by tablename, policyname;   -- 6 rows
+--   select relname, reloptions from pg_class where relname = 'wh24_status';
+--   -- {security_invoker=true}
