@@ -430,6 +430,9 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
      scroll back brings it home again. */
   var oAt = letters.indexOf(word.querySelector('.sp-o').parentNode);
   var disc = word.querySelector('.sp-o');
+  /* the four inside the mark - Beat plays them, the other five leave them to
+     their own equaliser */
+  var bars = [].slice.call(disc.querySelectorAll('i'));
   var brand = document.getElementById('gtBrand');
   var brandName = brand && brand.querySelector('.gt-bn');
   var gateInner = document.querySelector('#gate .gt-inner');
@@ -689,15 +692,32 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
           { duration: T, easing: 'linear', fill: 'both' });
       }
       flyAvatar(card, T);
-      /* every card goes now, the chosen one included - what carries on is the
-         face lifted off it, not the card */
-      var n = 0;
-      cards.forEach(function (c) {
-        var mine = c === card;
-        c.animate([{ transform: 'none', opacity: 1 },
-                   { transform: mine ? 'scale(.96)' : 'translateY(16px) scale(.92)', opacity: 0 }],
-          { duration: Math.round(T * (mine ? .3 : .34)),
-            delay: mine ? 0 : Math.round((n++) * T * .05), easing: E, fill: 'both' });
+      /* The second half of the door, in the same character as the first. The
+         card that was pressed does not leave by the effect - it stays put and
+         fades where it stands, because what carries on is the face lifted off
+         it on its way to the account chip, exactly as the mark did not leave
+         the name. The others are what the effect happens to.
+
+         Which way each one goes is read off the screen rather than counted
+         out: a card left of centre leaves to the left, and how far from the
+         middle it sits is its place in the order. That holds whether there
+         are three of them or thirty. The design's milliseconds are played
+         over TRIP, so this half lasts exactly as long as the first. */
+      var DE = DOORS[DOOR], mid = innerWidth / 2, sc = T / DE.span;
+      cards.forEach(function (c, ci) {
+        if (c === card) {
+          c.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(.96)', opacity: 0 }],
+            { duration: Math.round(T * .3), easing: E, fill: 'both' });
+          return;
+        }
+        var r = c.getBoundingClientRect(), cx = r.left + r.width / 2;
+        var ctx = { side: cx < mid ? -1 : 1, W: innerWidth, H: innerHeight, r: SEED[ci % SEED.length] };
+        ctx.d = 1 + Math.round(Math.abs(cx - mid) / (r.width || 1));
+        ctx.far = ctx.side * (innerWidth * .8 + 250);
+        var k = DE.card(ctx);
+        if (k.origin) c.style.transformOrigin = k.origin;
+        c.animate(k.kf, { duration: Math.max(120, Math.round(k.dur * sc)),
+          delay: Math.round(k.del * sc), easing: k.ez, fill: 'both' });
       });
       [].forEach.call(gate.querySelectorAll('.gt-ask,.gt-sub,.gt-key,.gt-skip'), function (el) {
         el.animate([{ opacity: 1 }, { opacity: 0 }],
@@ -781,6 +801,11 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
     letters.forEach(function (l) { l.style.animation = 'none'; });
     disc.style.animation = 'none';
     hint.style.animation = 'none';
+    /* The bars normally keep playing all the way across - their equaliser is
+       on the bars, not on the disc, so the flight does not touch it. Beat is
+       the exception: it plays the bars itself, and a running CSS animation
+       outranks an inline transform, so for that one the equaliser has to go. */
+    if (DOORS[DOOR].barAt) bars.forEach(function (b) { b.style.animation = 'none'; });
     decideGate();                                /* puts the gate up, and with it the seat */
   }
 
@@ -830,75 +855,327 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
   var clamp = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
   var ease = function (v) { return v * v * (3 - 2 * v); };
 
-  /* ---- the blur rush ----
-     The name does not drift apart, it is torn out sideways. Every letter leans
-     back into the word first - twenty-six pixels against the way it is about
-     to go, skewed the same way, so there is something to be pulled out of -
-     and then goes the other way hard: past the edge of the screen, stretched
-     along its own travel and blurred to sixteen pixels. The blur is what makes
-     a fast move read as fast; without it a letter crossing the screen in a
-     third of a second is just a letter somewhere else.
+  /* ================== THE SIX WAYS OUT ==================
+     One gesture, six characters. Whichever is chosen is used for both halves
+     of the door - the way the name comes apart on the way to the question, and
+     the way the cards come apart on the way to the page - so arriving and
+     being let in are plainly the same movement twice.
 
-     The ends go first. The furthest letter has no wait at all and the two
-     beside the logo wait longest, so the word empties inwards and the mark is
-     the last thing standing - which it has to be, because it is not leaving,
-     it is going to the header.
+     In both halves one thing does not leave. On the first the mark stays and
+     goes to its seat in the header; on the second the card that was pressed
+     stays and its face goes to the account chip. Everything else is what the
+     effect happens to.
 
-     It is a function of progress, not a canned animation, like everything else
-     on this sheet: a half scroll holds the rush half done and a scroll back
-     puts the word straight again. SPAN is the design's own length for the
-     whole thing, and the numbers below are its milliseconds measured against
-     it - letters 900 after a wait of up to 240, the mark 1100 after 150. The
-     whole of it is then played out over TRIP, whatever TRIP is set to. */
-  var SPAN = 1250;
+     The first half is a function of progress rather than a canned animation,
+     because a scroll can hold it half done and take it back. The second half
+     is committed by the time it starts, so there it is the design's own
+     keyframes, played over TRIP.
+
+     Every span below is the design's own millisecond count. Nothing here sets
+     the pace - TRIP does, and these only say what happens in what order. */
+
+  /* The design writes its curves as CSS cubic-beziers, and the difference
+     between cubic-bezier(.7,0,.2,1) and a smoothstep is most of what tells
+     Glide from the rest. Solved rather than guessed at: Newton on x, falling
+     back to bisection where the curve goes flat. y is deliberately not clamped
+     - Elastic's last curve passes 1 and is supposed to overshoot. */
+  function bez(x1, y1, x2, y2) {
+    var A = function (a, b) { return 1 - 3 * b + 3 * a; },
+        B = function (a, b) { return 3 * b - 6 * a; },
+        C = function (a) { return 3 * a; };
+    var cx = function (t) { return ((A(x1, x2) * t + B(x1, x2)) * t + C(x1)) * t; };
+    var cy = function (t) { return ((A(y1, y2) * t + B(y1, y2)) * t + C(y1)) * t; };
+    var dx = function (t) { return 3 * A(x1, x2) * t * t + 2 * B(x1, x2) * t + C(x1); };
+    return function (x) {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      var t = x, i, er, dv;
+      for (i = 0; i < 8; i++) {
+        er = cx(t) - x; dv = dx(t);
+        if (er < 1e-6 && er > -1e-6) return cy(t);
+        if (dv < 1e-6 && dv > -1e-6) break;
+        t -= er / dv;
+      }
+      var lo = 0, hi = 1; t = x;
+      for (i = 0; i < 32; i++) { if (cx(t) > x) hi = t; else lo = t; t = (lo + hi) / 2; }
+      return cy(t);
+    };
+  }
+  var EZ = {
+    glide: bez(.7, 0, .2, 1),
+    rushL: bez(.6, 0, .4, 1),  rushM: bez(.6, 0, .3, 1),
+    doors: bez(.65, 0, .35, 1),
+    scatL: bez(.55, 0, .8, .3), scatM: bez(.45, 0, .25, 1),
+    elA: bez(.3, 0, .2, 1),    elB: bez(.8, 0, .2, 1),
+    elIO: bez(.42, 0, .58, 1), elOut: bez(0, 0, .58, 1), elPop: bez(.4, 0, .1, 1.25),
+    beatP: bez(.2, .9, .3, 1), beatE: bez(.7, 0, .3, 1),  beatM: bez(0, 0, .58, 1)
+  };
+  var mix = function (a, b, t) { return a + (b - a) * t; };
+  var seg = function (p, a, b) { return clamp((p - a) / (b - a)); };
+  /* the mark's transform, in the order the design writes it: moved, then
+     sized, then turned - so the turning is about its own middle and never
+     moves where it lands */
+  var M = function (x, y, sx, sy, r, ry) {
+    return 'translate3d(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px,0) scale(' +
+      sx.toFixed(4) + ',' + sy.toFixed(4) + ') rotate(' + r.toFixed(2) +
+      'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+  };
+  var px = function (v) { return v.toFixed(1) + 'px'; };
+
+  var DOORS = {
+    /* Nothing clever: the name simply leaves, the two beside the mark first,
+       on one long ease that is slow to start and slow to stop. */
+    glide: {
+      span: 1300, mDelay: 0, mDur: 1300,
+      lDelay: function (c) { return (c.d - 1) * 70; }, lDur: function () { return 1000; },
+      letter: function (p, c) {
+        return { tr: 'translate3d(' + px(c.far * EZ.glide(p)) + ',0,0)', op: 1, bl: 0 };
+      },
+      mark: function (p, s) {
+        var q = EZ.glide(p), x = 0, y = 0, k;
+        if (q < .3) k = mix(1, .9, q / .3);
+        else { var b = seg(q, .3, 1); x = s.dx * b; y = s.dy * b; k = mix(.9, s.k, b); }
+        return M(x, y, k, k, 0, 0);
+      },
+      card: function (c) {
+        return { kf: [{ transform: 'none' }, { transform: 'translateX(' + px(c.far) + ')' }],
+                 dur: 1000, del: (c.d - 1) * 70, ez: 'cubic-bezier(.7,0,.2,1)' };
+      }
+    },
+
+    /* Leans back into the word, then is torn out the other way: stretched
+       along its travel and blurred, because blur is what makes a fast move
+       read as fast. The ends go first and the word empties inwards. */
+    rush: {
+      span: 1250, mDelay: 150, mDur: 1100,
+      lDelay: function (c) { return Math.max(0, 4 - c.d) * 80; }, lDur: function () { return 900; },
+      letter: function (p, c) {
+        var x, sk, sx, bl = 0, op = 1;
+        if (p < .3) {                    /* linear, as drawn: the lean back is abrupt */
+          var a = p / .3;
+          x = -c.side * 26 * a; sk = c.side * 8 * a; sx = 1;
+        } else {
+          var b = EZ.rushL(seg(p, .3, 1));
+          x = mix(-c.side * 26, c.far, b); sk = mix(c.side * 8, -c.side * 28, b);
+          sx = mix(1, 1.3, b); bl = 16 * b;
+          /* long past the edge by the time this bites - it is only so that a
+             scrub left standing is not a wall of blur over the question */
+          op = 1 - clamp((b - .62) / .38);
+        }
+        return { tr: 'translate3d(' + px(x) + ',0,0) skewX(' + sk.toFixed(2) +
+                     'deg) scaleX(' + sx.toFixed(3) + ')', op: op, bl: bl };
+      },
+      mark: function (p, s) {
+        var q = EZ.rushM(p), x = 0, y = 0, k, r;
+        if (q < .3) { var a = q / .3; k = mix(1, 1.12, a); r = -25 * a; }
+        else { var b = seg(q, .3, 1); x = s.dx * b; y = s.dy * b;
+               k = mix(1.12, s.k, b); r = mix(-25, 360, b); }
+        return M(x, y, k, k, r, 0);
+      },
+      card: function (c) {
+        return { kf: [
+          { transform: 'none', filter: 'blur(0px)' },
+          { transform: 'translateX(' + px(-c.side * 26) + ') skewX(' + (c.side * 8) + 'deg)',
+            filter: 'blur(0px)', offset: .3, easing: 'cubic-bezier(.6,0,.4,1)' },
+          { transform: 'translateX(' + px(c.far) + ') skewX(' + (-c.side * 28) + 'deg) scaleX(1.3)',
+            filter: 'blur(16px)', opacity: 0 }
+        ], dur: 900, del: Math.max(0, 4 - c.d) * 80, ez: 'linear' };
+      }
+    },
+
+    /* Each one swings away on its own outside edge, like a door on its hinge,
+       and the mark turns a full circle end over end. */
+    doors: {
+      span: 1500, mDelay: 0, mDur: 1500,
+      lDelay: function (c) { return (c.d - 1) * 90; }, lDur: function () { return 1100; },
+      origin: function (c) { return c.side < 0 ? 'left center' : 'right center'; },
+      letter: function (p, c) {
+        var q = EZ.doors(p);
+        return { tr: 'perspective(900px) translateX(' + px(c.side * c.W * .35 * q) +
+                     ') rotateY(' + (-c.side * 95 * q).toFixed(2) + 'deg)',
+                 op: 1 - q, bl: 0 };
+      },
+      mark: function (p, s) {
+        var q = EZ.doors(p), x = 0, y = 0, k = 1, ry;
+        if (q < .4) ry = mix(0, 180, q / .4);
+        else { var b = seg(q, .4, 1); x = s.dx * b; y = s.dy * b;
+               k = mix(1, s.k, b); ry = mix(180, 360, b); }
+        return M(x, y, k, k, 0, ry);
+      },
+      card: function (c) {
+        return { origin: c.side < 0 ? 'left center' : 'right center',
+          kf: [{ transform: 'perspective(900px) translateX(0) rotateY(0deg)', opacity: 1 },
+               { transform: 'perspective(900px) translateX(' + px(c.side * c.W * .35) +
+                 ') rotateY(' + (-c.side * 95) + 'deg)', opacity: 0 }],
+          dur: 1100, del: (c.d - 1) * 90, ez: 'cubic-bezier(.65,0,.35,1)' };
+      }
+    },
+
+    /* Thrown, not driven: every one gets its own height, spin, size and
+       timing. The numbers are drawn once when the page loads, not once a
+       frame, or a held scrub would shiver. */
+    scatter: {
+      span: 1400, mDelay: 0, mDur: 1400,
+      lDelay: function (c) { return c.r.del; }, lDur: function (c) { return c.r.dur; },
+      letter: function (p, c) {
+        var q = EZ.scatL(p), r = c.r;
+        return { tr: 'translate3d(' + px(c.far * q) + ',' + px(r.y * c.H * .6 * q) +
+                     ',0) rotate(' + (c.side * r.rot * q).toFixed(1) + 'deg) scale(' +
+                     mix(1, r.sc, q).toFixed(3) + ')', op: 1 - q, bl: 0 };
+      },
+      mark: function (p, s) {
+        var q = EZ.scatM(p), x, y, k, r;
+        if (q < .15) { var a = seg(q, 0, .15); x = 0; y = 0; k = mix(1, 1.3, a); r = 0; }
+        else if (q < .55) { var b = seg(q, .15, .55);
+          x = mix(0, s.dx * .35, b); y = mix(0, s.dy * .1 - 40, b);
+          k = mix(1.3, .55, b); r = mix(0, -30, b); }
+        else { var d2 = seg(q, .55, 1);
+          x = mix(s.dx * .35, s.dx, d2); y = mix(s.dy * .1 - 40, s.dy, d2);
+          k = mix(.55, s.k, d2); r = mix(-30, 0, d2); }
+        return M(x, y, k, k, r, 0);
+      },
+      card: function (c) {
+        var r = c.r;
+        return { kf: [{ transform: 'none', opacity: 1 },
+          { transform: 'translate(' + px(c.far) + ',' + px(r.y * c.H * .6) + ') rotate(' +
+            (c.side * r.rot).toFixed(1) + 'deg) scale(' + r.sc.toFixed(3) + ')', opacity: 0 }],
+          dur: r.dur, del: r.del, ez: 'cubic-bezier(.55,0,.8,.3)' };
+      }
+    },
+
+    /* Pulled back against a spring and let go: squashed on the way back,
+       stretched long and thin on the way out. */
+    elastic: {
+      span: 1500, mDelay: 0, mDur: 1500,
+      lDelay: function () { return 0; }, lDur: function () { return 1300; },
+      letter: function (p, c) {
+        var back = -c.side * (50 + c.d * 22), x, sx, sy;
+        if (p < .42) { var a = EZ.elA(seg(p, 0, .42));
+          x = mix(0, back, a); sx = mix(1, .72, a); sy = mix(1, 1.12, a); }
+        else { var b = EZ.elB(seg(p, .42, 1));
+          x = mix(back, c.far, b); sx = mix(.72, 1.7, b); sy = mix(1.12, .8, b); }
+        return { tr: 'translate3d(' + px(x) + ',0,0) scale(' + sx.toFixed(3) + ',' +
+                     sy.toFixed(3) + ')', op: 1, bl: 0 };
+      },
+      mark: function (p, s) {
+        var x = 0, y = 0, sx, sy;
+        if (p < .42) { var a = EZ.elIO(seg(p, 0, .42)); sx = mix(1, .78, a); sy = mix(1, 1.18, a); }
+        else if (p < .52) { var b = EZ.elOut(seg(p, .42, .52));
+          sx = mix(.78, 1.3, b); sy = mix(1.18, 1.3, b); }
+        else { var d2 = EZ.elPop(seg(p, .52, 1));
+          x = s.dx * d2; y = s.dy * d2; sx = sy = mix(1.3, s.k, d2); }
+        return M(x, y, sx, sy, 0, 0);
+      },
+      card: function (c) {
+        var back = -c.side * (50 + c.d * 22);
+        return { kf: [
+          { transform: 'none', easing: 'cubic-bezier(.3,0,.2,1)' },
+          { transform: 'translateX(' + px(back) + ') scaleX(.72) scaleY(1.12)',
+            offset: .42, easing: 'cubic-bezier(.8,0,.2,1)' },
+          { transform: 'translateX(' + px(c.far) + ') scaleX(1.7) scaleY(.8)', opacity: 0 }
+        ], dur: 1300, del: 0, ez: 'linear' };
+      }
+    },
+
+    /* On the beat: out a step, hold, out a step, hold, gone - and the mark
+       pumps on the same count, with its four bars playing the measure. */
+    beat: {
+      span: 1900, mDelay: 0, mDur: 1900,
+      lDelay: function () { return 0; }, lDur: function () { return 1800; },
+      letter: function (p, c) {
+        var a = c.side * (30 + c.d * 14), b = c.side * (90 + c.d * 40), x;
+        if (p < .18) x = 0;
+        else if (p < .28) x = mix(0, a, EZ.beatP(seg(p, .18, .28)));
+        else if (p < .48) x = a;
+        else if (p < .58) x = mix(a, b, EZ.beatP(seg(p, .48, .58)));
+        else if (p < .78) x = b;
+        else x = mix(b, c.far, EZ.beatE(seg(p, .78, 1)));
+        return { tr: 'translate3d(' + px(x) + ',0,0)', op: 1, bl: 0 };
+      },
+      mark: function (p, s) {
+        var q = EZ.beatM(p);
+        var O = [0, .18, .23, .4, .48, .53, .7, .78], S = [1, 1, 1.14, 1, 1, 1.22, 1, 1];
+        if (q >= .78) { var b = seg(q, .78, 1);
+          return M(s.dx * b, s.dy * b, mix(1, s.k, b), mix(1, s.k, b), 0, 0); }
+        for (var i = O.length - 1; i >= 0; i--) {
+          if (q >= O[i]) { var k = (i + 1 < O.length) ? mix(S[i], S[i + 1], seg(q, O[i], O[i + 1])) : S[i];
+            return M(0, 0, k, k, 0, 0); }
+        }
+        return M(0, 0, 1, 1, 0, 0);
+      },
+      /* the bars keep their own time - no easing on them in the design, so
+         straight lines between the steps */
+      barAt: function (p, j) {
+        var O = [0, .18, .23, .4, .48, .53, .7, .78, .84, 1];
+        var v = function (k) { return (k === 0 || k === 9) ? 1 : .35 + ((j * 7 + k * 3) % 10) / 6; };
+        for (var i = O.length - 1; i >= 0; i--) {
+          if (p >= O[i]) return (i === O.length - 1) ? v(i) : mix(v(i), v(i + 1), seg(p, O[i], O[i + 1]));
+        }
+        return 1;
+      },
+      card: function (c) {
+        var a = c.side * (30 + c.d * 14), b = c.side * (90 + c.d * 40), P = 'cubic-bezier(.2,.9,.3,1)';
+        return { kf: [
+          { transform: 'none', offset: 0 },
+          { transform: 'none', offset: .18, easing: P },
+          { transform: 'translateX(' + px(a) + ')', offset: .28 },
+          { transform: 'translateX(' + px(a) + ')', offset: .48, easing: P },
+          { transform: 'translateX(' + px(b) + ')', offset: .58 },
+          { transform: 'translateX(' + px(b) + ')', offset: .78, easing: 'cubic-bezier(.7,0,.3,1)' },
+          { transform: 'translateX(' + px(c.far) + ')', opacity: 0, offset: 1 }
+        ], dur: 1800, del: 0, ez: 'linear' };
+      }
+    }
+  };
+
+  /* Which of the six. Drawn once when the page loads and used by both halves,
+     so the door behaves as one thing. A visitor gets a different one each
+     time - six doors is the point of having six - and ?door=elastic pins it,
+     for testing or for showing somebody. To stop the rotation entirely,
+     replace the line below with the one name you want. */
+  var DOOR_NAMES = ['glide', 'rush', 'doors', 'scatter', 'elastic', 'beat'];
+  var DOOR = (function () {
+    var want = (/[?&]door=([a-z]+)/.exec(location.search) || [])[1];
+    if (want && DOORS[want]) return want;
+    return DOOR_NAMES[Math.floor(Math.random() * DOOR_NAMES.length)];
+  }());
+  /* Scatter's throw, drawn once. Read per frame it would shiver under a held
+     scrub and land somewhere different every time it was painted. */
+  var SEED = letters.map(function () {
+    return { y: Math.random() * 2 - 1, rot: 90 + Math.random() * 270,
+             sc: .4 + Math.random() * .8, dur: 1000 + Math.random() * 300,
+             del: Math.random() * 140 };
+  });
 
   function paint() {
     if (!settled) return;                                   /* nothing has been asked of it yet */
     var e = ease(cur);                                      /* smoothstep: no hard start */
-    var vw = innerWidth, ms = e * SPAN;                     /* read before anything is written */
+    var E = DOORS[DOOR];
+    /* The effect runs on the raw progress, not on the smoothstepped e. Each
+       of the six carries the design's own curves inside it, and easing an
+       already-eased value flattens exactly the difference that tells them
+       apart. e still drives the crossfades below, where it was tuned. */
+    var vw = innerWidth, vh = innerHeight, ms = cur * E.span;
     if (!seat) seatBrand();                                 /* the header may still have been booting */
     for (var i = 0; i < letters.length; i++) {
       if (i === oAt) continue;
-      var d = Math.abs(i - oAt), side = i < oAt ? -1 : 1;
-      var p = clamp((ms - Math.max(0, 4 - d) * 80) / 900);
-      var x, sk, sx, bl, lo;
-      if (p < 0.3) {                                        /* the lean back */
-        var a = ease(p / 0.3);
-        x = -side * 26 * a; sk = side * 8 * a; sx = 1; bl = 0; lo = 1;
-      } else {                                              /* and out */
-        var b = (p - 0.3) / 0.7, far = side * (vw * 0.8 + 250);
-        x = -side * 26 + (far + side * 26) * b;
-        sk = side * (8 - 36 * b);
-        sx = 1 + 0.3 * b;
-        bl = 16 * b;
-        /* it is well past the edge by the time this bites - it is only here so
-           that a scrub left standing three quarters of the way through is not
-           a wall of blur parked over the question */
-        lo = 1 - clamp((b - 0.62) / 0.38);
-      }
-      letters[i].style.transform = 'translate3d(' + x.toFixed(1) + 'px,0,0) skewX(' +
-        sk.toFixed(2) + 'deg) scaleX(' + sx.toFixed(3) + ')';
-      letters[i].style.opacity = lo.toFixed(3);
-      letters[i].style.filter = bl ? 'blur(' + bl.toFixed(2) + 'px)' : 'none';
+      var c = { d: Math.abs(i - oAt), side: i < oAt ? -1 : 1, W: vw, H: vh, r: SEED[i] };
+      c.far = c.side * (vw * 0.8 + 250);
+      var o = E.letter(clamp((ms - E.lDelay(c)) / E.lDur(c)), c);
+      var st = letters[i].style;
+      if (E.origin) st.transformOrigin = E.origin(c);
+      st.transform = o.tr;
+      st.opacity = o.op.toFixed(3);
+      st.filter = o.bl ? 'blur(' + o.bl.toFixed(2) + 'px)' : 'none';
     }
-    /* The mark winds up the other way from the letters - bigger, and back
-       twenty-five degrees - and then turns a whole circle on its way to the
-       seat. A whole circle, so it arrives square: the header's own mark is not
-       turned, and the moment the flying copy is taken away the two have to be
-       the same thing in the same place at the same angle. */
+    /* The mark is the one thing that is not leaving - it is going to its seat
+       in the header, and it has to arrive square, because the moment the
+       flying copy is taken away the header's own mark stands in its place. */
     if (seat) {
-      var lp = clamp((ms - 150) / 1100), odx = 0, ody = 0, ok = 1, orot = 0;
-      if (lp < 0.3) {
-        var oa = ease(lp / 0.3);
-        ok = 1 + 0.12 * oa; orot = -25 * oa;
-      } else {
-        var ob = (lp - 0.3) / 0.7;
-        odx = seat.dx * ob; ody = seat.dy * ob;
-        ok = 1.12 + (seat.k - 1.12) * ob;
-        orot = -25 + 385 * ob;
-      }
-      disc.style.transform = 'translate3d(' + odx.toFixed(2) + 'px,' + ody.toFixed(2) +
-        'px,0) scale(' + ok.toFixed(4) + ') rotate(' + orot.toFixed(2) + 'deg)';
+      var lp = clamp((ms - E.mDelay) / E.mDur);
+      disc.style.transform = E.mark(lp, seat);
+      if (E.barAt) for (var j = 0; j < bars.length; j++)
+        bars[j].style.transform = 'scaleY(' + E.barAt(lp, j).toFixed(3) + ')';
     }
     /* the ground under the name is the ground under the gate, to the
        percentage, so this is a fade between two identical things */
