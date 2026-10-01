@@ -3,8 +3,8 @@
 --
 -- WHAT THIS IS FOR
 --
--- Every material reservation Tooway raises goes through Dialog's WorkHub24
--- (the Material Reservation PH1 app): Infomate reserve it, ACE issue it in SAP,
+-- Every material reservation Tooway raises goes through Dialog's WorkHub24:
+-- Infomate reserve it, ACE issue it in SAP,
 -- and the moment the System Issuance Done task opens the materials are sitting
 -- at the warehouse waiting for us. WorkHub tells you a ticket is ready. It does
 -- not tell you how long it has been ready, and it is not where the serials
@@ -23,6 +23,12 @@
 --                     wiped the next time WorkHub is read.
 --
 -- The page reads both and the date in wh24_marks wins over WorkHub's own.
+--
+-- SCOPE, added after this migration was run: it was built reading ONE WorkHub
+-- workflow, Material Reservation PH1. Reservations also go through PH2. See
+-- 037, which adds the column that says which app a ticket came from, and its
+-- closing note for what is still outstanding - the sync and the state logic
+-- both still read PH1's wording only.
 
 -- ─────────────────────────────────────────────────────────────── the tickets
 
