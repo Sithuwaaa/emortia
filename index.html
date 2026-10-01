@@ -1613,6 +1613,7 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 .tool-mat{--tc:#ffa866;--tcB:#ffc79f;--tcGrid:rgba(255,168,102,.10);--tcLine:#41250e;--tcBg:#1f0e02;--tcRGB:255,168,102;}
 .tool-bom{--tc:#ff9537;--tcB:#ffb884;--tcGrid:rgba(255,149,55,.10);--tcLine:#41250e;--tcBg:#1f0e02;--tcRGB:255,149,55;}
 .tool-gin{--tc:#f08520;--tcB:#ffa864;--tcGrid:rgba(240,133,32,.10);--tcLine:#41250e;--tcBg:#1f0e02;--tcRGB:240,133,32;}
+.tool-wh24{--tc:#e57d1f;--tcB:#ff9d4a;--tcGrid:rgba(229,125,31,.10);--tcLine:#41250e;--tcBg:#1f0e02;--tcRGB:229,125,31;}
 .tool-update{--tc:#ffa89d;--tcB:#ffc8bf;--tcGrid:rgba(255,168,157,.10);--tcLine:#44211d;--tcBg:#210b09;--tcRGB:255,168,157;}
 .tool-access{--tc:#ff9587;--tcB:#ffb8ae;--tcGrid:rgba(255,149,135,.10);--tcLine:#44211d;--tcBg:#210b09;--tcRGB:255,149,135;}
 .tool-data{--tc:#ff7d6e;--tcB:#ffa79c;--tcGrid:rgba(255,125,110,.10);--tcLine:#44211d;--tcBg:#210b09;--tcRGB:255,125,110;}
@@ -4548,7 +4549,7 @@ class Component extends DCLogic {
   static clsOf(featureKey){
     const dir = String(featureKey || '').replace(/^tool:/, '');
     return ({ 'design-extractor':'design', 'materials':'mat', 'bom':'bom',
-      'gin-extractor':'gin', 'site-data':'data', 'site-access':'access',
+      'gin-extractor':'gin', 'wh24':'wh24', 'site-data':'data', 'site-access':'access',
       'project-update':'update', 'rf-jumper':'rf', 'esn':'esn',
       'field-config':'field', 'swap':'swap', 'whattodo':'todo',
       'team':'team', 'attendance':'att', 'lyric-video':'lyric' })[dir] || '';
@@ -5742,7 +5743,7 @@ class Component extends DCLogic {
       'bom':'BOM Builder', 'lyric-video':'Video & Artwork', 'attendance':'Daily Attendance',
       'esn':'ESN Sharing', 'whattodo':'What To Do', 'project-update':'Project Update',
       'site-access':'Site Access Lookup', 'site-data':'Site Data Lookup',
-      'gin-extractor':'GIN Extractor', 'field-config':'Field Config',
+      'gin-extractor':'GIN Extractor', 'wh24':'WH24 Material Checker', 'field-config':'Field Config',
       'team':'Team Directory', 'rf-jumper':'RF Jumper Codes' })[m[1].toLowerCase()] || m[1];
   }
   dashPageName(path){
@@ -6522,6 +6523,10 @@ class Component extends DCLogic {
                 "FC",
                 "M3 5h18v14H3z M7 10l3 2-3 2 M12.5 14.5h4.5"
           ],
+          "wh24": [
+                "WH",
+                "M3 8l9-5 9 5v9l-9 5-9-5z M3 8l9 5 9-5 M12 13v9 M15.5 15.5l1.5 1.5 3-3.5"
+          ],
           "swap": [
                 "SW",
                 "M4 8.5h15 M15.5 5L19 8.5 15.5 12 M20 15.5H5 M8.5 12L5 15.5 8.5 19"
@@ -6596,6 +6601,8 @@ class Component extends DCLogic {
          desc:'Full technical profile for 13,000+ sites – TX technology, tower, power, generator, solar and equipment counts. Search and go.'},
         {name:'GIN Extractor', initial:'G', tag:'Dialog Axiata · SAP', href:'tools/gin-extractor/', feature:'tool:gin-extractor',
          desc:'Drop SAP Good Issue Notes and Activity Reports together – it tells them apart and fills a table for each, every material line from one and every piece of equipment from the other, serials included. Either table downloads as Excel. Runs entirely on your device, works offline, nothing is uploaded.'},
+        {name:'WH24 Material Checker', initial:'W', tag:'Dialog · WorkHub24 collections', href:'tools/wh24/', feature:'tool:wh24',
+         desc:'Which reservations can be collected today, read straight off WorkHub24. One bookmark on the WorkHub tab pulls every ticket, its timeline and its Goods Issue Notes; the dashboard says what is sitting at the warehouse, how many days it has waited, and adds up what to ask for at the counter. Every line carries its GI number and serials. Mark a ticket collected and the count stops. Excel in the same columns as the sheet it replaces.'},
         {name:'Field Config', initial:'F', tag:'Huawei · Ericsson · Wi-Bas', href:'tools/field-config/', feature:'tool:field-config',
          desc:'What to type when you are standing at the cabinet. The UMPT passwords in the order they are worth trying, the DSP and LST checks, both R19 upgrade sequences in the order they run, the Moshell commands, the Wi-Bas neighbour-MAC dance. One click puts a command on the clipboard with nothing attached to it, because it is going straight into an LMT window. Searching crosses all three vendors – ask for “serial number” and you get the command, not the words.'},
         {name:'RF Jumper Codes', initial:'R', tag:'Huawei SOP · jumper labels', href:'tools/rf-jumper/', feature:'tool:rf-jumper',
@@ -6606,7 +6613,7 @@ class Component extends DCLogic {
          whether it is drawn. Each page checks again on its way in - a card
          that is not drawn is not a lock, only a tidy list. */
       ].filter(t=>!t.feature || may(t.feature))
-       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
+       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap','wh24':'wh24'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
                   group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}))
        .map(t=>{
          const ic = TOOLICON[t.cls.replace('tool-','')];
