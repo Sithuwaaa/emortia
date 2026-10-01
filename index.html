@@ -658,26 +658,41 @@ html.sp-lock,html.sp-lock body{overflow:hidden !important;}
       var k = Math.max(0.12, Math.min(1, t.height / a.height));
       var dx = (t.left + t.width / 2) - (a.left + a.width / 2);
       var dy = (t.top + t.height / 2) - (a.top + a.height / 2);
+      /* Two boxes, not one: the outer carries the flight, the inner carries the
+         tilt it has to arrive wearing. Trying to do both on one element means
+         composing a rotation into a transform the door already wrote. */
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;left:' + a.left + 'px;top:' + a.top + 'px;width:' +
+        a.width + 'px;height:' + a.height + 'px;margin:0;z-index:10006;' +
+        'pointer-events:none;will-change:transform,opacity,filter';
       var ghost = av.cloneNode(true);
-      ghost.style.position = 'fixed';
-      ghost.style.left = a.left + 'px';
-      ghost.style.top = a.top + 'px';
-      ghost.style.width = a.width + 'px';
-      ghost.style.height = a.height + 'px';
-      ghost.style.margin = '0';
-      ghost.style.zIndex = '10006';
-      ghost.style.pointerEvents = 'none';
-      ghost.style.willChange = 'transform,opacity';
-      document.body.appendChild(ghost);
+      ghost.style.width = '100%'; ghost.style.height = '100%'; ghost.style.margin = '0';
+      wrap.appendChild(ghost);
+      document.body.appendChild(wrap);
       av.style.visibility = 'hidden';
-      ghost.animate([
-        { transform: 'none', opacity: 1 },
-        { transform: 'translate(' + (dx * .42).toFixed(1) + 'px,' + (dy * .5).toFixed(1) +
-          'px) scale(' + (1 + (k - 1) * 0.55).toFixed(3) + ')', opacity: 1, offset: .5 },
-        { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) +
-          'px) scale(' + k.toFixed(3) + ')', opacity: 0 }
-      ], { duration: dur, easing: 'cubic-bezier(.5,0,.2,1)', fill: 'both' });
-      setTimeout(function () { if (ghost.parentNode) ghost.parentNode.removeChild(ghost); }, dur + 60);
+
+      /* The second half of the door is the first half again. The mark's walk
+         to its seat in the bar and this tile's walk to the account pill are
+         the same journey - a thing that was not leaving, going to where the
+         header keeps it - so this is not a flight of its own, it is that one,
+         asked for its position forty times and handed to the browser. With
+         Zoom portal that means the tile goes through the camera too: swelling,
+         blurring out of sight, and coming back out at the pill. */
+      var place = { dx: dx, dy: dy, k: k }, keys = [], N = 40;
+      for (var i = 0; i <= N; i++) {
+        var p = i / N, mo = DOORS[DOOR].mark(p, place), s = typeof mo === 'string';
+        keys.push({ offset: p, transform: s ? mo : mo.tr,
+          opacity: s ? 1 : mo.op,
+          filter: (s || !mo.bl) ? 'blur(0px)' : 'blur(' + mo.bl.toFixed(2) + 'px)' });
+      }
+      wrap.animate(keys, { duration: dur, easing: 'linear', fill: 'both' });
+      /* the bar wears its mark at six degrees, so the thing landing on it has
+         to be at six degrees by the time it gets there */
+      ghost.animate([{ transform: 'rotate(0deg)' },
+                     { transform: 'rotate(0deg)', offset: .5 },
+                     { transform: 'rotate(-6deg)' }],
+        { duration: dur, easing: 'cubic-bezier(.3,1.5,.5,1)', fill: 'both' });
+      setTimeout(function () { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }, dur + 60);
     }
 
     /* Leaving: the cards drop away, the face that was pressed goes up to the
@@ -1778,7 +1793,10 @@ img.zoomable:focus-visible{outline:2px solid var(--accentB);outline-offset:4px;}
 .am-row{all:unset;cursor:pointer;display:flex;gap:12px;align-items:center;padding:8px 10px;
   border-radius:10px;color:#f7f1e8;font-size:14px;}
 .am-row:hover,.am-row:focus-visible{background:rgba(196,82,109,.14);}
-.am-row span{width:26px;height:26px;border-radius:8px;flex:none;
+/* Named, not "the span inside the row": {{ }} renders its text into a span of
+   its own, so a bare descendant selector painted a 26px gradient tile behind
+   every name as well as beside it. */
+.am-chip{width:26px;height:26px;border-radius:8px;flex:none;
   background:linear-gradient(160deg,var(--r1),var(--r2));}
 .am-foot{border-top:1px solid rgba(168,152,134,.15);margin-top:4px;padding-top:4px;}
 .am-out{all:unset;cursor:pointer;display:block;box-sizing:border-box;width:100%;padding:10px;
@@ -2954,12 +2972,12 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
               <div class="am-head"><b></b>{{ accountStanding }}</div>
               <button class="am-row" role="menuitem" onClick="{{ openProfile }}"
                 style="--r1:#2b1a1f;--r2:#1d1114;">
-                <span style="box-shadow:inset 0 0 0 1px rgba(168,152,134,.25);"></span>Change your name
+                <span class="am-chip" style="box-shadow:inset 0 0 0 1px rgba(168,152,134,.25);"></span>Change your name
               </button>
               <span class="am-lbl">Switch to</span>
               <sc-for list="{{ switchRoles }}" as="r" hint-placeholder-count="3">
                 <button class="am-row" role="menuitem" onClick="{{ r.pick }}"
-                  style="--r1:{{ r.c1 }};--r2:{{ r.c2 }};"><span></span>{{ r.name }}</button>
+                  style="--r1:{{ r.c1 }};--r2:{{ r.c2 }};"><span class="am-chip"></span>{{ r.name }}</button>
               </sc-for>
               <div class="am-foot">
                 <button class="am-out" role="menuitem" onClick="{{ doSignOut }}">Sign out</button>
