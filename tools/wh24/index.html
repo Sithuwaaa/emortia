@@ -239,6 +239,19 @@
      already on the badge - whatever goes last is what gets cut, and losing
      the stage costs nothing while losing this costs the whole errand. */
   .who .l2 .res{font-weight:700;color:var(--text2)}
+  /* Which WorkHub app the row came from. The three are different kinds of
+     thing - a warehouse reservation, a site work task, a direct request - and
+     what "collect" means is not identical across them, so the row says which
+     without being asked. The word is the signal; the colour only helps. */
+  .pbadge{font:700 10px 'Space Mono',monospace;letter-spacing:.1em;padding:3px 7px;border-radius:999px;
+    flex:none;border:1px solid currentColor;opacity:.92}
+  .pbadge.p-PH1{color:#8fbfa4}
+  .pbadge.p-PH2{color:#8aa6e8}
+  .pbadge.p-Bulk{color:#e0a86a}
+  /* the source strip sits beside the state strip and reads as a second,
+     narrower choice rather than more of the same */
+  .seg.src{margin-left:6px}
+  .seg.src button{font-size:12px}
   .wo{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .days{text-align:right;white-space:nowrap}
   .days b{font:800 22px 'Bricolage Grotesque',sans-serif}
@@ -361,6 +374,9 @@
   <div class="sbar">
     <input id="find" placeholder="Find a ticket, site, code, reservation, GI number or serial" autocomplete="off" spellcheck="false">
     <div class="seg" id="seg" role="tablist"></div>
+    <!-- which WorkHub app. Drawn only when there is more than one to choose
+         between, so it is not a control that does nothing. -->
+    <div class="seg src" id="srcseg" role="tablist" hidden></div>
     <button class="btn" id="exportBtn">Export Excel</button>
   </div>
 
@@ -395,6 +411,16 @@ const OWNER = !!(window.Access && Access.isOwner && Access.isOwner());
 const ME = (window.Access && Access.currentUser && Access.currentUser()) || '';
 
 let TICKETS = [], MARKS = {}, FILTER = 'ready', BUSY = false, LOADED = false;
+/* Which WorkHub app, as a filter of its own - separate from the state filter,
+   because "PH2 tickets I can collect" is a sensible question and folding the
+   two into one strip would make it unaskable. 'all' by default: what can I
+   collect spans every source. */
+let SRC = 'all';
+/* The order they are offered in, and what each is called on a row. Only the
+   ones actually present are drawn, so this list can name a source before any
+   ticket from it exists. */
+const SRC_TABS = [['PH1', 'PH1'], ['PH2', 'PH2'], ['Bulk', 'Bulk']];
+const inSrc = t => SRC === 'all' || (t.phase || '') === SRC;
 
 /* ---- theme ---- */
 function paintTheme(){
@@ -542,10 +568,25 @@ $('rdy').addEventListener('click', async e => {
 });
 
 function segs(){
-  const n = f => TICKETS.filter(t => inFilter(t, f)).length;
+  /* counted within the chosen source, so the two strips agree with the list */
+  const n = f => TICKETS.filter(t => inSrc(t) && inFilter(t, f)).length;
   const S = [['ready','Can collect'],['issuing','With ACE'],['reserving','Reserving'],['problem','Problems'],['collected','Collected'],['all','All']];
   $('seg').innerHTML = S.map(([f, l]) => `<button role="tab" data-f="${f}" class="${FILTER === f ? 'on' : ''}">${l}<b>${n(f)}</b></button>`).join('');
   $('seg').querySelectorAll('button').forEach(b => b.onclick = () => { FILTER = b.dataset.f; render(true); });
+
+  /* Only the sources that have tickets, and only when there is a choice to
+     make. With PH1 alone this strip stays hidden rather than offering one
+     button that changes nothing. */
+  const here = SRC_TABS.filter(([k]) => TICKETS.some(t => (t.phase || '') === k));
+  const box = $('srcseg');
+  box.hidden = here.length < 2;
+  if (!box.hidden){
+    const c = k => TICKETS.filter(t => (t.phase || '') === k && inFilter(t, FILTER)).length;
+    box.innerHTML = `<button role="tab" data-s="all" class="${SRC === 'all' ? 'on' : ''}">All sources<b>${
+      TICKETS.filter(t => inFilter(t, FILTER)).length}</b></button>` +
+      here.map(([k, l]) => `<button role="tab" data-s="${k}" class="${SRC === k ? 'on' : ''}">${l}<b>${c(k)}</b></button>`).join('');
+    box.querySelectorAll('button').forEach(b => b.onclick = () => { SRC = b.dataset.s; render(true); });
+  } else if (SRC !== 'all') { SRC = 'all'; }   /* never leave it filtered to something unreachable */
 }
 
 /* ---- the list ---- */
@@ -627,7 +668,7 @@ function card(t){
   const s = stOf(t), st = STATES[s] || STATES.other;
   return `<details class="tk s-${s}" data-id="${t.id}">
     <summary>
-      <span class="badge ${s}">${st.label}</span>
+      <span class="badge ${s}">${st.label}</span>${t.phase ? `<span class="pbadge p-${esc(t.phase)}">${esc(t.phase)}</span>` : ''}
       <div class="who"><div class="l1"><span class="sid">${esc(t.site || '–')}</span><span class="snm">${esc(t.site_name || '')}</span></div>
         <div class="l2">#${t.id}${t.reservation ? ' · <b class="res">' + esc(t.reservation) + '</b>' : ''} · ${esc(t.stage || '')}${t.team ? ' – ' + esc(t.team) : ''}</div></div>
       <div class="wo">${esc(t.wo || '')}</div>
@@ -655,7 +696,7 @@ function fill(el, t){
 function render(fresh){
   board(); dash(); segs();
   const q = $('find').value;
-  const list = TICKETS.filter(t => inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
+  const list = TICKETS.filter(t => inSrc(t) && inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
   const el = $('list');
   el.classList.toggle('fresh', !!fresh);
   if (!LOADED){ el.innerHTML = '<div class="empty">Loading tickets…</div>'; return; }
@@ -702,7 +743,7 @@ $('find').addEventListener('input', () => render());
 $('exportBtn').onclick = () => {
   if (!window.XLSX){ toast('Excel is still loading – try again in a second.'); return; }
   const q = $('find').value;
-  const list = TICKETS.filter(t => inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
+  const list = TICKETS.filter(t => inSrc(t) && inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
   const aoa = W.sheet(list, MARKS, today());
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = W.HEADERS.map((h, i) => ({ wch: [8,22,16,18,22,9,22,12,40,8,6,12,11,10,12,12,10,12,12,11,8,40,8,24,12][i] || 12 }));
