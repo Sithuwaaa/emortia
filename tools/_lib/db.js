@@ -624,8 +624,16 @@
     const s = await session(); if (!s) throw new Error('Sign in first.');
     const CHUNK = 40;
     for (let i = 0; i < rows.length; i += CHUNK){
-      const part = rows.slice(i, i + CHUNK).map(r => ({ ...r, synced_at: new Date().toISOString() }));
-      const { error } = await c.from(WH24T).upsert(part, { onConflict: 'id' });
+      /* stream SET, not defaulted. A column default only applies when the
+         column is left out of the insert, and a row that leaves it out cannot
+         satisfy an (id, stream) conflict target either - which is the error
+         039 produced the moment it landed. '' is the single-stream value that
+         PH1 and Bulk carry. */
+      const part = rows.slice(i, i + CHUNK).map(r => ({
+        ...r, stream: r.stream == null ? '' : String(r.stream),
+        synced_at: new Date().toISOString() }));
+      /* the key 039 made: (id, stream). 'id' alone no longer resolves. */
+      const { error } = await c.from(WH24T).upsert(part, { onConflict: 'id,stream' });
       if (error) throw new Error(/row-level security|permission/i.test(error.message)
         ? 'Only Sithara can sync from WorkHub24.' : wh24Why(error.message));
       if (onProgress) onProgress(Math.min(i + CHUNK, rows.length), rows.length);
@@ -635,14 +643,19 @@
 
   /* The day it was collected, by whom, and a note. An empty date is "not
      collected after all", and the count starts again. */
-  async function wh24Mark(ticketId, mark){
+  async function wh24Mark(ticketId, mark, stream){
     const c = await client(); if (!c) throw new Error('Not connected just now.');
     const s = await session(); if (!s) throw new Error('Sign in first.');
+    /* Same shape of bug as the publish, and it would have waited until
+       somebody pressed Collected at the counter to show itself. stream is set
+       explicitly for the same reason: a default cannot satisfy a conflict
+       target the row does not mention. */
     const row = { ticket_id: Number(ticketId),
+                  stream: stream == null ? ((mark && mark.stream) || '') : String(stream),
                   collected_on: mark.collected_on || null,
                   collected_by: mark.collected_by || null,
                   note: mark.note || null };
-    const { data, error } = await c.from(WH24M).upsert(row, { onConflict: 'ticket_id' }).select().single();
+    const { data, error } = await c.from(WH24M).upsert(row, { onConflict: 'ticket_id,stream' }).select().single();
     if (error) throw new Error(/row-level security|permission/i.test(error.message)
       ? 'This account cannot mark tickets collected.' : wh24Why(error.message));
     return data;
@@ -670,6 +683,9 @@
                   changed: info && info.changed != null ? info.changed : null,
                   checked_by: (info && info.by) || null };
     if (info && info.published) row.published_at = row.checked_at;
+    /* 'id' alone, and correctly so: 039 changed the keys on wh24_tickets and
+       wh24_marks, not on wh24_sync, which is still the one-row table keyed on
+       id. Checked rather than changed by reflex. */
     const { data, error } = await c.from(WH24S).upsert(row, { onConflict: 'id' }).select().maybeSingle();
     if (error) return null;                       /* never fail a sync over its own timestamp */
     return data || null;
