@@ -215,7 +215,13 @@
   .tk>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1.4fr) minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:13px 16px}
   .tk>summary::-webkit-details-marker{display:none}
   .tk[open]>summary{border-bottom:1px solid var(--line)}
-  @media (max-width:760px){.tk>summary{grid-template-columns:auto minmax(0,1fr) auto}.tk .wo{display:none}.tk .chev{display:none}}
+  /* On a phone the middle column was 118px holding 448px of text, so the
+     reservation - the thing you are holding the phone to read at the counter -
+     was clipped off entirely. The name and detail take the whole width on
+     their own row instead, and the detail wraps rather than ellipsising. */
+  @media (max-width:760px){.tk>summary{grid-template-columns:auto minmax(0,1fr) auto}.tk .wo{display:none}.tk .chev{display:none}
+    .tk .who{grid-column:1/-1;grid-row:2;margin-top:2px}
+    .tk .who .l2{white-space:normal;overflow:visible;line-height:1.5}}
   .badge{font:700 11px 'Space Mono',monospace;letter-spacing:.03em;padding:4px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
   .badge.ready{color:var(--ok);background:rgba(52,201,139,.1)}
   .badge.collected{color:var(--muted)}
@@ -228,6 +234,11 @@
   .who .sid{font:700 15px 'Space Mono',monospace;color:var(--accentB)}
   .who .snm{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .who .l2{font:12px 'Space Mono',monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* The reservation, which is the number you say out loud at the counter. It
+     sits BEFORE the stage because this line ellipsises and the stage is
+     already on the badge - whatever goes last is what gets cut, and losing
+     the stage costs nothing while losing this costs the whole errand. */
+  .who .l2 .res{font-weight:700;color:var(--text2)}
   .wo{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .days{text-align:right;white-space:nowrap}
   .days b{font:800 22px 'Bricolage Grotesque',sans-serif}
@@ -612,7 +623,7 @@ function card(t){
     <summary>
       <span class="badge ${s}">${st.label}</span>
       <div class="who"><div class="l1"><span class="sid">${esc(t.site || '–')}</span><span class="snm">${esc(t.site_name || '')}</span></div>
-        <div class="l2">#${t.id} · ${esc(t.stage || '')}${t.team ? ' – ' + esc(t.team) : ''}</div></div>
+        <div class="l2">#${t.id}${t.reservation ? ' · <b class="res">' + esc(t.reservation) + '</b>' : ''} · ${esc(t.stage || '')}${t.team ? ' – ' + esc(t.team) : ''}</div></div>
       <div class="wo">${esc(t.wo || '')}</div>
       ${daysCell(t)}
       <span class="chev">›</span>
