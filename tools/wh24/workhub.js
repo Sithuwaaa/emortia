@@ -30,7 +30,21 @@
 (function () {
   'use strict';
   var EMORTIA = 'https://emortia.com';
-  var WORKFLOW = 'w8b6c7c686c';           /* Material Reservation PH1 */
+  /* EVERY WorkHub app this tool reads, and what a row from it is called.
+     One table, deliberately: a fourth source is one more line here and
+     nothing else in the file changes. The id is WorkHub's workflow id, which
+     is what the API selects on and what survives somebody renaming the app;
+     the phase is the short label that goes on the row and into the database.
+
+     PH2 and Bulk are NOT in here yet, and must not be added until their stage
+     wording has been read off WorkHub - see the note at the foot of this
+     file. Adding the id alone would widen the fetch and silently mislabel
+     every one of their tickets. */
+  var SOURCES = [
+    { id: 'w8b6c7c686c', phase: 'PH1', name: 'Material Reservation PH1' }
+    /* , { id: '…', phase: 'PH2',  name: 'Material Reservation PH2' } */
+    /* , { id: '…', phase: 'Bulk', name: 'Material Reservation PH1_Bulk Initiation' } */
+  ];
   var HOST = 'dialog.workhub24.com';
 
   if (location.host !== HOST) {
@@ -82,10 +96,10 @@
      five and a half hours. */
   var utc = function (v) { return v ? String(v).replace(/\.\d+$/, '').replace(/Z?$/, 'Z') : null; };
 
-  function listSince(since) {
+  function listSince(since, workflow) {
     var out = [], off = 0, PAGE = 100;
     function page() {
-      return gql(Q_LIST, { workflowId: WORKFLOW, queryParams: {
+      return gql(Q_LIST, { workflowId: workflow, queryParams: {
         fields: ['id', 'created_date', 'last_updated_date'], filters: NOT_DELETED,
         limit: PAGE, offset: off, orderBy: 'id DESC', showArchived: false } })
       .then(function (d) {
@@ -163,27 +177,40 @@
     var since = cfg.sinceIso || ((cfg.since || '2026-08-04') + 'T00:00:00Z');
     var known = cfg.known || {};          /* { ticketId: ['1772793.pdf', …] } */
     var tickets = [], pdfs = [], bufs = [], done = 0;
-    say('Listing tickets since ' + cfg.since + '…');
-    return listSince(since).then(function (list) {
-      say('Reading ' + list.length + ' tickets…');
-      return pool(list, 6, function (r) {
-        var id = Number(r.id);
-        return Promise.all([
-          gql(Q_CARD, { id: id, workflowId: WORKFLOW, nodeId: null, taskId: null }),
-          gql(Q_TASKS, { workflowId: WORKFLOW, cardId: id })
-        ]).then(function (got) {
-          var t = shape(got[0].getCard, got[1].tasks);
-          tickets.push(t);
-          var have = known[id] || [];
-          return pool(t.files.filter(function (f) { return have.indexOf(f.name) < 0; }), 2, function (f) {
-            return gql(Q_URL, { contentId: f.cid, fileName: f.name, id: id, workflowId: WORKFLOW })
-              .then(function (d) { return fetch(d.getContentViewUrl); })
-              .then(function (resp) { if (!resp.ok) throw new Error('GIN ' + f.name + ': ' + resp.status); return resp.arrayBuffer(); })
-              .then(function (buf) { pdfs.push({ id: id, file: f.name, buf: buf }); bufs.push(buf); });
+    /* One pass per source, one after another rather than at once, so the
+       panel can say which app it is on and a failure names the app it was
+       reading. With one source this is exactly what it did before. */
+    return SOURCES.reduce(function (chain, src) {
+      return chain.then(function () {
+        say('Listing ' + src.phase + ' tickets since ' + cfg.since + '…');
+        return listSince(since, src.id).then(function (list) {
+          say('Reading ' + list.length + ' ' + src.phase + ' tickets…');
+          return pool(list, 6, function (r) {
+            var id = Number(r.id);
+            return Promise.all([
+              gql(Q_CARD, { id: id, workflowId: src.id, nodeId: null, taskId: null }),
+              gql(Q_TASKS, { workflowId: src.id, cardId: id })
+            ]).then(function (got) {
+              var t = shape(got[0].getCard, got[1].tasks);
+              /* Stamped here, where which app it came from is a fact rather
+                 than an inference. Working it out later from the stage
+                 wording is exactly the guess this is meant to remove - and
+                 it is why these rows had to be hand-labelled twice. */
+              t.workflow = src.id;
+              t.phase = src.phase;
+              tickets.push(t);
+              var have = known[id] || [];
+              return pool(t.files.filter(function (f) { return have.indexOf(f.name) < 0; }), 2, function (f) {
+                return gql(Q_URL, { contentId: f.cid, fileName: f.name, id: id, workflowId: src.id })
+                  .then(function (d) { return fetch(d.getContentViewUrl); })
+                  .then(function (resp) { if (!resp.ok) throw new Error('GIN ' + f.name + ': ' + resp.status); return resp.arrayBuffer(); })
+                  .then(function (buf) { pdfs.push({ id: id, file: f.name, buf: buf }); bufs.push(buf); });
+              });
+            }).then(function () { done++; say('Read ' + done + ' tickets · ' + pdfs.length + ' new GINs'); });
           });
-        }).then(function () { done++; say('Read ' + done + ' of ' + list.length + ' tickets · ' + pdfs.length + ' new GINs'); });
+        });
       });
-    }).then(function () {
+    }, Promise.resolve()).then(function () {
       tickets.forEach(function (t) { t.files = t.files.map(function (f) { return f.name; }); });
       win.postMessage({ type: 'wh24:data', since: cfg.since, at: new Date().toISOString(),
                         tickets: tickets, pdfs: pdfs }, EMORTIA, bufs);

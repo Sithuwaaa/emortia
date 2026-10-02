@@ -172,5 +172,31 @@ is('pipeline', W.pipeline([A, B, C, D], {}).filter(p => p.n).map(p => [p.state, 
    [['issuing', 1], ['ready', 2], ['collected', 1]]);
 
 is('no check before it is issued', W.sheet([{ id: 1, stage: 'System Issuance Pending', lines: [{ code: '1', qty: 1 }] }], {}, '2026-10-01')[1][24], '');
+/* ---- every reservation on a ticket, not just the card's own field ----
+   Invented numbers throughout: the repo is public and a fixture is published
+   the moment it is committed. */
+is('no ticket', W.reservations(null), []);
+is('nothing to find', W.reservations({ id: 1 }), []);
+is('one on the card', W.reservations({ reservation: '9000001' }), ['9000001']);
+is('the card already holds two', W.reservations({ reservation: '9000001 / 9000002' }),
+   ['9000001', '9000002']);
+is('a comma-separated list', W.reservations({ reservation: '9000001, 9000002' }),
+   ['9000001', '9000002']);
+/* the case that made this worth writing: the note names one the card does not */
+is('a GIN carries one the card never mentioned',
+   W.reservations({ reservation: '9000001', gins: [{ res: '9000003' }] }),
+   ['9000001', '9000003']);
+is('the same one twice is still one',
+   W.reservations({ reservation: '9000001', gins: [{ res: '9000001' }] }), ['9000001']);
+is('lines count too',
+   W.reservations({ reservation: '', lines: [{ gin: { res: '9000004' } }] }), ['9000004']);
+is('a line without a GIN is not a reservation',
+   W.reservations({ reservation: '9000001', lines: [{ code: 'MAT-0000001' }] }), ['9000001']);
+is('order is first seen',
+   W.reservations({ reservation: '9000002', gins: [{ res: '9000001' }, { res: '9000003' }] }),
+   ['9000002', '9000001', '9000003']);
+is('blanks and stray separators are dropped',
+   W.reservations({ reservation: ' / 9000001 /  / ' }), ['9000001']);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

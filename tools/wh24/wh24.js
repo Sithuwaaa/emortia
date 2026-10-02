@@ -242,6 +242,12 @@
       site_name: s(raw.siteName) || null,
       wo: s(raw.wo) || null,
       reservation: s(raw.reservation) || null,
+      /* Which WorkHub app this came from, carried straight through from the
+         sync. Not derived from anything on the ticket - the only thing that
+         knows is the app it was read out of. Null when a caller builds a
+         record without saying, which is how the tests do it. */
+      phase: s(raw.phase) || null,
+      workflow: s(raw.workflow) || null,
       stage: st.stage || null,
       team: st.team || null,
       status: tl.some(isOpen) ? 'inprogress' : 'completed',
@@ -416,7 +422,35 @@
     return isNaN(d) ? '' : localDay(v) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
+  /* Every reservation a ticket knows about, distinct, in the order first met.
+     Three places can carry one and they do not always agree:
+
+       t.reservation   what WorkHub writes on the card. Already more than one
+                       when there is more than one - '1772793 / 1764338'.
+       gin.res         what each Goods Issue Note was issued against. A note
+                       can name a reservation the card never mentioned, which
+                       is exactly the case where showing only the card's field
+                       hides the number you need at the counter.
+
+     Split on both / and , because the card's own field uses the first and a
+     pasted list uses the second. */
+  function reservations(t) {
+    var out = [], seen = {};
+    var add = function (v) {
+      s(v).split(/[\/,]/).forEach(function (p) {
+        var k = p.trim();
+        if (k && !seen[k]) { seen[k] = 1; out.push(k); }
+      });
+    };
+    if (!t) return out;
+    add(t.reservation);
+    (t.gins || []).forEach(function (g) { if (g) add(g.res); });
+    (t.lines || []).forEach(function (l) { if (l && l.gin) add(l.gin.res); });
+    return out;
+  }
+
   return { splitTask: splitTask, current: current, doneTimes: doneTimes, num: num, ginDate: ginDate,
+           reservations: reservations,
            readGin: readGin, match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,

@@ -248,9 +248,15 @@
   .tk[open] .chev{transform:rotate(90deg)}
 
   .tkb{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
-  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 18px;font-size:13.5px}
-  .facts div{display:flex;flex-direction:column;min-width:0}
-  .facts i{font:normal 700 10px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  /* Label and value on one line - "TICKET – 25490" - rather than the label
+     stacked above it. Stacked, two facts side by side read as four separate
+     things and you have to look twice to see which number belongs to which
+     word. The dash is on the label in CSS so the value stays a text node of
+     its own and selects cleanly. */
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:7px 24px;font-size:13.5px}
+  .facts div{display:flex;flex-direction:row;align-items:baseline;gap:7px;min-width:0;flex-wrap:wrap}
+  .facts i{font:normal 700 10px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);flex:none}
+  .facts i::after{content:' –'}
   .facts span{overflow-wrap:anywhere}
 
   /* collecting it: the one thing anybody does on this page */
@@ -634,7 +640,7 @@ function card(t){
 function fill(el, t){
   el.querySelector('.tkb').innerHTML = `
     <div class="facts">
-      <div><i>Ticket</i><span class="mono">#${t.id}</span></div>
+      <div><i>Ticket</i><span class="mono">${t.id}</span></div>
       <div><i>Reservation</i><span class="mono">${esc(t.reservation || '–')}</span></div>
       <div><i>Indent / WO</i><span>${esc(t.wo || '–')}</span></div>
       <div><i>Ready to collect since</i><span>${esc(niceT(t.done_at))}</span></div>
@@ -807,8 +813,13 @@ async function readPdf(buf){
 
 /* What a ticket would be written as, without the stamp of when, so two syncs
    of an unchanged ticket compare equal and are not written again. */
+/* phase and workflow are in here on purpose: a row that WorkHub has not
+   otherwise changed still counts as changed if its label is missing or wrong,
+   which is what lets a sync fill in rows that were written before the sync
+   knew how to label them - without anybody running an UPDATE by hand. */
 const sig = t => JSON.stringify([t.site, t.site_name, t.wo, t.reservation, t.stage, t.team, t.status,
-  t.wh_created_at, t.wh_updated_at, t.done_at, t.wh_collected_at, t.timeline, t.lines, t.gins]);
+  t.wh_created_at, t.wh_updated_at, t.done_at, t.wh_collected_at, t.timeline, t.lines, t.gins,
+  t.phase, t.workflow]);
 
 let PENDING = null;
 function dlg(msg, opts){
