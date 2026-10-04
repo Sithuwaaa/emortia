@@ -157,6 +157,8 @@
   .rdy{display:grid;grid-template-columns:auto minmax(0,1fr) 120px auto;gap:4px 12px;align-items:center;
     padding:9px 0;border-top:1px solid var(--line)}
   .rdy:first-of-type{border-top:0}
+  /* no Collected button for a viewer, so no fourth column and no gap before it */
+  html:not(.is-owner) .rdy{grid-template-columns:auto minmax(0,1fr) 120px}
   .rdy .sid{font:700 14px 'Space Mono',monospace;color:var(--accentB);cursor:pointer}
   .rdy .sid:hover{text-decoration:underline}
   .rdy .meta{font-size:12.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -186,6 +188,8 @@
   .sync .when{margin-right:auto;color:var(--muted)}
   .sync .when b{color:var(--text);font-weight:600}
   .sync label{font:700 10.5px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .sync .ro{font:700 10.5px 'Space Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+    border:1px solid var(--line3);border-radius:999px;padding:5px 11px}
   .sync input[type=date]{background:var(--card);border:1px solid var(--line3);border-radius:8px;padding:6px 8px;font:12.5px 'Space Mono',monospace;color-scheme:dark}
   html[data-theme="light"] .sync input[type=date]{color-scheme:light}
   .bm{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--ink);text-decoration:none;font-weight:700;
@@ -279,6 +283,8 @@
   .got input[type=date]{font:12.5px 'Space Mono',monospace;color-scheme:dark}
   html[data-theme="light"] .got input[type=date]{color-scheme:light}
   .got input.nm{width:150px} .got input.nt{flex:1;min-width:160px}
+  .got .val{font:13px 'Space Mono',monospace;padding:7px 0}
+  .got .val.dim{color:var(--muted)}
   .got .src{font-size:12px;color:var(--muted);flex-basis:100%}
 
   .steps{display:flex;flex-wrap:wrap;gap:6px}
@@ -359,6 +365,7 @@
     </span>
     <a class="bm own-only" id="bm" href="#" hidden title="Drag me to the bookmarks bar">⇅ WH24 Sync</a>
     <button class="btn own-only" id="howBtn" hidden>How to sync</button>
+    <span class="ro view-only" hidden>View only – Sithara syncs this and sets the collected dates.</span>
     <div class="how" id="how" hidden>
       Syncing reads WorkHub24 as you, from your own browser. Nothing stores your WorkHub password.
       <ol>
@@ -404,9 +411,13 @@ const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const WORKHUB = 'https://dialog.workhub24.com';
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/';
-/* Syncing is the owner's, and so is the switch that draws its controls.
-   Anybody with the tool can mark a ticket collected. The database agrees on
-   both - this only decides what is drawn. */
+/* Syncing is the owner's, and so is every edit on this page - the collected
+   date, the name, the note. Tooway reads it and nothing more: this is a record
+   of what the warehouse holds, and a record two people can both write is a
+   record neither of them can rely on.
+
+   Migration 040 is what enforces it. This only decides what is drawn, and it
+   draws no control a viewer would be refused for using. */
 const OWNER = !!(window.Access && Access.isOwner && Access.isOwner());
 const ME = (window.Access && Access.currentUser && Access.currentUser()) || '';
 
@@ -534,7 +545,7 @@ function dash(){
       <span class="sid" data-open="${t.id}" title="Show the materials">${esc(t.site || '#' + t.id)}</span>
       <span class="meta"><b>${esc(t.site_name || '')}</b> · #${t.id}${t.wo ? ' · ' + esc(t.wo) : ''} · ${items} item${items === 1 ? '' : 's'}${sns ? ' · ' + sns + ' serial' + (sns === 1 ? '' : 's') : ''}</span>
       <span class="age ${heat}"><span class="tr"><i style="width:${Math.max(4, d / top * 100)}%"></i></span><b>${d}</b>${dayWord(d)}</span>
-      <button class="mini go" data-id="${t.id}" title="Mark #${t.id} collected today">Collected today</button>
+      ${OWNER ? `<button class="mini go" data-id="${t.id}" title="Mark #${t.id} collected today">Collected today</button>` : ''}
     </div>`;
   }).join('') : `<div class="none">${LOADED ? 'Nothing is waiting at the warehouse right now.' : 'Loading…'}</div>`;
 
@@ -557,6 +568,7 @@ $('rdy').addEventListener('click', async e => {
   const open = e.target.closest('[data-open]');
   if (open){ FILTER = 'ready'; $('find').value = ''; render(); jump(open.dataset.open); return; }
   const go = e.target.closest('.go'); if (!go) return;
+  if (!OWNER){ toast('Only Sithara can set a collected date.'); return; }
   const id = Number(go.dataset.id);
   go.disabled = true;
   try {
@@ -651,7 +663,17 @@ function gotBox(t){
   const on = mk.collected_on || wh || '';
   const src = mk.collected_on
     ? `Set by ${esc(mk.collected_by || 'someone')}${mk.updated_at ? ' · ' + esc(ago(mk.updated_at)) : ''}${wh && wh !== mk.collected_on ? ' · WorkHub says ' + nice(wh) : ''}`
-    : wh ? `From WorkHub24 – the Done task was closed on ${nice(wh)}. Change it if that is not the day.` : 'Not collected yet. The count stops once a date is here.';
+    : wh ? `From WorkHub24 – the Done task was closed on ${nice(wh)}.${OWNER ? ' Change it if that is not the day.' : ''}`
+    : `Not collected yet. The count stops once a date is here.`;
+  /* A viewer sees the same facts and no controls. Hiding the date would be
+     hiding information rather than permission, which is not what was asked. */
+  if (!OWNER) return `<div class="got">
+    <span class="lbl">Collected on</span>
+    <span class="val">${on ? nice(on) : 'not yet'}</span>
+    ${mk.collected_by ? `<span class="val dim">by ${esc(mk.collected_by)}</span>` : ''}
+    ${mk.note ? `<span class="val dim">${esc(mk.note)}</span>` : ''}
+    <span class="src">${src}</span>
+  </div>`;
   return `<div class="got" data-id="${t.id}">
     <span class="lbl">Collected on</span>
     <input type="date" class="dt" value="${esc(on)}" max="${today()}">
@@ -722,6 +744,7 @@ $('list').addEventListener('click', async e => {
   const sn = e.target.closest('.sns span');
   if (sn){ try { await navigator.clipboard.writeText(sn.dataset.sn); toast('Copied ' + sn.dataset.sn); } catch(x){} return; }
   const box = e.target.closest('.got'); if (!box) return;
+  if (!OWNER){ toast('Only Sithara can set a collected date.'); return; }
   const id = Number(box.dataset.id);
   if (e.target.classList.contains('go-today')) box.querySelector('.dt').value = today();
   if (!e.target.matches('.go-today,.save,.clear')) return;
@@ -953,6 +976,7 @@ window.addEventListener('message', e => {
 (async () => {
   document.documentElement.classList.toggle('is-owner', OWNER);
   document.querySelectorAll('.own-only').forEach(el => el.hidden = !OWNER);
+  document.querySelectorAll('.view-only').forEach(el => el.hidden = OWNER);
   $('how').hidden = true;
   render();
   if (OWNER) buildBookmark();
