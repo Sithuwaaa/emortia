@@ -27,48 +27,9 @@ is('sap date', W.ginDate('30.09.2026'), '2026-09-30');
 is('advantis date is month first', W.ginDate('08/07/2026'), '2026-08-07');
 is('junk date', W.ginDate('Cost Centre :'), '');
 
-/* ---- reading a GIN ----
-   A page laid out the way the PDFs are: headings on one row, then the lines.
-   x positions are the real ones, rounded. */
-const H = [[30,'#'],[50,'ITEM CODE'],[118,'DESCRIPTION'],[230,'UOM'],[270,'QTY'],[320,'S/N'],[430,'LOCATION']];
-const head = (y, extra) => (extra || []).concat(
-  [[40, 700, 'GI Number :4932180605'], [40, 690, 'Document Date :30.09.2026'],
-   [40, 680, 'Reservation number :1772833'], [40, 670, 'WBS :'], [40, 660, 'Cost Centre :'],
-   [40, 650, 'Issue from S Loc :7390'], [40, 640, 'Movement Type : 281 Q']]
-  .map(([x, yy, s]) => ({ x, y: yy, s })))
-  .concat(H.map(([x, s]) => ({ x, y, s })));
-const row = (y, cells) => cells.map(([x, s]) => ({ x, y, s }));
-
-const page1 = head(600).concat(
-  row(580, [[32,'1'],[50,'1000026308'],[118,'RADIO 4490'],[232,'EA'],[272,'1.00'],[320,'DH80390178'],[430,'MR5049_Toow']]),
-  row(572, [[118,'44B1 44B3'],[430,'ay_Solu_25293']]),
-  row(560, [[32,'2'],[50,'1000024598'],[118,'HUA_PWR_CABLE'],[232,'M 3,500.00'],[430,'MR5049']]),
-  row(540, [[32,'3'],[50,'1000018112'],[118,'SFP+'],[232,'EA'],[272,'3.00'],[320,'2000355441201']]),
-  row(532, [[320,'2000355441670']]),
-  row(100, [[40,'------------------------------------------------']]),
-  row(90,  [[40,'Issued by'],[300,'Received by']]),
-  row(80,  [[40,'Page No 1 / 2']])
-);
-/* page two repeats the header and the last row's serials carry on */
-const page2 = head(600).concat(
-  row(580, [[320,'2000355443279']]),
-  row(100, [[40,'------------------------------------------------']]),
-  row(80,  [[40,'Page No 2 / 2']])
-);
-const gin = W.readGin([page1, page2]);
-is('gin number', gin.gi, '4932180605');
-is('gin date', gin.date, '2026-09-30');
-is('reservation', gin.res, '1772833');
-is('empty WBS is not the next heading', gin.wbs, '');
-is('s.loc', gin.sloc, '7390');
-is('movement', gin.mv, '281 Q');
-is('three lines, no footer row', gin.items.length, 3);
-is('wrapped description joins', gin.items[0].desc, 'RADIO 4490 44B1 44B3');
-is('one serial', gin.items[0].sn, ['DH80390178']);
-is('unit and qty in one piece', [gin.items[1].uom, gin.items[1].qty], ['M', 3500]);
-is('serials run onto page two', gin.items[2].sn, ['2000355441201', '2000355441670', '2000355443279']);
-is('serial count matches qty', gin.items[2].sn.length, gin.items[2].qty);
-is('footer never becomes a serial', gin.items.every(i => i.sn.every(x => !/Page/.test(x))), true);
+/* Reading a GIN moved out of here with the function: both SAP documents are
+   read by tools/_lib/sapdocs.js now, and every assertion that was here is in
+   tools/_lib/sapdocs.test.js, against SAPDocs.readAny. */
 
 /* ---- pairing what was asked with what was issued ---- */
 const lines = W.match(

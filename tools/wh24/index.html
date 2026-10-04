@@ -39,6 +39,7 @@
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
 <script>Access.protect({ feature: 'tool:wh24' });</script>
+<script src="../_lib/sapdocs.js"></script>
 <script src="wh24.js?v=1"></script>
 <style>
   :root{
@@ -188,8 +189,6 @@
   .sync .when{margin-right:auto;color:var(--muted)}
   .sync .when b{color:var(--text);font-weight:600}
   .sync label{font:700 10.5px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-  .sync .ro{font:700 10.5px 'Space Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
-    border:1px solid var(--line3);border-radius:999px;padding:5px 11px}
   .sync input[type=date]{background:var(--card);border:1px solid var(--line3);border-radius:8px;padding:6px 8px;font:12.5px 'Space Mono',monospace;color-scheme:dark}
   html[data-theme="light"] .sync input[type=date]{color-scheme:light}
   .bm{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--ink);text-decoration:none;font-weight:700;
@@ -208,6 +207,22 @@
   .seg button.on{background:var(--accent);color:var(--ink);font-weight:700}
   .seg button b{font:700 11px 'Space Mono',monospace;margin-left:5px;opacity:.75}
 
+  /* ---- picking rows for a sheet ----
+
+     The bar is fixed rather than in the flow because the count has to be
+     readable while scrolling a hundred rows - that is the only reason it
+     exists. body gets the padding back so the last card is never under it. */
+  .selbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;align-items:center;gap:12px;
+    padding:11px max(14px,env(safe-area-inset-left)) calc(11px + env(safe-area-inset-bottom));
+    background:var(--card);border-top:1px solid var(--line3);box-shadow:0 -6px 22px rgba(0,0,0,.26);flex-wrap:wrap}
+  .selbar .n{font-weight:700;margin-right:auto}
+  .selbar .n i{font-style:normal;font-weight:500;color:var(--warn)}
+  body.picking{padding-bottom:84px}
+  .pickbox{display:flex;align-items:center;justify-content:center;cursor:pointer;padding:2px}
+  .pickbox input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;margin:0}
+  .tk.picked{border-left-color:var(--accent)}
+  .tk.picked>summary{background:var(--card2)}
+
   /* ---- a ticket ---- */
   #list{display:flex;flex-direction:column;gap:10px}
   #list.fresh>*{animation:rise .36s ease both}
@@ -216,14 +231,19 @@
   .tk{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line3);border-radius:14px;overflow:hidden}
   .tk.s-ready{border-left-color:var(--ok)} .tk.s-issuing{border-left-color:var(--warn)}
   .tk.s-reserving{border-left-color:var(--info)} .tk.s-shortage,.tk.s-rejected{border-left-color:var(--bad)}
-  .tk>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1.4fr) minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:13px 16px}
+  /* Six children, six columns: the checkbox, the badges (which are one child,
+     so a row with a source badge does not push the chevron onto a second
+     line), the site, the work order, the days and the chevron. */
+  .tk>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto minmax(0,1.4fr) minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:13px 16px}
+  .tk>summary .tags{display:flex;align-items:center;gap:7px;min-width:0}
   .tk>summary::-webkit-details-marker{display:none}
   .tk[open]>summary{border-bottom:1px solid var(--line)}
   /* On a phone the middle column was 118px holding 448px of text, so the
      reservation - the thing you are holding the phone to read at the counter -
      was clipped off entirely. The name and detail take the whole width on
      their own row instead, and the detail wraps rather than ellipsising. */
-  @media (max-width:760px){.tk>summary{grid-template-columns:auto minmax(0,1fr) auto}.tk .wo{display:none}.tk .chev{display:none}
+  @media (max-width:760px){.tk>summary{grid-template-columns:auto auto minmax(0,1fr)}.tk .wo{display:none}.tk .chev{display:none}
+    .tk>summary .tags{flex-wrap:wrap}
     .tk .who{grid-column:1/-1;grid-row:2;margin-top:2px}
     .tk .who .l2{white-space:normal;overflow:visible;line-height:1.5}}
   .badge{font:700 11px 'Space Mono',monospace;letter-spacing:.03em;padding:4px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
@@ -365,7 +385,6 @@
     </span>
     <a class="bm own-only" id="bm" href="#" hidden title="Drag me to the bookmarks bar">⇅ WH24 Sync</a>
     <button class="btn own-only" id="howBtn" hidden>How to sync</button>
-    <span class="ro view-only" hidden>View only – Sithara syncs this and sets the collected dates.</span>
     <div class="how" id="how" hidden>
       Syncing reads WorkHub24 as you, from your own browser. Nothing stores your WorkHub password.
       <ol>
@@ -385,10 +404,20 @@
          between, so it is not a control that does nothing. -->
     <div class="seg src" id="srcseg" role="tablist" hidden></div>
     <button class="btn" id="exportBtn">Export Excel</button>
+    <button class="btn" id="allBtn" title="Tick every row the current filter shows">Select shown</button>
   </div>
 
   <div id="list"><div class="empty">Loading tickets…</div></div>
 </main>
+
+<!-- Only when something is picked. An empty bar across the bottom of every
+     screen would be a permanent reminder of a feature nobody is using. -->
+<div class="selbar" id="selbar" hidden>
+  <span class="n" id="selN"></span>
+  <button class="btn" id="selShow">Show only these</button>
+  <button class="btn pri" id="selExport">Export selected</button>
+  <button class="btn" id="selClear">Clear selection</button>
+</div>
 
 <div id="syncDlg" role="dialog" aria-modal="true" aria-labelledby="syncTitle">
   <div class="box">
@@ -686,11 +715,80 @@ function gotBox(t){
   </div>`;
 }
 
+/* ================================================= picking rows for a sheet
+
+   IDS, not rows. The list is thrown away and rebuilt on every filter, every
+   source change and every keystroke in the search box, so a selection held on
+   the DOM would be cleared by typing. A Set that render() only ever READS is
+   what makes "two under Can collect, three more under Collected, export all
+   five" work, which is the whole reason for this.
+
+   Nothing prunes it except a reload that no longer has the ticket. */
+const SEL = new Set();
+/* what the last render actually drew, so "4 not shown" can be counted */
+let SHOWN = [];
+
+const picked = () => TICKETS.filter(t => SEL.has(t.id)).sort(order);
+
+/* "7 selected · 4 not shown by this filter". The second half is the warning
+   the first half needs: without it you export five rows believing you picked
+   two. Returned as a string so a test can read it. */
+function selText(){
+  const n = SEL.size;
+  if (!n) return '';
+  const here = SHOWN.filter(t => SEL.has(t.id)).length;
+  const away = n - here;
+  return n + ' selected' + (away ? ` · <i>${away} not shown by this filter</i>` : '');
+}
+function paintSel(){
+  const n = SEL.size;
+  $('selbar').hidden = !n;
+  document.body.classList.toggle('picking', !!n);
+  if (n) $('selN').innerHTML = selText();
+  $('selShow').hidden = FILTER === 'picked';
+}
+
+/* ---- the workbook ----
+
+   One sheet per site. That is what the job is: somebody is handed a sheet per
+   site for a collection run, and a sheet that mixes two sites has to be read
+   twice to be used once. Source and collected state are both already columns
+   on every row, so splitting by either of those would hide nothing and gain
+   nothing - and a selection spanning sites is the case this exists for.
+
+   The columns are W.HEADERS, the same ones Export Excel writes, so a sheet
+   from here and a sheet from there line up.
+
+   Returned as data - [{ sheet, aoa }] in sheet order - and handed to XLSX by
+   the caller, so what would be written can be checked without a spreadsheet
+   library in the way. */
+function sheetName(used, site){
+  /* Excel: 31 characters, and none of : \ / ? * [ ] */
+  var base = String(site == null || site === '' ? 'No site' : site)
+    .replace(/[:\\\/?*\[\]]/g, '-').slice(0, 31) || 'No site';
+  var name = base, i = 2;
+  while (used[name]) { var tail = ' (' + i + ')'; name = base.slice(0, 31 - tail.length) + tail; i++; }
+  used[name] = 1;
+  return name;
+}
+function workbook(list){
+  const by = new Map();
+  (list || []).forEach(t => {
+    const k = t.site || '';
+    if (!by.has(k)) by.set(k, []);
+    by.get(k).push(t);
+  });
+  const keys = [...by.keys()].sort((a, b) => String(a).localeCompare(String(b)));
+  const used = {};
+  return keys.map(k => ({ site: k, sheet: sheetName(used, k), aoa: W.sheet(by.get(k), MARKS, today()) }));
+}
+
 function card(t){
   const s = stOf(t), st = STATES[s] || STATES.other;
-  return `<details class="tk s-${s}" data-id="${t.id}">
+  return `<details class="tk s-${s}${SEL.has(t.id) ? ' picked' : ''}" data-id="${t.id}">
     <summary>
-      <span class="badge ${s}">${st.label}</span>${t.phase ? `<span class="pbadge p-${esc(t.phase)}">${esc(t.phase)}</span>` : ''}
+      <label class="pickbox" title="Pick this ticket for a sheet"><input type="checkbox" data-pick="${t.id}"${SEL.has(t.id) ? ' checked' : ''}></label>
+      <span class="tags"><span class="badge ${s}">${st.label}</span>${t.phase ? `<span class="pbadge p-${esc(t.phase)}">${esc(t.phase)}</span>` : ''}</span>
       <div class="who"><div class="l1"><span class="sid">${esc(t.site || '–')}</span><span class="snm">${esc(t.site_name || '')}</span></div>
         <div class="l2">#${t.id}${t.reservation ? ' · <b class="res">' + esc(t.reservation) + '</b>' : ''} · ${esc(t.stage || '')}${t.team ? ' – ' + esc(t.team) : ''}</div></div>
       <div class="wo">${esc(t.wo || '')}</div>
@@ -718,7 +816,15 @@ function fill(el, t){
 function render(fresh){
   board(); dash(); segs();
   const q = $('find').value;
-  const list = TICKETS.filter(t => inSrc(t) && inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
+  /* "Show only these" is not a state filter and not a source filter - it is
+     the selection itself, so it ignores both rather than intersecting them.
+     A picked row from another source must not stay hidden on the one view
+     whose job is to show every picked row. */
+  const list = FILTER === 'picked'
+    ? TICKETS.filter(t => SEL.has(t.id) && W.matches(t, q)).sort(order)
+    : TICKETS.filter(t => inSrc(t) && inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
+  SHOWN = list;
+  paintSel();
   const el = $('list');
   el.classList.toggle('fresh', !!fresh);
   if (!LOADED){ el.innerHTML = '<div class="empty">Loading tickets…</div>'; return; }
@@ -727,7 +833,7 @@ function render(fresh){
     return;
   }
   if (!list.length){
-    el.innerHTML = `<div class="empty">${q ? 'Nothing matches “' + esc(q) + '”.' : FILTER === 'ready' ? 'Nothing is waiting at the warehouse. 🎉' : 'Nothing here.'}</div>`;
+    el.innerHTML = `<div class="empty">${q ? 'Nothing matches “' + esc(q) + '”.' : FILTER === 'picked' ? 'Nothing is selected.' : FILTER === 'ready' ? 'Nothing is waiting at the warehouse. 🎉' : 'Nothing here.'}</div>`;
     return;
   }
   const open = new Set([...el.querySelectorAll('details[open]')].map(d => d.dataset.id));
@@ -741,6 +847,20 @@ function render(fresh){
 
 /* ---- collecting ---- */
 $('list').addEventListener('click', async e => {
+  /* The checkbox first, and it must not open the card: the click has to be
+     stopped before it reaches <summary>, whose activation behaviour is the
+     toggle. The row is repainted in place rather than by re-rendering, so
+     ticking twenty boxes does not rebuild the list twenty times. */
+  const pick = e.target.closest('[data-pick]');
+  if (pick){
+    e.stopPropagation();
+    const id = Number(pick.dataset.pick);
+    if (pick.checked) SEL.add(id); else SEL.delete(id);
+    const card = pick.closest('.tk');
+    if (card) card.classList.toggle('picked', pick.checked);
+    paintSel();
+    return;
+  }
   const sn = e.target.closest('.sns span');
   if (sn){ try { await navigator.clipboard.writeText(sn.dataset.sn); toast('Copied ' + sn.dataset.sn); } catch(x){} return; }
   const box = e.target.closest('.got'); if (!box) return;
@@ -762,18 +882,56 @@ $('list').addEventListener('click', async e => {
 });
 $('find').addEventListener('input', () => render());
 
-/* ---- Excel, the same columns as the sheet it replaces ---- */
+/* ---- Excel, the same columns as the sheet it replaces ----
+   One builder for both buttons: a sheet exported from the filter and a sheet
+   exported from a selection have to be comparable, so neither gets its own
+   idea of what the columns are. */
+const COLW = W.HEADERS.map((h, i) => ({ wch: [8,22,16,18,22,9,22,12,40,8,6,12,11,10,12,12,10,12,12,11,8,40,8,24,12][i] || 12 }));
+function asSheet(aoa){
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = COLW;
+  ws['!autofilter'] = { ref: 'A1:Y' + aoa.length };
+  return ws;
+}
 $('exportBtn').onclick = () => {
   if (!window.XLSX){ toast('Excel is still loading – try again in a second.'); return; }
   const q = $('find').value;
-  const list = TICKETS.filter(t => inSrc(t) && inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
-  const aoa = W.sheet(list, MARKS, today());
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = W.HEADERS.map((h, i) => ({ wch: [8,22,16,18,22,9,22,12,40,8,6,12,11,10,12,12,10,12,12,11,8,40,8,24,12][i] || 12 }));
-  ws['!autofilter'] = { ref: 'A1:Y' + aoa.length };
+  const list = FILTER === 'picked'
+    ? picked().filter(t => W.matches(t, q))
+    : TICKETS.filter(t => inSrc(t) && inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
+  const ws = asSheet(W.sheet(list, MARKS, today()));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'To be Received');
   XLSX.writeFile(wb, 'WH24-materials-' + today() + '.xlsx');
+};
+
+/* ---- the selection bar ----
+   Exporting reads and writes nothing, so a viewer gets all of this. */
+$('selExport').onclick = () => {
+  if (!window.XLSX){ toast('Excel is still loading – try again in a second.'); return; }
+  const list = picked();
+  if (!list.length){ toast('Nothing is selected.'); return; }
+  const book = workbook(list);
+  const wb = XLSX.utils.book_new();
+  book.forEach(s => XLSX.utils.book_append_sheet(wb, asSheet(s.aoa), s.sheet));
+  XLSX.writeFile(wb, 'WH24-selected-' + today() + '.xlsx');
+  toast(list.length + ' ticket' + (list.length === 1 ? '' : 's') + ' in ' +
+        book.length + ' sheet' + (book.length === 1 ? '' : 's'));
+};
+$('selClear').onclick = () => {
+  SEL.clear();
+  if (FILTER === 'picked') FILTER = 'ready';
+  render();
+};
+$('selShow').onclick = () => { FILTER = 'picked'; $('find').value = ''; render(true); jump(); };
+/* Every row the current filter shows, which is the quick way into a selection
+   that then survives changing the filter. Adds, never replaces. */
+$('allBtn').onclick = () => {
+  if (!SHOWN.length){ toast('Nothing to select.'); return; }
+  const before = SEL.size;
+  SHOWN.forEach(t => SEL.add(t.id));
+  render();
+  toast((SEL.size - before) + ' added · ' + SEL.size + ' selected');
 };
 
 /* ---- loading ---- */
@@ -781,6 +939,11 @@ async function loadAll(){
   const r = await window.DB.wh24Load();
   if (r.error && r.error !== 'offline'){ $('list').innerHTML = `<div class="empty">${esc(r.error)}</div>`; $('pill').textContent = 'error'; return; }
   TICKETS = r.tickets; MARKS = r.marks; LOADED = true;
+  /* A sync can retire a ticket. Keeping its id selected would put an empty
+     sheet in the workbook, so the selection drops what is no longer there -
+     and only that. Filtering never touches it. */
+  const here = new Set(TICKETS.map(t => t.id));
+  [...SEL].forEach(id => { if (!here.has(id)) SEL.delete(id); });
   await refreshChecked();
   render(true);
 }
@@ -872,7 +1035,11 @@ async function readPdf(buf){
     const tc = await (await doc.getPage(p)).getTextContent();
     pages.push(tc.items.map(i => ({ x: i.transform[4], y: i.transform[5], s: i.str })));
   }
-  return W.readGin(pages);
+  /* One reader for both tools, in ../_lib/sapdocs.js. It decides from the page
+     itself whether this is a Goods Issue Note or an Activity Report – the ACE
+     side of a PH2 job issues on the second, which the old reader here could
+     not see at all and silently read as a GIN with no lines. */
+  return SAPDocs.readAny(pages);
 }
 
 /* What a ticket would be written as, without the stamp of when, so two syncs
@@ -902,13 +1069,26 @@ async function receive(data){
   if (!OWNER){ dlg('Only Sithara can sync from WorkHub24.'); return; }
   const raws = Array.isArray(data.tickets) ? data.tickets : [], pdfs = Array.isArray(data.pdfs) ? data.pdfs : [];
   dlg(`Received ${raws.length} tickets and ${pdfs.length} new GIN${pdfs.length === 1 ? '' : 's'}. Reading the GINs…`, { pct: 0 });
-  const parsed = {}, failed = [];
+  const parsed = {}, failed = [], moves = [];
   for (let i = 0; i < pdfs.length; i++){
     const p = pdfs[i];
-    try { const g = await readPdf(p.buf); g.file = p.file; (parsed[p.id] = parsed[p.id] || []).push(g); }
+    try {
+      const r = await readPdf(p.buf);
+      if (r.kind === 'gin' && r.gin){ r.gin.file = p.file; (parsed[p.id] = parsed[p.id] || []).push(r.gin); }
+      /* An Activity Report is the other document the warehouse prints – the ACE
+         half of a PH2 job. It is read correctly and then set aside, because
+         nothing on this page consumes one yet. Counted, not dropped quietly. */
+      else moves.push(p.file);
+    }
     catch(e){ failed.push(p.file); }
     dlg(`Reading GIN ${i + 1} of ${pdfs.length}…`, { pct: (i + 1) / pdfs.length });
   }
+  /* Everything the PDF pass could not turn into a GIN, in one sentence, so
+     all three ways out of this function say it the same way. */
+  const pdfNote = () =>
+    (failed.length ? ` ${failed.length} GIN${failed.length === 1 ? '' : 's'} could not be read and ${failed.length === 1 ? 'was' : 'were'} left out: ${esc(failed.join(', '))}.` : '') +
+    (moves.length ? ` ${moves.length} Activity Report${moves.length === 1 ? '' : 's'} (equipment movement, not a GIN) ${moves.length === 1 ? 'was' : 'were'} read and set aside: ${esc(moves.join(', '))}.` : '');
+
   const byId = {}; TICKETS.forEach(t => byId[t.id] = t);
   const out = [], lines = [];
   raws.forEach(raw => {
@@ -932,20 +1112,20 @@ async function receive(data){
         `so nothing was compared — the ${TICKETS.length} ticket${TICKETS.length === 1 ? '' : 's'} ` +
         `already here ${TICKETS.length === 1 ? 'was' : 'were'} not checked.<br>` +
         `Move <b>Tickets since</b> back to cover the tickets you want and sync again.` +
-        (failed.length ? `<br>${failed.length} GIN(s) could not be read: ${esc(failed.join(', '))}.` : ''));
+        pdfNote());
     await refreshChecked();
     return;
   }
   if (!out.length){
     await window.DB.wh24NoteCheck({ tickets: raws.length, changed: 0, by: ME || null }).catch(() => {});
-    dlg(`All ${raws.length} tickets already match WorkHub24. Nothing to publish.` + (failed.length ? ` ${failed.length} GIN(s) could not be read: ${esc(failed.join(', '))}.` : ''));
+    dlg(`All ${raws.length} tickets already match WorkHub24. Nothing to publish.` + pdfNote());
     await refreshChecked();
     return;
   }
   PENDING = out;
   const ready = out.filter(r => W.state(r, MARKS[r.id]) === 'ready').length;
   dlg(`${out.length} of ${raws.length} tickets changed${ready ? ` – <b>${ready}</b> of them can be collected` : ''}.` +
-      (failed.length ? ` ${failed.length} GIN(s) could not be read and were left out: ${esc(failed.join(', '))}.` : ''),
+      pdfNote(),
       { changes: lines.join(''), go: true });
 }
 $('syncGo').onclick = async () => {
@@ -976,7 +1156,10 @@ window.addEventListener('message', e => {
 (async () => {
   document.documentElement.classList.toggle('is-owner', OWNER);
   document.querySelectorAll('.own-only').forEach(el => el.hidden = !OWNER);
-  document.querySelectorAll('.view-only').forEach(el => el.hidden = OWNER);
+  /* No "view only" badge. A viewer does not need telling they cannot do a
+     thing they are not being offered - the absence of the buttons says it -
+     and 040 is what enforces it either way. The freshness line beside this
+     stays: a viewer is the one who cannot tell how old these numbers are. */
   $('how').hidden = true;
   render();
   if (OWNER) buildBookmark();

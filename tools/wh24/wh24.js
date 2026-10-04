@@ -88,101 +88,12 @@
   }
   function pad(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
 
-  /* ------------------------------------------------------------ reading a GIN
+  /* Reading a GIN used to live here, as a second and weaker copy of the GIN
+     Extractor's parser. Both readers are in ../_lib/sapdocs.js now - the tool
+     calls SAPDocs.readAny, which also recognises the Activity Report that a
+     PH2 ACE stream issues on instead of a GIN. */
 
-     pdf.js hands back pieces of text with an x and a y and nothing else. The
-     page is a table under a header row - #, ITEM CODE, DESCRIPTION, UOM, QTY,
-     S/N, LOCATION - so each piece goes in the column whose heading it sits
-     under, and a new row starts where a bare number sits in the # column.
 
-     Three things the obvious reading gets wrong, every one of them seen:
-
-       - A long serial list runs off the bottom of the page and carries on
-         over the next one under a repeated header. The row in progress is
-         kept across pages, or the serials past page one vanish.
-       - The footer - a rule of dashes, Issued by, Page No 1 / 2 - sits below
-         the table and is not part of the last row.
-       - When the quantity is wide ('3,500.00') pdf.js gives back the unit
-         and the quantity as one piece, 'M 3,500.00', under the UOM heading.
-
-     pages: [[{ x, y, s }]] - one array of text pieces per page. */
-  var HEAD = [['no', null], ['code', 'ITEM'], ['desc', 'DESCRIPTION'], ['uom', 'UOM'],
-              ['qty', 'QTY'], ['sn', 'S/N'], ['loc', 'LOCATION']];
-
-  function readGin(pages) {
-    var items = [], text = [], cur = null;
-    (pages || []).forEach(function (pieces) {
-      var lines = {};
-      pieces.forEach(function (p) {
-        if (!s(p.s)) return;
-        var y = Math.round(p.y);
-        (lines[y] = lines[y] || []).push({ x: p.x, s: s(p.s) });
-      });
-      var ys = Object.keys(lines).map(Number).sort(function (a, b) { return b - a; });
-      ys.forEach(function (y) {
-        lines[y].sort(function (a, b) { return a.x - b.x; });
-        text.push(lines[y].map(function (p) { return p.s; }).join(' '));
-      });
-
-      var hy = null;
-      for (var i = 0; i < ys.length; i++)
-        if (lines[ys[i]].some(function (p) { return /ITEM CODE/.test(p.s); })) { hy = ys[i]; break; }
-      if (hy === null) return;
-      var cols = HEAD.map(function (h) {
-        if (!h[1]) return [h[0], 0];
-        var hit = lines[hy].filter(function (p) { return p.s.indexOf(h[1]) >= 0; })[0];
-        return [h[0], hit ? hit.x : null];
-      });
-      var endY = -Infinity;
-      for (var j = 0; j < ys.length; j++) {
-        if (ys[j] < hy && lines[ys[j]].some(function (p) {
-          return /^-{10,}|Page No|Issued by|Received by/.test(p.s); })) { endY = ys[j]; break; }
-      }
-      ys.filter(function (y) { return y < hy && y > endY; }).forEach(function (y) {
-        lines[y].forEach(function (p) {
-          var col = 'no';
-          cols.forEach(function (c) { if (c[1] !== null && p.x >= c[1] - 4) col = c[0]; });
-          if (col === 'no' && /^\d+$/.test(p.s)) {
-            cur = { code: '', desc: '', uom: '', qty: '', sn: [], loc: '' };
-            items.push(cur); return;
-          }
-          if (!cur) return;
-          if (col === 'sn') cur.sn.push(p.s);
-          else if (col === 'loc') cur.loc += p.s;
-          else cur[col] = (cur[col] ? cur[col] + ' ' : '') + p.s;
-        });
-      });
-    });
-
-    items.forEach(function (it) {
-      var m = /^(\S+)\s+([\d,.]+)$/.exec(it.uom);
-      if (m && !it.qty) { it.uom = m[1]; it.qty = m[2]; }
-      it.code = it.code.replace(/\s+/g, '');
-      it.qty = num(it.qty);
-    });
-
-    var all = text.join('\n');
-    var field = function (k) {
-      var m = new RegExp(k + '\\s*:\\s*([^\\n]*)').exec(all);
-      return m ? s(m[1]) : '';
-    };
-    /* An empty heading reads the next heading as its value - WBS : with
-       nothing after it picks up 'Cost Centre :'. A value that is itself a
-       heading is no value. */
-    var clean = function (v) { return /^[A-Za-z /]+ ?:/.test(v) ? '' : v; };
-    var mv = field('Movement Type');
-    return {
-      gi: field('GI Number'),
-      date: ginDate(field('Document Date')),
-      res: field('Reservation number'),
-      sloc: field('Issue from S Loc'),
-      wbs: clean(field('WBS')),
-      mv: /^\d+ ?[A-Z]?$/.test(mv) ? mv : '',
-      items: items.map(function (it) {
-        return { code: it.code, desc: it.desc, uom: it.uom, qty: it.qty, sn: it.sn };
-      })
-    };
-  }
 
   /* ------------------------------------------- what was asked, what was given
 
@@ -451,7 +362,7 @@
 
   return { splitTask: splitTask, current: current, doneTimes: doneTimes, num: num, ginDate: ginDate,
            reservations: reservations,
-           readGin: readGin, match: match, record: record, localDay: localDay,
+           match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,
            pipeline: pipeline, pickList: pickList,
