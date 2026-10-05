@@ -404,8 +404,17 @@
      a different job sharing a work order. Named as what to KEEP, so a section
      added to the form later is ignored until somebody decides it belongs -
      the opposite way round would quietly let it through. */
-  var PH2_KEEP = ['material reservation', 'material issuance', 'material collection',
-                  'grn', 'goods receipt', 'material request'];
+  /* These are the stems a PH2 card ACTUALLY carries, read off a dump of real
+     cards. The list that was here before was written from the shape of the
+     problem rather than from the form, and every name in it was wrong: PH2
+     does not have collection sections of its own wording, it reuses PH1's
+     vocabulary - System Issuance Pending, System Issuance Done, Material
+     Shortage, Infomate - and adds a few of its own around them. */
+  var PH2_KEEP = ['system issuance pending', 'system issuance done',
+                  'material shortage', 'infomate',
+                  'material reservation', 'additional material reservation request',
+                  'material collection confirmation', 'issue review - material collection',
+                  'teco/unteco'];
   function ph2Material(t) {
     var st = stem(t && t.n);
     return PH2_KEEP.some(function (k) { return st.indexOf(k) === 0; });

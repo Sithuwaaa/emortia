@@ -60,15 +60,26 @@ const note = (gi, date) => ({ file: gi + '.pdf', gi: gi, date: date, res: '', it
 const ph2 = {
   id: 25490, phase: 'PH2', workflow: 'w-test-ph2', site: 'zz0002', siteName: 'Invented_Place_B',
   wo: 'WO-TEST-0002', created: '2026-02-01T04:00:00Z', updated: '2026-03-20T11:00:00Z',
+  /* The stage NAMES here are the real ones, read off a dump of real PH2
+     cards - they are the form's structure, not Dialog's data, and inventing
+     them is what made the first version of this file test nothing. Every
+     value around them is still invented.
+
+     Note what this says about PH2: it reuses PH1's vocabulary rather than
+     having collection sections of its own. */
   timeline: [
-    { n: 'Material Reservation - AP', s: 'DONE', c: '2026-02-02T04:00:00Z', d: '2026-02-10T04:00:00Z' },
-    { n: 'Material Issuance - AP', s: 'DONE', c: '2026-02-10T04:00:00Z', d: '2026-03-05T04:00:00Z' },
+    { n: 'Material reservation Initiation - AP', s: 'DONE', c: '2026-02-02T04:00:00Z', d: '2026-02-04T04:00:00Z' },
+    { n: 'Material Reservation request', s: 'DONE', c: '2026-02-04T04:00:00Z', d: '2026-02-10T04:00:00Z' },
+    { n: 'System Issuance Pending - ACE', s: 'DONE', c: '2026-02-10T04:00:00Z', d: '2026-03-01T04:00:00Z' },
+    { n: 'System Issuance Done - ACE', s: 'DONE', c: '2026-03-05T04:00:00Z', d: null },
     /* every one of these is on the same card and says nothing about material */
     { n: 'Dependency Clearance', s: 'DONE', c: '2026-02-01T04:00:00Z', d: '2026-02-02T04:00:00Z' },
     { n: 'Commissioning', s: 'OPEN', c: '2026-03-20T11:00:00Z', d: null },
     { n: 'Warehouse Selection', s: 'DONE', c: '2026-02-01T05:00:00Z', d: '2026-02-01T06:00:00Z' },
     { n: 'Vendor Allocation', s: 'DONE', c: '2026-02-01T06:00:00Z', d: '2026-02-01T07:00:00Z' },
-    { n: 'Task Acceptance', s: 'OPEN', c: '2026-03-18T04:00:00Z', d: null }
+    { n: 'Task Acceptance ', s: 'OPEN', c: '2026-03-18T04:00:00Z', d: null },
+    { n: 'Remote UAT', s: 'OPEN', c: '2026-03-19T04:00:00Z', d: null },
+    { n: 'Document Submission', s: 'DONE', c: '2026-03-17T04:00:00Z', d: '2026-03-18T04:00:00Z' }
   ],
   streams: [
     { stream: 'Advantis', reservation: '1700002', orderNo: '800700000001', grn: 'GRN-TEST-0001',
@@ -104,17 +115,30 @@ is('and they waited different lengths',
 
 /* --- the collection sections only --- */
 is('the non-material sections are gone from the row',
-   r2[0].timeline.map(t => t.n), ['Material Reservation - AP', 'Material Issuance - AP']);
-is('so Commissioning being open does not become the stage', r2[0].stage, 'Material Issuance');
+   r2[0].timeline.map(t => t.n),
+   ['Material reservation Initiation - AP', 'Material Reservation request',
+    'System Issuance Pending - ACE', 'System Issuance Done - ACE']);
+is('so Commissioning and Remote UAT being open do not become the stage',
+   r2[0].stage, 'System Issuance Done');
 is('and the row does not read as in progress because of it', r2[0].status, 'completed');
 const task = n => ({ n: n, s: 'DONE', c: null, d: null });
+/* the real ones, including the third division and the lower-case r */
 is('ph2Material keeps what it should',
-   ['Material Reservation - AP', 'Material Issuance - MW', 'GRN Update'].map(n => W.ph2Material(task(n))),
-   [true, true, true]);
+   ['Material reservation Initiation - AP', 'Material Reservation Initiate - MW',
+    'Material reservation Initiation - WIBAS', 'System Issuance Pending - ACE',
+    'System Issuance Done', 'Material Shortage', 'Infomate - ACE',
+    'Additional Material Reservation Request',
+    'Material Collection Confirmation by Vendor', 'TECO/UNTECO - ACE']
+     .map(n => W.ph2Material(task(n))),
+   [true, true, true, true, true, true, true, true, true, true]);
 is('and refuses the rest',
    ['Dependency Clearance', 'Sub WO 1', 'Commissioning', 'Warehouse Selection',
-    'Vendor Allocation', 'Task Acceptance'].map(n => W.ph2Material(task(n))),
-   [false, false, false, false, false, false]);
+    'Vendor Allocation', 'Task Acceptance ', 'Remote UAT', 'Document Submission',
+    'UAT Decision', 'IPNO', 'Implementation', 'License Issuance - Huawei',
+    'Link Acceptance', 'Trigger Supportive Parties']
+     .map(n => W.ph2Material(task(n))),
+   [false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false]);
 /* a keep-list, so a section added to the form later is ignored until somebody
    decides it belongs - the opposite way round would let it through unseen */
 is('and refuses one nobody has seen yet', W.ph2Material(task('Something New - AP')), false);
@@ -130,6 +154,10 @@ is('both, and it is', W.ph2Ready({ grn: 'G', gins: [note('4930000003', '2026-03-
   const half = JSON.parse(JSON.stringify(ph2));
   half.streams[1].gins = [];
   const rows = W.rowsFor(half);
+  /* 'other', and that is the point of the PH2 rule. The card says System
+     Issuance Done on this stream - under PH1's rule that alone would make it
+     collectable. PH2 does not believe the stage, it believes the document,
+     so with no note attached the stream is NOT in Can collect. */
   is('one stream ready, the other not', rows.map(r => W.state(r)), ['ready', 'other']);
   is('and the unready one has no date to count from', rows[1].done_at, null);
 }
@@ -194,6 +222,8 @@ is('a date on one stream does not take the other off',
      d.streams.map(x => x.gins.length), [0, 0]);
   is('and so neither stream is called ready',
      W.rowsFor(d).map(r => W.state(r)), ['other', 'other']);
+  is('and neither has a date to count a wait from',
+     W.rowsFor(d).map(r => r.done_at), [null, null]);
 
   /* PH1 is untouched by any of this */
   const p = W.attachDocs(ph1, ph1.gins);
