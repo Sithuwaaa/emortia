@@ -40,6 +40,24 @@
      wording has been read off WorkHub - see the note at the foot of this
      file. Adding the id alone would widen the fetch and silently mislabel
      every one of their tickets. */
+  /* ------------------------------------------------------------- the build
+
+     A bookmarklet is a FROZEN COPY. Whatever this file says today, the bar
+     holds whatever it said the day it was dragged there, and nothing ever
+     tells it otherwise.
+
+     That produced the worst failure this tool has had. A copy from before the
+     widening still asked for PH1 alone, so a sync returned 384 tickets, every
+     count identical to the day before, and no error at all. It looked like a
+     successful sync and was a third of the data. A loud failure costs an
+     afternoon; a quiet one costs the numbers being believed.
+
+     So the bookmarklet states what it is, and the page - which always has the
+     current file, because it fetches it to build the link - refuses to
+     publish anything a stale copy sent. BUMP THIS whenever a change alters
+     WHAT is fetched rather than how. Adding a source counts. */
+  var BUILD = '2026-10-05.3src';
+
   var SOURCES = [
     { id: 'w8b6c7c686c', phase: 'PH1',  name: 'Material Reservation PH1' },
     { id: 'waf2294d730', phase: 'PH2',  name: 'Material Reservation PH2' },
@@ -85,10 +103,37 @@
       return j.data;
     });
   }
-  var Q_LIST = 'query ($workflowId: ID!, $queryParams: QueryParams) { getListCards(workflowId: $workflowId, queryParams: $queryParams) }';
+  /* ---------------------------------------------- the variable declarations
+
+     GraphQL accepts a T! variable anywhere a T is wanted, and NEVER a T
+     variable where a T! is required. So the safe declaration is the strictest
+     one every call site can satisfy:
+
+       a variable that is always given a value  →  declare it NON-NULL
+       a variable that is ever given null       →  must stay nullable
+
+     Q_URL used to declare all four nullable while passing all four. WorkHub
+     wants String! for contentId and refused the whole query:
+
+       Variable `$contentId` of type `String` found as input to argument of
+       type `String!`
+
+     It had been that way since the PH1 sync was written and never fired,
+     because the PDF fetch only runs for a document the page has not already
+     read - and PH1's were all read long ago. Widening brought new documents,
+     the path ran for the first time in months, and the latent bug surfaced as
+     a sync that stopped.
+
+     Four more declarations had the same shape and would have failed the same
+     way the moment WorkHub tightened them. They are all non-null now.
+
+     $nodeId and $taskId are the exception and MUST stay nullable: getCard is
+     deliberately called with null for both, and declaring them non-null would
+     break a query that works. */
+  var Q_LIST = 'query ($workflowId: ID!, $queryParams: QueryParams!) { getListCards(workflowId: $workflowId, queryParams: $queryParams) }';
   var Q_CARD = 'query ($id: Int!, $workflowId: ID!, $nodeId: String, $taskId: ID) { getCard(id: $id, workflowId: $workflowId, nodeId: $nodeId, taskId: $taskId) }';
   var Q_TASKS = 'query ($workflowId: String!, $cardId: Int!) { tasks: getTasksHistoryForCard(workflowId: $workflowId, cardId: $cardId) { nodeName status createdDate completedDate } }';
-  var Q_URL = 'query ($contentId: String, $fileName: String, $id: Int, $workflowId: ID) { getContentViewUrl(contentId: $contentId, fileName: $fileName, id: $id, workflowId: $workflowId) }';
+  var Q_URL = 'query ($contentId: String!, $fileName: String!, $id: Int!, $workflowId: ID!) { getContentViewUrl(contentId: $contentId, fileName: $fileName, id: $id, workflowId: $workflowId) }';
   var NOT_DELETED = JSON.stringify([{ type: 'field', value: 'deleted' }, { type: 'operator', value: 'IS_EQUAL_TO' }, { type: 'boolean', value: false }]);
 
   /* WorkHub's dates are UTC with no zone on the end. Said out loud here, so
@@ -344,7 +389,12 @@
       });
     }, Promise.resolve()).then(function () {
       tickets.forEach(function (t) { t.files = t.files.map(function (f) { return f.name; }); });
+      /* build and sources travel WITH the data, so the page can tell a sync
+         that read everything from one that read a third of it and said
+         nothing. Both are facts about the copy that ran, which is the only
+         thing the page cannot otherwise know. */
       win.postMessage({ type: 'wh24:data', since: cfg.since, at: new Date().toISOString(),
+                        build: BUILD, sources: SOURCES.map(function (s) { return s.phase; }),
                         tickets: tickets, pdfs: pdfs }, EMORTIA, bufs);
       finish('Sent ' + tickets.length + ' tickets and ' + pdfs.length + ' new GINs to the Emortia tab.');
     });

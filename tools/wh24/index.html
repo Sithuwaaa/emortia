@@ -1143,9 +1143,16 @@ $('since').value = sinceVal();
 $('since').onchange = () => { try { localStorage.setItem(SINCE_KEY, $('since').value); } catch(e){} buildBookmark(); };
 $('howBtn').onclick = () => { $('how').hidden = !$('how').hidden; };
 
+/* What the CURRENT workhub.js says it is. Read out of the file the page
+   already fetches to build the link, so there is one copy of the number and
+   no chance of the page and the file disagreeing about it. */
+let WANT_BUILD = null, WANT_SOURCES = [];
 async function buildBookmark(){
   try {
     const src = await (await fetch('workhub.js?v=' + Date.now())).text();
+    const b = /var BUILD = '([^']+)'/.exec(src);
+    WANT_BUILD = b ? b[1] : null;
+    WANT_SOURCES = [...src.matchAll(/phase: '(\w+)'/g)].map(m => m[1]);
     $('bm').href = 'javascript:' + encodeURIComponent(src);
   } catch(e){ $('bm').removeAttribute('href'); }
 }
@@ -1207,6 +1214,43 @@ $('syncClose').onclick = () => { $('syncDlg').classList.remove('on'); PENDING = 
 
 async function receive(data){
   if (!OWNER){ dlg('Only Sithara can sync from WorkHub24.'); return; }
+
+  /* ---- is the bookmark the current one? ----
+
+     A bookmarklet is a frozen copy and nothing ever tells it it is old. A
+     copy from before the widening asked for PH1 alone and returned 384
+     tickets with every count identical to the day before and no error: a
+     successful-looking sync carrying a third of the data.
+
+     So this refuses the data rather than warning about it. A warning above a
+     live Publish button is a warning somebody dismisses at the end of a long
+     afternoon, and what gets written then is not recoverable by noticing
+     later. Nothing is drawn, nothing is offered, and the only thing on screen
+     is how to fix it. */
+  if (WANT_BUILD && data.build !== WANT_BUILD){
+    dlg(`<b>Your sync bookmark is out of date.</b><br><br>` +
+        `It is build <b>${esc(data.build || 'from before builds were stamped')}</b> ` +
+        `and this page is build <b>${esc(WANT_BUILD)}</b>. ` +
+        `An old bookmark reads fewer WorkHub apps than it should and returns a ` +
+        `partial sync that looks complete, so nothing from it will be published.` +
+        `<br><br>Close this, press <b>How to sync</b> above, and drag the orange ` +
+        `<b>WH24 Sync</b> button onto your bookmarks bar again – dropping it on top ` +
+        `of the old one replaces it.`);
+    return;
+  }
+  /* The build matching but a source missing would mean someone edited one
+     copy and not the other. Cheap to check and it names what is absent. */
+  const got = Array.isArray(data.sources) ? data.sources : [];
+  const absent = WANT_SOURCES.filter(s => got.indexOf(s) < 0);
+  if (WANT_BUILD && absent.length){
+    dlg(`<b>That sync read only part of WorkHub24.</b><br><br>` +
+        `It covered ${esc(got.join(', ') || 'nothing')} and did not read ` +
+        `<b>${esc(absent.join(', '))}</b>. Publishing it would leave those rows ` +
+        `looking up to date when they had not been looked at.` +
+        `<br><br>Replace the bookmark from <b>How to sync</b> and run it again.`);
+    return;
+  }
+
   const raws = Array.isArray(data.tickets) ? data.tickets : [], pdfs = Array.isArray(data.pdfs) ? data.pdfs : [];
   dlg(`Received ${raws.length} tickets and ${pdfs.length} new GIN${pdfs.length === 1 ? '' : 's'}. Reading the GINs…`, { pct: 0 });
   const parsed = {}, failed = [], moves = [];
