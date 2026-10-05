@@ -722,7 +722,12 @@
     '.acc-chip[data-role="staff"]{--a1:#3bbcc8;--a2:#1a7f8c;--ap1:#10343a;--ap2:#17616b;--cc:#1f4a4f}',
     '.acc-chip[data-role="guest"]{--a1:#3a2328;--a2:#28151a;--ap1:#241519;--ap2:#352025;--cc:#3a2328}',
     '.acc-face{all:unset;cursor:pointer;display:flex;align-items:center}',
-    '.acc-av{position:relative;z-index:1;width:34px;height:34px;flex:none;border-radius:31%;',
+    /* THE SAME GEOMETRY AS THE FRONT OF THE SITE, to the pixel. This used to
+       be a point smaller in every dimension - 34 against 36, 13px against 14,
+       one less pixel of padding each side - which is not a design, it is two
+       people measuring the same thing on different days. The same control in
+       two sizes reads as two controls. Both headers are 66px, so 36 fits. */
+    '.acc-av{position:relative;z-index:1;width:36px;height:36px;flex:none;border-radius:31%;',
     '  background:linear-gradient(160deg,var(--a1),var(--a2));',
     '  display:flex;align-items:center;justify-content:center;gap:7.1%;',
     '  box-shadow:0 8px 20px rgba(0,0,0,.45);transform:rotate(-6deg);',
@@ -735,8 +740,8 @@
     '.acc-chip[data-role="guest"] .acc-av i{background:#7a6662}',
     '.acc-dot{position:absolute;right:-3px;bottom:-3px;width:9px;height:9px;border-radius:50%;',
     '  background:#4ade80;box-shadow:0 0 0 2px var(--bg,#120a0d)}',
-    '.acc-pill{display:flex;align-items:center;gap:10px;margin-left:-12px;',
-    '  padding:7px 14px 7px 21px;border-radius:0 99px 99px 0;',
+    '.acc-pill{display:flex;align-items:center;gap:11px;margin-left:-13px;',
+    '  padding:8px 15px 8px 23px;border-radius:0 99px 99px 0;',
     '  background:linear-gradient(90deg,var(--ap1),var(--ap2))}',
     /* Longhands, not the `font` shorthand. It used to say
          font:600 11.5px/1 inherit
@@ -748,10 +753,10 @@
        made that one header 70.5 instead of 66.
        Written out, it applies, it is the size it was meant to be, and no
        page's button rule can reach past it again. */
-    '.acc-who{font-family:"Space Mono",ui-monospace,monospace;font-weight:400;font-size:13px;',
-    '  line-height:1;color:#f7f1e8;max-width:13ch;overflow:hidden;text-overflow:ellipsis;',
+    '.acc-who{font-family:"Space Mono",ui-monospace,monospace;font-weight:400;font-size:14px;',
+    '  line-height:1;color:#f7f1e8;max-width:14ch;overflow:hidden;text-overflow:ellipsis;',
     '  white-space:nowrap}',
-    '.acc-caret{font-size:10px;line-height:1;color:#e6bdc4;display:inline-block;',
+    '.acc-caret{font-size:11px;line-height:1;color:#e6bdc4;display:inline-block;',
     '  transition:transform .25s ease}',
     '.acc-chip.open .acc-caret{transform:rotate(180deg)}',
     /* Fixed, measured off the pill - and hung on the BODY rather than inside
@@ -781,6 +786,19 @@
     '.acc-row:hover,.acc-row:focus-visible{background:var(--line,rgba(196,82,109,.14))}',
     /* named, not "the span in the row": a bare descendant selector would also
        paint the name beside the chip */
+    /* the appearance row: a swatch of the mode it switches TO, the label, and
+       the switch pushed to the far edge where a setting belongs */
+    '.acc-sep{border:0;border-top:1px solid #3a2730;margin:7px 10px}',
+    '.acc-theme{justify-content:flex-start}',
+    '.acc-theme .acc-tsw{background:linear-gradient(160deg,#fbf3e8,#ded0bd);',
+    '  box-shadow:inset 0 0 0 1px rgba(168,152,134,.28)}',
+    '.acc-tog{margin-left:auto;width:38px;height:21px;border-radius:999px;flex:none;',
+    '  background:#3a2730;position:relative;transition:background .18s ease}',
+    '.acc-tog i{position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;',
+    '  background:#f7f1e8;transition:transform .18s ease}',
+    '.acc-theme.on .acc-tog{background:#c4526d}',
+    '.acc-theme.on .acc-tog i{transform:translateX(17px)}',
+    '@media (prefers-reduced-motion:reduce){.acc-tog,.acc-tog i{transition:none}}',
     '.acc-swatch{width:26px;height:26px;border-radius:8px;flex:none;',
     '  background:linear-gradient(160deg,var(--r1),var(--r2))}',
     '.acc-foot{border-top:1px solid var(--line,rgba(168,152,134,.15));margin-top:4px;padding-top:4px}',
@@ -870,20 +888,25 @@
        tool with its own button stays in step instead of overriding this on its
        next load. Only keys that already exist are touched - nothing is
        invented for a tool that has no theme. */
-    var tlbl = el('span', 'acc-lbl'); tlbl.textContent = 'Appearance';
-    menu.appendChild(tlbl);
+    /* A SWITCH, named for what turning it on does. It read "Dark" with a
+       swatch beside it, which states the current mode and leaves you to work
+       out that pressing it changes that - a label for a state, on a control
+       that is an action. "Light mode" with a switch says what it will do, and
+       the switch says which way it is set. Divided off above, because it is
+       not one of the accounts listed under Switch to. */
+    menu.appendChild(el('hr', 'acc-sep'));
     var trow = el('button', 'acc-row acc-theme'); trow.type = 'button';
     trow.setAttribute('role', 'menuitemcheckbox');
     var tsw = el('span', 'acc-swatch acc-tsw');
-    var tname = document.createTextNode('');
-    trow.appendChild(tsw); trow.appendChild(tname);
+    trow.appendChild(tsw);
+    trow.appendChild(document.createTextNode('Light mode'));
+    var tog = el('span', 'acc-tog');
+    tog.appendChild(el('i'));
+    trow.appendChild(tog);
     function drawTheme() {
-      var dark = themeNow() !== 'light';
-      tname.nodeValue = dark ? 'Dark' : 'Light';
-      trow.setAttribute('aria-checked', dark ? 'true' : 'false');
-      tsw.style.setProperty('--r1', dark ? '#2a1620' : '#f6ece2');
-      tsw.style.setProperty('--r2', dark ? '#120a0d' : '#d9c7b4');
-      tsw.style.boxShadow = 'inset 0 0 0 1px rgba(168,152,134,.28)';
+      var light = themeNow() === 'light';
+      trow.setAttribute('aria-checked', light ? 'true' : 'false');
+      trow.classList.toggle('on', light);
     }
     trow.onclick = function () { setTheme(themeNow() === 'light' ? 'dark' : 'light'); drawTheme(); };
     drawTheme();
