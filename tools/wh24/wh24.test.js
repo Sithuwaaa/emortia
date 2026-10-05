@@ -109,8 +109,10 @@ is('by site', W.matches(F, 'mr50'), true);
 is('miss', W.matches(F, 'KU0361'), false);
 
 /* ---- the sheet ---- */
-const sh = W.sheet([T, R], { 25490: { collected_on: null } }, '2026-10-01');
-is('headers', sh[0].length, 25);
+const sh = W.sheet([T, R], { '25490|': { collected_on: null } }, '2026-10-01');
+is('headers', sh[0].length, 29);
+is('the four appended ones name the source and stream', sh[0].slice(25),
+   ['Source', 'Stream', 'Project / PM Order', 'Activity / GRN No']);
 is('ticket row', [sh[1][0], sh[1][14], sh[1][15], sh[1][16]], [25307, '2026-09-28', '2026-09-30', '']);
 is('waiting row', [sh[2][0], sh[2][14], sh[2][15], sh[2][16]], [25490, '2026-09-30', '', 1]);
 is('gin columns', [sh[1][18], sh[1][20], sh[1][24]], ['4932166689', 18, 'Full']);
@@ -125,10 +127,15 @@ const C = { id: 12, done_at: '2026-09-29T10:00:00Z', wh_collected_at: '2026-09-3
             lines: [{ code: '1000017512', qty: 5, gin: { qty: 5 } }] };
 const D = { id: 13, stage: 'System Issuance Pending', lines: [] };
 const pk = W.pickList([A, B, C, D], {});
+/* tickets are listed by (id, stream) now, because a PH2 card contributes two
+   of them and "ticket 25490" is no longer one thing */
 is('pick list only counts what can be collected', pk.map(p => [p.code, p.qty, p.tickets]),
-   [['1000017512', 3, [10, 11]], ['1000008167', 2, [10]]]);
+   [['1000017512', 3, ['10|', '11|']], ['1000008167', 2, ['10|']]]);
 is('issued qty wins and serials counted', [pk[0].qty, pk[0].sn, pk[0].uom], [3, 3, 'EA']);
-is('a typed date takes it off the list', W.pickList([A, B], { 11: { collected_on: '2026-10-01' } })[0].tickets, [10]);
+is('a typed date takes it off the list',
+   W.pickList([A, B], { '11|': { collected_on: '2026-10-01' } })[0].tickets, ['10|']);
+is('and a mark keyed on the id alone no longer reaches it - the pair is the key',
+   W.pickList([A, B], { 11: { collected_on: '2026-10-01' } })[0].tickets, ['10|', '11|']);
 is('pipeline', W.pipeline([A, B, C, D], {}).filter(p => p.n).map(p => [p.state, p.n]),
    [['issuing', 1], ['ready', 2], ['collected', 1]]);
 

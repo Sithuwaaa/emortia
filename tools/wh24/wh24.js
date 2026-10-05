@@ -45,6 +45,36 @@
     return { stage: n, team: '' };
   }
 
+  /* ------------------------------------------------------------- the stems
+
+     PH2 and Bulk task names are not stable strings. PH2 carries a division
+     suffix - the same task is "… - AP" on one card and "… - MW" on another -
+     and the verb moves between Initiate and Initiation on the same workflow.
+     Matching a full string means the tool silently stops recognising a stage
+     the day somebody edits the wording, which is the quiet kind of wrong.
+
+     So: drop the team, drop the division, fold the verb, lowercase. What is
+     left is matched with a prefix test, never with equality.
+
+       'Material Reservation Initiation - AP'        → material reservation initiat
+       'Material Reservation Initiate'               → material reservation initiat
+       'Material Reservation Initiation Rejection'   → material reservation initiat reject
+
+     Rejection is checked BEFORE initiation, because the second is a prefix of
+     the first and the wrong order puts every rejection in Reserving. */
+  function stem(name) {
+    var st = splitTask(name).stage;
+    st = s(st).replace(/\s*[-–_]\s*(AP|MW)\s*$/i, '');        /* division */
+    st = st.toLowerCase().replace(/\s+/g, ' ').trim();
+    st = st.replace(/initiation|initiating|initiate/g, 'initiat');
+    st = st.replace(/rejections?|rejected/g, 'reject');
+    return st;
+  }
+  var stems = function (name, want) { return stem(name).indexOf(want) === 0; };
+
+  /* PH1's two, unchanged and matched as they always were. 384 rows depend on
+     these exactly as written, so the stem machinery above is not applied to
+     them: nothing about PH1 moves in this change. */
   var isDone    = function (t) { return /^System Issuance Done/i.test(s(t && t.n)); };
   var isPending = function (t) { return /^System Issuance Pending/i.test(s(t && t.n)); };
   var isOpen    = function (t) { return s(t && t.s).toUpperCase() !== 'DONE'; };
@@ -147,12 +177,33 @@
     tl.forEach(function (t) {
       [t.c, t.d].forEach(function (v) { if (v && (!newest || ms(v) > ms(newest))) newest = v; });
     });
+    /* done_at and wh_collected_at come off the timeline for PH1, and that is
+       the only rule the timeline can answer. PH2 is ready when a stream's own
+       issuance note says so, and Bulk when an approval completed - so both
+       pass the date in and this stops guessing. undefined means "work it out",
+       null means "there isn't one". They are not the same answer. */
+    var done = raw.doneAt === undefined ? dt.done : (raw.doneAt || null);
+    var got  = raw.collectedAt === undefined ? dt.collected : (raw.collectedAt || null);
     return {
       id: Number(raw.id),
+      /* '' for PH1 and Bulk, which are one row per card. PH2 splits into
+         'Advantis' and 'ACE', and the pair (id, stream) is the primary key in
+         the database since 039. Nothing in this file may index on id alone. */
+      stream: s(raw.stream),
       site: s(raw.site).toUpperCase() || null,
       site_name: s(raw.siteName) || null,
       wo: s(raw.wo) || null,
       reservation: s(raw.reservation) || null,
+      /* PH2 carries the SAP order the stream was raised under, beside the
+         reservation. Null everywhere else rather than absent, so a row from
+         one source is the same shape as a row from another. */
+      order_no: s(raw.orderNo) || null,
+      /* PH2's Activity / GRN number - the first half of "it has been issued" */
+      grn: s(raw.grn) || null,
+      /* Bulk's own field. Kept on the row rather than only consulted, because
+         "Approved" is the whole of why a Bulk row is where it is and a person
+         reading the card should not have to open WorkHub to see it. */
+      initiation_status: s(raw.initiation_status) || null,
       /* Which WorkHub app this came from, carried straight through from the
          sync. Not derived from anything on the ticket - the only thing that
          knows is the app it was read out of. Null when a caller builds a
@@ -164,15 +215,200 @@
       status: tl.some(isOpen) ? 'inprogress' : 'completed',
       wh_created_at: raw.created || null,
       wh_updated_at: newest || raw.updated || null,
-      done_at: dt.done,
-      wh_collected_at: dt.collected,
+      done_at: done,
+      wh_collected_at: got,
       timeline: tl,
       lines: match(raw.requested, raw.gins),
+      /* Lines the card itself struck off. They are NOT dropped: a line that
+         vanishes between one sync and the next reads as a parsing failure to
+         whoever is holding the list, and "it was removed" is the one thing
+         that would have told them otherwise. Shown struck through, counted
+         nowhere. */
+      removed: (raw.removed || []).map(function (r) {
+        return { code: s(r.code), desc: s(r.desc), qty: r.qty == null ? null : r.qty, uom: s(r.uom) };
+      }),
       gins: (raw.gins || []).map(function (g) {
         return { file: s(g.file), gi: s(g.gi), date: g.date || '', res: s(g.res), sloc: s(g.sloc),
                  wbs: s(g.wbs), mv: s(g.mv), items: g.items || [] };
       })
     };
+  }
+
+  /* ========================================= one card, one or two rows ======
+
+     A PH1 or Bulk card is one row. A PH2 card is a site work order carrying
+     two parallel vendor streams - Advantis and ACE - with their own
+     reservation, their own material table, their own GRN and their own
+     issuance note, issued on different days by different vendors. One row
+     could hold only one of those answers, so it is two rows keyed on
+     (id, stream).
+
+     Everything below takes a card that has ALREADY been read off WorkHub's
+     fields. The field numbers live in workhub.js, where the form is; nothing
+     here knows a column number, which is what lets these rules be tested. */
+
+  /* (id, stream). Every lookup in this tool and on the page goes through it.
+     Indexing on id alone is the bug 039 was written to make impossible, and
+     it would show up as a PH2 card's two streams sharing one collected date. */
+  function key(t) { return String(t && t.id) + '|' + s(t && t.stream); }
+  function markOf(marks, t) { return (marks || {})[key(t)]; }
+
+  /* ---- PH1: unchanged. The last task whose name starts "System Issuance
+     Done", and done_at is when that task was created. ---- */
+
+  /* ---- PH2 ----
+     A stream is ready when BOTH halves of "it has been issued" are on the
+     card: the Activity / GRN number is filled in AND the issuance note is
+     attached. One without the other is a half-finished entry, not stock on a
+     shelf.
+
+     done_at is the NOTE'S OWN DOCUMENT DATE, not the card's last-updated.
+     The two differ by days: the note is written at the warehouse on the day
+     the material moved, and the card is touched again afterwards for reasons
+     that have nothing to do with the material. Counting the wait from the
+     card would start the clock late and understate every PH2 queue. */
+  function ph2Ready(stream) {
+    var st = stream || {};
+    var note = (st.gins || [])[0];
+    if (!s(st.grn) || !note) return null;
+    var d = s(note.date);
+    /* A note with no readable date still means issued. Falling back to the
+       card would be inventing a day; null done_at with a ready state is not a
+       thing this model allows, so the note's absence of a date is carried as
+       the GRN entry's date if there is one, and otherwise as no date at all -
+       and the caller decides. */
+    return d ? d + 'T00:00:00Z' : (s(st.grnDate) ? s(st.grnDate) + 'T00:00:00Z' : null);
+  }
+
+  /* ---- Bulk ----
+     Completed, and the card's own Initiation Status reading Approved. done_at
+     is when the Material Reservation Initiation task completed.
+
+     This is an APPROVAL, not an issuance. WorkHub records no issuance step
+     anywhere in the Bulk workflow, so nothing on the card is evidence that
+     any material moved. That is why a Bulk row never enters "Can collect". */
+  function bulkApproved(raw) {
+    var tl = raw.timeline || [];
+    var open = tl.some(isOpen);
+    if (open) return null;
+    if (!/^approved$/i.test(s(raw.initiationStatus))) return null;
+    var init = tl.filter(function (t) { return stems(t.n, 'material reservation initiat') &&
+                                               !stems(t.n, 'material reservation initiat reject'); });
+    var last = init[init.length - 1];
+    return (last && last.d) || null;
+  }
+
+  /* ------------------------------------------------- which note, which stream
+
+     The sync reads a card's PDFs and hands them back keyed on the CARD. For
+     PH1 and Bulk that is enough - one card, one row, every document is its
+     own. A PH2 card has two rows and two documents, and putting them on the
+     wrong rows would show the Advantis note while reading the ACE line, which
+     is worse than showing none.
+
+     The documents say which is which, so nothing here guesses from the order
+     they arrived in:
+
+       - a Goods Issue Note carries the reservation it was issued against, so
+         it goes to the stream with that reservation
+       - an Activity Report carries no reservation, so it goes to the stream
+         whose Activity / GRN number it matches
+       - with exactly one stream and one document left over, that pairing is
+         the only one possible and is taken
+
+     Anything still unplaced is left off rather than put somewhere plausible.
+     A stream with no note is not ready, which is the honest answer. */
+  function attachDocs(raw, docs) {
+    var list = (docs || []).slice();
+    if (s(raw && raw.phase) !== 'PH2') {
+      var o = {}; for (var k in raw) if (Object.prototype.hasOwnProperty.call(raw, k)) o[k] = raw[k];
+      o.gins = list;
+      return o;
+    }
+    var streams = (raw.streams || []).map(function (x) {
+      var c = {}; for (var k2 in x) if (Object.prototype.hasOwnProperty.call(x, k2)) c[k2] = x[k2];
+      c.gins = []; return c;
+    });
+    var taken = {};
+    /* by reservation */
+    streams.forEach(function (st) {
+      if (st.gins.length) return;
+      for (var i = 0; i < list.length; i++) {
+        if (taken[i]) continue;
+        if (s(list[i].res) && s(list[i].res) === s(st.reservation)) { st.gins.push(list[i]); taken[i] = 1; return; }
+      }
+    });
+    /* by activity / GRN number */
+    streams.forEach(function (st) {
+      if (st.gins.length || !s(st.grn)) return;
+      for (var i = 0; i < list.length; i++) {
+        if (taken[i]) continue;
+        var n = s(list[i].gi) || s(list[i].rep);
+        if (n && s(st.grn).indexOf(n) >= 0) { st.gins.push(list[i]); taken[i] = 1; return; }
+      }
+    });
+    /* one left, one place for it */
+    var spare = streams.filter(function (st) { return !st.gins.length; });
+    var free = list.filter(function (d, i) { return !taken[i]; });
+    if (spare.length === 1 && free.length === 1) spare[0].gins.push(free[0]);
+
+    var out = {}; for (var k3 in raw) if (Object.prototype.hasOwnProperty.call(raw, k3)) out[k3] = raw[k3];
+    out.streams = streams;
+    return out;
+  }
+
+  /* One card in, the rows it should become out. */
+  function rowsFor(raw) {
+    var phase = s(raw && raw.phase);
+    if (phase === 'PH2') {
+      /* A card enters only once a stream carries a reservation number. Before
+         that there is nothing to collect and nothing to call it - a row with
+         no reservation is a work order, not a material request. */
+      return (raw.streams || [])
+        .filter(function (x) { return s(x.reservation); })
+        .map(function (x) {
+          return record({
+            id: raw.id, phase: raw.phase, workflow: raw.workflow,
+            created: raw.created, updated: raw.updated,
+            site: raw.site, siteName: raw.siteName, wo: raw.wo,
+            stream: x.stream,
+            reservation: x.reservation, orderNo: x.orderNo, grn: x.grn,
+            requested: x.requested, removed: x.removed, gins: x.gins,
+            /* PH2's own collection sections only. The card also carries
+               Dependency Clearance, the Sub WOs, Commissioning, Warehouse
+               Selection, Vendor Allocation and Task Acceptance, none of which
+               says anything about material, and all of which would otherwise
+               become the "current stage" and move the row to a state it is
+               not in. */
+            timeline: (raw.timeline || []).filter(ph2Material),
+            doneAt: ph2Ready(x),
+            collectedAt: null
+          });
+        });
+    }
+    if (phase === 'Bulk') {
+      return [record({
+        id: raw.id, phase: raw.phase, workflow: raw.workflow,
+        created: raw.created, updated: raw.updated,
+        site: raw.site, siteName: raw.siteName, wo: raw.wo, stream: '',
+        reservation: raw.reservation, requested: raw.requested,
+        removed: raw.removed, gins: raw.gins, timeline: raw.timeline,
+        initiation_status: raw.initiationStatus,
+        doneAt: bulkApproved(raw), collectedAt: null
+      })];
+    }
+    return [record(raw)];
+  }
+
+  /* The PH2 sections that are about material. Everything else on that card is
+     a different job sharing a work order. Named as what to KEEP, so a section
+     added to the form later is ignored until somebody decides it belongs -
+     the opposite way round would quietly let it through. */
+  var PH2_KEEP = ['material reservation', 'material issuance', 'material collection',
+                  'grn', 'goods receipt', 'material request'];
+  function ph2Material(t) {
+    var st = stem(t && t.n);
+    return PH2_KEEP.some(function (k) { return st.indexOf(k) === 0; });
   }
 
   /* ------------------------------------------------------- where it stands
@@ -208,12 +444,34 @@
   function state(t, mark) {
     if (!t) return 'other';
     if (collectedOn(t, mark)) return 'collected';
+    if (s(t.phase) === 'Bulk') return bulkState(t);
     if (t.done_at) return 'ready';
     var st = s(t.stage);
     if (/^System Issuance Pending/i.test(st)) return 'issuing';
     if (/Shortage/i.test(st)) return 'shortage';
     if (/Rejected|Rejection/i.test(st)) return 'rejected';
     if (/Material Reservation|Infomate|Activity|FL Creation|Vendor/i.test(st)) return 'reserving';
+    return 'other';
+  }
+
+  /* ---- Bulk's own states ----
+
+     'approved' is NOT 'ready' and must never be counted with it. Dialog
+     approving a bulk request is the end of what WorkHub records: there is no
+     issuance task, no GIN, no evidence anywhere on the card that the material
+     left a warehouse. Putting an approved Bulk row in "Can collect" would be
+     the tool asserting something it has not been told.
+
+     The two failures go to Problems, neither to Reserving: a rejected
+     initiation is a decision against the request, and a resubmit is the
+     request bounced back for more - both are somebody's move to make, which
+     is what Problems means here and is not what Reserving means. */
+  function bulkState(t) {
+    var st = s(t.stage);
+    if (stems(st, 'material reservation initiat reject')) return 'rejected';
+    if (stems(st, 'resubmit material request')) return 'shortage';
+    if (t.done_at) return 'approved';
+    if (stems(st, 'ud approval') || stems(st, 'material reservation initiat')) return 'reserving';
     return 'other';
   }
 
@@ -250,7 +508,8 @@
   function matches(t, q) {
     q = s(q).toUpperCase();
     if (!q) return true;
-    var hay = [t.id, t.site, t.site_name, t.wo, t.reservation, t.stage];
+    var hay = [t.id, t.site, t.site_name, t.wo, t.reservation, t.stage,
+               t.stream, t.order_no, t.grn, t.phase];
     (t.lines || []).forEach(function (l) {
       hay.push(l.code, l.desc);
       if (l.gin) { hay.push(l.gin.res, l.gin.gi); hay = hay.concat(l.gin.sn || []); }
@@ -262,11 +521,14 @@
 
      How many tickets sit in each state, in the order a ticket moves through
      them - the strip across the top of the page. */
-  var ORDER = ['reserving', 'issuing', 'ready', 'collected', 'shortage', 'rejected', 'other'];
+  /* 'approved' sits between reserving and ready in the strip because that is
+     where it is in the life of a Bulk request - past the approval, and not at
+     a warehouse counter. It is its own band and is never added to ready. */
+  var ORDER = ['reserving', 'approved', 'issuing', 'ready', 'collected', 'shortage', 'rejected', 'other'];
   function pipeline(tickets, marks) {
     var n = {};
     ORDER.forEach(function (k) { n[k] = 0; });
-    (tickets || []).forEach(function (t) { n[state(t, (marks || {})[t.id])]++; });
+    (tickets || []).forEach(function (t) { n[state(t, markOf(marks, t))]++; });
     return ORDER.map(function (k) { return { state: k, n: n[k] }; });
   }
 
@@ -277,7 +539,7 @@
   function pickList(tickets, marks) {
     var by = {};
     (tickets || []).forEach(function (t) {
-      if (state(t, (marks || {})[t.id]) !== 'ready') return;
+      if (state(t, markOf(marks, t)) !== 'ready') return;
       (t.lines || []).forEach(function (l) {
         if (!l.code) return;
         var q = l.gin && l.gin.qty != null ? l.gin.qty : l.qty;
@@ -286,7 +548,7 @@
         if (!k.uom) k.uom = (l.gin && l.gin.uom) || l.uom || '';
         k.qty += q || 0;
         k.sn += l.gin && l.gin.sn ? l.gin.sn.length : 0;
-        if (k.tickets.indexOf(t.id) < 0) k.tickets.push(t.id);
+        if (k.tickets.indexOf(key(t)) < 0) k.tickets.push(key(t));
       });
     });
     return Object.keys(by).map(function (c) { return by[c]; }).sort(function (a, b) {
@@ -303,12 +565,17 @@
     'Site ID', 'Site Name', 'Material Code', 'Material description', 'Quantity', 'Unit of Measure',
     'Owner Team', 'Status', 'Days Pending (Issuance)', 'Issuance Done Date', 'Collected Date',
     'Days Pending (Collection)', 'GIN Reservation No', 'GI Number', 'GI Date', 'Issued Qty',
-    'Serial Number(s)', 'Issue S.Loc', 'GIN WBS', 'Issue Check'];
+    'Serial Number(s)', 'Issue S.Loc', 'GIN WBS', 'Issue Check',
+    /* Appended, never inserted: a column added in the middle would move every
+       other one and break anybody's template. Blank for PH1 and Bulk; a PH2
+       card writes two rows with the same Ticket ID and these tell them apart,
+       which is the whole reason they are here. */
+    'Source', 'Stream', 'Project / PM Order', 'Activity / GRN No'];
 
   function sheet(tickets, marks, today) {
     var out = [HEADERS.slice()];
     (tickets || []).forEach(function (t) {
-      var mk = (marks || {})[t.id], lines = t.lines && t.lines.length ? t.lines : [{}];
+      var mk = markOf(marks, t), lines = t.lines && t.lines.length ? t.lines : [{}];
       var done = localDay(t.done_at), got = collectedOn(t, mk);
       lines.forEach(function (l, i) {
         var g = l.gin || {}, first = i === 0;
@@ -320,8 +587,22 @@
           first ? nz(issuing(t, today)) : '', first ? done : '', first ? got : '',
           first && done && !got ? nz(waiting(t, mk, today)) : '',
           g.res || '', g.gi || '', g.date || '', g.qty == null ? '' : g.qty,
-          (g.sn || []).join(', '), g.sloc || '', g.wbs || '', l.code && t.done_at ? issueCheck(l) : ''
+          (g.sn || []).join(', '), g.sloc || '', g.wbs || '', l.code && t.done_at ? issueCheck(l) : '',
+          first ? (t.phase || '') : '', first ? (t.stream || '') : '',
+          first ? (t.order_no || '') : '', first ? (t.grn || '') : ''
         ]);
+      });
+      /* The lines the card struck off, under the live ones, marked as what
+         they are. Leaving them out of the sheet would make the sheet disagree
+         with the screen, and somebody would reconcile the difference by hand. */
+      (t.removed || []).forEach(function (r) {
+        var row = new Array(HEADERS.length).fill('');
+        row[7] = r.code || ''; row[8] = r.desc || '';
+        row[9] = r.qty == null ? '' : r.qty; row[10] = r.uom || '';
+        row[4] = t.wo || ''; row[5] = t.site || ''; row[6] = t.site_name || '';
+        row[24] = 'Removed';
+        row[25] = t.phase || ''; row[26] = t.stream || '';
+        out.push(row);
       });
     });
     return out;
@@ -362,6 +643,9 @@
 
   return { splitTask: splitTask, current: current, doneTimes: doneTimes, num: num, ginDate: ginDate,
            reservations: reservations,
+           stem: stem, stems: stems, key: key, markOf: markOf,
+           rowsFor: rowsFor, ph2Ready: ph2Ready, ph2Material: ph2Material, attachDocs: attachDocs,
+           bulkApproved: bulkApproved, bulkState: bulkState,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,

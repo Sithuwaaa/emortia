@@ -325,6 +325,9 @@
   .sns span{border:1px solid var(--line3);border-radius:6px;padding:1px 6px;cursor:copy;white-space:nowrap}
   .sns span:hover{border-color:var(--accentB);color:var(--accentB)}
   .chk{font:700 11px 'Space Mono',monospace;white-space:nowrap}
+  /* struck off the card, not dropped from the page */
+  tr.gone td{text-decoration:line-through;color:var(--muted);opacity:.72}
+  tr.gone .chk.gone{text-decoration:none;color:var(--muted);border:1px solid var(--line3);border-radius:999px;padding:2px 7px}
   .chk.Full{color:var(--ok)} .chk.Partial,.chk.Extra{color:var(--warn)} .chk.Not{color:var(--bad)}
   .empty{color:var(--muted);font-size:14px;padding:28px;text-align:center;border:1px dashed var(--line3);border-radius:14px}
 
@@ -495,6 +498,10 @@ const dayWord = n => n === 1 ? 'day' : 'days';
 /* ---- the states, said the way the warehouse says them ---- */
 const STATES = {
   ready:     { label: 'Can collect',  seg: 'Can collect' },
+  /* Bulk, approved by Dialog. Its own label and its own band, never folded
+     into Can collect: WorkHub records no issuance anywhere in the Bulk
+     workflow, so nothing on the card says the material left a warehouse. */
+  approved:  { label: 'Bulk approved', seg: 'Bulk approved' },
   issuing:   { label: 'With ACE',     seg: 'With ACE' },
   reserving: { label: 'Reserving',    seg: 'Reserving' },
   shortage:  { label: 'Shortage',     seg: 'Problems' },
@@ -502,7 +509,13 @@ const STATES = {
   collected: { label: 'Collected',    seg: 'Collected' },
   other:     { label: 'Other',        seg: 'All' }
 };
-const stOf = t => W.state(t, MARKS[t.id]);
+/* (id, stream) everywhere. A PH2 card is two rows that share an id, so any
+   lookup on the id alone silently merges them - which would show ACE as
+   collected because Advantis was. KEY is W.key, the same one db.js builds
+   the MARKS map with and the same pair 039 made the primary key. */
+const KEY = t => W.key(t);
+const mk = t => W.markOf(MARKS, t);
+const stOf = t => W.state(t, mk(t));
 const inFilter = (t, f) => {
   const s = stOf(t);
   if (f === 'all') return true;
@@ -515,12 +528,12 @@ function board(){
   const T = today(), by = {};
   TICKETS.forEach(t => { const s = stOf(t); (by[s] = by[s] || []).push(t); });
   const ready = by.ready || [];
-  const waits = ready.map(t => W.waiting(t, MARKS[t.id], T)).filter(v => v != null);
+  const waits = ready.map(t => W.waiting(t, mk(t), T)).filter(v => v != null);
   const oldest = waits.length ? Math.max.apply(null, waits) : null;
   const issuing = by.issuing || [];
   const ace = issuing.map(t => W.issuing(t, T)).filter(v => v != null);
   const prob = (by.shortage || []).length + (by.rejected || []).length;
-  const wk = (by.collected || []).filter(t => W.daysBetween(W.collectedOn(t, MARKS[t.id]), T) <= 7).length;
+  const wk = (by.collected || []).filter(t => W.daysBetween(W.collectedOn(t, mk(t)), T) <= 7).length;
   const tile = (f, cls, k, v, s) =>
     `<button class="tile ${cls}${FILTER === f ? ' on' : ''}" data-f="${f}"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></button>`;
   /* How old this number is, said ON the number. Three of us read this on
@@ -563,18 +576,18 @@ function dash(){
      on the list, with a week as the floor, so one ticket a day old does not
      read as a full bar. */
   const ready = TICKETS.filter(t => stOf(t) === 'ready')
-    .map(t => ({ t, d: W.waiting(t, MARKS[t.id], T) || 0 }))
+    .map(t => ({ t, d: W.waiting(t, mk(t), T) || 0 }))
     .sort((a, b) => b.d - a.d || b.t.id - a.t.id);
   const top = Math.max(7, ...ready.map(r => r.d));
   $('rdy').innerHTML = ready.length ? ready.map(({ t, d }) => {
     const items = (t.lines || []).filter(l => l.code).length;
     const sns = (t.lines || []).reduce((n, l) => n + (l.gin && l.gin.sn ? l.gin.sn.length : 0), 0);
     const heat = d >= 5 ? 'hot' : d >= 2 ? 'warm' : 'cool';
-    return `<div class="rdy" data-id="${t.id}">
-      <span class="sid" data-open="${t.id}" title="Show the materials">${esc(t.site || '#' + t.id)}</span>
+    return `<div class="rdy" data-id="${t.id}" data-stream="${esc(t.stream || '')}">
+      <span class="sid" data-open="${esc(KEY(t))}" title="Show the materials">${esc(t.site || '#' + t.id)}${t.stream ? ' · ' + esc(t.stream) : ''}</span>
       <span class="meta"><b>${esc(t.site_name || '')}</b> · #${t.id}${t.wo ? ' · ' + esc(t.wo) : ''} · ${items} item${items === 1 ? '' : 's'}${sns ? ' · ' + sns + ' serial' + (sns === 1 ? '' : 's') : ''}</span>
       <span class="age ${heat}"><span class="tr"><i style="width:${Math.max(4, d / top * 100)}%"></i></span><b>${d}</b>${dayWord(d)}</span>
-      ${OWNER ? `<button class="mini go" data-id="${t.id}" title="Mark #${t.id} collected today">Collected today</button>` : ''}
+      ${OWNER ? `<button class="mini go" data-key="${esc(KEY(t))}" title="Mark #${t.id}${t.stream ? ' ' + esc(t.stream) : ''} collected today">Collected today</button>` : ''}
     </div>`;
   }).join('') : `<div class="none">${LOADED ? 'Nothing is waiting at the warehouse right now.' : 'Loading…'}</div>`;
 
@@ -588,7 +601,7 @@ function dash(){
 }
 /* the site on a waiting row opens that ticket in the list below */
 function jump(id){
-  const el = id ? document.querySelector(`#list details[data-id="${id}"]`) : $('list');
+  const el = id ? document.querySelector(`#list details[data-key="${id}"]`) : $('list');
   if (!el) return;
   if (id) el.open = true;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -598,12 +611,13 @@ $('rdy').addEventListener('click', async e => {
   if (open){ FILTER = 'ready'; $('find').value = ''; render(); jump(open.dataset.open); return; }
   const go = e.target.closest('.go'); if (!go) return;
   if (!OWNER){ toast('Only Sithara can set a collected date.'); return; }
-  const id = Number(go.dataset.id);
+  const k = go.dataset.key, t = TICKETS.find(x => KEY(x) === k);
+  if (!t) return;
   go.disabled = true;
   try {
-    MARKS[id] = await window.DB.wh24Mark(id, { collected_on: today(), collected_by: ME || null,
-                                                note: (MARKS[id] && MARKS[id].note) || null });
-    toast('#' + id + ' collected today');
+    MARKS[k] = await window.DB.wh24Mark(t.id, { collected_on: today(), collected_by: ME || null,
+                                                note: (MARKS[k] && MARKS[k].note) || null }, t.stream);
+    toast('#' + t.id + (t.stream ? ' ' + t.stream : '') + ' collected today');
     render();
   } catch(err){ toast(err.message, 5000); go.disabled = false; }
 });
@@ -611,8 +625,12 @@ $('rdy').addEventListener('click', async e => {
 function segs(){
   /* counted within the chosen source, so the two strips agree with the list */
   const n = f => TICKETS.filter(t => inSrc(t) && inFilter(t, f)).length;
-  const S = [['ready','Can collect'],['issuing','With ACE'],['reserving','Reserving'],['problem','Problems'],['collected','Collected'],['all','All']];
-  $('seg').innerHTML = S.map(([f, l]) => `<button role="tab" data-f="${f}" class="${FILTER === f ? 'on' : ''}">${l}<b>${n(f)}</b></button>`).join('');
+  const S = [['ready','Can collect'],['issuing','With ACE'],['reserving','Reserving'],
+            ['approved','Bulk approved'],['problem','Problems'],['collected','Collected'],['all','All']];
+  /* Bulk approved appears only once there is one. A tab reading zero for a
+     source nobody has synced is a control that does nothing. */
+  $('seg').innerHTML = S.filter(([f]) => f !== 'approved' || n('approved'))
+    .map(([f, l]) => `<button role="tab" data-f="${f}" class="${FILTER === f ? 'on' : ''}">${l}<b>${n(f)}</b></button>`).join('');
   $('seg').querySelectorAll('button').forEach(b => b.onclick = () => { FILTER = b.dataset.f; render(true); });
 
   /* Only the sources that have tickets, and only when there is a choice to
@@ -636,21 +654,27 @@ function order(a, b){
   const T = today(), sa = stOf(a), sb = stOf(b);
   const rank = { ready: 0, issuing: 1, shortage: 2, rejected: 2, reserving: 3, other: 4, collected: 5 };
   if (rank[sa] !== rank[sb]) return rank[sa] - rank[sb];
-  if (sa === 'ready') return W.waiting(b, MARKS[b.id], T) - W.waiting(a, MARKS[a.id], T) || b.id - a.id;
+  if (sa === 'ready') return W.waiting(b, mk(b), T) - W.waiting(a, mk(a), T) || b.id - a.id;
   if (sa === 'issuing') return (W.issuing(b, T) || 0) - (W.issuing(a, T) || 0) || b.id - a.id;
-  if (sa === 'collected') return String(W.collectedOn(b, MARKS[b.id])).localeCompare(W.collectedOn(a, MARKS[a.id])) || b.id - a.id;
+  if (sa === 'collected') return String(W.collectedOn(b, mk(b))).localeCompare(W.collectedOn(a, mk(a))) || b.id - a.id;
   return b.id - a.id;
 }
 
 function daysCell(t){
-  const T = today(), s = stOf(t), mk = MARKS[t.id];
+  const T = today(), s = stOf(t), m = mk(t);
   if (s === 'ready'){
-    const d = W.waiting(t, mk, T);
+    const d = W.waiting(t, m, T);
     return `<div class="days ${d >= 5 ? 'hot' : d >= 2 ? 'warm' : 'cool'}"><b>${d}</b><span>${dayWord(d)} waiting</span></div>`;
   }
   if (s === 'collected'){
-    const d = W.waiting(t, mk, T);
-    return `<div class="days"><b style="font-size:15px">${nice(W.collectedOn(t, mk))}</b><span>${d == null ? 'collected' : 'after ' + d + ' ' + dayWord(d)}</span></div>`;
+    const d = W.waiting(t, m, T);
+    return `<div class="days"><b style="font-size:15px">${nice(W.collectedOn(t, m))}</b><span>${d == null ? 'collected' : 'after ' + d + ' ' + dayWord(d)}</span></div>`;
+  }
+  /* Bulk, approved. The date is the approval's, and the cell says approved -
+     not "waiting", which would be this tool claiming the material is on a
+     shelf somewhere. */
+  if (s === 'approved'){
+    return `<div class="days"><b style="font-size:15px">${nice(W.localDay(t.done_at))}</b><span>approved</span></div>`;
   }
   if (s === 'issuing'){
     const d = W.issuing(t, T);
@@ -672,10 +696,19 @@ function linesTable(t){
       <td class="sn"><div class="sns">${sn}</div></td>
       <td>${chk ? `<span class="chk ${chk.split(' ')[0]}">${esc(chk)}</span>` : ''}</td></tr>`;
   }).join('');
+  /* Lines the card struck off, shown struck through rather than dropped. A
+     line that silently disappears between one sync and the next reads as a
+     parsing failure to whoever is holding the list - "it was removed" is the
+     one thing that would have told them otherwise. They are in no count and
+     in no pick list. */
+  const gone = (t.removed || []).map(r => `<tr class="gone">
+      <td class="m">${esc(r.code)}</td><td>${esc(r.desc)}</td>
+      <td class="num m">${r.qty == null ? '' : esc(r.qty)}</td><td class="m">${esc(r.uom)}</td>
+      <td colspan="5"></td><td><span class="chk gone">Removed</span></td></tr>`).join('');
   return `<div class="wrap"><table><thead><tr>
     <th>Code</th><th>Description</th><th class="num">Asked</th><th>UoM</th><th class="num">Issued</th>
     <th>GIN reservation</th><th>GI number</th><th>GI date</th><th>Serial numbers</th><th>Check</th>
-    </tr></thead><tbody>${rows || '<tr><td colspan="10" style="color:var(--muted)">No material lines on this ticket.</td></tr>'}</tbody></table></div>`;
+    </tr></thead><tbody>${rows + gone || '<tr><td colspan="10" style="color:var(--muted)">No material lines on this ticket.</td></tr>'}</tbody></table></div>`;
 }
 
 function steps(t){
@@ -686,31 +719,38 @@ function steps(t){
 }
 
 function gotBox(t){
-  const mk = MARKS[t.id] || {}, s = stOf(t);
-  if (!t.done_at && !mk.collected_on) return '';
+  const m = mk(t) || {}, s = stOf(t);
+  if (!t.done_at && !m.collected_on) return '';
   const wh = W.localDay(t.wh_collected_at);
-  const on = mk.collected_on || wh || '';
-  const src = mk.collected_on
-    ? `Set by ${esc(mk.collected_by || 'someone')}${mk.updated_at ? ' · ' + esc(ago(mk.updated_at)) : ''}${wh && wh !== mk.collected_on ? ' · WorkHub says ' + nice(wh) : ''}`
+  const on = m.collected_on || wh || '';
+  /* Bulk has no issuance step anywhere in WorkHub, so there is no record that
+     the material ever moved. An empty date here must not read as "not yet",
+     which implies somebody is going to fetch it: it reads as not tracked,
+     because that is the true state of the evidence. */
+  const bulk = (t.phase || '') === 'Bulk';
+  const src = m.collected_on
+    ? `Set by ${esc(m.collected_by || 'someone')}${m.updated_at ? ' · ' + esc(ago(m.updated_at)) : ''}${wh && wh !== m.collected_on ? ' · WorkHub says ' + nice(wh) : ''}`
+    : bulk ? `WorkHub records no issuance for a Bulk request, so collection is <b>not tracked</b> here. Approved on ${nice(W.localDay(t.done_at))}.`
     : wh ? `From WorkHub24 – the Done task was closed on ${nice(wh)}.${OWNER ? ' Change it if that is not the day.' : ''}`
     : `Not collected yet. The count stops once a date is here.`;
+  const blank = bulk ? 'not tracked' : 'not yet';
   /* A viewer sees the same facts and no controls. Hiding the date would be
      hiding information rather than permission, which is not what was asked. */
   if (!OWNER) return `<div class="got">
     <span class="lbl">Collected on</span>
-    <span class="val">${on ? nice(on) : 'not yet'}</span>
-    ${mk.collected_by ? `<span class="val dim">by ${esc(mk.collected_by)}</span>` : ''}
-    ${mk.note ? `<span class="val dim">${esc(mk.note)}</span>` : ''}
+    <span class="val">${on ? nice(on) : blank}</span>
+    ${m.collected_by ? `<span class="val dim">by ${esc(m.collected_by)}</span>` : ''}
+    ${m.note ? `<span class="val dim">${esc(m.note)}</span>` : ''}
     <span class="src">${src}</span>
   </div>`;
-  return `<div class="got" data-id="${t.id}">
+  return `<div class="got" data-id="${t.id}" data-stream="${esc(t.stream || '')}">
     <span class="lbl">Collected on</span>
     <input type="date" class="dt" value="${esc(on)}" max="${today()}">
-    <input class="nm" placeholder="who went" value="${esc(mk.collected_by || (s === 'ready' ? ME : ''))}">
-    <input class="nt" placeholder="note (optional)" value="${esc(mk.note || '')}">
+    <input class="nm" placeholder="who went" value="${esc(m.collected_by || (s === 'ready' ? ME : ''))}">
+    <input class="nt" placeholder="note (optional)" value="${esc(m.note || '')}">
     ${s === 'ready' ? '<button class="mini go-today">Collected today</button>' : ''}
     <button class="mini save">Save</button>
-    ${mk.collected_on ? '<button class="mini clear" title="Back to not collected">Clear</button>' : ''}
+    ${m.collected_on ? '<button class="mini clear" title="Back to not collected">Clear</button>' : ''}
     <span class="src">${src}</span>
   </div>`;
 }
@@ -728,7 +768,7 @@ const SEL = new Set();
 /* what the last render actually drew, so "4 not shown" can be counted */
 let SHOWN = [];
 
-const picked = () => TICKETS.filter(t => SEL.has(t.id)).sort(order);
+const picked = () => TICKETS.filter(t => SEL.has(KEY(t))).sort(order);
 
 /* "7 selected · 4 not shown by this filter". The second half is the warning
    the first half needs: without it you export five rows believing you picked
@@ -736,7 +776,7 @@ const picked = () => TICKETS.filter(t => SEL.has(t.id)).sort(order);
 function selText(){
   const n = SEL.size;
   if (!n) return '';
-  const here = SHOWN.filter(t => SEL.has(t.id)).length;
+  const here = SHOWN.filter(t => SEL.has(KEY(t))).length;
   const away = n - here;
   return n + ' selected' + (away ? ` · <i>${away} not shown by this filter</i>` : '');
 }
@@ -785,9 +825,9 @@ function workbook(list){
 
 function card(t){
   const s = stOf(t), st = STATES[s] || STATES.other;
-  return `<details class="tk s-${s}${SEL.has(t.id) ? ' picked' : ''}" data-id="${t.id}">
+  return `<details class="tk s-${s}${SEL.has(KEY(t)) ? ' picked' : ''}" data-key="${esc(KEY(t))}" data-id="${t.id}">
     <summary>
-      <label class="pickbox" title="Pick this ticket for a sheet"><input type="checkbox" data-pick="${t.id}"${SEL.has(t.id) ? ' checked' : ''}></label>
+      <label class="pickbox" title="Pick this row for a sheet"><input type="checkbox" data-pick="${esc(KEY(t))}"${SEL.has(KEY(t)) ? ' checked' : ''}></label>
       <span class="tags"><span class="badge ${s}">${st.label}</span>${t.phase ? `<span class="pbadge p-${esc(t.phase)}">${esc(t.phase)}</span>` : ''}</span>
       <div class="who"><div class="l1"><span class="sid">${esc(t.site || '–')}</span><span class="snm">${esc(t.site_name || '')}</span></div>
         <div class="l2">#${t.id}${t.reservation ? ' · <b class="res">' + esc(t.reservation) + '</b>' : ''} · ${esc(t.stage || '')}${t.team ? ' – ' + esc(t.team) : ''}</div></div>
@@ -821,7 +861,7 @@ function render(fresh){
      A picked row from another source must not stay hidden on the one view
      whose job is to show every picked row. */
   const list = FILTER === 'picked'
-    ? TICKETS.filter(t => SEL.has(t.id) && W.matches(t, q)).sort(order)
+    ? TICKETS.filter(t => SEL.has(KEY(t)) && W.matches(t, q)).sort(order)
     : TICKETS.filter(t => inSrc(t) && inFilter(t, q ? 'all' : FILTER) && W.matches(t, q)).sort(order);
   SHOWN = list;
   paintSel();
@@ -836,12 +876,12 @@ function render(fresh){
     el.innerHTML = `<div class="empty">${q ? 'Nothing matches “' + esc(q) + '”.' : FILTER === 'picked' ? 'Nothing is selected.' : FILTER === 'ready' ? 'Nothing is waiting at the warehouse. 🎉' : 'Nothing here.'}</div>`;
     return;
   }
-  const open = new Set([...el.querySelectorAll('details[open]')].map(d => d.dataset.id));
+  const open = new Set([...el.querySelectorAll('details[open]')].map(d => d.dataset.key));
   el.innerHTML = list.map(card).join('');
   el.querySelectorAll('details').forEach(d => {
-    const t = TICKETS.find(x => String(x.id) === d.dataset.id);
+    const t = TICKETS.find(x => KEY(x) === d.dataset.key);
     d.addEventListener('toggle', () => { if (d.open && !d.dataset.filled){ fill(d, t); d.dataset.filled = 1; } });
-    if (open.has(d.dataset.id) || (list.length === 1)) d.open = true;
+    if (open.has(d.dataset.key) || (list.length === 1)) d.open = true;
   });
 }
 
@@ -854,8 +894,8 @@ $('list').addEventListener('click', async e => {
   const pick = e.target.closest('[data-pick]');
   if (pick){
     e.stopPropagation();
-    const id = Number(pick.dataset.pick);
-    if (pick.checked) SEL.add(id); else SEL.delete(id);
+    const k = pick.dataset.pick;
+    if (pick.checked) SEL.add(k); else SEL.delete(k);
     const card = pick.closest('.tk');
     if (card) card.classList.toggle('picked', pick.checked);
     paintSel();
@@ -865,7 +905,7 @@ $('list').addEventListener('click', async e => {
   if (sn){ try { await navigator.clipboard.writeText(sn.dataset.sn); toast('Copied ' + sn.dataset.sn); } catch(x){} return; }
   const box = e.target.closest('.got'); if (!box) return;
   if (!OWNER){ toast('Only Sithara can set a collected date.'); return; }
-  const id = Number(box.dataset.id);
+  const id = Number(box.dataset.id), stream = box.dataset.stream || '';
   if (e.target.classList.contains('go-today')) box.querySelector('.dt').value = today();
   if (!e.target.matches('.go-today,.save,.clear')) return;
   const clear = e.target.classList.contains('clear');
@@ -875,8 +915,9 @@ $('list').addEventListener('click', async e => {
   if (!clear && !mark.collected_on){ toast('Pick the day it was collected first.'); return; }
   e.target.disabled = true;
   try {
-    MARKS[id] = await window.DB.wh24Mark(id, mark);
-    toast(clear ? '#' + id + ' is back to not collected' : '#' + id + ' collected on ' + nice(mark.collected_on));
+    MARKS[id + '|' + stream] = await window.DB.wh24Mark(id, mark, stream);
+    const who = '#' + id + (stream ? ' ' + stream : '');
+    toast(clear ? who + ' is back to not collected' : who + ' collected on ' + nice(mark.collected_on));
     render();
   } catch(err){ toast(err.message, 5000); e.target.disabled = false; }
 });
@@ -929,7 +970,7 @@ $('selShow').onclick = () => { FILTER = 'picked'; $('find').value = ''; render(t
 $('allBtn').onclick = () => {
   if (!SHOWN.length){ toast('Nothing to select.'); return; }
   const before = SEL.size;
-  SHOWN.forEach(t => SEL.add(t.id));
+  SHOWN.forEach(t => SEL.add(KEY(t)));
   render();
   toast((SEL.size - before) + ' added · ' + SEL.size + ' selected');
 };
@@ -942,8 +983,8 @@ async function loadAll(){
   /* A sync can retire a ticket. Keeping its id selected would put an empty
      sheet in the workbook, so the selection drops what is no longer there -
      and only that. Filtering never touches it. */
-  const here = new Set(TICKETS.map(t => t.id));
-  [...SEL].forEach(id => { if (!here.has(id)) SEL.delete(id); });
+  const here = new Set(TICKETS.map(KEY));
+  [...SEL].forEach(k => { if (!here.has(k)) SEL.delete(k); });
   await refreshChecked();
   render(true);
 }
@@ -1089,17 +1130,29 @@ async function receive(data){
     (failed.length ? ` ${failed.length} GIN${failed.length === 1 ? '' : 's'} could not be read and ${failed.length === 1 ? 'was' : 'were'} left out: ${esc(failed.join(', '))}.` : '') +
     (moves.length ? ` ${moves.length} Activity Report${moves.length === 1 ? '' : 's'} (equipment movement, not a GIN) ${moves.length === 1 ? 'was' : 'were'} read and set aside: ${esc(moves.join(', '))}.` : '');
 
-  const byId = {}; TICKETS.forEach(t => byId[t.id] = t);
+  const byKey = {}; TICKETS.forEach(t => byKey[KEY(t)] = t);
   const out = [], lines = [];
   raws.forEach(raw => {
-    const old = byId[raw.id];
     const files = raw.files || [];
-    const keep = ((old && old.gins) || []).filter(g => files.indexOf(g.file) >= 0 && !(parsed[raw.id] || []).some(n => n.file === g.file));
-    const rec = W.record({ ...raw, gins: keep.concat(parsed[raw.id] || []) });
-    if (old && sig(old) === sig(rec)) return;
-    out.push(rec);
-    const was = old ? W.state(old, MARKS[old.id]) : null, now = W.state(rec, MARKS[rec.id]);
-    lines.push(`<span>#${rec.id} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(STATES[was].label) + ' → <b>' + esc(STATES[now].label) + '</b>') : 'new · <b>' + esc(STATES[now].label) + '</b>'}</span>`);
+    const fresh = parsed[raw.id] || [];
+    /* Documents already read on an earlier sync, minus any the card has since
+       dropped and any just re-read. Gathered across every row of the card,
+       because a PH2 card's two rows hold one document each and both have to
+       come back or the second row loses its note. */
+    const had = [];
+    TICKETS.forEach(t => { if (t.id === raw.id) had.push(...(t.gins || [])); });
+    const keep = had.filter(g => files.indexOf(g.file) >= 0 && !fresh.some(n => n.file === g.file));
+    const docs = keep.concat(fresh);
+    /* W.rowsFor, not W.record: only it knows a PH2 card is two rows. PH1 and
+       Bulk come back as one, and for PH1 rowsFor IS record. */
+    W.rowsFor(W.attachDocs(raw, docs)).forEach(rec => {
+      const old = byKey[KEY(rec)];
+      if (old && sig(old) === sig(rec)) return;
+      out.push(rec);
+      const was = old ? W.state(old, mk(old)) : null, now = W.state(rec, mk(rec));
+      const who = '#' + rec.id + (rec.stream ? ' ' + esc(rec.stream) : '');
+      lines.push(`<span>${who} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(STATES[was].label) + ' → <b>' + esc(STATES[now].label) + '</b>') : 'new · <b>' + esc(STATES[now].label) + '</b>'}</span>`);
+    });
   });
   /* Two different nothings, and they used to print the same sentence.
      Nothing CAME BACK is not nothing CHANGED: with "Tickets since" set to
@@ -1123,7 +1176,7 @@ async function receive(data){
     return;
   }
   PENDING = out;
-  const ready = out.filter(r => W.state(r, MARKS[r.id]) === 'ready').length;
+  const ready = out.filter(r => W.state(r, mk(r)) === 'ready').length;
   dlg(`${out.length} of ${raws.length} tickets changed${ready ? ` – <b>${ready}</b> of them can be collected` : ''}.` +
       pdfNote(),
       { changes: lines.join(''), go: true });
