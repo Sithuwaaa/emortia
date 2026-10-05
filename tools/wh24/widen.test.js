@@ -143,13 +143,28 @@ is('and refuses the rest',
    decides it belongs - the opposite way round would let it through unseen */
 is('and refuses one nobody has seen yet', W.ph2Material(task('Something New - AP')), false);
 
-/* --- half-finished is not ready --- */
-is('a GRN with no note is not ready',
-   W.ph2Ready({ grn: 'GRN-TEST-0003', gins: [] }), null);
-is('a note with no GRN is not ready either',
-   W.ph2Ready({ grn: '', gins: [note('4930000003', '2026-03-05')] }), null);
-is('both, and it is', W.ph2Ready({ grn: 'G', gins: [note('4930000003', '2026-03-05')] }),
+/* --- ONE test: reservation present AND note attached, and the NOTE binds --- */
+is('a reservation with no note is NEVER ready',
+   W.ph2Ready({ reservation: '1700002', gins: [] }), null);
+is('a note with no reservation is not ready either',
+   W.ph2Ready({ reservation: '', gins: [note('4930000003', '2026-03-05')] }), null);
+is('both, and it is', W.ph2Ready({ reservation: '1700002', gins: [note('4930000003', '2026-03-05')] }),
    '2026-03-05T00:00:00Z');
+is('a note with no readable date is not a date',
+   W.ph2Ready({ reservation: '1700002', gins: [note('4930000003', '')] }), null);
+
+/* --- repeated notes: EARLIEST, and the count is shown --- */
+{
+  const two = { reservation: '1700002',
+                gins: [note('4930000004', '2026-03-10'), note('4930000005', '2026-03-01')] };
+  is('two notes take the EARLIEST date', W.ph2Ready(two), '2026-03-01T00:00:00Z');
+  is('not the latest', W.ph2Ready(two) === '2026-03-10T00:00:00Z', false);
+  is('and the count is carried', W.noteCount(two), 2);
+  /* the reason: a second delivery must not make the row younger */
+  is('a row does not get younger when a second note lands',
+     W.waiting(W.record({ id: 1, doneAt: W.ph2Ready(two), timeline: [] }), null, '2026-03-20'), 19);
+  is('which latest-note would have made', W.daysBetween('2026-03-10', '2026-03-20'), 10);
+}
 {
   const half = JSON.parse(JSON.stringify(ph2));
   half.streams[1].gins = [];
@@ -233,10 +248,10 @@ is('a date on one stream does not take the other off',
 }
 
 /* ============================================================= Bulk ======= */
-const bulk = (stage, status, open, initDone) => ({
+const bulk = (stage, status, open, initDone, statusB) => ({
   id: 25600, phase: 'Bulk', workflow: 'w-test-bulk', site: 'zz0003', siteName: 'Invented_Place_C',
   reservation: '1700004', created: '2026-03-01T04:00:00Z', updated: '2026-03-18T04:00:00Z',
-  initiationStatus: status,
+  initiationStatusA: status, initiationStatusB: statusB === undefined ? status : statusB,
   requested: [{ code: '1000000300', desc: 'Invented bulk item', qty: 40, uom: 'EA' }],
   timeline: [
     { n: 'UD Approval', s: 'DONE', c: '2026-03-01T04:00:00Z', d: '2026-03-04T04:00:00Z' },
@@ -279,6 +294,91 @@ const bulk = (stage, status, open, initDone) => ({
 {
   const b = W.rowsFor(bulk('UD Approval', 'Pending', true, null))[0];
   is('waiting on UD Approval is reserving', W.state(b), 'reserving');
+}
+
+/* ===================== THE TWO OPPOSITE RULES, TESTED SIDE BY SIDE ========
+   PH2 repeated notes → earliest.  Bulk repeated initiations → last.
+   They are opposite on purpose, and this is here so neither gets "corrected"
+   to match the other by somebody reading only one of them. */
+{
+  /* PH2: a second note is MORE material. The first is still sitting there. */
+  const twoNotes = { reservation: '1700002',
+                     gins: [note('4930000006', '2026-03-01'), note('4930000007', '2026-03-10')] };
+  is('PH2 takes the EARLIEST of two notes', W.ph2Ready(twoNotes), '2026-03-01T00:00:00Z');
+
+  /* Bulk: a second initiation means the FIRST WAS VOIDED. Card 876's real
+     shape - initiate, rejected, re-initiate - with invented dates. */
+  const roundTrip = {
+    id: 25601, phase: 'Bulk', workflow: 'w-test-bulk', site: 'zz0004',
+    initiationStatusA: 'Approved', initiationStatusB: 'Approved',
+    created: '2026-03-01T04:00:00Z', updated: '2026-08-19T09:20:02Z', requested: [],
+    timeline: [
+      { n: 'UD Approval', s: 'DONE', c: '2026-03-01T04:00:00Z', d: '2026-03-06T03:56:43Z' },
+      { n: 'Material Reservation Initiation', s: 'DONE', c: '2026-03-06T03:56:55Z', d: '2026-03-08T09:07:14Z' },
+      { n: 'Material Reservation Initiation Rejection', s: 'DONE', c: '2026-03-08T09:07:26Z', d: '2026-06-10T08:48:50Z' },
+      { n: 'UD Approval', s: 'DONE', c: '2026-06-10T08:48:59Z', d: '2026-06-18T06:03:53Z' },
+      { n: 'Resubmit Material Request', s: 'DONE', c: '2026-06-18T06:04:03Z', d: '2026-06-18T07:24:13Z' },
+      { n: 'UD Approval', s: 'DONE', c: '2026-06-18T07:24:35Z', d: '2026-06-18T07:25:17Z' },
+      { n: 'Material Reservation Initiation', s: 'DONE', c: '2026-06-18T07:25:27Z', d: '2026-06-19T09:20:02Z' }
+    ]
+  };
+  const rt = W.rowsFor(roundTrip)[0];
+  is('Bulk takes the LAST completed initiation', rt.done_at, '2026-06-19T09:20:02Z');
+  is('NOT the first, which was rejected two days later', rt.done_at === '2026-03-08T09:07:14Z', false);
+  is('so it does not claim to have been waiting since March',
+     W.daysBetween(W.localDay(rt.done_at), '2026-06-25'), 6);
+  is('which the first occurrence would have made', W.daysBetween('2026-03-08', '2026-06-25'), 109);
+  is('and the rejection task is never mistaken for an initiation',
+     rt.done_at !== '2026-06-10T08:48:50Z', true);
+  is('no stage history is kept - only what WorkHub says now', rt.timeline.length, 7);
+}
+
+/* ---- both status columns, neither chosen ---- */
+{
+  const agree = W.bulkStatus({ initiationStatusA: 'Approved', initiationStatusB: 'Approved' });
+  is('agreeing columns', [agree.value, agree.from, agree.agree], ['Approved', 'A', true]);
+  const clash = W.bulkStatus({ initiationStatusA: 'Approved', initiationStatusB: 'Rejected' });
+  is('disagreeing columns are reported, not resolved',
+     [clash.value, clash.from, clash.agree, clash.a, clash.b],
+     ['Approved', 'A', false, 'Approved', 'Rejected']);
+  const onlyB = W.bulkStatus({ initiationStatusA: '', initiationStatusB: 'Approved' });
+  is('only one has a value', [onlyB.value, onlyB.from, onlyB.agree], ['Approved', 'B', null]);
+  const neither = W.bulkStatus({});
+  is('neither does', [neither.value, neither.from, neither.agree], ['', null, null]);
+  is('and both are carried onto the row',
+     (r => [r.initiation_status_a, r.initiation_status_b, r.status_from, r.status_agree])(
+       W.rowsFor(bulk('Material Reservation Initiation', 'Approved', false,
+                      '2026-03-16T09:00:00Z', 'Rejected'))[0]),
+     ['Approved', 'Rejected', 'A', false]);
+}
+
+/* ---- a mark that outlived its stage ---- */
+{
+  const got = { collected_on: '2026-03-15', collected_by: 'Nimal' };
+  const collected = { id: 1, phase: 'PH1', stage: 'System Issuance Done', done_at: '2026-03-10T04:00:00Z' };
+  is('an ordinary collected row is not odd', W.markOdd(collected, got), null);
+  is('no mark, nothing to flag', W.markOdd(collected, null), null);
+
+  const rejected = { id: 1, phase: 'PH1', stage: 'Reservation Rejected', done_at: null };
+  is('a mark under a rejected stage is flagged',
+     /marked collected, but the stage is now/.test(W.markOdd(rejected, got)), true);
+  is('and the state still says collected - the mark is not cleared',
+     W.state(rejected, got), 'collected');
+
+  const shortage = { id: 1, phase: 'PH1', stage: 'Material Shortage', done_at: null };
+  is('a shortage after collection is flagged too', !!W.markOdd(shortage, got), true);
+
+  const backToReserving = { id: 1, phase: 'PH1', stage: 'Material Reservation', done_at: null };
+  is('and a card that went back to reserving',
+     /gone back to/.test(W.markOdd(backToReserving, got)), true);
+
+  const never = { id: 1, phase: 'PH1', stage: 'System Issuance Pending', done_at: null };
+  is('collected before anything says it was issued',
+     /nothing on the card says it was issued/.test(W.markOdd(never, got)), true);
+
+  const bulkRow = { id: 1, phase: 'Bulk', stage: 'Material Reservation Initiation', done_at: null };
+  is('but Bulk is not flagged for having no issuance - it never has one',
+     W.markOdd(bulkRow, got), null);
 }
 
 /* ====================================================== all three at once = */

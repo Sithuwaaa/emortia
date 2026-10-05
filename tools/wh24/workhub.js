@@ -41,9 +41,9 @@
      file. Adding the id alone would widen the fetch and silently mislabel
      every one of their tickets. */
   var SOURCES = [
-    { id: 'w8b6c7c686c', phase: 'PH1', name: 'Material Reservation PH1' }
-    /* , { id: '…', phase: 'PH2',  name: 'Material Reservation PH2' } */
-    /* , { id: '…', phase: 'Bulk', name: 'Material Reservation PH1_Bulk Initiation' } */
+    { id: 'w8b6c7c686c', phase: 'PH1',  name: 'Material Reservation PH1' },
+    { id: 'waf2294d730', phase: 'PH2',  name: 'Material Reservation PH2' },
+    { id: 'w987513db94', phase: 'Bulk', name: 'Material Reservation PH1_Bulk Initiation' }
   ];
   var HOST = 'dialog.workhub24.com';
 
@@ -93,7 +93,17 @@
 
   /* WorkHub's dates are UTC with no zone on the end. Said out loud here, so
      nothing downstream reads them as Colombo time and moves every ticket
-     five and a half hours. */
+     five and a half hours.
+
+     Proved, not assumed: WorkHub builds each card's TITLE with a human
+     timestamp in it and returns created_date for the same event, and across
+     the cards whose titles carry their creation time, title minus API is
+     +5.50 h exactly - Asia/Colombo. So the API value is UTC and WorkHub's own
+     screen is the local rendering of it.
+
+     Everything downstream of this line is UTC: the postMessage, the database
+     column, done_at. Only the page renders a local day, and it does that with
+     localDay() in wh24.js. */
   var utc = function (v) { return v ? String(v).replace(/\.\d+$/, '').replace(/Z?$/, 'Z') : null; };
 
   function listSince(since, workflow) {
@@ -133,16 +143,31 @@
      form, column_62 on the older one. Its columns are named by number:
        63 code · 83 description · 64 quantity · 104 unit · 81 site · 82 name · 85 WO
      The reservation numbers are in another table, 160 (or 108), column 110. */
+  /* every PDF attached anywhere on the card, with the field it hangs on -
+     PH2 needs the field, because which field a note is attached to is what
+     says which vendor stream it belongs to */
+  function filesOf(card, only) {
+    var out = [];
+    Object.keys(card).forEach(function (k) {
+      if (only && only.indexOf(k) < 0) return;
+      var v = card[k];
+      if (typeof v !== 'string' || v.charAt(0) !== '[' || v.indexOf('contentId') < 0) return;
+      json(v, []).forEach(function (f) {
+        if (f && f.type === 'pdf' && f.contentId) out.push({ name: f.name, cid: f.contentId, at: k });
+      });
+    });
+    return out;
+  }
+  var timelineOf = function (tasks) {
+    return (tasks || []).map(function (t) {
+      return { n: t.nodeName, s: t.status, c: utc(t.createdDate), d: utc(t.completedDate) };
+    });
+  };
+
   function shape(card, tasks) {
     var req = rowsOf(card, ['column_159', 'column_62']);
     var resv = rowsOf(card, ['column_160', 'column_108']).map(function (r) { return r.column_110; }).filter(Boolean);
     var first = req[0] || {};
-    var files = [];
-    Object.keys(card).forEach(function (k) {
-      var v = card[k];
-      if (typeof v !== 'string' || v.charAt(0) !== '[' || v.indexOf('contentId') < 0) return;
-      json(v, []).forEach(function (f) { if (f && f.type === 'pdf' && f.contentId) files.push({ name: f.name, cid: f.contentId }); });
-    });
     return {
       id: Number(card.id),
       created: utc(card.created_date), updated: utc(card.last_updated_date),
@@ -153,12 +178,119 @@
       requested: req.map(function (r) {
         return { code: String(r.column_63 || ''), desc: r.column_83 || '', qty: r.column_64, uom: r.column_104 || '' };
       }),
-      timeline: (tasks || []).map(function (t) {
-        return { n: t.nodeName, s: t.status, c: utc(t.createdDate), d: utc(t.completedDate) };
-      }),
-      files: files
+      timeline: timelineOf(tasks),
+      files: filesOf(card)
     };
   }
+
+  /* ======================================================== PH2 ============
+
+     A PH2 card is a site work order carrying TWO parallel vendor streams. The
+     form holds each stream's reservation and Project/PM order in a table of
+     its own, and each stream's issuance note on an attachment field of its
+     own. Those four field numbers are the whole of what tells the streams
+     apart, and they were read off a dump of real cards rather than guessed:
+
+       Advantis   table column_1030   note field column_957
+       ACE        table column_2295   note field column_2305
+
+     Both tables use the same two column numbers inside them - 1032 for the
+     reservation, 1031 for the Project/PM order - so only the TABLE id says
+     which vendor a row belongs to.
+
+     The pairing was confirmed by the documents, not by the names: a card's
+     column_1030 reservation matches the number in the filename of the Goods
+     Issue Note on column_957, and its column_2295 reservation matches the
+     Activity Report on column_2305. Advantis issues on a GIN; ACE issues on
+     an Activity Report. Two cards agree on this.
+
+     THERE IS NO ACTIVITY / GRN FIELD. A stream has a reservation and an order
+     and nothing else, so the number that was called "the GRN" IS the
+     reservation. Readiness is one test, not two - see ph2Ready in wh24.js.
+
+     A stream can carry MORE THAN ONE reservation and more than one note, and
+     a card can have one stream or neither. None of that is an error.
+
+     The material table is NOT split by stream: column_1057 is the site's
+     whole requirement and its CTL / Non_CTL tag is a storing location, not a
+     vendor. It is carried as `requested` on the card so the expanded ticket
+     can show it, and each ROW's lines come from that stream's own document. */
+  var PH2 = {
+    streams: [
+      { name: 'Advantis', table: 'column_1030', notes: 'column_957' },
+      { name: 'ACE',      table: 'column_2295', notes: 'column_2305' }
+    ],
+    res: 'column_1032', order: 'column_1031',
+    material: ['column_1057', 'column_2323'],
+    site: 'column_41', siteName: 'column_1059', wo: 'column_116'
+  };
+  function shapePH2(card, tasks) {
+    var mat = rowsOf(card, PH2.material);
+    var first = mat[0] || {};
+    return {
+      id: Number(card.id),
+      created: utc(card.created_date), updated: utc(card.last_updated_date),
+      site: card[PH2.site] || first.column_1058 || '',
+      siteName: first[PH2.siteName] || '',
+      wo: card[PH2.wo] || first.column_1061 || '',
+      /* the site's whole requirement, shown on the expanded ticket and kept
+         off every row - it is neither vendor's */
+      requested: mat.map(function (r) {
+        return { code: String(r.column_1063 || ''), desc: r.column_1064 || '',
+                 qty: r.column_1068, uom: r.column_1069 || '',
+                 store: r.column_2449 || r.column_2450 || '' };
+      }),
+      streams: PH2.streams.map(function (st) {
+        var rows = rowsOf(card, [st.table]);
+        return {
+          stream: st.name,
+          reservation: rows.map(function (r) { return String(r[PH2.res] || '').trim(); })
+                           .filter(Boolean).join(' / '),
+          orderNo: rows.map(function (r) { return String(r[PH2.order] || '').trim(); })
+                       .filter(Boolean).join(' / '),
+          requested: [],                 /* filled from this stream's own note */
+          removed: [],
+          files: filesOf(card, [st.notes]).map(function (f) { return f.name; })
+        };
+      }),
+      timeline: timelineOf(tasks),
+      files: filesOf(card)
+    };
+  }
+
+  /* ======================================================= Bulk ===========
+
+     One row per card. Its material table is column_62 - the same number PH1's
+     older form uses - and its site is column_41, the same as PH1.
+
+     TWO columns both read "Approved" on the cards seen so far and one card
+     cannot tell them apart, so BOTH are sent and neither is chosen here. See
+     bulkStatus in wh24.js: it reads one, says which, and reports whether the
+     other agreed. */
+  function shapeBulk(card, tasks) {
+    var req = rowsOf(card, ['column_62']);
+    var first = req[0] || {};
+    return {
+      id: Number(card.id),
+      created: utc(card.created_date), updated: utc(card.last_updated_date),
+      site: card.column_41 || first.column_81 || '',
+      siteName: first.column_82 || '',
+      wo: card.column_116 || first.column_85 || '',
+      reservation: '',
+      initiationStatusA: card.column_143 || '',
+      initiationStatusB: card.column_146 || '',
+      /* 'completed' / 'inprogress' / 'draft'. A draft has no tasks at all and
+         must not become a row that claims anything. */
+      cardStage: card.stage_id || '',
+      requested: req.map(function (r) {
+        return { code: String(r.column_63 || ''), desc: r.column_83 || '', qty: r.column_64, uom: r.column_104 || '' };
+      }),
+      timeline: timelineOf(tasks),
+      files: filesOf(card)
+    };
+  }
+
+  var SHAPE = { PH2: shapePH2, Bulk: shapeBulk };
 
   function pool(items, n, fn) {
     var i = 0, out = new Array(items.length);
@@ -191,7 +323,7 @@
               gql(Q_CARD, { id: id, workflowId: src.id, nodeId: null, taskId: null }),
               gql(Q_TASKS, { workflowId: src.id, cardId: id })
             ]).then(function (got) {
-              var t = shape(got[0].getCard, got[1].tasks);
+              var t = (SHAPE[src.phase] || shape)(got[0].getCard, got[1].tasks);
               /* Stamped here, where which app it came from is a fact rather
                  than an inference. Working it out later from the stage
                  wording is exactly the guess this is meant to remove - and

@@ -204,6 +204,17 @@
          "Approved" is the whole of why a Bulk row is where it is and a person
          reading the card should not have to open WorkHub to see it. */
       initiation_status: s(raw.initiation_status) || null,
+      /* BOTH candidate columns are carried and neither is chosen - see
+         bulkStatus. status_from says which one was read; status_agree is true,
+         false, or null when only one of them had a value at all. Real data
+         across every Bulk card settles which is the real one. */
+      initiation_status_a: s(raw.initiation_status_a) || null,
+      initiation_status_b: s(raw.initiation_status_b) || null,
+      status_from: s(raw.status_from) || null,
+      status_agree: raw.status_agree == null ? null : !!raw.status_agree,
+      /* PH2: how many issuance notes this stream has had. done_at is the
+         earliest of them, and this is what stops the second one vanishing. */
+      notes: raw.notes == null ? null : Number(raw.notes),
       /* Which WorkHub app this came from, carried straight through from the
          sync. Not derived from anything on the ticket - the only thing that
          knows is the app it was read out of. Null when a caller builds a
@@ -253,49 +264,127 @@
   function key(t) { return String(t && t.id) + '|' + s(t && t.stream); }
   function markOf(marks, t) { return (marks || {})[key(t)]; }
 
+  /* =================================================== WHAT TIME IS IT ======
+
+     WorkHub's GraphQL returns timestamps in UTC with the zone marker MISSING -
+     '2026-08-19T09:20:02', not '…Z'. Its own UI renders the same instant in
+     Asia/Colombo, so the card that reads 09:20:02 here reads 02:50 PM there.
+
+     That is not guesswork. WorkHub builds each card's TITLE with a human
+     timestamp inside it, and returns created_date for the same event: across
+     the cards whose titles carry their creation time, title minus API is
+     +5.50 h exactly, every time. Same event, two renderings, one offset.
+
+     So:
+       workhub.js  appends the Z that WorkHub omits - read as UTC
+       the database stores UTC (timestamptz)
+       localDay()  renders the LOCAL day, which is Colombo for everyone who
+                   uses this, and is what "days waiting" counts in
+
+     Getting this wrong by 5.5 hours does not look like a bug. It silently
+     moves anything issued after 18:30 Colombo into the previous day's bucket,
+     so a row reads one day younger than it is and sorts below rows it should
+     sit above. Nothing on screen would say so.
+
+     ========================================================================= */
+
   /* ---- PH1: unchanged. The last task whose name starts "System Issuance
-     Done", and done_at is when that task was created. ---- */
+     Done", and done_at is when that task was created.
+
+     PH1 BELIEVES THE STAGE. PH2 BELIEVES THE DOCUMENT. That asymmetry is
+     deliberate and must not be tidied away in either direction: PH1's stage
+     is its only signal and has held across 384 rows, while a PH2 stream can
+     show 'System Issuance Done - ACE' with no note attached at all - seen on
+     real cards. Making PH1 wait for a document would empty its list; making
+     PH2 trust its stage would fill its list with material nobody has issued.
+     ---- */
 
   /* ---- PH2 ----
-     A stream is ready when BOTH halves of "it has been issued" are on the
-     card: the Activity / GRN number is filled in AND the issuance note is
-     attached. One without the other is a half-finished entry, not stock on a
-     shelf.
+     ONE test, not two. A stream is ready when it has a reservation AND an
+     issuance note attached. There is no separate Activity / GRN field on the
+     form - a stream carries a reservation and a Project/PM order and nothing
+     else - so the number that was called "the GRN" IS the reservation.
 
-     done_at is the NOTE'S OWN DOCUMENT DATE, not the card's last-updated.
-     The two differ by days: the note is written at the warehouse on the day
-     the material moved, and the card is touched again afterwards for reasons
-     that have nothing to do with the material. Counting the wait from the
-     card would start the clock late and understate every PH2 queue. */
+     THE NOTE IS THE BINDING HALF. A reservation with no note is never ready,
+     whatever the stage says. The reservation is what the row is called; the
+     note is the evidence the material moved.
+
+     done_at is the NOTE'S OWN DOCUMENT DATE, not the card's last-updated. The
+     two differ by days: the note is written at the warehouse on the day the
+     material moved, and the card is touched again afterwards for reasons that
+     have nothing to do with the material. */
+
+  /* ===================== REPEATED THINGS: TWO RULES, OPPOSITE, BOTH RIGHT ===
+
+     PH2, repeated NOTES  → take the EARLIEST
+     Bulk, repeated INITIATIONS → take the LAST
+
+     They look inconsistent and are not, because the repetitions mean opposite
+     things.
+
+     A second PH2 note is MORE material issued against the same stream. The
+     first delivery has been sitting at the warehouse since its own date, and
+     taking the later note would make the row say '0 days waiting' on the day
+     a second delivery lands - a ticket getting younger, which is wrong on its
+     face and buries the oldest thing in the queue. The queue exists to
+     surface exactly that row. So: earliest, and the note COUNT is shown
+     beside it so the second delivery is not invisible.
+
+     A second Bulk initiation is the FIRST ONE VOIDED. The sequence is
+     initiate → rejected → re-initiate, and the earlier attempt is a dead end,
+     not a start date. Taking the earliest would show a card waiting since May
+     when it was killed two days later and only revived in August. So: last.
+
+     Neither should ever be "corrected" to match the other.
+     ========================================================================= */
   function ph2Ready(stream) {
     var st = stream || {};
-    var note = (st.gins || [])[0];
-    if (!s(st.grn) || !note) return null;
-    var d = s(note.date);
-    /* A note with no readable date still means issued. Falling back to the
-       card would be inventing a day; null done_at with a ready state is not a
-       thing this model allows, so the note's absence of a date is carried as
-       the GRN entry's date if there is one, and otherwise as no date at all -
-       and the caller decides. */
-    return d ? d + 'T00:00:00Z' : (s(st.grnDate) ? s(st.grnDate) + 'T00:00:00Z' : null);
+    var notes = (st.gins || []).filter(Boolean);
+    if (!s(st.reservation) || !notes.length) return null;
+    var days = notes.map(function (n) { return s(n.date); }).filter(Boolean).sort();
+    if (!days.length) return null;     /* issued, but no readable date on any note */
+    return days[0] + 'T00:00:00Z';     /* EARLIEST - see the block above */
+  }
+  /* How many issuances a stream has had. One is the ordinary case; more than
+     one is why done_at is the earliest, and the row says so. */
+  function noteCount(stream) {
+    return ((stream || {}).gins || []).filter(Boolean).length;
   }
 
   /* ---- Bulk ----
      Completed, and the card's own Initiation Status reading Approved. done_at
-     is when the Material Reservation Initiation task completed.
+     is when the LAST Material Reservation Initiation task completed.
 
      This is an APPROVAL, not an issuance. WorkHub records no issuance step
      anywhere in the Bulk workflow, so nothing on the card is evidence that
-     any material moved. That is why a Bulk row never enters "Can collect". */
+     any material moved. That is why a Bulk row never enters "Can collect".
+
+     No rejection round-trip is modelled and no stage history is kept: the
+     tool re-reads WorkHub on every sync, so a card rejected again simply
+     comes back rejected. Current state from the source, nothing retained. */
   function bulkApproved(raw) {
     var tl = raw.timeline || [];
-    var open = tl.some(isOpen);
-    if (open) return null;
-    if (!/^approved$/i.test(s(raw.initiationStatus))) return null;
-    var init = tl.filter(function (t) { return stems(t.n, 'material reservation initiat') &&
-                                               !stems(t.n, 'material reservation initiat reject'); });
-    var last = init[init.length - 1];
+    if (tl.some(isOpen)) return null;
+    if (!/^approved$/i.test(s(bulkStatus(raw).value))) return null;
+    var init = tl.filter(function (t) {
+      return stems(t.n, 'material reservation initiat') &&
+            !stems(t.n, 'material reservation initiat reject') && t.d;
+    }).sort(function (a, b) { return ms(a.d) - ms(b.d); });
+    var last = init[init.length - 1];   /* LAST - see the block above */
     return (last && last.d) || null;
+  }
+
+  /* ---- which column is the Initiation Status ----
+     The form carries two that both read 'Approved' on the cards seen so far,
+     and one card cannot tell them apart. So BOTH are carried on the row and
+     neither is chosen: this reads the first that has a value, says which one
+     it read, and says whether the other agreed. Real data across every Bulk
+     card settles it; if they never disagree the question was moot. */
+  function bulkStatus(raw) {
+    var a = s(raw && raw.initiationStatusA), b = s(raw && raw.initiationStatusB);
+    var from = a ? 'A' : (b ? 'B' : null);
+    return { value: a || b, a: a || null, b: b || null, from: from,
+             agree: (a && b) ? (a.toLowerCase() === b.toLowerCase()) : null };
   }
 
   /* ------------------------------------------------- which note, which stream
@@ -382,6 +471,7 @@
                not in. */
             timeline: (raw.timeline || []).filter(ph2Material),
             doneAt: ph2Ready(x),
+            notes: noteCount(x),
             collectedAt: null
           });
         });
@@ -393,7 +483,11 @@
         site: raw.site, siteName: raw.siteName, wo: raw.wo, stream: '',
         reservation: raw.reservation, requested: raw.requested,
         removed: raw.removed, gins: raw.gins, timeline: raw.timeline,
-        initiation_status: raw.initiationStatus,
+        initiation_status: bulkStatus(raw).value,
+        initiation_status_a: raw.initiationStatusA,
+        initiation_status_b: raw.initiationStatusB,
+        status_from: bulkStatus(raw).from,
+        status_agree: bulkStatus(raw).agree,
         doneAt: bulkApproved(raw), collectedAt: null
       })];
     }
@@ -482,6 +576,40 @@
     if (t.done_at) return 'approved';
     if (stems(st, 'ud approval') || stems(st, 'material reservation initiat')) return 'reserving';
     return 'other';
+  }
+
+  /* ------------------------------------------------- a mark that outlived its stage
+
+     wh24_marks is OUR data. It does not come back from WorkHub and a sync
+     never touches it. So a ticket marked collected whose stage later resets -
+     rejected, sent back for a shortage, re-reserved - keeps the mark while the
+     card goes backwards underneath it.
+
+     state() says 'collected', because somebody stood at the counter and said
+     so and that is the better of the two facts. But the row should LOOK odd,
+     not normal: the mark is not auto-cleared and never will be, because it is
+     a record of something that happened and the tool does not get to decide
+     it did not. It is flagged, and a person decides.
+
+     Null when there is nothing strange, so a caller can draw the badge only
+     when there is something to say. */
+  function markOdd(t, mark) {
+    if (!t || !mark || !mark.collected_on) return null;
+    var st = s(t.stage);
+    if (/Rejected|Rejection/i.test(st)) return 'marked collected, but the stage is now ' + st;
+    if (/Shortage/i.test(st)) return 'marked collected, but the stage is now ' + st;
+    /* The remaining two tests are about a card that has no issuance when it
+       should have one. Bulk never has one - that is the whole point of its
+       own band - so neither applies to it, and "Material Reservation
+       Initiation" is Bulk's ordinary stage rather than a sign of anything. */
+    if (s(t.phase) === 'Bulk') return null;
+    /* back with whoever reserves it, after it had already been collected */
+    if (/^Material Reservation|Infomate/i.test(st) && !t.done_at)
+      return 'marked collected, but the card has gone back to ' + st;
+    /* collected before it was ever issued */
+    if (!t.done_at)
+      return 'marked collected, but nothing on the card says it was issued';
+    return null;
   }
 
   /* How long it has been sitting there: from the day Done opened to the day
@@ -654,7 +782,8 @@
            reservations: reservations,
            stem: stem, stems: stems, key: key, markOf: markOf,
            rowsFor: rowsFor, ph2Ready: ph2Ready, ph2Material: ph2Material, attachDocs: attachDocs,
-           bulkApproved: bulkApproved, bulkState: bulkState,
+           bulkApproved: bulkApproved, bulkState: bulkState, bulkStatus: bulkStatus,
+           noteCount: noteCount, markOdd: markOdd,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,
