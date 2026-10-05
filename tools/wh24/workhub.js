@@ -216,6 +216,10 @@
     return {
       id: Number(card.id),
       created: utc(card.created_date), updated: utc(card.last_updated_date),
+      /* PH2 has no site field at all - the site code is only in the title,
+         in the same two-letter four-digit scheme PH1 uses. Sent for every
+         source so the reader is one rule rather than three. */
+      title: card.title || '',
       site: card.column_41 || first.column_81 || '',
       siteName: first.column_82 || '',
       wo: card.column_116 || first.column_85 || '',
@@ -275,6 +279,10 @@
     return {
       id: Number(card.id),
       created: utc(card.created_date), updated: utc(card.last_updated_date),
+      /* PH2 has no site field at all - the site code is only in the title,
+         in the same two-letter four-digit scheme PH1 uses. Sent for every
+         source so the reader is one rule rather than three. */
+      title: card.title || '',
       site: card[PH2.site] || first.column_1058 || '',
       siteName: first[PH2.siteName] || '',
       wo: card[PH2.wo] || first.column_1061 || '',
@@ -318,6 +326,10 @@
     return {
       id: Number(card.id),
       created: utc(card.created_date), updated: utc(card.last_updated_date),
+      /* PH2 has no site field at all - the site code is only in the title,
+         in the same two-letter four-digit scheme PH1 uses. Sent for every
+         source so the reader is one rule rather than three. */
+      title: card.title || '',
       site: card.column_41 || first.column_81 || '',
       siteName: first.column_82 || '',
       wo: card.column_116 || first.column_85 || '',

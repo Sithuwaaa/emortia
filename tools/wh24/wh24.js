@@ -100,6 +100,57 @@
     return { done: last.c || null, collected: last.d || null };
   }
 
+  /* ------------------------------------------------- the site, off the title
+
+     PH1 and Bulk carry the site in a field of their own. PH2 DOES NOT - that
+     field is simply absent on a PH2 card - so its rows showed a dash where
+     every other row shows a site code and a name, which makes them unusable:
+     the site is what you look up at the counter.
+
+     It is in the card title, in the same scheme PH1 uses - two letters, four
+     digits - inside a string like
+
+       INH_Western_CM2738_St_Lawrence_Rd_AP Upgrades_New Site Installation_AP_2025_2158_Austin Project
+       INH_Southern_MR5051_MW_Weliketiya_Lamp_WIBAS_2026_1822
+       INH__CM5521_Kalapaluwawa_South_Lamp_MW_MW Link Implementation_MW_2026_2238
+       INH_NW_KU5128_MW_Maraluwawa_Lamp_WIBAS_2026_1529
+
+     The region segment is sometimes empty and sometimes two letters, so
+     NOTHING here counts fields from the left. The site code is found by its
+     shape; everything else is measured from it.
+
+     Three trims, in this order, each from a real title above:
+       - the tail, _AP_2025_2158 or _WIBAS_2026_1822, and whatever follows it
+       - a leading division, MW_ or AP_, which sits before the name on some
+         cards and after it on others
+       - a trailing division, left behind when the cut above lands past it
+
+     A title that does not match gives null, and the caller shows the whole
+     raw title rather than a dash - an unreadable title is a thing to look at,
+     not a thing to hide. */
+  var SITE_CODE = /^[A-Z]{2}[0-9]{4}$/;
+  function siteFromTitle(title) {
+    var t = s(title);
+    if (!t) return null;
+    /* the project tail: a division, a year, a number, and anything after */
+    t = t.replace(/_(AP|MW|WIBAS)_(19|20)\d{2}_\d+.*$/i, '');
+    var parts = t.split('_');
+    var at = -1;
+    for (var i = 0; i < parts.length; i++) {
+      if (SITE_CODE.test(parts[i])) { at = i; break; }
+    }
+    if (at < 0) return null;
+    var rest = parts.slice(at + 1);
+    /* the name ends where a token with a space in it begins - those are the
+       work-type phrases, "AP Upgrades", "MW Link Implementation" */
+    for (var j = 0; j < rest.length; j++) {
+      if (rest[j].indexOf(' ') >= 0) { rest = rest.slice(0, j); break; }
+    }
+    if (rest.length && /^(AP|MW|WIBAS)$/i.test(rest[0])) rest = rest.slice(1);
+    while (rest.length && /^(AP|MW|WIBAS)$/i.test(rest[rest.length - 1])) rest = rest.slice(0, -1);
+    return { site: parts[at], name: rest.join('_') };
+  }
+
   /* ------------------------------------------------------------ GIN numbers */
 
   /* '3,500.00' → 3500. The GIN prints thousands with a comma. */
@@ -169,6 +220,12 @@
          requested:[{ code, desc, qty, uom }],
          timeline:[{ n, s, c, d }],
          gins:[{ file, gi, date, res, sloc, wbs, mv, items:[...] }] } */
+  /* parsed once per record rather than twice, and null-safe */
+  function fromTitle(raw) {
+    if (!raw) return null;
+    if (raw.__t === undefined) raw.__t = siteFromTitle(raw.title);
+    return raw.__t;
+  }
   function record(raw) {
     var tl = (raw.timeline || []).slice().sort(function (a, b) { return ms(a.c) - ms(b.c); });
     var cur = current(tl), st = splitTask(cur ? cur.n : '');
@@ -190,8 +247,15 @@
          'Advantis' and 'ACE', and the pair (id, stream) is the primary key in
          the database since 039. Nothing in this file may index on id alone. */
       stream: s(raw.stream),
-      site: s(raw.site).toUpperCase() || null,
-      site_name: s(raw.siteName) || null,
+      /* The field first, the title second. PH1 and Bulk have the field; PH2
+         has only the title, and a PH2 row is drawn exactly like any other
+         rather than being special-cased in the page. */
+      site: s(raw.site).toUpperCase() || (fromTitle(raw) ? fromTitle(raw).site : null),
+      site_name: s(raw.siteName) || (fromTitle(raw) ? fromTitle(raw).name : null) || null,
+      /* kept whole, because the tail carries the project and the work-order
+         number - AP_2025_2167_Austin Project - which is what you quote when
+         chasing one up */
+      title: s(raw.title) || null,
       wo: s(raw.wo) || null,
       reservation: s(raw.reservation) || null,
       /* PH2 carries the SAP order the stream was raised under, beside the
@@ -239,7 +303,17 @@
       phase: s(raw.phase) || null,
       workflow: s(raw.workflow) || null,
       stage: st.stage || null,
-      team: st.team || null,
+      /* WHO IS HOLDING IT. PH1 gets this from the task name - "System
+         Issuance Done - ACE". A PH2 card names only one of its two tracks
+         that way: the ACE tasks carry the suffix and the Advantis ones carry
+         nothing, so the Advantis row showed a blank where every other row
+         names a vendor, and the two halves of the same card looked like one
+         labelled job and one anonymous one.
+
+         On a PH2 row the STREAM is the vendor - that is what the stream is -
+         so it fills in where the task name is silent. The task name still
+         wins when it has one, because it is the card's own word. */
+      team: st.team || (s(raw.phase) === 'PH2' ? s(raw.stream) : '') || null,
       status: tl.some(isOpen) ? 'inprogress' : 'completed',
       wh_created_at: raw.created || null,
       wh_updated_at: newest || raw.updated || null,
@@ -651,12 +725,26 @@
       return (t && t.unattributed && !(mark && mark.collected_on)) ? 'collected_un' : 'collected';
     }
     if (s(t.phase) === 'Bulk') return bulkState(t);
-    if (t.done_at) return 'ready';
     var st = s(t.stage);
-    if (/^System Issuance Pending/i.test(st)) return 'issuing';
+
+    /* A PROBLEM BEATS A DONE DATE, and this used to be the other way round.
+       Ticket #5057 read "Can collect" with the stage "Material Shortage -
+       ACE": it had been issued once, the card had since gone back for a
+       shortage, and done_at was tested first so the row sat in the collect
+       queue. Somebody would have driven to the warehouse for material that
+       was not there.
+
+       Errors must under-claim readiness, never over-claim - a missed row
+       costs a delay, a phantom row costs a wasted trip and the team's trust.
+       So the CURRENT stage wins: if the card says something is wrong now,
+       nothing it said earlier makes it collectable. */
     if (/Shortage/i.test(st)) return 'shortage';
     if (/Rejected|Rejection/i.test(st)) return 'rejected';
-    if (/Material Reservation|Infomate|Activity|FL Creation|Vendor/i.test(st)) return 'reserving';
+
+    if (t.done_at) return 'ready';
+    if (/^System Issuance Pending/i.test(st)) return 'issuing';
+    if (/Material Reservation|Infomate|Activity|FL Creation|Vendor|Issuance|Collection|Resubmit/i.test(st))
+      return 'reserving';
     return 'other';
   }
 
@@ -752,6 +840,17 @@
                why: 'the two initiation-status fields disagree: ' +
                     s(t.initiation_status_a) + ' and ' + s(t.initiation_status_b) };
 
+    /* A STATE WITH NO LABEL. This printed as the literal string "undefined"
+       on 36 rows, because the dashboard's label table had no entry for the
+       two states the widening added. A row whose state nothing can name is
+       exactly a row the tool cannot speak for, so it comes here with the raw
+       value in the sentence rather than being rendered as a word nobody
+       chose. The guard is here and not only in the page so that adding a
+       state without a label can never again be silent. */
+    var st = state(t, mark);
+    if (KNOWN_STATES.indexOf(st) < 0)
+      return { key: 'state', why: 'the tool has no name for this row’s state (' + st + ')' };
+
     /* a document was attached and could not be read */
     if (t.docs_failed)
       return { key: 'unreadable',
@@ -774,6 +873,26 @@
     if (ph === 'Bulk' && t.done_at && !collectedOn(t, mark))
       return { key: 'bulk',
                why: 'approved, but WorkHub records no issuance for a Bulk request - collection is not tracked' };
+
+    /* "OTHER" IS NOT AN ANSWER. It is the tool saying it does not recognise
+       the stage, which is precisely a row it cannot speak for - so it comes
+       here and the sentence NAMES the stage, because "Other: 1" tells you
+       nothing and "stage the tool does not recognise: Vendor Allocation"
+       tells you where to look. Anything that turns out to be a problem gets
+       a pattern in state() and stops arriving here. */
+    if (st === 'other')
+      return { key: 'unknown',
+               why: s(t.stage) ? 'the tool does not recognise the stage "' + s(t.stage) + '"'
+                               : 'the card has no stage at all' };
+
+    /* LAST, deliberately. A row with no site AND no issuance note has two
+       things wrong with it, and "no note attached" is the one that tells you
+       what to do about it: the missing site is a labelling problem, the
+       missing note is a material one. The more actionable reason wins. */
+    if (!s(t.site))
+      return { key: 'notitle',
+               why: t.title ? 'could not read a site code from the card title'
+                            : 'the card carries no site code and no title' };
 
     return null;
   }
@@ -851,6 +970,12 @@
   /* 'approved' sits between reserving and ready in the strip because that is
      where it is in the life of a Bulk request - past the approval, and not at
      a warehouse counter. It is its own band and is never added to ready. */
+  /* Every state the tool can name. needsCheck refuses any row whose state
+     is not on this list, so a state added without a label is caught by the
+     model rather than printed as the word "undefined" on the dashboard. */
+  var KNOWN_STATES = ['reserving', 'approved', 'issuing', 'ready', 'collected',
+                      'collected_un', 'shortage', 'rejected', 'other'];
+
   var ORDER = ['reserving', 'approved', 'issuing', 'ready', 'collected', 'collected_un', 'shortage', 'rejected', 'other'];
   function pipeline(tickets, marks) {
     var n = {};
@@ -976,6 +1101,7 @@
            noteCount: noteCount, markOdd: markOdd,
            ph2Collected: ph2Collected, confirmations: confirmations,
            needsCheck: needsCheck, collectedBracket: collectedBracket,
+           siteFromTitle: siteFromTitle, KNOWN_STATES: KNOWN_STATES,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,

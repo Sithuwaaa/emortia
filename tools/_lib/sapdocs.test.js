@@ -119,11 +119,29 @@ is('all redeployed', [...new Set(mv.items.map(i => i.code))], ['RDEP']);
 is('a wrapped serial joins with nothing between', mv.items[1].sn, 'SN-MOVE-00002');
 is('no quantity column on this form', 'qty' in mv.items[0], false);
 
-/* and it is NOT offered to WH24 as a GIN */
+/* THE ACTIVITY REPORT IS ACE'S ISSUANCE DOCUMENT.
+   This used to assert gin === null - that the report produced nothing - and
+   that assertion WAS the bug: every PH2 ACE stream ended up with no note,
+   never ready, and in Needs checking for a reason that was not true. The
+   ordering test settled it the other way: the report's Created On is the day
+   the card's own "System Issuance Done - ACE" task opened. */
 const mr = SAP.readAny([mpage1]);
 is('readAny says movement', mr.kind, 'move');
-is('and hands back no gin', mr.gin, null);
-is('with the movement document whole', mr.move.items.length, 2);
+is('and hands back a usable document, not null', !!mr.gin, true);
+is('with the movement document whole too', mr.move.items.length, 2);
+is('the date is Created On, which is the only date this form carries',
+   mr.gin.date, '2025-11-27');
+is('and the field it came from is recorded, not implied', mr.gin.date_field, 'Created On');
+is('the report number stands in for a GI number', [mr.gin.gi, mr.gin.rep], ['', '10000001']);
+is('no reservation on this form, and none invented', mr.gin.res, '');
+is('one line per material, not per unit', mr.gin.items.length, 1);
+is('and the quantity IS the number of serialised units',
+   [mr.gin.items[0].code, mr.gin.items[0].qty], ['1000000886', 2]);
+is('with every serial kept', mr.gin.items[0].sn, ['SN-MOVE-00001', 'SN-MOVE-00002']);
+is('a GIN says which field ITS date came from as well',
+   SAP.readAny([page1, page2]).gin.date_field, 'Document Date');
+is('and the two are told apart by kind',
+   [SAP.readAny([page1, page2]).gin.kind, mr.gin.kind], ['gin', 'move']);
 
 /* ---- the dates ---- */
 is('sap date', SAP.isoDate('30.09.2026'), '2026-09-30');

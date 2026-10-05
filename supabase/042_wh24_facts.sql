@@ -23,6 +23,9 @@
 -- Three of these have been reported as an unrun migration when the migration
 -- was run. The cause was never the database.
 
+-- the card title, whole. PH2 has no site field at all - its site code lives
+-- only here - and the tail carries the project and work-order number.
+alter table wh24_tickets add column if not exists title               text;
 alter table wh24_tickets add column if not exists order_no            text;
 alter table wh24_tickets add column if not exists grn                 text;
 alter table wh24_tickets add column if not exists notes               integer;

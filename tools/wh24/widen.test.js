@@ -173,7 +173,9 @@ is('a note with no readable date is not a date',
      Issuance Done on this stream - under PH1's rule that alone would make it
      collectable. PH2 does not believe the stage, it believes the document,
      so with no note attached the stream is NOT in Can collect. */
-  is('one stream ready, the other not', rows.map(r => W.state(r)), ['ready', 'other']);
+  is('one stream ready, the other not', rows.map(r => W.state(r)), ['ready', 'reserving']);
+  is('and the one without a note is NOT collectable, which is the point',
+     rows.some(r => W.state(r) === 'ready' && !r.done_at), false);
   is('and the unready one has no date to count from', rows[1].done_at, null);
 }
 
@@ -236,7 +238,7 @@ is('a date on one stream does not take the other off',
   is('two that cannot be told apart are placed nowhere',
      d.streams.map(x => x.gins.length), [0, 0]);
   is('and so neither stream is called ready',
-     W.rowsFor(d).map(r => W.state(r)), ['other', 'other']);
+     W.rowsFor(d).map(r => W.state(r)), ['reserving', 'reserving']);
   is('and neither has a date to count a wait from',
      W.rowsFor(d).map(r => r.done_at), [null, null]);
 
@@ -376,11 +378,20 @@ is('a date on one stream does not take the other off',
 
   /* ---- every other reason lands in the group, and nothing else does ---- */
   {
-    const clean = { id: 1, phase: 'PH1', stage: 'System Issuance Done',
+    /* site is on these because every real row has one - from a field on PH1
+       and Bulk, from the title on PH2 - and a row with none is itself a
+       reason to be in the group, which these two are testing the absence of */
+    const clean = { id: 1, phase: 'PH1', site: 'ZZ-AAA-001', stage: 'System Issuance Done',
                     done_at: '2026-03-01T04:00:00Z', wh_collected_at: '2026-03-05T04:00:00Z' };
     is('a clean PH1 row is never in the group', W.needsCheck(clean), null);
-    const waiting = { id: 2, phase: 'PH1', stage: 'System Issuance Done', done_at: '2026-03-01T04:00:00Z' };
+    const waiting = { id: 2, phase: 'PH1', site: 'ZZ-AAA-001',
+                      stage: 'System Issuance Done', done_at: '2026-03-01T04:00:00Z' };
     is('nor is one simply still waiting', W.needsCheck(waiting), null);
+    is('but a row with no site code at all IS in it',
+       W.needsCheck({ ...clean, site: '' }).key, 'notitle');
+    is('and it says which kind of nothing it was',
+       W.needsCheck({ ...clean, site: '', title: 'INH_x_nothing_here' }).why,
+       'could not read a site code from the card title');
 
     is('a note with no date', W.needsCheck({ phase: 'PH2', notes: 1, done_at: null }).key, 'nodate');
     is('no note at all', W.needsCheck({ phase: 'PH2', notes: 0, done_at: null }).key, 'nonote');

@@ -466,18 +466,68 @@
     };
   }
 
-  /* What WH24 asks for: a GIN in its own shape, or null when the paper turns
-     out to be an Activity Report. The movement document is returned whole,
-     because nothing in WH24 reads it yet and narrowing it now would be
-     guessing at what will. */
+  /* ------------------------------- the Activity Report, in the same shape
+
+     THIS IS ACE'S ISSUANCE DOCUMENT, not a curiosity to be set aside. The
+     ordering test settled it: on a real card the report's Created On is the
+     same day the card's "System Issuance Done - ACE" task opened, and the
+     Advantis GIN's document date is the same day the unsuffixed issuance task
+     opened - two tracks three months apart, each document landing on its own
+     track's day.
+
+     It was being counted and discarded, which left every PH2 ACE stream with
+     no note, therefore never ready, therefore in Needs checking for a reason
+     that was not true. That code was written before anything consumed a
+     movement document and was never revisited when something did.
+
+     The form carries no posting date - Created On and the print stamp are the
+     only two dates on it - so Created On is the date, and the field it came
+     from is recorded on the document so a later reader can see which it was.
+
+     No quantity column either: one row per serialised unit, which is a fact
+     the paper states rather than one worth inferring around. So lines are
+     grouped by material and the quantity IS the number of rows. */
+  /* this file has no string helper of its own - wh24.js's s() is not in
+     scope here, and reaching for it is how the first version of this threw */
+  function str(v) { return String(v == null ? '' : v).trim(); }
+  function moveShape(doc, file) {
+    if (!doc) return null;
+    var by = {}, order = [];
+    (doc.items || []).forEach(function (it) {
+      var code = str(it.material) || str(it.code);
+      if (!code) return;
+      if (!by[code]) { by[code] = { code: code, desc: str(it.desc), uom: str(it.uom), qty: 0, sn: [] }; order.push(code); }
+      by[code].qty += 1;
+      if (str(it.sn)) by[code].sn.push(str(it.sn));
+    });
+    return {
+      file: str(file),
+      kind: 'move',
+      gi: '',                       /* a report has no GI number */
+      rep: str(doc.rep),
+      date: isoDate(doc.createdOn),
+      date_field: 'Created On',     /* the label, recorded rather than implied */
+      res: '',                      /* and no reservation on it either */
+      sloc: str(doc.sendLoc), wbs: '', mv: '',
+      items: order.map(function (c) { return by[c]; })
+    };
+  }
+
+  /* What WH24 asks for: a document in the shape the tool stores, whichever of
+     the two sheets of paper it turns out to be. */
   function readAny(pages) {
-    var s = sniff(pages);
-    if (s.movement) return { kind: 'move', move: parseMovement(pages, s.lines), gin: null };
-    var doc = parseGIN(pages, s.lines);
-    return { kind: 'gin', gin: ginShape(doc, s.lines), doc: doc };
+    var s2 = sniff(pages);
+    if (s2.movement) {
+      var mv = parseMovement(pages, s2.lines);
+      return { kind: 'move', move: mv, gin: moveShape(mv) };
+    }
+    var doc = parseGIN(pages, s2.lines);
+    var g = ginShape(doc, s2.lines);
+    if (g) { g.kind = 'gin'; g.date_field = 'Document Date'; }
+    return { kind: 'gin', gin: g, doc: doc };
   }
 
   return { parse: parse, sniff: sniff, parseGIN: parseGIN, parseMovement: parseMovement,
-           groupIntoLines: groupIntoLines, ginShape: ginShape, readAny: readAny,
+           groupIntoLines: groupIntoLines, ginShape: ginShape, readAny: readAny, moveShape: moveShape,
            isoDate: isoDate };
 }));

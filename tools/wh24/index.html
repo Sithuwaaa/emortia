@@ -150,6 +150,9 @@
   .pkey i{width:9px;height:9px;border-radius:2px;display:inline-block}
   .c-reserving{background:var(--info)} .c-issuing{background:var(--warn)} .c-ready{background:var(--ok)}
   .c-collected{background:var(--line3)} .c-shortage,.c-rejected{background:var(--bad)} .c-other{background:var(--muted)}
+  .c-approved{background:var(--accentB)} .c-collected_un{background:var(--warn)} .c-check{background:var(--warn)}
+  /* the group the tool cannot speak for, drawn so it is not scanned past */
+  #pkey button.needschk{border-color:var(--warn);color:var(--warn)}
 
   /* ---- the two panels: what is waiting, and what to ask for ---- */
   .dash{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px}
@@ -173,6 +176,14 @@
   .age.cool b{color:var(--ok)} .age.cool i{background:var(--ok)}
   @media (max-width:560px){.rdy{grid-template-columns:minmax(0,1fr) auto}.rdy .sid{grid-column:1}.rdy .meta{grid-column:1/-1;grid-row:2;white-space:normal}
     .rdy .age{grid-column:1;grid-row:3}.rdy .go{grid-column:2;grid-row:1}.pick col.cm{width:0}.pick .m{display:none}}
+  /* ---- the pick list, folded ---- */
+  .pickpanel>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px}
+  .pickpanel>summary::-webkit-details-marker{display:none}
+  .pickpanel>summary h2{margin:0;flex:1}
+  .pickpanel>summary .chev{color:var(--muted);font-size:20px;line-height:1;transition:transform .18s ease}
+  .pickpanel[open]>summary .chev{transform:rotate(90deg)}
+  .pickpanel[open]>summary{margin-bottom:8px}
+  @media (prefers-reduced-motion:reduce){.pickpanel>summary .chev{transition:none}}
   .pick{width:100%;min-width:0;border-collapse:collapse;font-size:13px;table-layout:fixed}
   .pick col.cq{width:74px} .pick col.cm{width:96px}
   .pick td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:top}
@@ -398,10 +409,15 @@
       <h2>Ready at the warehouse <span>longest waiting first</span></h2>
       <div id="rdy"></div>
     </div>
-    <div class="panel" aria-label="What to pick up">
-      <h2>What to pick up <span id="pickN"></span></h2>
+    <!-- Folded shut. It is a long table and it sat between the dashboard and
+         the ticket list, so every visit began with a scroll past material you
+         were not looking for. The count stays on the summary, which is the
+         part you read at a glance; the table opens when you are actually
+         going to the counter. The browser remembers which way you left it. -->
+    <details class="panel pickpanel" id="pickPanel" aria-label="What to pick up">
+      <summary><h2>What to pick up <span id="pickN"></span></h2><span class="chev">›</span></summary>
       <table class="pick"><colgroup><col class="cq"><col><col class="cm"></colgroup><tbody id="pick"></tbody></table>
-    </div>
+    </details>
   </section>
 
   <section class="sync" id="sync">
@@ -544,6 +560,10 @@ const STATES = {
 const KEY = t => W.key(t);
 const mk = t => W.markOf(MARKS, t);
 const stOf = t => W.state(t, mk(t));
+/* never undefined: the sync dialog printed state names straight out of
+   STATES and would have said "undefined → undefined" for the same reason
+   the dashboard did */
+const stLabel = st => (STATES[st] && STATES[st].label) || ("unnamed (" + String(st) + ")");
 /* Why a row cannot be stated confidently, or null. Memoised per render rather
    than recomputed in every count, because segs() asks it once per tab. */
 const chk = t => W.needsCheck(t, mk(t));
@@ -596,14 +616,30 @@ function board(){
 }
 
 /* ---- the dashboard under the tiles ---- */
-const PIPE = { reserving:'With Infomate', issuing:'With ACE', ready:'Can collect', collected:'Collected',
+/* Every state the bar can draw. The two the widening added were missing from
+   here, so 36 Bulk rows rendered their label as the literal string
+   "undefined" - a JavaScript value shown to a person as a category name.
+   pipeLabel() is now the only way a label is produced and it cannot return
+   undefined: an unnamed state shows its raw value in brackets, which is ugly
+   on purpose and sends you to Needs checking, where the row is also filed. */
+const PIPE = { reserving:'With Infomate', approved:'Bulk approved', issuing:'With ACE',
+               ready:'Can collect', collected:'Collected', collected_un:'Collected ?',
                shortage:'Shortage', rejected:'Rejected', other:'Other' };
-const PIPE_F = { shortage:'problem', rejected:'problem', other:'all' };
+const pipeLabel = st => PIPE[st] || ('unnamed state (' + String(st) + ')');
+const PIPE_F = { shortage:'problem', rejected:'problem', other:'all', collected_un:'check' };
 function dash(){
   const T = today(), P = W.pipeline(TICKETS, MARKS).filter(p => p.n);
   $('pipeN').textContent = TICKETS.length ? TICKETS.length + ' tickets' : '';
-  $('pbar').innerHTML = P.map(p => `<i class="c-${p.state}" style="flex-grow:${p.n}" title="${PIPE[p.state]}: ${p.n}"></i>`).join('');
-  $('pkey').innerHTML = P.map(p => `<button data-f="${PIPE_F[p.state] || p.state}"><i class="c-${p.state}"></i>${PIPE[p.state]} <b>${p.n}</b></button>`).join('');
+  $('pbar').innerHTML = P.map(p => `<i class="c-${p.state}" style="flex-grow:${p.n}" title="${esc(pipeLabel(p.state))}: ${p.n}"></i>`).join('');
+  /* Needs checking is NOT a state - a row in it may be collected, reserving
+     or approved - so it cannot come out of the pipeline, which is why it was
+     absent from this bar while the tab existed. It is appended as its own
+     chip, because the whole design decision was that the tool says plainly
+     which tickets it cannot speak for, and a group nobody can see does not
+     say anything. */
+  const nCheck = TICKETS.filter(t => inSrc(t) && chk(t)).length;
+  $('pkey').innerHTML = P.map(p => `<button data-f="${PIPE_F[p.state] || p.state}"><i class="c-${p.state}"></i>${esc(pipeLabel(p.state))} <b>${p.n}</b></button>`).join('')
+    + (nCheck ? `<button class="needschk" data-f="check" title="Rows the tool cannot state confidently"><i class="c-check"></i>Needs checking <b>${nCheck}</b></button>` : '');
   $('pkey').querySelectorAll('button').forEach(b => b.onclick = () => { FILTER = b.dataset.f; $('find').value = ''; render(true); jump(); });
 
   /* The waiting list, oldest first. The bar is scaled to the longest wait
@@ -626,7 +662,14 @@ function dash(){
   }).join('') : `<div class="none">${LOADED ? 'Nothing is waiting at the warehouse right now.' : 'Loading…'}</div>`;
 
   const pk = W.pickList(TICKETS, MARKS);
-  $('pickN').textContent = pk.length ? pk.length + ' material' + (pk.length === 1 ? '' : 's') : '';
+  /* With the table folded this line IS the panel, so it carries the two
+     numbers that decide whether to open it: how many distinct materials, and
+     how many tickets they cover. */
+  const pkT = new Set(); pk.forEach(p => p.tickets.forEach(k => pkT.add(k)));
+  $('pickN').textContent = pk.length
+    ? pk.length + ' material' + (pk.length === 1 ? '' : 's') +
+      ' · ' + pkT.size + ' ticket' + (pkT.size === 1 ? '' : 's')
+    : 'nothing waiting';
   $('pick').innerHTML = pk.length ? pk.map(p => `<tr>
       <td class="q">${+p.qty.toFixed(2)}<small>${esc(p.uom)}</small></td>
       <td class="d">${esc(p.desc || p.code)}<div>${p.tickets.length} ticket${p.tickets.length === 1 ? '' : 's'}${p.sn ? ' · ' + p.sn + ' serial' + (p.sn === 1 ? '' : 's') : ''}</div></td>
@@ -1022,6 +1065,17 @@ $('list').addEventListener('click', async e => {
 });
 $('find').addEventListener('input', () => render());
 
+/* The pick list stays however you left it. Shut by default - a long table
+   between the dashboard and the ticket list meant every visit began with a
+   scroll - but if you work from it, it is open next time without being asked
+   again. Per-browser, and a browser that refuses storage simply gets the
+   default rather than an error. */
+const PICK_KEY = 'wh24.pickopen';
+try { $('pickPanel').open = localStorage.getItem(PICK_KEY) === '1'; } catch(e){}
+$('pickPanel').addEventListener('toggle', () => {
+  try { localStorage.setItem(PICK_KEY, $('pickPanel').open ? '1' : '0'); } catch(e){}
+});
+
 /* ---- Excel, the same columns as the sheet it replaces ----
    One builder for both buttons: a sheet exported from the filter and a sheet
    exported from a selection have to be comparable, so neither gets its own
@@ -1258,11 +1312,18 @@ async function receive(data){
     const p = pdfs[i];
     try {
       const r = await readPdf(p.buf);
-      if (r.kind === 'gin' && r.gin){ r.gin.file = p.file; (parsed[p.id] = parsed[p.id] || []).push(r.gin); }
-      /* An Activity Report is the other document the warehouse prints – the ACE
-         half of a PH2 job. It is read correctly and then set aside, because
-         nothing on this page consumes one yet. Counted, not dropped quietly. */
-      else moves.push(p.file);
+      /* BOTH kinds are documents. An Activity Report is ACE's issuance note -
+         the ordering test showed its Created On is the day that card's own
+         "System Issuance Done - ACE" opened - and setting it aside left every
+         PH2 ACE stream with no note and therefore never ready. That line was
+         written before anything consumed one and was not revisited when
+         something did. */
+      if (r.gin){
+        r.gin.file = p.file;
+        (parsed[p.id] = parsed[p.id] || []).push(r.gin);
+        if (r.kind === 'move') moves.push(p.file);
+      }
+      else failed.push(p.file);
     }
     catch(e){ failed.push(p.file); }
     dlg(`Reading GIN ${i + 1} of ${pdfs.length}…`, { pct: (i + 1) / pdfs.length });
@@ -1271,7 +1332,7 @@ async function receive(data){
      all three ways out of this function say it the same way. */
   const pdfNote = () =>
     (failed.length ? ` ${failed.length} GIN${failed.length === 1 ? '' : 's'} could not be read and ${failed.length === 1 ? 'was' : 'were'} left out: ${esc(failed.join(', '))}.` : '') +
-    (moves.length ? ` ${moves.length} Activity Report${moves.length === 1 ? '' : 's'} (equipment movement, not a GIN) ${moves.length === 1 ? 'was' : 'were'} read and set aside: ${esc(moves.join(', '))}.` : '');
+    (moves.length ? ` ${moves.length} of them ${moves.length === 1 ? 'is an' : 'are'} Activity Report${moves.length === 1 ? '' : 's'} – ACE's issuance document, read and used.` : '');
 
   const byKey = {}; TICKETS.forEach(t => byKey[KEY(t)] = t);
   const out = [], lines = [];
@@ -1294,7 +1355,7 @@ async function receive(data){
       out.push(rec);
       const was = old ? W.state(old, mk(old)) : null, now = W.state(rec, mk(rec));
       const who = '#' + rec.id + (rec.stream ? ' ' + esc(rec.stream) : '');
-      lines.push(`<span>${who} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(STATES[was].label) + ' → <b>' + esc(STATES[now].label) + '</b>') : 'new · <b>' + esc(STATES[now].label) + '</b>'}</span>`);
+      lines.push(`<span>${who} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(stLabel(was)) + ' → <b>' + esc(stLabel(now)) + '</b>') : 'new · <b>' + esc(stLabel(now)) + '</b>'}</span>`);
     });
   });
   /* Two different nothings, and they used to print the same sentence.
