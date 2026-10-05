@@ -309,6 +309,98 @@ is('a date on one stream does not take the other off',
      W.state(rows[0], { collected_on: '2026-03-18' }), 'collected');
 }
 
+/* ================= NEEDS CHECKING, AND WHAT MUST NOT GO IN IT ============
+   The principle under test: a row the tool can state confidently reads
+   plainly. Only the ones it cannot are pulled out. (c) is the important one -
+   it proves the exception machinery does not leak onto healthy rows. */
+{
+  const conf = (c, d) => ({ n: 'Material Collection Confirmation by Vendor', s: 'DONE', c: c, d: d });
+  const base = () => JSON.parse(JSON.stringify(ph2));
+
+  /* ---- (a) two streams with done_at, ONE later confirmation ---- */
+  {
+    const card = base();
+    card.streams[0].gins = [{ ...note('4930000020', '2026-03-01'), res: '' }];
+    card.streams[1].gins = [{ ...note('10000020', '2026-03-02'), res: '' }];
+    card.timeline = card.timeline.concat([conf('2026-03-08T04:00:00Z', '2026-03-12T04:00:00Z')]);
+    const r = W.rowsFor(card);
+    is('(a) two rows', r.length, 2);
+    is('(a) one confirmation stopped both', r.map(x => W.localDay(x.wh_collected_at)),
+       ['2026-03-12', '2026-03-12']);
+    is('(a) both unattributed', r.map(x => x.unattributed), [true, true]);
+    is('(a) confirmations 1', r.map(x => x.confirmations), [1, 1]);
+    is('(a) both in Needs checking, for that reason',
+       r.map(x => W.needsCheck(x).key), ['unattributed', 'unattributed']);
+    const b = W.collectedBracket(r[0]);
+    is('(a) one confirmation COLLAPSES the bracket to a single date', b.single, true);
+    is('(a) and the two ends are the same day', [b.from, b.to], ['2026-03-12', '2026-03-12']);
+    is('(a) with one day count, not a range', [b.days, b.daysMax], [11, 11]);
+  }
+
+  /* ---- (b) two streams, two confirmations ---- */
+  {
+    const card = base();
+    card.streams[0].gins = [{ ...note('4930000021', '2026-03-01'), res: '' }];
+    card.streams[1].gins = [{ ...note('10000021', '2025-12-01'), res: '' }];
+    card.timeline = card.timeline.concat([
+      conf('2026-03-08T04:00:00Z', '2026-03-12T04:00:00Z'),
+      conf('2026-06-01T04:00:00Z', '2026-09-20T04:00:00Z')
+    ]);
+    const r = W.rowsFor(card);
+    is('(b) both stop at the earliest that qualifies', r.map(x => W.localDay(x.wh_collected_at)),
+       ['2026-03-12', '2026-03-12']);
+    const b0 = W.collectedBracket(r[0]), b1 = W.collectedBracket(r[1]);
+    is('(b) the bracket is a RANGE on both', [b0.single, b1.single], [false, false]);
+    is('(b) Advantis: between the two confirmations', [b0.from, b0.to], ['2026-03-12', '2026-09-20']);
+    is('(b) and its day range, not the flattering end', [b0.days, b0.daysMax], [11, 203]);
+    is('(b) ACE, issued in December, has the wider range', [b1.days, b1.daysMax], [101, 293]);
+    is('(b) neither is in Can collect', r.some(x => W.state(x) === 'ready'), false);
+    is('(b) nor in the pick list', W.pickList(r, {}).length, 0);
+  }
+
+  /* ---- (c) A CLEAN STREAM. Nothing here may be hedged. ---- */
+  {
+    const card = base();
+    card.streams[0].reservation = '';                     /* one stream only */
+    card.streams[1].gins = [{ ...note('10000022', '2026-03-01'), res: '' }];
+    card.timeline = card.timeline.concat([conf('2026-03-08T04:00:00Z', '2026-03-12T04:00:00Z')]);
+    const r = W.rowsFor(card);
+    is('(c) one row', r.length, 1);
+    is('(c) an EXACT collected date', W.localDay(r[0].wh_collected_at), '2026-03-12');
+    is('(c) an EXACT day count', W.waiting(r[0], null, '2026-04-01'), 11);
+    is('(c) plain collected, not hedged', W.state(r[0]), 'collected');
+    is('(c) NOT unattributed', r[0].unattributed, false);
+    is('(c) NOT in Needs checking', W.needsCheck(r[0]), null);
+    is('(c) and NO bracket is offered for it', W.collectedBracket(r[0]), null);
+  }
+
+  /* ---- every other reason lands in the group, and nothing else does ---- */
+  {
+    const clean = { id: 1, phase: 'PH1', stage: 'System Issuance Done',
+                    done_at: '2026-03-01T04:00:00Z', wh_collected_at: '2026-03-05T04:00:00Z' };
+    is('a clean PH1 row is never in the group', W.needsCheck(clean), null);
+    const waiting = { id: 2, phase: 'PH1', stage: 'System Issuance Done', done_at: '2026-03-01T04:00:00Z' };
+    is('nor is one simply still waiting', W.needsCheck(waiting), null);
+
+    is('a note with no date', W.needsCheck({ phase: 'PH2', notes: 1, done_at: null }).key, 'nodate');
+    is('no note at all', W.needsCheck({ phase: 'PH2', notes: 0, done_at: null }).key, 'nonote');
+    is('Bulk approved, no issuance recorded anywhere',
+       W.needsCheck({ phase: 'Bulk', done_at: '2026-08-19T09:20:02Z' }).key, 'bulk');
+    is('the two status columns disagree',
+       W.needsCheck({ phase: 'Bulk', status_agree: false, initiation_status_a: 'Approved',
+                      initiation_status_b: 'Rejected', done_at: null }).key, 'status');
+    is('a document that would not parse',
+       W.needsCheck({ phase: 'PH1', docs_failed: 2, done_at: '2026-03-01T04:00:00Z' }).key, 'unreadable');
+    is('and my mark against a card that went backwards',
+       W.needsCheck({ phase: 'PH1', stage: 'Reservation Rejected', done_at: null },
+                    { collected_on: '2026-03-10' }).key, 'mark');
+    is('every reason gives a sentence, not a code',
+       ['nodate','nonote','bulk'].every(k => /[a-z]{4,}\s[a-z]/.test(
+          W.needsCheck(k === 'bulk' ? { phase:'Bulk', done_at:'2026-08-19T00:00:00Z' }
+                                    : { phase:'PH2', notes: k === 'nodate' ? 1 : 0, done_at:null }).why)), true);
+  }
+}
+
 /* ============================================================= Bulk ======= */
 const bulk = (stage, status, open, initDone, statusB) => ({
   id: 25600, phase: 'Bulk', workflow: 'w-test-bulk', site: 'zz0003', siteName: 'Invented_Place_C',

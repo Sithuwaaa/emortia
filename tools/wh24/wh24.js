@@ -222,6 +222,9 @@
       unattributed: !!raw.unattributed,
       confirmations: raw.confirmations == null ? null : Number(raw.confirmations),
       confirmed_on: (raw.confirmed_on || []).slice(),
+      /* attached documents the reader could not turn into anything. Set by the
+         sync, which is the only thing that sees a parse fail. */
+      docs_failed: raw.docs_failed == null ? null : Number(raw.docs_failed),
       /* Which WorkHub app this came from, carried straight through from the
          sync. Not derived from anything on the ticket - the only thing that
          knows is the app it was read out of. Null when a caller builds a
@@ -699,6 +702,93 @@
     return null;
   }
 
+  /* ==================================================== NEEDS CHECKING =====
+
+     A problem is per TICKET, not per tool. The temptation with any of the
+     cases below is to hedge every row so that the few bad ones are covered -
+     brackets everywhere, "approximately" everywhere - and the result is a
+     tool nobody can read and a backlog nobody can act on.
+
+     So: a row the tool can state confidently reads plainly. Exact date, exact
+     day count, no brackets and no qualifiers. A row it CANNOT state
+     confidently is pulled out here with a reason in plain English, and settled
+     by hand. Exceptions being visible and FEW is the whole point.
+
+     Rows in this group are in neither Can collect nor the pick list, and are
+     never counted into a waiting average. Clean rows are untouched.
+
+     Returns null for a clean row, or { key, why } for one that is not. */
+  function needsCheck(t, mark) {
+    if (!t) return null;
+    var ph = s(t.phase);
+
+    /* my own mark against a card that has gone backwards - first, because it
+       is the one case where two sources actively disagree */
+    var odd = markOdd(t, mark);
+    if (odd) return { key: 'mark', why: odd };
+
+    /* one confirmation stopped more than one stream's clock, so at most one
+       of them is the truth */
+    if (t.unattributed && !(mark && mark.collected_on))
+      return { key: 'unattributed',
+               why: 'one collection confirmation stopped more than one stream - at most one is this row' };
+
+    /* the two Bulk status columns do not agree */
+    if (t.status_agree === false)
+      return { key: 'status',
+               why: 'the two initiation-status fields disagree: ' +
+                    s(t.initiation_status_a) + ' and ' + s(t.initiation_status_b) };
+
+    /* a document was attached and could not be read */
+    if (t.docs_failed)
+      return { key: 'unreadable',
+               why: t.docs_failed + ' attached document' + (t.docs_failed === 1 ? '' : 's') +
+                    ' could not be read' };
+
+    if (ph === 'PH2' && !t.done_at) {
+      /* issued, but the paper does not say when */
+      if (t.notes)
+        return { key: 'nodate',
+                 why: 'an issuance note is attached but carries no readable date, so there is nothing to count from' };
+      /* reserved and nothing issued yet. Not ready - but shown here rather
+         than left to look like an empty queue. */
+      return { key: 'nonote',
+               why: 'reserved, but no issuance note is attached - nothing says the material moved' };
+    }
+
+    /* Bulk, approved, and WorkHub records no issuance step anywhere in that
+       workflow - so nothing on the card is evidence the material moved */
+    if (ph === 'Bulk' && t.done_at && !collectedOn(t, mark))
+      return { key: 'bulk',
+               why: 'approved, but WorkHub records no issuance for a Bulk request - collection is not tracked' };
+
+    return null;
+  }
+
+  /* -------------------------------------------- the bracket, inside the group
+
+     ONLY for a row already in Needs checking. An unattributed collection is
+     known to lie between the earliest confirmation that could have been it and
+     the latest confirmation on the card, so the row says both ends and both
+     day counts. Showing the near end alone would be picking the number that
+     makes the backlog look smaller, which is the one thing this must not do.
+
+     One qualifying confirmation collapses the bracket to a single date, and
+     the row reads like any other. */
+  function collectedBracket(t) {
+    if (!t || !t.unattributed) return null;
+    var on = localDay(t.wh_collected_at);
+    if (!on) return null;
+    var all = (t.confirmed_on || []).slice().filter(Boolean).sort();
+    var to = all.length ? all[all.length - 1] : on;
+    var from = localDay(t.done_at);
+    return {
+      from: on, to: to, single: on === to,
+      days: from ? daysBetween(from, on) : null,
+      daysMax: from ? daysBetween(from, to) : null
+    };
+  }
+
   /* How long it has been sitting there: from the day Done opened to the day
      it was picked up, or to today if nobody has gone yet. Null until it is
      ready, because a ticket still with ACE is not waiting on us. */
@@ -872,6 +962,7 @@
            bulkApproved: bulkApproved, bulkState: bulkState, bulkStatus: bulkStatus,
            noteCount: noteCount, markOdd: markOdd,
            ph2Collected: ph2Collected, confirmations: confirmations,
+           needsCheck: needsCheck, collectedBracket: collectedBracket,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,
