@@ -679,6 +679,42 @@
      accounts you are on, matching the tiles on the front door - so they are
      fixed. Everything round them is the tool's own theme, because the menu
      has to sit on fifteen skins, light ones included. */
+  /* ------------------------------------------------------------ the theme
+
+     One setting for the whole suite, read and written here so the account
+     menu can offer it on every page. A tool that has its own button keeps
+     working: its key is updated too, so it does not undo this on its next
+     load. Keys that do not already exist are left alone. */
+  var THEME_KEY = 'em-theme';
+  function themeNow() {
+    var d = document.documentElement.dataset.theme;
+    if (d) return d;
+    try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { return 'dark'; }
+  }
+  function setTheme(t) {
+    t = t === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+    try {
+      localStorage.setItem(THEME_KEY, t);
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var k = localStorage.key(i);
+        if (k && k !== THEME_KEY && /\.theme$/.test(k)) localStorage.setItem(k, t);
+      }
+    } catch (e) {}
+    /* tools draw their own button off this */
+    try { window.dispatchEvent(new CustomEvent('em:theme', { detail: t })); } catch (e) {}
+  }
+  /* Apply the stored choice on the way in, but never over a page that has
+     already decided - a tool's own paintTheme may have run first, and the two
+     agree from the next toggle onwards. */
+  (function () {
+    if (document.documentElement.dataset.theme) return;
+    try {
+      var t = localStorage.getItem(THEME_KEY);
+      if (t) document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  })();
+
   var CHIP_CSS = [
     '.acc-chip{position:relative;display:inline-flex;align-items:center;flex-shrink:0;',
     '  --a1:#d0587a;--a2:#8e2344;--ap1:#521323;--ap2:#6d1a2e;--cc:#c4526d;}',
@@ -824,6 +860,35 @@
       menu.appendChild(b);
     });
 
+    /* ---- dark or light, from the account rather than from each tool ----
+
+       Every tool that has a theme grew its own button and its own storage key,
+       so the setting was per-tool: dark in one and light in the next. This is
+       one switch in the one control that is on every page.
+
+       It writes em-theme AND every per-tool key already in localStorage, so a
+       tool with its own button stays in step instead of overriding this on its
+       next load. Only keys that already exist are touched - nothing is
+       invented for a tool that has no theme. */
+    var tlbl = el('span', 'acc-lbl'); tlbl.textContent = 'Appearance';
+    menu.appendChild(tlbl);
+    var trow = el('button', 'acc-row acc-theme'); trow.type = 'button';
+    trow.setAttribute('role', 'menuitemcheckbox');
+    var tsw = el('span', 'acc-swatch acc-tsw');
+    var tname = document.createTextNode('');
+    trow.appendChild(tsw); trow.appendChild(tname);
+    function drawTheme() {
+      var dark = themeNow() !== 'light';
+      tname.nodeValue = dark ? 'Dark' : 'Light';
+      trow.setAttribute('aria-checked', dark ? 'true' : 'false');
+      tsw.style.setProperty('--r1', dark ? '#2a1620' : '#f6ece2');
+      tsw.style.setProperty('--r2', dark ? '#120a0d' : '#d9c7b4');
+      tsw.style.boxShadow = 'inset 0 0 0 1px rgba(168,152,134,.28)';
+    }
+    trow.onclick = function () { setTheme(themeNow() === 'light' ? 'dark' : 'light'); drawTheme(); };
+    drawTheme();
+    menu.appendChild(trow);
+
     var foot = el('div', 'acc-foot');
     var out = el('button', 'acc-out'); out.type = 'button'; out.setAttribute('role', 'menuitem');
     out.textContent = 'Sign out';
@@ -864,22 +929,26 @@
     });
     addEventListener('resize', function () { if (c.classList.contains('open')) place(); });
 
-    /* Where it goes. Beside the theme button if there is one, otherwise at the
-       end of the header row - but NOT into a header that is still empty.
-       Several tools build their bar after this runs, and appending to an empty
-       one puts the account at the far LEFT, with the tool's own logo and title
-       landing to the right of it a moment later. */
+    /* Where it goes: LAST in the header row, hard right, which is where the
+       account sits on the front of the site. It used to go in BEFORE the
+       theme button, so on every tool that has one the account landed to the
+       left of it and the same control was in a different place depending on
+       which page you were on. One position everywhere - a person should not
+       have to look for it.
+
+       Still NOT into a header that is still empty: several tools build their
+       bar after this runs, and appending to an empty one puts the account at
+       the far LEFT, with the tool's own logo and title landing to the right
+       of it a moment later. */
     function anchor() {
       var hdr = document.querySelector('header.hdr') || document.querySelector('.hdr');
       if (!hdr) return null;
+      if (!hdr.children.length) return null;                /* not built yet */
+      /* the deepest row that already holds the header's controls, so the
+         account joins them rather than sitting outside their flex box */
       var t = hdr.querySelector('.theme');
-      if (t && t.parentNode) return { parent: t.parentNode, before: t };
-      var bs = hdr.querySelectorAll('button');
-      for (var i = bs.length - 1; i >= 0; i--) {
-        if (bs[i] !== face && !c.contains(bs[i])) return { parent: bs[i].parentNode, before: bs[i] };
-      }
-      if (hdr.children.length) return { parent: hdr, before: null };
-      return null;                                          /* not built yet */
+      if (t && t.parentNode && t.parentNode !== hdr) return { parent: t.parentNode, before: null };
+      return { parent: hdr, before: null };
     }
     function put() {
       var a = anchor();
