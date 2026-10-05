@@ -225,6 +225,13 @@
       /* attached documents the reader could not turn into anything. Set by the
          sync, which is the only thing that sees a parse fail. */
       docs_failed: raw.docs_failed == null ? null : Number(raw.docs_failed),
+      /* PH2: the site's whole requirement, shown on the expanded ticket and
+         never on the row. Empty for PH1 and Bulk, whose own lines already are
+         the requirement. */
+      site_lines: (raw.siteLines || []).map(function (r) {
+        return { code: s(r.code), desc: s(r.desc), qty: r.qty == null ? null : r.qty,
+                 uom: s(r.uom), store: s(r.store) };
+      }),
       /* Which WorkHub app this came from, carried straight through from the
          sync. Not derived from anything on the ticket - the only thing that
          knows is the app it was read out of. Null when a caller builds a
@@ -549,6 +556,12 @@
             stream: x.stream,
             reservation: x.reservation, orderNo: x.orderNo, grn: x.grn,
             requested: x.requested, removed: x.removed, gins: x.gins,
+            /* The card's own material table. It is the SITE's whole
+               requirement and is neither vendor's - its CTL / Non_CTL tag is
+               a storing location, not a stream - so it is carried for the
+               expanded ticket to show and kept off the row, whose lines come
+               from that stream's own document. */
+            siteLines: raw.requested,
             /* PH2's own collection sections only. The card also carries
                Dependency Clearance, the Sub WOs, Commissioning, Warehouse
                Selection, Vendor Allocation and Task Acceptance, none of which
