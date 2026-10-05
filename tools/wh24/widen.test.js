@@ -247,6 +247,68 @@ is('a date on one stream does not take the other off',
      JSON.stringify(W.record(ph1)));
 }
 
+/* ============== PH2 COLLECTION: causality, not pairing ==================== */
+{
+  const conf = (c, d) => ({ n: 'Material Collection Confirmation by Vendor', s: 'DONE', c: c, d: d });
+
+  /* the real shape of the card that found this bug, with invented values:
+     one stream issued long before the other, two confirmations */
+  const card = JSON.parse(JSON.stringify(ph2));
+  card.streams[0].gins = [{ ...note('4930000010', '2026-03-05'), res: '' }];   /* Advantis */
+  card.streams[1].gins = [{ ...note('10000002', '2025-11-27'), res: '' }];     /* ACE, 3 months earlier */
+  card.timeline = card.timeline.concat([
+    conf('2026-03-07T04:00:00Z', '2026-03-17T04:00:00Z'),
+    conf('2026-06-23T04:00:00Z', '2026-09-16T04:00:00Z')
+  ]);
+  const rows = W.rowsFor(card);
+  is('both streams are issued', rows.map(r => W.localDay(r.done_at)), ['2026-03-05', '2025-11-27']);
+  /* the point: NOT paired in order. Both take the earliest confirmation that
+     closed after their own issuance, which is the same one. */
+  is('both clocks stop at the earliest confirmation that closed after issuance',
+     rows.map(r => W.localDay(r.wh_collected_at)), ['2026-03-17', '2026-03-17']);
+  is('and neither is paired with the September one', rows.every(r =>
+     W.localDay(r.wh_collected_at) !== '2026-09-16'), true);
+  is('so nothing claims to have waited seven months',
+     rows.map(r => W.waiting(r, null, '2026-10-05')), [12, 110]);
+  is('and the 312 days is gone', rows.every(r => W.waiting(r, null, '2026-10-05') < 300), true);
+
+  /* one confirmation, two clocks - say so */
+  is('both are flagged unattributed', rows.map(r => r.unattributed), [true, true]);
+  is('with their own state, not plain collected', rows.map(r => W.state(r)),
+     ['collected_un', 'collected_un']);
+  is('neither is in Can collect', rows.some(r => W.state(r) === 'ready'), false);
+  is('nor in the pick list', W.pickList(rows, {}).length, 0);
+  is('the confirmation count is on the row', rows.map(r => r.confirmations), [2, 2]);
+  is('and their dates', rows[0].confirmed_on, ['2026-03-17', '2026-09-16']);
+  is('and they stay visible in their own band',
+     W.pipeline(rows, {}).filter(p => p.n).map(p => [p.state, p.n]), [['collected_un', 2]]);
+
+  /* a confirmation that closed BEFORE a stream was issued cannot be its
+     collection - that is the whole rule */
+  is('a confirmation before issuance is ignored',
+     W.ph2Collected([conf('2026-01-01T04:00:00Z', '2026-01-10T04:00:00Z')], '2026-03-05T00:00:00Z'), null);
+  is('one after it is taken',
+     W.ph2Collected([conf('2026-03-06T04:00:00Z', '2026-03-17T04:00:00Z')], '2026-03-05T00:00:00Z'),
+     '2026-03-17T04:00:00Z');
+  is('an unissued stream has no clock to stop',
+     W.ph2Collected([conf('2026-03-06T04:00:00Z', '2026-03-17T04:00:00Z')], null), null);
+  is('an open confirmation does not stop anything',
+     W.ph2Collected([conf('2026-03-06T04:00:00Z', null)], '2026-03-05T00:00:00Z'), null);
+
+  /* one stream and one confirmation is not ambiguous and is not hedged */
+  const single = JSON.parse(JSON.stringify(ph2));
+  single.streams[0].reservation = '';
+  single.streams[1].gins = [{ ...note('10000003', '2026-03-01'), res: '' }];
+  single.timeline = single.timeline.concat([conf('2026-03-07T04:00:00Z', '2026-03-17T04:00:00Z')]);
+  const one = W.rowsFor(single);
+  is('one stream, one confirmation', one.length, 1);
+  is('collected, and not hedged', [W.state(one[0]), one[0].unattributed], ['collected', false]);
+
+  /* a typed date is attributed by definition - somebody was there */
+  is('a mark beats the inference and is not hedged',
+     W.state(rows[0], { collected_on: '2026-03-18' }), 'collected');
+}
+
 /* ============================================================= Bulk ======= */
 const bulk = (stage, status, open, initDone, statusB) => ({
   id: 25600, phase: 'Bulk', workflow: 'w-test-bulk', site: 'zz0003', siteName: 'Invented_Place_C',

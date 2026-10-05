@@ -215,6 +215,13 @@
       /* PH2: how many issuance notes this stream has had. done_at is the
          earliest of them, and this is what stops the second one vanishing. */
       notes: raw.notes == null ? null : Number(raw.notes),
+      /* PH2 collection. unattributed means one confirmation stopped this
+         stream's clock AND another's, so at most one of the two is right and
+         the row must not read as a plain "collected". The count and the dates
+         are carried so a wrong one can be spotted without opening WorkHub. */
+      unattributed: !!raw.unattributed,
+      confirmations: raw.confirmations == null ? null : Number(raw.confirmations),
+      confirmed_on: (raw.confirmed_on || []).slice(),
       /* Which WorkHub app this came from, carried straight through from the
          sync. Not derived from anything on the ticket - the only thing that
          knows is the app it was read out of. Null when a caller builds a
@@ -246,6 +253,24 @@
   }
 
   /* ========================================= one card, one or two rows ======
+
+     WHY TWO ROWS - the evidence, not the reasoning.
+
+     The ordering test that settled which date field to use produced this as a
+     side effect, and it is the strongest thing we have:
+
+       System Issuance Done - ACE   opened 2025-11-27
+         the Activity Report attached to the ACE field    27.11.2025
+       System Issuance Done         opened 2026-03-05
+         the Goods Issue Note attached to the Advantis field  05.03.2026
+
+     Two tracks on one card, three months apart, and each vendor's document
+     carries the date its OWN track opened, to the day. The suffixed track
+     pairs with the Activity Report and the unsuffixed one with the GIN, and
+     nothing about that was inferred from the vendor names - it fell out of
+     comparing dates that had no reason to agree unless the model is right.
+
+     One row per card could hold one of those two answers.
 
      A PH1 or Bulk card is one row. A PH2 card is a site work order carrying
      two parallel vendor streams - Advantis and ACE - with their own
@@ -351,6 +376,49 @@
     return ((stream || {}).gins || []).filter(Boolean).length;
   }
 
+  /* ------------------------------------------- PH2: when it was collected
+
+     This was missing entirely, and its absence was the worst bug in the
+     widening: with collectedAt hard-coded null, no PH2 row could EVER record
+     a collection. A row the vendor had signed for would sit in "Can collect"
+     for ever, and the tool would send somebody to fetch material that had
+     already gone. Showing nothing is better than that.
+
+     WorkHub records the collection as "Material Collection Confirmation by
+     Vendor". Those tasks are UNSUFFIXED, so unlike the issuance tasks they
+     cannot be attributed to Advantis or ACE by name - and they must not be
+     paired off 1:1 with streams either. On a real card: ACE issued 27 Nov,
+     Advantis issued 5 Mar, confirmations closed 17 Mar and 16 Sep. Pair them
+     in order and ACE waits seven months; pair them the other way and Advantis
+     is confirmed before it was issued. Two of each is a coincidence.
+
+     So causality, the same test that settled the date field: material issued
+     on a date cannot be collected by a confirmation that closed BEFORE it.
+
+       the earliest confirmation that CLOSED after this stream's done_at
+       stops this stream's clock, at that close date
+
+     Earliest, to match the earliest-note rule, and because the first one to
+     qualify is the first moment the material could have left.
+
+     This can OVER-claim: one confirmation stops two clocks when only one
+     stream was actually collected, and on the cards seen that happens - one
+     has two streams and a single confirmation. Over-claiming is the safe
+     direction (nothing is sent to be fetched twice) but it is never silent:
+     the row says how many confirmations there were and on what dates, and a
+     row whose confirmation also stopped another stream is labelled
+     unattributed rather than collected. */
+  function confirmations(timeline) {
+    return (timeline || [])
+      .filter(function (t) { return stems(t.n, 'material collection confirmation') && t.d; })
+      .sort(function (a, b) { return ms(a.d) - ms(b.d); });
+  }
+  function ph2Collected(timeline, doneAt) {
+    if (!doneAt) return null;                 /* never issued, nothing to stop */
+    var after = confirmations(timeline).filter(function (t) { return ms(t.d) > ms(doneAt); });
+    return after.length ? after[0].d : null;
+  }
+
   /* ---- Bulk ----
      Completed, and the card's own Initiation Status reading Approved. done_at
      is when the LAST Material Reservation Initiation task completed.
@@ -453,10 +521,25 @@
       /* A card enters only once a stream carries a reservation number. Before
          that there is nothing to collect and nothing to call it - a row with
          no reservation is a work order, not a material request. */
-      return (raw.streams || [])
-        .filter(function (x) { return s(x.reservation); })
-        .map(function (x) {
+      var live = (raw.streams || []).filter(function (x) { return s(x.reservation); });
+      /* Which confirmation stops which stream, worked out ACROSS the card so a
+         row can say whether the one that stopped it also stopped another. That
+         is the whole of what "unattributed" means here, and it cannot be known
+         from one stream alone. */
+      var conf = confirmations(raw.timeline);
+      var stopped = live.map(function (x) { return ph2Collected(raw.timeline, ph2Ready(x)); });
+      var usedTwice = {};
+      stopped.forEach(function (d) { if (d) usedTwice[d] = (usedTwice[d] || 0) + 1; });
+      return live
+        .map(function (x, i) {
           return record({
+            collectedAt: stopped[i],
+            /* true only when the confirmation that stopped this stream also
+               stopped another on the same card - one event, two clocks, and at
+               most one of them is the truth */
+            unattributed: !!(stopped[i] && usedTwice[stopped[i]] > 1),
+            confirmations: conf.length,
+            confirmed_on: conf.map(function (t) { return localDay(t.d); }),
             id: raw.id, phase: raw.phase, workflow: raw.workflow,
             created: raw.created, updated: raw.updated,
             site: raw.site, siteName: raw.siteName, wo: raw.wo,
@@ -471,8 +554,7 @@
                not in. */
             timeline: (raw.timeline || []).filter(ph2Material),
             doneAt: ph2Ready(x),
-            notes: noteCount(x),
-            collectedAt: null
+            notes: noteCount(x)
           });
         });
     }
@@ -546,7 +628,12 @@
      other      anything else WorkHub invents */
   function state(t, mark) {
     if (!t) return 'other';
-    if (collectedOn(t, mark)) return 'collected';
+    /* A date somebody typed is attributed by definition - they were there and
+       said which stream. Only a collection INFERRED from an unattributed
+       confirmation gets the hedged state. */
+    if (collectedOn(t, mark)) {
+      return (t && t.unattributed && !(mark && mark.collected_on)) ? 'collected_un' : 'collected';
+    }
     if (s(t.phase) === 'Bulk') return bulkState(t);
     if (t.done_at) return 'ready';
     var st = s(t.stage);
@@ -661,7 +748,7 @@
   /* 'approved' sits between reserving and ready in the strip because that is
      where it is in the life of a Bulk request - past the approval, and not at
      a warehouse counter. It is its own band and is never added to ready. */
-  var ORDER = ['reserving', 'approved', 'issuing', 'ready', 'collected', 'shortage', 'rejected', 'other'];
+  var ORDER = ['reserving', 'approved', 'issuing', 'ready', 'collected', 'collected_un', 'shortage', 'rejected', 'other'];
   function pipeline(tickets, marks) {
     var n = {};
     ORDER.forEach(function (k) { n[k] = 0; });
@@ -784,6 +871,7 @@
            rowsFor: rowsFor, ph2Ready: ph2Ready, ph2Material: ph2Material, attachDocs: attachDocs,
            bulkApproved: bulkApproved, bulkState: bulkState, bulkStatus: bulkStatus,
            noteCount: noteCount, markOdd: markOdd,
+           ph2Collected: ph2Collected, confirmations: confirmations,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,
