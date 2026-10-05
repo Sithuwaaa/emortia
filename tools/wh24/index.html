@@ -502,6 +502,10 @@ const STATES = {
      into Can collect: WorkHub records no issuance anywhere in the Bulk
      workflow, so nothing on the card says the material left a warehouse. */
   approved:  { label: 'Bulk approved', seg: 'Bulk approved' },
+  /* An inferred collection where one confirmation stopped more than one
+     stream's clock. Its own label, because it is not the same claim as a
+     collection somebody stood there and recorded. */
+  collected_un: { label: 'Collected ?', seg: 'Needs checking' },
   issuing:   { label: 'With ACE',     seg: 'With ACE' },
   reserving: { label: 'Reserving',    seg: 'Reserving' },
   shortage:  { label: 'Shortage',     seg: 'Problems' },
@@ -516,9 +520,15 @@ const STATES = {
 const KEY = t => W.key(t);
 const mk = t => W.markOf(MARKS, t);
 const stOf = t => W.state(t, mk(t));
+/* Why a row cannot be stated confidently, or null. Memoised per render rather
+   than recomputed in every count, because segs() asks it once per tab. */
+const chk = t => W.needsCheck(t, mk(t));
 const inFilter = (t, f) => {
   const s = stOf(t);
   if (f === 'all') return true;
+  /* Needs checking cuts ACROSS the states - a row in it may be collected,
+     reserving or approved - so it is asked of the row, not of its state. */
+  if (f === 'check') return !!chk(t);
   if (f === 'problem') return s === 'shortage' || s === 'rejected';
   return s === f;
 };
@@ -626,10 +636,14 @@ function segs(){
   /* counted within the chosen source, so the two strips agree with the list */
   const n = f => TICKETS.filter(t => inSrc(t) && inFilter(t, f)).length;
   const S = [['ready','Can collect'],['issuing','With ACE'],['reserving','Reserving'],
-            ['approved','Bulk approved'],['problem','Problems'],['collected','Collected'],['all','All']];
+            ['approved','Bulk approved'],['check','Needs checking'],
+            ['problem','Problems'],['collected','Collected'],['all','All']];
   /* Bulk approved appears only once there is one. A tab reading zero for a
      source nobody has synced is a control that does nothing. */
-  $('seg').innerHTML = S.filter(([f]) => f !== 'approved' || n('approved'))
+  /* Bulk approved and Needs checking appear only once there is one. A tab
+     reading zero is a control that does nothing. */
+  $('seg').innerHTML = S.filter(([f]) => (f !== 'approved' || n('approved')) &&
+                                         (f !== 'check' || n('check')))
     .map(([f, l]) => `<button role="tab" data-f="${f}" class="${FILTER === f ? 'on' : ''}">${l}<b>${n(f)}</b></button>`).join('');
   $('seg').querySelectorAll('button').forEach(b => b.onclick = () => { FILTER = b.dataset.f; render(true); });
 
