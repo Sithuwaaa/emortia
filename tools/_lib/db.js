@@ -611,8 +611,13 @@
     }
     const { data: m, error: me } = await c.from(WH24M).select('*');
     if (me) return { tickets, marks: {}, error: wh24Why(me.message) };
+    /* Keyed on (ticket_id, stream), which is what the table's primary key has
+       been since 039. Keyed on the ticket alone, a PH2 card's two vendor
+       streams share one entry and whichever row loaded second silently wins -
+       so collecting Advantis would show ACE as collected too. The key is built
+       here the same way W.key builds it. */
     const marks = {};
-    (m || []).forEach(r => { marks[r.ticket_id] = r; });
+    (m || []).forEach(r => { marks[String(r.ticket_id) + '|' + (r.stream || '')] = r; });
     return { tickets, marks, error: null };
   }
 
