@@ -589,8 +589,33 @@
      day the team actually collected, and a sync never touches it. The page
      reads both and the mark wins. See supabase/036_wh24.sql. */
   const WH24T = 'wh24_tickets', WH24M = 'wh24_marks';
-  const wh24Why = m =>
-      /does not exist|schema cache|could not find the table/i.test(m)
+  /* Exactly what wh24_tickets has after 036, 037 and 039 - the fallback set
+     for a database that has not had 042 yet. Kept here rather than discovered,
+     because a probe on an empty table returns no keys and would answer the
+     question wrong in precisely the case it matters. */
+  const WH24T_COLS = ['id', 'stream', 'site', 'site_name', 'wo', 'reservation',
+    'phase', 'workflow', 'stage', 'team', 'status', 'wh_created_at', 'wh_updated_at',
+    'done_at', 'wh_collected_at', 'timeline', 'lines', 'gins', 'synced_at'];
+  /* A MISSING COLUMN IS NOT A MISSING TABLE, and saying so cost a working
+     tool an afternoon. PostgREST words both with "schema cache":
+
+       Could not find the table 'public.wh24_tickets' in the schema cache
+       Could not find the 'confirmations' column of 'wh24_tickets' in the
+         schema cache
+
+     The old test matched the second and reported "run migration 036", while
+     the page behind the dialog was reading 384 rows out of that very table.
+     That is the bug class: a check that answers a question it was not asked.
+     The column case now names the column, so the next one reads as what it
+     is - code ahead of its migration, not a database that is not there. */
+  const wh24Why = m => {
+    const col = /could not find the '([a-z_0-9]+)' column/i.exec(String(m));
+    if (col) return 'The database has no "' + col[1] + '" column yet – this page is ' +
+                    'ahead of its migration. Run supabase/042_wh24_facts.sql.';
+    return wh24Why2(m);
+  };
+  const wh24Why2 = m =>
+      /could not find the table|relation .* does not exist/i.test(m)
         ? 'WH24 Material Checker is not switched on yet – run migration 036.'
     : /jwt|not authenticated/i.test(m)
         ? 'Your sign-in has run out. Reload the page and sign in again.'
@@ -638,7 +663,37 @@
         ...r, stream: r.stream == null ? '' : String(r.stream),
         synced_at: new Date().toISOString() }));
       /* the key 039 made: (id, stream). 'id' alone no longer resolves. */
-      const { error } = await c.from(WH24T).upsert(part, { onConflict: 'id,stream' });
+      let { error } = await c.from(WH24T).upsert(part, { onConflict: 'id,stream' });
+      /* THE ROW MODEL MAY BE AHEAD OF THE SCHEMA, and that must not stop a
+         sync. The widening added fourteen facts to a row - the note count,
+         the confirmation dates, the two Bulk status columns and the rest -
+         before there were columns to put them in, and PostgREST refuses the
+         WHOLE upsert over one unknown key. The result was a tool that could
+         read 384 rows and not write one.
+
+         So: drop what the table cannot take, write what it can, and say so
+         once. The facts that are dropped are all DERIVED - every one of them
+         is recomputed from timeline, gins and phase on the next load - so
+         what is lost is a little speed, not a fact. Nothing that only the
+         sync knows is in that list.
+
+         When 042 has been run this branch never fires again, with no flag to
+         set and no second code path to keep in step. */
+      if (error && /could not find the '[a-z_0-9]+' column/i.test(error.message)) {
+        const lean = part.map(r => {
+          const o = {};
+          WH24T_COLS.forEach(k => { if (k in r) o[k] = r[k]; });
+          return o;
+        });
+        const retry = await c.from(WH24T).upsert(lean, { onConflict: 'id,stream' });
+        error = retry.error;
+        if (!error && !wh24Publish.said) {
+          wh24Publish.said = true;
+          try { console.warn('wh24: the database is behind this page - ' +
+            'run supabase/042_wh24_facts.sql to keep the per-row detail. ' +
+            'Everything else published normally.'); } catch (e) {}
+        }
+      }
       if (error) throw new Error(/row-level security|permission/i.test(error.message)
         ? 'Only Sithara can sync from WorkHub24.' : wh24Why(error.message));
       if (onProgress) onProgress(Math.min(i + CHUNK, rows.length), rows.length);

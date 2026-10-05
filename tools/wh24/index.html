@@ -1293,7 +1293,15 @@ $('syncGo').onclick = async () => {
     PENDING = null;
     await loadAll();
     setTimeout(() => $('syncDlg').classList.remove('on'), 1600);
-  } catch(e){ dlg(esc(e.message), { go: true }); }
+  } catch(e){
+    /* NEVER OFFER AN ACTION THE TOOL CANNOT STAND BEHIND. This used to
+       re-show Publish on any failure, so a sync that could not write left a
+       live button under an error message - press it again and get the same
+       error, or worse, believe the second press worked. The button comes
+       back only when the cause might have changed, which means a reload. */
+    dlg(esc(e.message) + '<br><br>Nothing was written. Reload the page and sync again.');
+    PENDING = null;
+  }
   BUSY = false; $('syncGo').disabled = false;
 };
 
