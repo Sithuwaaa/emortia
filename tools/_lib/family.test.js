@@ -63,6 +63,25 @@ const FOLDER = { 'whattodo': 'whattodo', 'lyric-video': 'lyric-video' };
 
 const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
 
+/* ---- 0. the DESIGNED VALUES are exactly what the design project published
+
+   category.css was fetched from Claude Design, not retyped, and checked by
+   SHA-256 on arrival. This keeps it that way: comments may be added - one
+   already has been, explaining why a 4.39 contrast is correct for its role -
+   but not one colour may move without this failing and saying so.
+
+   Hash is over the declarations with every comment and all whitespace
+   stripped, so prose is free and values are frozen. */
+{
+  const crypto = require('crypto');
+  const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
+  is('not one designed colour has moved since it was copied in',
+     crypto.createHash('sha256').update(values).digest('hex'),
+     'a086d111fcf698a8bdd6ea316d276f3a127ff78c465d208632e31565adc6d1e9');
+  is('and the file still carries the note on the 4.39 value',
+     /4\.39[\s\S]*?--accentT/.test(NAV), true);
+}
+
 /* ---- 1. category.css defines all five categories, in both themes ---- */
 console.log('--- category.css holds the five categories ---');
 for (const fam of Object.values(FAMILY_OF)) {
@@ -106,7 +125,13 @@ for (const sheet of ['nav', 'category']) {
     const src = fs.readFileSync(path.join(TOOLS, row.tool, 'index.html'), 'utf8');
     const m = src.match(new RegExp('_lib\\/' + sheet + '\\.css\\?v=(\\d+)'));
     vers.add(m ? m[1] : 'MISSING');
-    if (sheet === 'category') order.push(src.indexOf('nav.css') < src.indexOf('category.css'));
+    /* The LINK TAGS, not the first mention of the name anywhere in the file -
+       a comment in a tool's own stylesheet that says "category.css" is not a
+       load order, and the loose version of this check read one as one. */
+    if (sheet === 'category') {
+      const links = [...src.matchAll(/<link[^>]+_lib\/(nav|category)\.css/g)].map(x => x[1]);
+      order.push(links.indexOf('nav') >= 0 && links.indexOf('category') > links.indexOf('nav'));
+    }
   }
   is('every tool loads ' + sheet + '.css at one and the same version', [...vers].length, 1);
   is('and ' + sheet + '.css is missing from none of them', [...vers][0] !== 'MISSING', true);

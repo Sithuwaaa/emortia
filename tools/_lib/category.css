@@ -47,6 +47,18 @@ html[data-cat="field"]{
   --navy:#111410 !important; --navy-2:#1F271C !important;
   --glow:rgba(168,218,145,0.32) !important; --glowSoft:rgba(168,218,145,0.16) !important;
 }
+/* --accent here is 4.39:1 on this --bg. THAT IS CORRECT AND DELIBERATE - do
+   not "fix" it.
+
+   4.5:1 is the threshold for TEXT. --accent in light mode is a border and
+   fill token: borders, focus rings, the filled state of a toggle. Non-text UI
+   components need 3:1 (WCAG 1.4.11), which 4.39 clears comfortably.
+
+   The text-coloured accent for this category is --accentT, and it is 5.19:1
+   on the same ground. Nothing readable is rendered in 4.39.
+
+   Changing a designed colour to satisfy a rule that does not apply to its
+   role is how a palette gets worse one well-meaning commit at a time. */
 html[data-cat="field"][data-theme="light"]{
   --accent:#477F32 !important; --accentB:#3D7329 !important; --accentT:#3D7329 !important; --accentD:#335F23 !important;
   --accent-ink:#FFFFFF !important;
