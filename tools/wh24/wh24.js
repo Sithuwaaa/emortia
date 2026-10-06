@@ -598,6 +598,32 @@
     return out;
   }
 
+  /* ------------------------------------ what every row inherits from its card
+
+     LISTED ONCE. The PH2 and Bulk branches below used to spell out the card
+     fields they copied, and `title` was added to the card and to record() and
+     to the migration and to the page - and not to those two lists. So PH1,
+     which hands its raw card straight to record() and needs the title least,
+     kept it; PH2 and Bulk, which have no site field at all and need it most,
+     published null on every row.
+
+     A hand-written copy list is a place for exactly that to happen again, so
+     the card's own fields are spread and the branches override only what they
+     actually change. Adding a field to a card now reaches every row by
+     default rather than by remembering. */
+  function fromCard(raw) {
+    var o = {};
+    for (var k in raw) if (Object.prototype.hasOwnProperty.call(raw, k)) o[k] = raw[k];
+    /* these belong to the CARD and are replaced per row, never inherited */
+    delete o.streams; delete o.__t;
+    return o;
+  }
+  function withCard(raw, own) {
+    var o = fromCard(raw);
+    for (var k in own) if (Object.prototype.hasOwnProperty.call(own, k)) o[k] = own[k];
+    return o;
+  }
+
   /* One card in, the rows it should become out. */
   function rowsFor(raw) {
     var phase = s(raw && raw.phase);
@@ -616,7 +642,7 @@
       stopped.forEach(function (d) { if (d) usedTwice[d] = (usedTwice[d] || 0) + 1; });
       return live
         .map(function (x, i) {
-          return record({
+          return record(withCard(raw, {
             collectedAt: stopped[i],
             /* true only when the confirmation that stopped this stream also
                stopped another on the same card - one event, two clocks, and at
@@ -624,9 +650,6 @@
             unattributed: !!(stopped[i] && usedTwice[stopped[i]] > 1),
             confirmations: conf.length,
             confirmed_on: conf.map(function (t) { return localDay(t.d); }),
-            id: raw.id, phase: raw.phase, workflow: raw.workflow,
-            created: raw.created, updated: raw.updated,
-            site: raw.site, siteName: raw.siteName, wo: raw.wo,
             stream: x.stream,
             reservation: x.reservation, orderNo: x.orderNo, grn: x.grn,
             requested: x.requested, removed: x.removed, gins: x.gins,
@@ -645,23 +668,19 @@
             timeline: (raw.timeline || []).filter(ph2Material),
             doneAt: ph2Ready(x),
             notes: noteCount(x)
-          });
+          }));
         });
     }
     if (phase === 'Bulk') {
-      return [record({
-        id: raw.id, phase: raw.phase, workflow: raw.workflow,
-        created: raw.created, updated: raw.updated,
-        site: raw.site, siteName: raw.siteName, wo: raw.wo, stream: '',
-        reservation: raw.reservation, requested: raw.requested,
-        removed: raw.removed, gins: raw.gins, timeline: raw.timeline,
+      return [record(withCard(raw, {
+        stream: '',
         initiation_status: bulkStatus(raw).value,
         initiation_status_a: raw.initiationStatusA,
         initiation_status_b: raw.initiationStatusB,
         status_from: bulkStatus(raw).from,
         status_agree: bulkStatus(raw).agree,
         doneAt: bulkApproved(raw), collectedAt: null
-      })];
+      }))];
     }
     return [record(raw)];
   }

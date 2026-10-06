@@ -274,6 +274,12 @@
      already on the badge - whatever goes last is what gets cut, and losing
      the stage costs nothing while losing this costs the whole errand. */
   .who .l2 .res{font-weight:700;color:var(--text2)}
+  /* The card title. Dimmer and smaller than the lines above it because it is
+     there to be recognised rather than read - you match it against what you
+     are looking for. One line, cut with an ellipsis; the whole thing is on
+     hover and on the expanded ticket. */
+  .who .l3{font:11.5px 'Space Mono',monospace;color:var(--muted);opacity:.85;margin-top:3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help}
   /* Which WorkHub app the row came from. The three are different kinds of
      thing - a warehouse reservation, a site work task, a direct request - and
      what "collect" means is not identical across them, so the row says which
@@ -346,6 +352,13 @@
   .needs b{font:700 11px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)}
   .needs span{font-size:13.5px}
   .needs i{font-style:normal;font-size:13px;color:var(--text2)}
+  /* the card title in full - wrapped, selectable, nothing cut off. The row
+     above shows it truncated; this is where you copy it from. */
+  .cardtitle{display:flex;flex-direction:column;gap:3px;background:var(--card2);
+    border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin-bottom:10px}
+  .cardtitle i{font:700 10px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);font-style:normal}
+  .cardtitle span{font-size:12.5px;line-height:1.5;word-break:break-word;user-select:all}
   /* ---- the card's own documents ---- */
   .docs{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin-top:10px}
   .docs .h{font:700 11px 'Space Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
@@ -384,7 +397,7 @@
     .ibtn:hover,.tile:hover{transform:none}
   }
 </style>
-<link rel="stylesheet" href="../_lib/nav.css?v=1">
+<link rel="stylesheet" href="../_lib/nav.css?v=2">
 </head>
 <body>
 <header class="hdr">
@@ -915,7 +928,14 @@ function card(t){
         chk(t) ? `<span class="cbadge" title="${esc(chk(t).why)}">check</span>` : ''}${
         t.notes > 1 ? `<span class="nbadge" title="done_at is the first of them">${t.notes} issuances</span>` : ''}</span>
       <div class="who"><div class="l1"><span class="sid">${esc(t.site || '–')}</span><span class="snm">${esc(t.site_name || '')}</span></div>
-        <div class="l2">#${t.id}${t.reservation ? ' · <b class="res">' + esc(t.reservation) + '</b>' : ''} · ${esc(t.stage || '')}${t.team ? ' – ' + esc(t.team) : ''}</div></div>
+        <div class="l2">#${t.id}${t.reservation ? ' · <b class="res">' + esc(t.reservation) + '</b>' : ''} · ${esc(t.stage || '')}${t.team ? ' – ' + esc(t.team) : ''}</div>${
+        /* THE WHOLE CARD TITLE, on every row that has one - not only when the
+           site code could not be parsed out of it. The parsed code goes in the
+           chip above, but the title is what identifies the ticket when you go
+           looking for it in WorkHub, and a row that shows only a dash and a
+           ticket number is a row you cannot act on. Truncated by CSS here,
+           whole on the expanded ticket and on hover. */
+        t.title ? `<div class="l3" title="${esc(t.title)}">${esc(t.title)}</div>` : ''}</div>
       <div class="wo">${esc(t.wo || '')}</div>
       ${daysCell(t)}
       <span class="chev">›</span>
@@ -975,6 +995,7 @@ function checkBox(t){
 function fill(el, t){
   el.querySelector('.tkb').innerHTML = `
     ${checkBox(t)}
+    ${t.title ? `<div class="cardtitle"><i>WorkHub card</i><span class="mono">${esc(t.title)}</span></div>` : ''}
     <div class="facts">
       <div><i>Ticket</i><span class="mono">${t.id}</span></div>
       ${t.stream ? `<div><i>Stream</i><span>${esc(t.stream)}</span></div>` : ''}

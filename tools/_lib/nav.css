@@ -78,3 +78,42 @@ header.hdr .hsep{height:var(--navSep)}
   header.hdr .bname,
   header.hdr .hsep{display:none}
 }
+
+/* ========================================================================
+   NO SCROLLBAR GUTTER, anywhere in the tools.
+
+   The front of the site has hidden its scrollbar since it was built - a grey
+   channel down the side of a dark page is furniture - and the tools never
+   did, so the same person moving from one to the other saw the window change
+   shape. The page still scrolls exactly as before: this hides the bar, it
+   does not stop the scrolling.
+
+   Both spellings, because Firefox reads the first and Chrome and Safari the
+   second, and the inner scrollers too - the material tables and the ticket
+   panels scroll sideways on a phone and grew their own grey channel inside
+   the card.
+   ======================================================================== */
+html { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar { width: 0; height: 0; display: none; }
+.wrap, .chg, #syncDlg .box, .acc-menu, .seg, pre, textarea,
+[data-scroll], .scroller { scrollbar-width: none; -ms-overflow-style: none; }
+.wrap::-webkit-scrollbar, .chg::-webkit-scrollbar, #syncDlg .box::-webkit-scrollbar,
+.acc-menu::-webkit-scrollbar, .seg::-webkit-scrollbar, pre::-webkit-scrollbar,
+textarea::-webkit-scrollbar, [data-scroll]::-webkit-scrollbar,
+.scroller::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* ========================================================================
+   ONE THEME CONTROL, AND IT IS IN THE ACCOUNT MENU.
+
+   Every tool grew its own ☀/◐ button beside the account pill. The front of
+   the site has none, so the pill had a neighbour on fifteen pages and no
+   neighbour on the sixteenth, and the same control sat in a different place
+   depending on where you were. The setting moved into the account menu,
+   which is on every page, and these are what is left over.
+
+   Hidden rather than deleted from sixteen files: each tool's own script
+   still does $('themeBtn').onclick = ... on load, and removing the element
+   would throw on every one of them. The button still works if a tool opens
+   it some other way; it simply is not drawn.
+   ======================================================================== */
+.hdr .theme, .hdr #themeBtn { display: none !important; }

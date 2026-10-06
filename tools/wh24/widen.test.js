@@ -412,6 +412,53 @@ is('a date on one stream does not take the other off',
   }
 }
 
+/* ============ THE CARD'S OWN FIELDS REACH EVERY ROW ======================
+
+   title was added to the card, to record(), to the migration and to the page,
+   and NOT to the hand-written copy lists inside rowsFor's PH2 and Bulk
+   branches. So PH1 - which hands its raw card straight to record() and needs
+   the title least - kept it, while PH2 and Bulk, which have no site field at
+   all and need it most, published null on every row.
+
+   These assert the field survives the journey, and the last one asserts it
+   generically so the next field added to a card cannot be lost the same way. */
+{
+  const TITLE = 'INH_Western_ZZ0002_Invented_Place_B_AP Upgrades_New Site Installation_AP_2026_9001_Test Project';
+  const card = JSON.parse(JSON.stringify(ph2));
+  card.title = TITLE;
+  const rows = W.rowsFor(card);
+  is('a PH2 card yields rows at all', rows.length, 2);
+  is('EVERY PUBLISHED PH2 ROW CARRIES THE CARD TITLE',
+     rows.map(r => r.title), [TITLE, TITLE]);
+  is('and it is not quietly blank', rows.every(r => !!r.title && r.title.length > 10), true);
+  is('the site code is parsed out of it for the chip', rows[0].site, 'ZZ0002');
+  is('and the name with it', rows[0].site_name, 'Invented_Place_B');
+
+  /* Bulk too */
+  const b = W.rowsFor({ id: 5, phase: 'Bulk', title: 'Material Reservation/ZZ0003/x/y/z/5',
+                        site: 'ZZ0003', timeline: [], requested: [],
+                        initiationStatusA: '', initiationStatusB: '' })[0];
+  is('a Bulk row carries its title too', b.title, 'Material Reservation/ZZ0003/x/y/z/5');
+
+  /* PH1 was never broken, and must stay unbroken */
+  is('PH1 still carries it', W.rowsFor({ ...ph1, title: TITLE })[0].title, TITLE);
+
+  /* ---- the general rule, so the NEXT field cannot be dropped ----
+     Anything on the card that record() knows how to keep must arrive on every
+     row it produces, whatever the source. */
+  const probe = { ...JSON.parse(JSON.stringify(ph2)), title: TITLE, wo: 'WO-CARD-9001',
+                  created: '2026-01-01T00:00:00Z' };
+  ['title', 'wo', 'phase', 'workflow', 'wh_created_at'].forEach(f => {
+    const want = f === 'wh_created_at' ? probe.created : probe[f];
+    is('every PH2 row inherits ' + f + ' from its card',
+       [...new Set(W.rowsFor(probe).map(r => r[f]))], [want]);
+  });
+  is('and the per-row fields are NOT inherited - the stream differs',
+     new Set(W.rowsFor(probe).map(r => r.stream)).size, 2);
+  is('the card’s stream list never leaks onto a row',
+     W.rowsFor(probe).every(r => r.streams === undefined), true);
+}
+
 /* ============================================================= Bulk ======= */
 const bulk = (stage, status, open, initDone, statusB) => ({
   id: 25600, phase: 'Bulk', workflow: 'w-test-bulk', site: 'zz0003', siteName: 'Invented_Place_C',
