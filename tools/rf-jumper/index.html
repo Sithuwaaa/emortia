@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-family="field">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -48,11 +48,11 @@
 <style>
   /* Amber - the colour the design gave this chart. Only the accent is this
      tool's own; the ground, the lines and the type come from the aurora skin. */
-  :root,html[data-theme="dark"]{--accent:#d69a3c;--accentB:#eeb95f;--accentD:#a8742a;--accent-ink:#1d1304;
-    --glow:rgba(214,154,60,.5);--glowSoft:rgba(214,154,60,.26);--bad:#e2607a;--zebra:rgba(255,255,255,.02);
+  :root,html[data-theme="dark"]{
+    --bad:#e2607a;--zebra:rgba(255,255,255,.02);
     --gridLine:rgba(255,255,255,.62);--goHover:var(--accentB)}
-  html[data-theme="light"]{--accent:#8a5c1c;--accentB:#a8742a;--accentD:#6e4812;--accent-ink:#ffffff;
-    --glow:rgba(138,92,28,.4);--glowSoft:rgba(138,92,28,.18);--bad:#c2405c;--zebra:rgba(0,0,0,.024);
+  html[data-theme="light"]{
+    --bad:#c2405c;--zebra:rgba(0,0,0,.024);
     --gridLine:#1c1c1c;--goHover:#6e4812}
 
   /* the chart's own fills, the same in both themes - they are the information */
@@ -226,7 +226,7 @@
 
   @media (prefers-reduced-motion:reduce){ .combo,.modal,.toast{animation:none} }
 </style>
-<link rel="stylesheet" href="../_lib/nav.css?v=2">
+<link rel="stylesheet" href="../_lib/nav.css?v=3">
 </head>
 <body>
 

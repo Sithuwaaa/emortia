@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-family="emortia">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -46,14 +46,14 @@
   :root{
     /* rose - the one accent the other tools had not taken, and it ties back to
        the site's own burgundy */
-    --navy:#2a121b;--navy-2:#3a1826;--accent:#d4547a;--accentB:#e87b9c;--accentD:#a63558;--accent-ink:#1d0610;
+    --navy:#2a121b;--navy-2:#3a1826;
     --bg:#190c11;--card:#25131b;--card-2:#1f0f16;--line:#3a1e29;--line3:#502c3a;
     --text:#f6eaef;--muted:#ad8b98;--zebra:rgba(255,255,255,.018);
     --ok:#34c98b;--warn:#f2764a;--info:#4f9bf0;--idle:#8d7480;
-    --glow:rgba(212,84,122,.5);--glowSoft:rgba(212,84,122,.28);
+    
   }
   html[data-theme="light"]{
-    --navy:#3a1826;--navy-2:#4a2030;--accent:#b03a5e;--accentB:#d4547a;--accentD:#8a2745;--accent-ink:#ffffff;
+    --navy:#3a1826;--navy-2:#4a2030;
     --bg:#faf3f5;--card:#ffffff;--card-2:#fdf7f9;--line:#e8d6dd;--line3:#d4b8c3;
     --text:#2a121b;--muted:#7a5e69;--zebra:rgba(0,0,0,.022);
     --ok:#1f9a68;--warn:#c2542c;--info:#2f6fd0;--idle:#7a5e69;
@@ -347,7 +347,7 @@
 <script src="../_lib/ask.js?v=1" defer></script>
 <!-- Last in the head on purpose: this is what holds every tool header to
      the same size, so it has to win against the page's own .hdr rules. -->
-<link rel="stylesheet" href="../_lib/nav.css?v=2">
+<link rel="stylesheet" href="../_lib/nav.css?v=3">
 </head>
 <body>
 <header class="hdr">

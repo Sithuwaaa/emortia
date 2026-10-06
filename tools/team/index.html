@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-family="people">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -50,8 +50,8 @@
      is this tool's own; the ground, the lines and the type come from
      theme.css, which is what makes the office tools look like one set rather
      than nine separate programs. */
-  :root,html[data-theme="dark"]{--accent:#8fa83f;--accentB:#a9c257;--accentD:#6d8329;
-    --accent-ink:#12160a;--glow:rgba(143,168,63,.5);--glowSoft:rgba(143,168,63,.28);
+  :root,html[data-theme="dark"]{
+    
     --bad:#e2607a;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
   /* Light needs a deeper olive than it looks like it should: #66801f read
      4.07 against the page for the small mono kickers and 4.49 for white on
@@ -59,8 +59,8 @@
      --accentB stays the lighter one in both themes, because the header is
      dark either way and that is where it is used - so the button's hover
      gets its own colour rather than washing out in light mode. */
-  html[data-theme="light"]{--accent:#5f7719;--accentB:#7e9a2e;--accentD:#46590f;
-    --accent-ink:#ffffff;--glow:rgba(95,119,25,.4);--glowSoft:rgba(95,119,25,.2);
+  html[data-theme="light"]{
+    
     --bad:#c2405c;--zebra:rgba(0,0,0,.024);--goHover:#46590f}
 
   *{box-sizing:border-box;margin:0;padding:0}
@@ -289,7 +289,7 @@
     h1{font-size:25px}
   }
 </style>
-<link rel="stylesheet" href="../_lib/nav.css?v=2">
+<link rel="stylesheet" href="../_lib/nav.css?v=3">
 </head>
 <body>
 
