@@ -751,6 +751,56 @@
     return data || null;
   }
 
+  /* ------------------------------------------------- the ticket's own PDFs
+
+     The documents WorkHub already holds, kept where the team can open them
+     without a WorkHub login. Nothing is generated: every byte is the file the
+     sync downloaded from the card it is attached to.
+
+     KEYED ON (ticket, stream). A PH2 card carries two documents - Advantis
+     issues on a Goods Issue Note, ACE on an Activity Report - so a path built
+     from the ticket alone would have the second overwrite the first and the
+     tool would offer the Advantis note while you were reading the ACE row.
+     '_' stands in for the empty stream PH1 and Bulk use, because a path
+     segment cannot be empty.
+
+     The name is built so a human can tell what a file is without opening it:
+     the site, the stream, and the GI or report number.
+
+     upsert:true, deliberately. A re-sync of the same document should replace
+     it rather than fail - the bytes are identical and the alternative is a
+     sync that dies on its second run. */
+  const WH24B = 'wh24-docs';
+  function wh24DocPath(t, g){
+    const seg = v => String(v == null ? '' : v).replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+    const stream = seg(t.stream) || '_';
+    const num = seg(g.gi || g.rep) || 'no-number';
+    const name = [seg(t.site) || 'no-site', stream, num].join('__') + '.pdf';
+    return String(t.id) + '/' + stream + '/' + name;
+  }
+  async function wh24PutDoc(t, g, blob){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const path = wh24DocPath(t, g);
+    const { error } = await c.storage.from(WH24B).upload(path, blob, {
+      contentType: 'application/pdf', upsert: true });
+    /* A bucket that is not there yet is not a reason to fail a sync. 041 may
+       not have been run, and the tickets matter more than the attachments. */
+    if (error) {
+      if (/bucket not found|does not exist/i.test(error.message)) return null;
+      throw new Error(error.message);
+    }
+    return path;
+  }
+  /* The bucket is private, so a path is not a URL. Short-lived links, asked
+     for at the moment somebody clicks. */
+  async function wh24DocLink(path, seconds){
+    const c = await client(); if (!c || !path) return null;
+    const { data, error } = await c.storage.from(WH24B)
+      .createSignedUrl(path, seconds || 300);
+    return error ? null : (data ? data.signedUrl : null);
+  }
+
   async function wh24Subscribe(fn){
     const c = await client(); if (!c) return;
     c.channel('wh24_live')
@@ -1938,6 +1988,7 @@
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 wh24Load, wh24Publish, wh24Mark, wh24Subscribe, wh24Checked, wh24NoteCheck,
+                wh24PutDoc, wh24DocLink, wh24DocPath,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
                 load, publish, subscribe,
                 publishBook, loadBook, subscribeBook,

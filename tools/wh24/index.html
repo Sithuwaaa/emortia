@@ -972,14 +972,19 @@ function docsBox(t){
   return `<div class="docs">
     <div class="h">Documents on this ${t.stream ? esc(t.stream) + ' stream' : 'ticket'}</div>
     ${gs.map(g => {
-      const kind = g.gi ? 'Goods Issue Note' : 'Activity Report';
+      const kind = g.kind === 'move' ? 'Activity Report' : g.gi ? 'Goods Issue Note' : 'Activity Report';
       const num = g.gi || g.rep || '';
       return `<div class="doc"><span class="k">${kind}</span>` +
              `<span class="n mono">${esc(num || g.file)}</span>` +
-             (g.date ? `<span class="d">${esc(nice(g.date))}</span>` : '') +
-             `<span class="f mono">${esc(g.file)}</span></div>`;
+             (g.date ? `<span class="d">${esc(nice(g.date))}${g.date_field ? ' · ' + esc(g.date_field) : ''}</span>` : '') +
+             /* A link only when the file is actually in the bucket. A button
+                that 404s is worse than no button - see rule 1. */
+             (g.path ? `<button class="mini dl" data-path="${esc(g.path)}" data-name="${esc(g.file)}">Download</button>`
+                     : `<span class="f mono">${esc(g.file)}</span>`) + `</div>`;
     }).join('')}
-    <div class="note">Held in WorkHub24. Storing them here is migration 041, which has not been run.</div>
+    ${gs.some(g => !g.path)
+      ? `<div class="note">The ones without a Download button are held in WorkHub24 and have not been stored here yet – they arrive with the next sync once <b>041</b> has been run.</div>`
+      : ''}
   </div>`;
 }
 
@@ -1066,6 +1071,24 @@ $('list').addEventListener('click', async e => {
     const card = pick.closest('.tk');
     if (card) card.classList.toggle('picked', pick.checked);
     paintSel();
+    return;
+  }
+  /* Download a stored document. The bucket is private, so the link is signed
+     at the moment of the click and lives five minutes - long enough to open,
+     short enough that a copied URL is not a standing key to warehouse
+     paperwork. Viewers get this: reading is what the tool is for. */
+  const dl = e.target.closest('.dl');
+  if (dl){
+    dl.disabled = true;
+    try {
+      const url = await window.DB.wh24DocLink(dl.dataset.path, 300);
+      if (!url) throw new Error('That document is not in the store.');
+      const a = document.createElement('a');
+      a.href = url; a.download = dl.dataset.name || 'document.pdf';
+      a.rel = 'noopener'; a.target = '_blank';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch(err){ toast(err.message, 4000); }
+    dl.disabled = false;
     return;
   }
   const sn = e.target.closest('.sns span');
@@ -1345,6 +1368,9 @@ async function receive(data){
          something did. */
       if (r.gin){
         r.gin.file = p.file;
+        /* the bytes, kept beside the parsed document so the publish can put
+           them in the bucket - the sync is the only place they exist */
+        r.gin.__buf = p.buf;
         (parsed[p.id] = parsed[p.id] || []).push(r.gin);
         if (r.kind === 'move') moves.push(p.file);
       }
@@ -1468,12 +1494,39 @@ $('syncGo').onclick = async () => {
   if (!PENDING || BUSY) return;
   BUSY = true; $('syncGo').disabled = true;
   try {
+    /* ---- the documents first ----
+
+       The PDFs go up BEFORE the rows, so a row is never published claiming a
+       path the bucket does not have. The other way round would put a download
+       button on a row and a 404 behind it.
+
+       Each upload is allowed to fail on its own: if 041 has not been run the
+       bucket is not there, wh24PutDoc returns null, the row simply carries no
+       path, and the ticket - which is what the tool is for - publishes
+       normally. The attachments are a convenience; the queue is the job. */
+    let up = 0, upFail = 0;
+    const docs = [];
+    PENDING.forEach(t => (t.gins || []).forEach(g => { if (g.__buf) docs.push([t, g]); }));
+    for (let i = 0; i < docs.length; i++){
+      const [t, g] = docs[i];
+      dlg(`Storing document ${i + 1} of ${docs.length}…`, { pct: (i + 1) / docs.length });
+      try {
+        const path = await window.DB.wh24PutDoc(t, g, new Blob([g.__buf], { type: 'application/pdf' }));
+        if (path){ g.path = path; up++; } else upFail++;
+      } catch(e){ upFail++; }
+    }
+    /* the bytes never go in the database - the row keeps the path, not the
+       file, and a transferred ArrayBuffer is not JSON anyway */
+    PENDING.forEach(t => (t.gins || []).forEach(g => { delete g.__buf; }));
+
     await window.DB.wh24Publish(PENDING, (n, of) => dlg(`Publishing ${n} of ${of}…`, { pct: n / of }));
     /* published:true moves BOTH times - this is the one case where checking
        and changing happened together */
     await window.DB.wh24NoteCheck({ tickets: TICKETS.length, changed: PENDING.length,
                                     by: ME || null, published: true }).catch(() => {});
-    dlg(`Published ${PENDING.length} tickets.`);
+    dlg(`Published ${PENDING.length} row${PENDING.length === 1 ? '' : 's'}.` +
+        (up ? ` ${up} document${up === 1 ? '' : 's'} stored.` : '') +
+        (upFail ? ` ${upFail} could not be stored – run supabase/041_wh24_docs.sql.` : ''));
     PENDING = null;
     await loadAll();
     setTimeout(() => $('syncDlg').classList.remove('on'), 1600);

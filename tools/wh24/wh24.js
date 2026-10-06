@@ -330,8 +330,16 @@
         return { code: s(r.code), desc: s(r.desc), qty: r.qty == null ? null : r.qty, uom: s(r.uom) };
       }),
       gins: (raw.gins || []).map(function (g) {
-        return { file: s(g.file), gi: s(g.gi), date: g.date || '', res: s(g.res), sloc: s(g.sloc),
-                 wbs: s(g.wbs), mv: s(g.mv), items: g.items || [] };
+        return { file: s(g.file), gi: s(g.gi), rep: s(g.rep), date: g.date || '', res: s(g.res),
+                 sloc: s(g.sloc), wbs: s(g.wbs), mv: s(g.mv), items: g.items || [],
+                 /* which of the document's own dates this one came from, so a
+                    reader can see whether it is a GIN's Document Date or an
+                    Activity Report's Created On without opening the file */
+                 kind: s(g.kind), date_field: s(g.date_field),
+                 /* where the file itself is in the bucket. Empty until the
+                    sync has stored it, which needs 041 - and an empty path
+                    means no download link rather than a broken one. */
+                 path: s(g.path) };
       })
     };
   }
