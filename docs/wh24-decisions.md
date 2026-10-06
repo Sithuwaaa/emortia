@@ -339,3 +339,44 @@ the structure is read rather than assumed.
 `supabase/`, and — because a lint that matches nothing passes for ever —
 asserts first that the pattern still catches the exact line step 4 shipped
 with.
+
+### A downloaded document is called by its reservation number
+
+`1776693.pdf`. No site code, no GI number, no underscores.
+
+The reservation is what the warehouse, the indent and the ticket are all filed
+under, so it is the number a saved file has to carry. Taken from **the
+document**, never the ticket: a ticket can carry two — 1764339 and 1776693 —
+and each GIN names the one it was issued against.
+
+Falling back to the GI number, then the report number, then `document.pdf`. An
+Activity Report has neither a reservation nor a GI (`moveShape` sets both to
+`''`), so without the fallback that file would have been called `.pdf`.
+
+**The storage path did not change and must not.** `wh24DocPath` stays a pure
+function of id/stream/site/gi, because `upsert` only overwrites in place while
+a document's path never moves — and the objects already up there cannot be
+deleted from SQL, so a rename orphans every one of them at an address nothing
+can reach. The download name and the storage path are different things; only
+one of them is free to change.
+
+#### The collision, and when it actually matters
+
+Two GINs issued against one reservation both save as the same name and the
+browser adds `(1)`. Accepted. But the cases are not equally harmless:
+
+- **GIN + Activity Report — cannot collide.** The report carries no reservation
+  and no GI, so it falls through to its own report number. Asserted, because it
+  is the case that would have been worst: two vendors' paperwork under one name.
+- **Two GINs, same reservation, same date** — a partial issuance and its
+  remainder. Annoying. The files differ only by material lines and either one
+  opens to tell you which.
+- **Two GINs, same reservation, different dates** — *this* is the confusing one.
+  Two identically named files issued weeks or months apart, with nothing in the
+  name to say which is which, at exactly the moment you are reconciling when
+  material moved. `(1)` is assigned by download order, not by date.
+- **Two GINs, same reservation, different streams** — same problem across
+  vendors.
+
+The query that finds all four in the live data is in the reply that shipped
+this; the classes are the finding, the counts are per-database.

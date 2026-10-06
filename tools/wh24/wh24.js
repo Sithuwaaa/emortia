@@ -1026,6 +1026,33 @@
     return u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46;
   }
 
+  /* ------------------------------------ what a downloaded document is called
+
+     The RESERVATION NUMBER, and nothing else: 1776693.pdf. That is the number
+     the warehouse, the indent and the ticket are all filed under, so it is the
+     one a saved file has to carry.
+
+     THE DOCUMENT'S OWN reservation, not the ticket's. A ticket can carry two -
+     1764339 and 1776693 - and each GIN names the one it was issued against.
+     Taking it from the ticket would file a document under a reservation it has
+     nothing to do with, which is worse than an awkward name.
+
+     Falling back to the GI or report number, because an Activity Report has
+     neither a reservation nor a GI (sapdocs moveShape sets both to '') and the
+     alternative is a file called ".pdf". A name nothing can be derived from is
+     'document.pdf' rather than 'undefined.pdf'.
+
+     THIS IS THE DOWNLOAD NAME ONLY. The storage path stays a pure function of
+     id/stream/site/gi - see 043: upsert overwrites in place only while the
+     path for a document never changes, and the 617 objects already up there
+     cannot be deleted from SQL. */
+  function docName(g) {
+    g = g || {};
+    var n = s(g.res) || s(g.gi) || s(g.rep);
+    n = n.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '');
+    return n ? n + '.pdf' : 'document.pdf';
+  }
+
   var KNOWN_STATES = ['reserving', 'approved', 'issuing', 'ready', 'collected',
                       'collected_un', 'shortage', 'rejected', 'other'];
 
@@ -1155,7 +1182,7 @@
            ph2Collected: ph2Collected, confirmations: confirmations,
            needsCheck: needsCheck, collectedBracket: collectedBracket,
            siteFromTitle: siteFromTitle, KNOWN_STATES: KNOWN_STATES,
-           isPdf: isPdf, PDF_MIN: PDF_MIN,
+           isPdf: isPdf, PDF_MIN: PDF_MIN, docName: docName,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,

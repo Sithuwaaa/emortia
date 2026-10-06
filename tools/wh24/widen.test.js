@@ -700,5 +700,47 @@ is('an ArrayBuffer is read, not just a typed array', W.isPdf(pdf(5000).buffer), 
    this. Pinned, with the reason: an empty file passed every other check. */
 is('the minimum length is a real floor, not zero', W.PDF_MIN >= 1024, true);
 
+/* ==================================== what a download is called ========
+
+   The reservation number off THE DOCUMENT, and nothing else. */
+is('a GIN downloads as its reservation number alone',
+   W.docName({ res: '1776693', gi: '4932181056', rep: '', file: 'BD5071_4932181244.pdf' }),
+   '1776693.pdf');
+is('no site code, no GI number, no underscores',
+   /^[0-9]+\.pdf$/.test(W.docName({ res: '1776693', gi: '4932181056' })), true);
+/* The document's own, never the ticket's. A ticket carrying 1764339 and
+   1776693 has a GIN for each, and each names the one it was issued against. */
+is('two documents on one ticket take their own reservations',
+   [W.docName({ res: '1764339', gi: '4932181050' }),
+    W.docName({ res: '1776693', gi: '4932181056' })],
+   ['1764339.pdf', '1776693.pdf']);
+/* An Activity Report has neither a reservation nor a GI - moveShape sets both
+   to '' - so without the fallback this file was called ".pdf". */
+is('an Activity Report falls back to its report number',
+   W.docName({ kind: 'move', res: '', gi: '', rep: '5001234567' }), '5001234567.pdf');
+is('a GIN with no reservation falls back to its GI number',
+   W.docName({ res: '', gi: '4932181056', rep: '' }), '4932181056.pdf');
+is('nothing to name it after is document.pdf, never ".pdf"',
+   [W.docName({ res: '', gi: '', rep: '' }), W.docName({}), W.docName(null)],
+   ['document.pdf', 'document.pdf', 'document.pdf']);
+is('and never "undefined.pdf"',
+   W.docName({ res: undefined, gi: undefined, rep: undefined }), 'document.pdf');
+is('whitespace around a number does not become part of the name',
+   W.docName({ res: '  1776693 ' }), '1776693.pdf');
+is('a path separator cannot get into the saved name',
+   W.docName({ res: '../../etc/passwd' }), 'etc-passwd.pdf');
+is('a number that sanitises away is still not ".pdf"',
+   W.docName({ res: '...' }), 'document.pdf');
+/* The collision the two GINs on one reservation produce, pinned as a known
+   property: the browser adds "(1)" and that is accepted. */
+is('two GINs on one reservation DO share a name, knowingly',
+   W.docName({ res: '1776693', gi: '4932181056' }) === W.docName({ res: '1776693', gi: '4932181057' }),
+   true);
+/* But a GIN and an Activity Report on one ticket never collide, because the
+   report carries no reservation and falls through to its own number. */
+is('a GIN and an Activity Report never collide',
+   W.docName({ res: '1776693', gi: '4932181056' }) === W.docName({ kind: 'move', res: '', gi: '', rep: '5001234567' }),
+   false);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

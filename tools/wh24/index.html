@@ -979,7 +979,12 @@ function docsBox(t){
              (g.date ? `<span class="d">${esc(nice(g.date))}${g.date_field ? ' · ' + esc(g.date_field) : ''}</span>` : '') +
              /* A link only when the file is actually in the bucket. A button
                 that 404s is worse than no button - see rule 1. */
-             (g.path ? `<button class="mini dl" data-path="${esc(g.path)}" data-name="${esc(g.file)}">Download</button>`
+             /* data-name is what the FILE IS SAVED AS - the reservation
+                number off this document. data-path is where it lives in the
+                bucket and is a different thing entirely: it must never move,
+                or upsert stops overwriting and every object already up there
+                is orphaned somewhere SQL cannot reach. */
+             (g.path ? `<button class="mini dl" data-path="${esc(g.path)}" data-name="${esc(W.docName(g))}">Download</button>`
                      : `<span class="f mono">${esc(g.file)}</span>`) + `</div>`;
     }).join('')}
     ${gs.some(g => !g.path)
