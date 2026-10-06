@@ -132,5 +132,62 @@ const mcols = columnsOf('wh24_marks');
      listed.slice().sort(), [...before].sort());
 }
 
+/* ================ the bucket heals itself, and only because of these ===
+
+   043 repairs several hundred corrupt documents WITHOUT DELETING ANYTHING. It
+   clears the paths off the rows, the next sync re-fetches every document, and
+   each real file is written over the zero-byte object already at its path.
+
+   That works only while two things stay true. Both are easy to break by
+   accident and neither breaks loudly - the sync would keep reporting
+   "N documents stored" while leaving the broken ones exactly where they are,
+   or start piling up a second copy of every document under a new name.
+
+   Supabase blocks DELETE on storage.objects, so if this ever stops being true
+   the repair route is gone too. */
+{
+  const DB = fs.readFileSync(path.join(ROOT, 'tools/_lib/db.js'), 'utf8');
+  const i = DB.indexOf('function wh24DocPath(t, g){');
+  if (i < 0) throw new Error('wh24DocPath is not where it was');
+  const ctx = {};
+  new Function('exports', DB.slice(i, DB.indexOf('\n  }', i) + 4) +
+               '\n;exports.p = wh24DocPath;')(ctx);
+  const P = ctx.p;
+
+  const t = { id: 25490, stream: 'Advantis', site: 'ZZ-AAA-001' };
+  const g = { gi: '4900000001' };
+  is('the path is built from the ticket, stream, site and document number',
+     P(t, g), '25490/Advantis/ZZ-AAA-001__Advantis__4900000001.pdf');
+  /* THE PROPERTY 043 RESTS ON. Called twice, with everything about the moment
+     of calling different, it must give the same answer. */
+  is('the same document is the same path every time', P(t, g), P({ ...t }, { ...g }));
+  is('and the empty stream is a literal underscore, not a missing segment',
+     P({ id: 7, stream: '', site: 'ZZ-BBB-002' }, { rep: '4932181244' }),
+     '7/_/ZZ-BBB-002_____4932181244.pdf');
+  is('a report number is used when there is no GI number',
+     P({ id: 7, stream: 'ACE', site: 'ZZ-BBB-002' }, { rep: 'R-900' }).endsWith('R-900.pdf'), true);
+  /* Two different documents on one ticket and stream, neither carrying a
+     number, land on the SAME path and the second overwrites the first. This is
+     the one hole in determinism, and it is deliberate: a document with no
+     number is a document nothing can name. Asserted so it is a known
+     property rather than a surprise. */
+  is('two unnumbered documents on one stream collide, knowingly',
+     P(t, {}), P(t, { gi: '', rep: '' }));
+
+  /* Nothing from the moment of the call may reach the path. A date or a
+     counter in here would make every re-sync write a NEW object beside the
+     broken one instead of over it, and the bucket would grow for ever. */
+  const body = DB.slice(i, DB.indexOf('\n  }', i));
+  is('nothing time-based, random or sync-specific is in the path',
+     /Date|Math\.random|uuid|crypto|synced_at|Now|now\(/.test(body), false);
+
+  /* upsert:true is the other half. With it off, the second upload FAILS and
+     every corrupt file stays corrupt. */
+  const put = DB.slice(DB.indexOf('async function wh24PutDoc'));
+  const call = put.slice(put.indexOf('.upload('), put.indexOf('.upload(') + 200);
+  is('wh24PutDoc uploads with upsert:true, so a re-sync overwrites',
+     /upsert:\s*true/.test(call), true);
+}
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

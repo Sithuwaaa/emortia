@@ -264,3 +264,35 @@ fill the bucket for the rows that already existed.
 **Repair:** `supabase/043_wh24_clear_bad_docs.sql` — look at the sizes, empty the
 bucket, clear the paths off the rows. Both halves: a path with no file behind it
 is a row the sync will never fix.
+
+### The repair deletes nothing
+
+Supabase blocks `DELETE FROM storage.objects` with a trigger
+(`42501: Direct deletion from storage tables is not allowed`), which turned out
+to stop a deletion that was never needed.
+
+`wh24PutDoc` uploads with `upsert: true`, and `wh24DocPath` is a pure function
+of the ticket id, the stream, the site and the GI or report number — no date,
+no counter, no random segment, nothing from the sync that produced it. So the
+same document is always the same path, and a re-sync writes the real bytes
+**over** the zero-byte object already sitting there.
+
+Clearing the paths off the rows is therefore the entire repair: no file is ever
+removed from the one part of this system with no backup.
+
+Both of those properties are now asserted in `db.schema.test.js`, because
+neither breaks loudly. Put a timestamp in the path and every re-sync writes a
+new object beside the broken one for ever; turn `upsert` off and the second
+upload fails and every corrupt file stays corrupt. In both cases the dialog
+would still say *N documents stored*.
+
+One known hole in determinism, asserted rather than discovered: two documents
+on the same ticket and stream that **both** fail to yield a number land on
+`no-number.pdf` and the second overwrites the first. A document with no number
+is a document nothing can name, so this is the behaviour rather than a bug.
+
+The other limit is the sync window. A file is only overwritten if this sync
+fetches it, and the sync reads only tickets raised on or after **Tickets
+since** — so that date has to go back far enough to cover every ticket holding
+a document, once. Anything missed keeps its zero-byte file and its row stays
+truthful but empty: no path, no button, nothing offered to anybody.
