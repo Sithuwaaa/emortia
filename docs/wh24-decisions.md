@@ -360,23 +360,46 @@ deleted from SQL, so a rename orphans every one of them at an address nothing
 can reach. The download name and the storage path are different things; only
 one of them is free to change.
 
-#### The collision, and when it actually matters
+#### The collision, and how it is resolved
 
-Two GINs issued against one reservation both save as the same name and the
-browser adds `(1)`. Accepted. But the cases are not equally harmless:
+Two GINs issued against one reservation would save under one name. There are
+**13 such tickets**, and every one is the same shape: same stream, two GINs,
+**exactly one day apart** — a partial issuance and its remainder across
+midnight, not two unrelated events. The earlier guess that "different dates"
+meant two separate events was too coarse; these are one event spanning a date
+boundary.
 
-- **GIN + Activity Report — cannot collide.** The report carries no reservation
-  and no GI, so it falls through to its own report number. Asserted, because it
-  is the case that would have been worst: two vendors' paperwork under one name.
-- **Two GINs, same reservation, same date** — a partial issuance and its
-  remainder. Annoying. The files differ only by material lines and either one
-  opens to tell you which.
-- **Two GINs, same reservation, different dates** — *this* is the confusing one.
-  Two identically named files issued weeks or months apart, with nothing in the
-  name to say which is which, at exactly the moment you are reconciling when
-  material moved. `(1)` is assigned by download order, not by date.
-- **Two GINs, same reservation, different streams** — same problem across
-  vendors.
+So where a name would be shared, the document date is appended **to each** of
+them:
 
-The query that finds all four in the live data is in the reply that shipped
-this; the classes are the finding, the counts are per-database.
+```
+1718878 2026-04-28.pdf
+1718878 2026-04-29.pdf
+```
+
+and where it would not, the name stays the bare reservation number. **Dates are
+not appended to everything.**
+
+Decided per ticket from the documents actually on it, never from a stored flag,
+so it stays correct as documents are added or drop off. That is why `docsBox`
+calls `W.docNames(gs)` once over the list and indexes the result, rather than
+`W.docName(g)` inside the map: a name can only be known to collide against the
+others on its own ticket.
+
+Three tiers, and only the entries still clashing move to the next:
+
+1. the reservation number
+2. `+ date` – what tells a partial from its remainder, and what you are reading
+   the document for
+3. `+ GI number` – unique, but it identifies the paperwork rather than the
+   movement, so it is a last resort
+
+Then a numbered suffix as a guarantee, because sanitising can itself turn two
+different numbers into one name, and **two files must never come down as one**.
+Matched case-insensitively: the machines these land on do not tell
+`Reservation.pdf` from `reservation.pdf`.
+
+One case needs no help at all: **a GIN and an Activity Report cannot collide.**
+The report carries no reservation and no GI, so it falls through to its own
+report number. That was the case that would have been worst – two vendors'
+paperwork under one name on a PH2 card – and it was never possible.

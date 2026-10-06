@@ -969,9 +969,14 @@ function siteTable(t){
 function docsBox(t){
   const gs = (t.gins || []);
   if (!gs.length) return '';
+  /* Named ONCE, for the whole ticket, because a name can only be known to
+     collide against the others on it. Per document in isolation this cannot be
+     decided - which is why it is one call over the list and an index into the
+     result, not W.docName(g) inside the map. */
+  const names = W.docNames(gs);
   return `<div class="docs">
     <div class="h">Documents on this ${t.stream ? esc(t.stream) + ' stream' : 'ticket'}</div>
-    ${gs.map(g => {
+    ${gs.map((g, i) => {
       const kind = g.kind === 'move' ? 'Activity Report' : g.gi ? 'Goods Issue Note' : 'Activity Report';
       const num = g.gi || g.rep || '';
       return `<div class="doc"><span class="k">${kind}</span>` +
@@ -979,12 +984,14 @@ function docsBox(t){
              (g.date ? `<span class="d">${esc(nice(g.date))}${g.date_field ? ' · ' + esc(g.date_field) : ''}</span>` : '') +
              /* A link only when the file is actually in the bucket. A button
                 that 404s is worse than no button - see rule 1. */
-             /* data-name is what the FILE IS SAVED AS - the reservation
-                number off this document. data-path is where it lives in the
-                bucket and is a different thing entirely: it must never move,
-                or upsert stops overwriting and every object already up there
-                is orphaned somewhere SQL cannot reach. */
-             (g.path ? `<button class="mini dl" data-path="${esc(g.path)}" data-name="${esc(W.docName(g))}">Download</button>`
+             /* data-name is what the FILE IS SAVED AS - this document's
+                reservation number, with the date added only where another
+                document on this ticket would otherwise take the same name.
+                data-path is where it lives in the bucket and is a different
+                thing entirely: it must never move, or upsert stops overwriting
+                and every object already up there is orphaned somewhere SQL
+                cannot reach. */
+             (g.path ? `<button class="mini dl" data-path="${esc(g.path)}" data-name="${esc(names[i])}">Download</button>`
                      : `<span class="f mono">${esc(g.file)}</span>`) + `</div>`;
     }).join('')}
     ${gs.some(g => !g.path)

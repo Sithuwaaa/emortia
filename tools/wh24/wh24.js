@@ -1045,13 +1045,65 @@
      THIS IS THE DOWNLOAD NAME ONLY. The storage path stays a pure function of
      id/stream/site/gi - see 043: upsert overwrites in place only while the
      path for a document never changes, and the 617 objects already up there
-     cannot be deleted from SQL. */
-  function docName(g) {
-    g = g || {};
-    var n = s(g.res) || s(g.gi) || s(g.rep);
-    n = n.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+|[-.]+$/g, '');
-    return n ? n + '.pdf' : 'document.pdf';
+     cannot be deleted from SQL.
+
+     COLLISIONS ARE RESOLVED PER TICKET, from the documents actually on it.
+     Thirteen tickets carry two GINs against one reservation, issued a day
+     apart - a partial issuance and its remainder across midnight - and both
+     would have come down as 1718878.pdf with the browser adding "(1)" by
+     download order. So where a name would be shared, the document date is
+     appended TO EACH of them:
+
+       1718878 2026-04-28.pdf
+       1718878 2026-04-29.pdf
+
+     and where it would not, the name stays the bare reservation number. No
+     stored flag decides this: it is computed from the list each time, so it
+     stays right as documents are added to a ticket or drop off it.
+
+     If the date does not separate them either - same reservation, same day -
+     the GI number does, and it is unique. If even that fails the name is
+     numbered, because two files must never come down as one. */
+  function docClean(n) {
+    return s(n).replace(/[^A-Za-z0-9._ -]+/g, '-').replace(/\s+/g, ' ').trim()
+               .replace(/^[-.]+|[-.]+$/g, '');
   }
+  /* What gets added, in the order it is tried. Date first: it is what tells a
+     partial from its remainder, and it is what you are reading the document
+     for. The GI number is a last resort because it identifies the paperwork
+     rather than the movement. */
+  function docExtra(g, tier) {
+    return tier === 1 ? s(g.date) : tier === 2 ? (s(g.gi) || s(g.rep)) : '';
+  }
+  function docNames(gins) {
+    var list = (gins || []).map(function (g) { return g || {}; });
+    var names = list.map(function (g) { return s(g.res) || s(g.gi) || s(g.rep); });
+    for (var tier = 1; tier <= 2; tier++) {
+      var seen = {}, changed = false;
+      names.forEach(function (n) { seen[n] = (seen[n] || 0) + 1; });
+      names = names.map(function (n, i) {
+        if (seen[n] < 2) return n;                 /* already unique, leave it */
+        var extra = docExtra(list[i], tier);
+        if (!extra) return n;
+        changed = true;
+        return n + ' ' + extra;
+      });
+      if (!changed) break;
+    }
+    /* The guarantee, after sanitising - which can itself make two different
+       numbers into one name. Matched case-insensitively because the machines
+       these land on do not tell Reservation.pdf from reservation.pdf. */
+    var used = {};
+    return names.map(function (n) {
+      var b = docClean(n) || 'document', name = b, k = 2;
+      while (used[name.toLowerCase()]) name = b + ' ' + k++;
+      used[name.toLowerCase()] = true;
+      return name + '.pdf';
+    });
+  }
+  /* One document on its own is a list of one, so there is a single naming
+     rule rather than two that can drift apart. */
+  function docName(g) { return docNames([g])[0]; }
 
   var KNOWN_STATES = ['reserving', 'approved', 'issuing', 'ready', 'collected',
                       'collected_un', 'shortage', 'rejected', 'other'];
@@ -1182,7 +1234,7 @@
            ph2Collected: ph2Collected, confirmations: confirmations,
            needsCheck: needsCheck, collectedBracket: collectedBracket,
            siteFromTitle: siteFromTitle, KNOWN_STATES: KNOWN_STATES,
-           isPdf: isPdf, PDF_MIN: PDF_MIN, docName: docName,
+           isPdf: isPdf, PDF_MIN: PDF_MIN, docName: docName, docNames: docNames,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,

@@ -731,16 +731,58 @@ is('a path separator cannot get into the saved name',
    W.docName({ res: '../../etc/passwd' }), 'etc-passwd.pdf');
 is('a number that sanitises away is still not ".pdf"',
    W.docName({ res: '...' }), 'document.pdf');
-/* The collision the two GINs on one reservation produce, pinned as a known
-   property: the browser adds "(1)" and that is accepted. */
-is('two GINs on one reservation DO share a name, knowingly',
-   W.docName({ res: '1776693', gi: '4932181056' }) === W.docName({ res: '1776693', gi: '4932181057' }),
-   true);
-/* But a GIN and an Activity Report on one ticket never collide, because the
-   report carries no reservation and falls through to its own number. */
-is('a GIN and an Activity Report never collide',
-   W.docName({ res: '1776693', gi: '4932181056' }) === W.docName({ kind: 'move', res: '', gi: '', rep: '5001234567' }),
-   false);
+/* ---- collisions, resolved from the ticket's own list ----
+
+   13 real tickets carry two GINs against one reservation, issued a DAY apart:
+   a partial issuance and its remainder across midnight. Both used to come down
+   as 1718878.pdf with the browser adding "(1)" by download order, which told
+   you nothing about which was which. Ticket 18513, as it actually is: */
+is('two documents sharing a name both get their date',
+   W.docNames([{ res: '1718878', gi: '4931203808', date: '2026-04-28' },
+               { res: '1718878', gi: '4931212559', date: '2026-04-29' }]),
+   ['1718878 2026-04-28.pdf', '1718878 2026-04-29.pdf']);
+/* AND NOTHING ELSE DOES. Dates are not appended to everything. */
+is('documents that do not collide keep the bare reservation number',
+   W.docNames([{ res: '1764339', gi: '4930444433', date: '2026-01-06' },
+               { res: '1776693', gi: '4930453042', date: '2026-01-07' }]),
+   ['1764339.pdf', '1776693.pdf']);
+is('and one document on a ticket is never dated',
+   W.docNames([{ res: '1718878', gi: '4931203808', date: '2026-04-28' }]), ['1718878.pdf']);
+/* Same reservation AND same day - the date cannot separate them, so the GI
+   number does. */
+is('a collision the date cannot break falls through to the GI number',
+   W.docNames([{ res: '1718878', gi: '4931203808', date: '2026-04-28' },
+               { res: '1718878', gi: '4931212559', date: '2026-04-28' }]),
+   ['1718878 2026-04-28 4931203808.pdf', '1718878 2026-04-28 4931212559.pdf']);
+/* Only the pair that still clashes is given a GI - the third document here is
+   already unique at the date and stays that way. */
+is('only the documents still clashing are taken to the next tier',
+   W.docNames([{ res: '9', gi: 'a', date: '2026-01-01' },
+               { res: '9', gi: 'b', date: '2026-01-02' },
+               { res: '9', gi: 'c', date: '2026-01-02' }]),
+   ['9 2026-01-01.pdf', '9 2026-01-02 b.pdf', '9 2026-01-02 c.pdf']);
+/* One of a pair having no date still separates them, and the dated one is the
+   one that moves. */
+is('a missing date on one of a pair is not a collision',
+   W.docNames([{ res: '1718878', gi: 'A1', date: '2026-04-28' },
+               { res: '1718878', gi: 'A2', date: '' }]),
+   ['1718878 2026-04-28.pdf', '1718878.pdf']);
+/* THE GUARANTEE. Two documents identical in every field anything could name
+   them by still come down as two files. */
+is('two files never come down with the same name, whatever the data',
+   W.docNames([{ res: '1718878', gi: '', rep: '', date: '' },
+               { res: '1718878', gi: '', rep: '', date: '' }]),
+   ['1718878.pdf', '1718878 2.pdf']);
+is('and that holds for a run of them',
+   new Set(W.docNames(Array.from({ length: 5 }, () => ({ res: '7' })))).size, 5);
+/* A GIN and an Activity Report never collide in the first place: the report
+   carries no reservation and no GI and falls through to its own number, so
+   neither is dated. */
+is('a GIN and an Activity Report are distinct without any help',
+   W.docNames([{ res: '1776693', gi: '4932181056', date: '2026-09-30' },
+               { kind: 'move', res: '', gi: '', rep: '5001234567', date: '2026-09-30' }]),
+   ['1776693.pdf', '5001234567.pdf']);
+is('an empty ticket names nothing', W.docNames([]), []);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
