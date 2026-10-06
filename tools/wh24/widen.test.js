@@ -663,5 +663,42 @@ is('a removed line is in the sheet, marked',
    sh.filter(r => r[col('Issue Check')] === 'Removed').map(r => r[col('Material Code')]),
    ['1000000999']);
 
+/* ============================================ is this actually a PDF? ===
+
+   What went into the bucket the first time was a ZERO-BYTE object. pdf.js
+   transfers the ArrayBuffer it is given, so the buffer kept for upload had
+   already been detached by the parse; Blob([detached]) is empty, and an empty
+   object uploads, signs and downloads without one error anywhere. Chrome
+   refusing to open the file was the first and only symptom.
+
+   These assert on the real returned value, not the shape of one. Each case
+   below is a thing that was actually stored or could have been. */
+const pdf = n => { const u = new Uint8Array(n); u[0]=0x25; u[1]=0x50; u[2]=0x44; u[3]=0x46; return u; };
+
+is('a PDF of a believable size is a PDF', W.isPdf(pdf(40000)), true);
+is('EXACTLY what was stored: nothing at all', W.isPdf(new Uint8Array(0)), false);
+is('a detached buffer reads as zero length and is refused',
+   W.isPdf({ byteLength: 0 }), false);
+/* 200 OK with a sign-in page in the body. resp.ok is true, arrayBuffer()
+   succeeds, and it is called .pdf by the time anything looks at it. */
+is('an HTML sign-in page is refused',
+   W.isPdf(Buffer.from('<!doctype html><html><body>Sign in</body></html>'.repeat(40))), false);
+is('a JSON error body is refused',
+   W.isPdf(Buffer.from(JSON.stringify({ error: 'Unauthorized' }))), false);
+is('a PDF with the right header but no body is refused on length',
+   W.isPdf(pdf(900)), false);
+is('right length, wrong first four bytes, refused',
+   W.isPdf(Buffer.concat([Buffer.from('%PDG'), Buffer.alloc(4000)])), false);
+is('one byte under the floor is refused and one byte over is not',
+   [W.isPdf(pdf(W.PDF_MIN - 1)), W.isPdf(pdf(W.PDF_MIN))], [false, true]);
+is('nothing, rather than a buffer, is refused rather than thrown',
+   [W.isPdf(null), W.isPdf(undefined)], [false, false]);
+/* An ArrayBuffer, which is what the page actually holds - not a view of one */
+is('an ArrayBuffer is read, not just a typed array', W.isPdf(pdf(5000).buffer), true);
+
+/* The floor is a number somebody could later "tidy" to 0 and undo all of
+   this. Pinned, with the reason: an empty file passed every other check. */
+is('the minimum length is a real floor, not zero', W.PDF_MIN >= 1024, true);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

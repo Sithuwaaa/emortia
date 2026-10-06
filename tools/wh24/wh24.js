@@ -1000,6 +1000,32 @@
   /* Every state the tool can name. needsCheck refuses any row whose state
      is not on this list, so a state added without a label is caught by the
      model rather than printed as the word "undefined" on the dashboard. */
+  /* ------------------------------------------------- is this really a PDF?
+
+     The whole point of storing documents is that the file in the tool is the
+     file in the ticket, byte for byte. Nothing is generated, so anything that
+     is not already a PDF is not a document - it is a zero-byte buffer, a
+     sign-in page, or an error body that arrived with a 200 and got named
+     .pdf on the way.
+
+     All three of those upload cleanly and come back as a broken download.
+     This is what stands between them and the one part of the system that has
+     no backup, so it runs before the bytes are used for anything at all.
+
+     1024: a real SAP note is tens of kilobytes over several pages. The
+     smallest conceivable valid PDF is a few hundred bytes, so this cannot
+     refuse anything the tool would ever legitimately be handed, and it does
+     refuse every error body short enough to be one. */
+  var PDF_MIN = 1024;
+  function isPdf(bytes) {
+    if (!bytes) return false;
+    var n = bytes.byteLength == null ? bytes.length : bytes.byteLength;
+    if (!(n >= PDF_MIN)) return false;
+    var u = bytes.BYTES_PER_ELEMENT === 1 ? bytes : new Uint8Array(bytes);
+    /* %PDF */
+    return u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46;
+  }
+
   var KNOWN_STATES = ['reserving', 'approved', 'issuing', 'ready', 'collected',
                       'collected_un', 'shortage', 'rejected', 'other'];
 
@@ -1129,6 +1155,7 @@
            ph2Collected: ph2Collected, confirmations: confirmations,
            needsCheck: needsCheck, collectedBracket: collectedBracket,
            siteFromTitle: siteFromTitle, KNOWN_STATES: KNOWN_STATES,
+           isPdf: isPdf, PDF_MIN: PDF_MIN,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,

@@ -983,7 +983,7 @@ function docsBox(t){
                      : `<span class="f mono">${esc(g.file)}</span>`) + `</div>`;
     }).join('')}
     ${gs.some(g => !g.path)
-      ? `<div class="note">The ones without a Download button are held in WorkHub24 and have not been stored here yet – they arrive with the next sync once <b>041</b> has been run.</div>`
+      ? `<div class="note">The ones without a Download button are held in WorkHub24 and have not been stored here yet – they arrive with the next sync.</div>`
       : ''}
   </div>`;
 }
@@ -1288,6 +1288,10 @@ function hello(){
   try { window.opener.postMessage({ type: 'wh24:hello', since, sinceIso, known: knownFiles() }, WORKHUB); } catch(e){}
 }
 
+/* The predicate is in the model, where a test can reach it without a browser.
+   This is only the name the page calls it by. */
+const isPdfBuf = buf => W.isPdf(buf);
+
 let pdfjs = null;
 async function readPdf(buf){
   if (!pdfjs){
@@ -1377,10 +1381,35 @@ async function receive(data){
 
   const raws = Array.isArray(data.tickets) ? data.tickets : [], pdfs = Array.isArray(data.pdfs) ? data.pdfs : [];
   dlg(`Received ${raws.length} tickets and ${pdfs.length} new GIN${pdfs.length === 1 ? '' : 's'}. Reading the GINs…`, { pct: 0 });
-  const parsed = {}, failed = [], moves = [];
+  const parsed = {}, failed = [], moves = [], refused = [];
   for (let i = 0; i < pdfs.length; i++){
     const p = pdfs[i];
     try {
+      /* ---- THE BYTES ARE TAKEN BEFORE ANYTHING READS THEM ----
+
+         pdf.js TRANSFERS the ArrayBuffer it is handed. The instant
+         getDocument({data: buf}) is called that buffer is detached in this
+         thread and its byteLength is 0 - the bytes now live in the pdf.js
+         worker and nothing here can read them again.
+
+         So the bytes kept for upload were the bytes of nothing. Blob([a
+         detached buffer]) is an empty blob, Supabase stores an empty object
+         without complaint, the signed URL resolves, the row gets a path and
+         a Download button - and Chrome says "Failed to load PDF document".
+         A zero-byte file is the one kind of corrupt that every single layer
+         above and below reports as success.
+
+         Copy first, verify the copy, then hand the DISPOSABLE original to
+         pdf.js and let it detach that. An ArrayBuffer can be read once; the
+         fix is to stop asking it to be read twice. */
+      if (!p.buf || !p.buf.byteLength){ refused.push(p.file); continue; }
+      const keep = p.buf.slice(0);
+      /* Verified BEFORE it is used for anything. A 200 response carrying an
+         HTML sign-in page or a JSON error is a successful fetch and a
+         successful arrayBuffer(), and it is named .pdf by the time it gets
+         here. Four bytes settle it; a content-type header is the server's
+         opinion and this is the file itself. */
+      if (!isPdfBuf(keep)){ refused.push(p.file); continue; }
       const r = await readPdf(p.buf);
       /* BOTH kinds are documents. An Activity Report is ACE's issuance note -
          the ordering test showed its Created On is the day that card's own
@@ -1398,7 +1427,7 @@ async function receive(data){
 
            A side map keyed on the file keeps record() pure and keeps binary
            out of anything that gets published. */
-        DOCBUF[p.id + '|' + p.file] = p.buf;
+        DOCBUF[p.id + '|' + p.file] = keep;
         (parsed[p.id] = parsed[p.id] || []).push(r.gin);
         if (r.kind === 'move') moves.push(p.file);
       }
@@ -1410,6 +1439,14 @@ async function receive(data){
   /* Everything the PDF pass could not turn into a GIN, in one sentence, so
      all three ways out of this function say it the same way. */
   const pdfNote = () =>
+    /* A REFUSAL IS NEVER SILENT. Count and filename, every time, in the same
+       sentence as everything else the PDF pass did. These are the files that
+       arrived as something other than a PDF, and the alternative to saying so
+       is a bucket quietly filling with broken downloads. */
+    (refused.length ? ` <b>${refused.length} file${refused.length === 1 ? '' : 's'} ` +
+       `${refused.length === 1 ? 'was' : 'were'} refused – not a PDF</b>, so ` +
+       `${refused.length === 1 ? 'it was' : 'they were'} neither read nor stored: ` +
+       `${esc(refused.join(', '))}.` : '') +
     (failed.length ? ` ${failed.length} GIN${failed.length === 1 ? '' : 's'} could not be read and ${failed.length === 1 ? 'was' : 'were'} left out: ${esc(failed.join(', '))}.` : '') +
     (moves.length ? ` ${moves.length} of them ${moves.length === 1 ? 'is an' : 'are'} Activity Report${moves.length === 1 ? '' : 's'} – ACE's issuance document, read and used.` : '');
 
@@ -1544,11 +1581,18 @@ $('syncGo').onclick = async () => {
        belong to a row that did not otherwise move, and a row only becomes
        "changed" BECAUSE its document gained a path - so filtering to PENDING
        first would mean the path never arrives and the row never changes. */
-    const docs = [];
+    const docs = [], badFiles = [];
     (PRODUCED || PENDING).forEach(t => (t.gins || []).forEach(g => {
       if (g.path) return;                              /* already in the store */
       const buf = DOCBUF[t.id + '|' + g.file];
-      if (buf) docs.push([t, g, buf]);
+      if (!buf) return;
+      /* Checked AGAIN here, at the moment of writing. Publish is a separate
+         click minutes after the read, and the thing that broke this was a
+         buffer that stopped being readable between the two. The read already
+         verified these bytes; if that is still true this costs four byte
+         comparisons, and if it ever stops being true nothing goes up. */
+      if (!isPdfBuf(buf)){ badFiles.push(g.file); return; }
+      docs.push([t, g, buf]);
     }));
     for (let i = 0; i < docs.length; i++){
       const [t, g, buf] = docs[i];
@@ -1577,6 +1621,13 @@ $('syncGo').onclick = async () => {
        exactly like one that had nothing to do. It says all three cases now:
        stored some, stored none when some were expected, and had none to
        store, which is the only quiet one and is genuinely uneventful. */
+    /* Separate from a failure: these were not attempted, because they were not
+       PDFs. Named, because "2 refused" with no filenames is something nobody
+       can act on. */
+    const badNote = badFiles.length
+      ? ` <b>${badFiles.length} ${badFiles.length === 1 ? 'file was' : 'files were'} refused ` +
+        `before upload – not ${badFiles.length === 1 ? 'a PDF' : 'PDFs'}</b>: ${esc(badFiles.join(', '))}.`
+      : '';
     const docNote =
       upFail ? ` <b>${upFail} document${upFail === 1 ? '' : 's'} could NOT be stored</b>` +
                (up ? ` and ${up} ${up === 1 ? 'was' : 'were'}` : ' and none were') +
@@ -1589,7 +1640,7 @@ $('syncGo').onclick = async () => {
           `still not in the store, and this sync did not fetch ${stillMissing === 1 ? 'it' : 'them'} – ` +
           `sync again and they will come back.`
     : ' No new documents to store.';
-    dlg(`Published ${PENDING.length} row${PENDING.length === 1 ? '' : 's'}.` + docNote);
+    dlg(`Published ${PENDING.length} row${PENDING.length === 1 ? '' : 's'}.` + docNote + badNote);
     PENDING = null;
     await loadAll();
     setTimeout(() => $('syncDlg').classList.remove('on'), 1600);

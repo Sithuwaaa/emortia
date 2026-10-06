@@ -36,3 +36,6 @@ tools/project-update/*.xlsm
 # header measuring harnesses (generated)
 tools/*/__hdr.html
 wh24-sync-bookmarklet.txt
+
+# Edit-tool scratch copies. One of these got committed once.
+*.tmp.*

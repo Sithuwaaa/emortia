@@ -200,3 +200,67 @@ Two tracks on one card, three months apart, each vendor's document carrying the
 date its **own** track opened, to the day. The suffixed track pairs with the
 Activity Report and the unsuffixed one with the Goods Issue Note — and nothing
 about that was inferred from the vendor names.
+
+---
+
+## Documents are stored byte for byte, or not at all
+
+The rule, because it is the whole point of the feature: the file in the tool is
+the file attached to the WorkHub card, unaltered. Nothing is generated,
+rebuilt, re-rendered or reconstructed. A ticket with no document attached shows
+**nothing** – no entry, no button, no placeholder. If it is not in WorkHub24 it
+does not exist, and the tool says nothing rather than inventing something.
+
+### What went wrong, and why nothing noticed
+
+`pdf.js` **transfers** the ArrayBuffer handed to `getDocument({data: buf})`.
+The moment the sync parsed a GIN, that buffer was detached in the page's
+thread – the bytes had moved to the pdf.js worker. The buffer kept for upload
+was that same, now-empty object.
+
+`new Blob([a detached buffer])` is an empty blob. From there:
+
+| layer | what it reported |
+|---|---|
+| `storage.upload` | success |
+| the row | a path |
+| the page | a Download button |
+| `createSignedUrl` | a working URL |
+| Chrome | *Failed to load PDF document* |
+
+Every layer above and below called it a success. A zero-byte file is the one
+kind of corrupt that nothing in the chain can see — which is the same shape as
+the silent no-op before it: a failure whose only symptom is in a different
+program.
+
+An ArrayBuffer can be read once. The fix is to stop asking it to be read
+twice: copy the bytes first, verify the copy, hand the **disposable** original
+to pdf.js and let it detach that.
+
+### Three checks, deliberately not shared
+
+1. **On arrival**, before the bytes are used for anything: first four bytes are
+   `%PDF` and length ≥ 1024 (`W.isPdf`). A 200 response carrying a sign-in page
+   or a JSON error is a successful `fetch` and a successful `arrayBuffer()`, and
+   it is called `.pdf` by the time anything looks at it. Four bytes settle it; a
+   `content-type` header is the server's opinion, this is the file itself.
+2. **At publish time**, again — publish is a separate click minutes after the
+   read, and what broke this was a buffer that stopped being readable between
+   the two.
+3. **Inside `wh24PutDoc`**, which does not share the code above. It is the only
+   function in the system that can write to that bucket, and the bucket has no
+   backup. Both checks must be removed to get a broken file in.
+
+A refusal is never silent: the publish dialog names the count and every
+filename. A refused document produces no gin entry at all, so it cannot render
+as a broken button; it is re-fetched on the next sync and refused again, loudly,
+until the file in WorkHub is actually a PDF.
+
+`knownFiles()` counts a file as known only once it has a **path** — once it is
+genuinely in the store. Gating on the *name* instead meant a document already
+parsed would never be downloaded again, so no amount of re-syncing could ever
+fill the bucket for the rows that already existed.
+
+**Repair:** `supabase/043_wh24_clear_bad_docs.sql` — look at the sizes, empty the
+bucket, clear the paths off the rows. Both halves: a path with no file behind it
+is a row the sync will never fix.

@@ -779,6 +779,24 @@
     return String(t.id) + '/' + stream + '/' + name;
   }
   async function wh24PutDoc(t, g, blob){
+    /* ---- NOTHING UNVERIFIED REACHES THE BUCKET ----
+
+       The page checks these bytes too, twice. This check is here as well, and
+       deliberately does not share that code, because this function is the only
+       thing in the system that can write to that bucket and the bucket has no
+       backup. Both checks have to be removed to get a broken file in.
+
+       It earned its place: a detached ArrayBuffer became an empty Blob, the
+       upload returned no error, the signed URL resolved, the row got a path
+       and a Download button, and the first thing that noticed was Chrome
+       refusing to open the file. Every layer called it a success. */
+    const size = blob ? blob.size : 0;
+    if (size < 1024)
+      throw new Error(size + ' bytes is not a PDF – refused, nothing was stored');
+    const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+    if (!(head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46))
+      throw new Error('does not begin %PDF – refused, nothing was stored');
+
     const c = await client(); if (!c) throw new Error('Not connected.');
     const s = await session(); if (!s) throw new Error('Sign in first.');
     const path = wh24DocPath(t, g);
