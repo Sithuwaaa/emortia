@@ -459,6 +459,52 @@ is('a date on one stream does not take the other off',
      W.rowsFor(probe).every(r => r.streams === undefined), true);
 }
 
+/* ========= WHAT record() KEEPS ON A DOCUMENT, AND WHAT IT DROPS ==========
+
+   record() rebuilds every gin as a fresh object with a fixed set of keys.
+   That is deliberate - it is what keeps a published row to a known shape -
+   but it means ANYTHING hung on a parsed document by the sync is gone by the
+   time the row exists.
+
+   The PDF bytes were hung on there as __buf. They were dropped here, the
+   upload pass filtered on exactly that key, found nothing, uploaded nothing
+   and - because both its report lines were conditional on a non-zero count -
+   said nothing. The bytes live in a side map now; this pins down the two
+   halves of why. */
+{
+  const g = { file: 'doc.pdf', gi: '4930000030', rep: '', date: '2026-03-05',
+              kind: 'gin', date_field: 'Document Date', path: 'ZZ/_/x.pdf',
+              items: [{ code: 'MAT-0000001', qty: 1, uom: 'EA', sn: [] }],
+              __buf: 'PRETEND BYTES', somethingElse: 'also dropped' };
+  const r = W.record({ id: 1, phase: 'PH1', site: 'ZZ-AAA-001', timeline: [], requested: [], gins: [g] });
+  const kept = r.gins[0];
+
+  is('the file name survives', kept.file, 'doc.pdf');
+  is('the number survives', kept.gi, '4930000030');
+  is('the date survives', kept.date, '2026-03-05');
+  is('WHICH DATE FIELD it came from survives', kept.date_field, 'Document Date');
+  is('the kind survives', kept.kind, 'gin');
+  is('THE STORAGE PATH SURVIVES - without it no row can offer a download',
+     kept.path, 'ZZ/_/x.pdf');
+  is('the lines survive', kept.items.length, 1);
+
+  /* and the half that bit */
+  is('bytes do NOT survive, which is why they must not be carried this way',
+     kept.__buf, undefined);
+  is('nor does anything else the sync hangs on a document',
+     kept.somethingElse, undefined);
+  is('so a published document is exactly these keys and no more',
+     Object.keys(kept).sort().join(','),
+     'date,date_field,file,gi,items,kind,mv,path,rep,res,sloc,wbs');
+
+  /* a document with no path must come back as empty string, never undefined -
+     the page tests `g.path` to decide whether to draw a download button */
+  const nopath = W.record({ id: 2, phase: 'PH1', site: 'ZZ-AAA-001', timeline: [], requested: [],
+                            gins: [{ file: 'b.pdf', gi: '1', items: [] }] }).gins[0];
+  is('an unstored document has an empty path, not undefined', nopath.path, '');
+  is('and the page would draw no button for it', !nopath.path, true);
+}
+
 /* ============================================================= Bulk ======= */
 const bulk = (stage, status, open, initDone, statusB) => ({
   id: 25600, phase: 'Bulk', workflow: 'w-test-bulk', site: 'zz0003', siteName: 'Invented_Place_C',

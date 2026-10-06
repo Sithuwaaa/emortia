@@ -1536,10 +1536,6 @@ $('syncGo').onclick = async () => {
        path, and the ticket - which is what the tool is for - publishes
        normally. The attachments are a convenience; the queue is the job. */
     let up = 0, upFail = 0, lastErr = '';
-    /* documents these rows still have no path for, counted BEFORE the pass,
-       so "nothing to upload" can be told from "nothing needed uploading" */
-    const stillMissing = (PRODUCED || PENDING)
-      .reduce((n, t) => n + (t.gins || []).filter(g => !g.path).length, 0);
     /* EVERY row the sync produced, not only the changed ones. A document can
        belong to a row that did not otherwise move, and a row only becomes
        "changed" BECAUSE its document gained a path - so filtering to PENDING
@@ -1571,24 +1567,25 @@ $('syncGo').onclick = async () => {
        and changing happened together */
     await window.DB.wh24NoteCheck({ tickets: TICKETS.length, changed: PENDING.length,
                                     by: ME || null, published: true }).catch(() => {});
-    /* A SILENT NO-OP IS WHAT PUT US HERE. The first version reported nothing
-       when it stored nothing, because both clauses were conditional on a
-       non-zero count - so an upload pass that found no bytes at all read
-       exactly like one that had nothing to do. It says all three cases now:
-       stored some, stored none when some were expected, and had none to
-       store, which is the only quiet one and is genuinely uneventful. */
+    /* A SILENT NO-OP IS WORSE THAN A FAILURE. The first version of this said
+       nothing at all when it uploaded nothing, because both its clauses were
+       conditional on a non-zero count - so a pass that stored zero of the
+       documents it was holding looked exactly like a pass with no documents.
+       Every outcome now has a sentence, including the one where there was
+       nothing to do. */
     const docNote =
-      upFail ? ` <b>${upFail} document${upFail === 1 ? '' : 's'} could NOT be stored</b>` +
-               (up ? ` and ${up} ${up === 1 ? 'was' : 'were'}` : ' and none were') +
-               `. ${esc(lastErr || 'the upload was refused')} – check that ` +
-               `supabase/041_wh24_docs.sql has been run.`
-    : up ? ` ${up} document${up === 1 ? '' : 's'} stored.`
-    : docs.length === 0 && stillMissing
-        ? ` <b>No documents were stored and none were offered.</b> ${stillMissing} ` +
-          `document${stillMissing === 1 ? '' : 's'} on these rows ${stillMissing === 1 ? 'is' : 'are'} ` +
-          `still not in the store, and this sync did not fetch ${stillMissing === 1 ? 'it' : 'them'} – ` +
-          `sync again and they will come back.`
-    : ' No new documents to store.';
+      docs.length === 0
+        ? (DOCS_HELD
+            ? ` No documents to store – all ${DOCS_HELD} already in the store.`
+            : ' No new documents came back from WorkHub24.')
+      : up === docs.length
+        ? ` ${up} document${up === 1 ? '' : 's'} stored.`
+      : up === 0
+        ? ` <b>NONE of the ${docs.length} document${docs.length === 1 ? '' : 's'} could be stored</b>` +
+          (lastErr ? ` – ${esc(lastErr)}.` : '.') +
+          ` The tickets published; the documents did not. Run supabase/041_wh24_docs.sql and sync again.`
+        : ` ${up} of ${docs.length} documents stored; <b>${upFail} failed</b>` +
+          (lastErr ? ` – ${esc(lastErr)}` : '') + `.`;
     dlg(`Published ${PENDING.length} row${PENDING.length === 1 ? '' : 's'}.` + docNote);
     PENDING = null;
     await loadAll();
