@@ -15,10 +15,15 @@
    the three places that have to agree to it:
 
      1. the group in access.js FEATURES
-     2. the data-family on the tool page's <html>
-     3. the family block in nav.css
+     2. the data-cat on the tool page's <html>
+     3. the category block in tools/_lib/category.css
 
    and refuse the thing that caused it: a tool defining an accent of its own.
+
+   category.css was designed in Claude Design and is copied in byte for byte -
+   SHA-256 checked against the source, not eyeballed. The five blocks that
+   briefly lived in nav.css are gone: two stylesheets holding the same five
+   facts is the very thing this file exists to prevent.
 
    No browser and no network - this reads the files. */
 const fs = require('fs');
@@ -56,15 +61,15 @@ const FAMILY_OF = {
 /* The feature key is not always the folder name. */
 const FOLDER = { 'whattodo': 'whattodo', 'lyric-video': 'lyric-video' };
 
-const NAV = fs.readFileSync(path.join(TOOLS, '_lib/nav.css'), 'utf8');
+const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
 
-/* ---- 1. nav.css defines all five families, in both themes ---- */
-console.log('--- nav.css holds the families ---');
+/* ---- 1. category.css defines all five categories, in both themes ---- */
+console.log('--- category.css holds the five categories ---');
 for (const fam of Object.values(FAMILY_OF)) {
   is(fam + ' has a dark block',
-     new RegExp('html\\[data-family="' + fam + '"\\][^{]*\\{[^}]*--accent:').test(NAV), true);
+     new RegExp('html\\[data-cat="' + fam + '"\\][^{]*\\{[^}]*--accent:').test(NAV), true);
   is(fam + ' has a light block',
-     new RegExp('html\\[data-family="' + fam + '"\\]\\[data-theme="light"\\]\\{[^}]*--accent:').test(NAV), true);
+     new RegExp('html\\[data-cat="' + fam + '"\\]\\[data-theme="light"\\]\\{[^}]*--accent:').test(NAV), true);
 }
 
 /* ---- 2. every tool declares its family, and it is the right one ---- */
@@ -76,7 +81,7 @@ for (const f of FEATURES) {
   if (!fs.existsSync(file)) { fail++; console.log('FAIL no page for ' + f.key); continue; }
   const src = fs.readFileSync(file, 'utf8');
   const want = FAMILY_OF[f.group];
-  const m = src.match(/<html[^>]*\sdata-family="([a-z]+)"/);
+  const m = src.match(/<html[^>]*\sdata-cat="([a-z]+)"/);
   mapping.push({ tool: folder, group: f.group, family: want, found: m && m[1] });
   is(folder + ' is ' + f.group, m && m[1], want);
 }
@@ -95,14 +100,21 @@ for (const row of mapping) {
    A cache-buster that moves on some pages and not others is how half the
    suite shows the new colour and half shows the old one. */
 console.log('\n--- one stylesheet, one version ---');
-const vers = new Set();
-for (const row of mapping) {
-  const src = fs.readFileSync(path.join(TOOLS, row.tool, 'index.html'), 'utf8');
-  const m = src.match(/_lib\/nav\.css\?v=(\d+)/);
-  vers.add(m ? m[1] : 'MISSING');
+for (const sheet of ['nav', 'category']) {
+  const vers = new Set(), order = [];
+  for (const row of mapping) {
+    const src = fs.readFileSync(path.join(TOOLS, row.tool, 'index.html'), 'utf8');
+    const m = src.match(new RegExp('_lib\\/' + sheet + '\\.css\\?v=(\\d+)'));
+    vers.add(m ? m[1] : 'MISSING');
+    if (sheet === 'category') order.push(src.indexOf('nav.css') < src.indexOf('category.css'));
+  }
+  is('every tool loads ' + sheet + '.css at one and the same version', [...vers].length, 1);
+  is('and ' + sheet + '.css is missing from none of them', [...vers][0] !== 'MISSING', true);
+  /* ORDER MATTERS. category.css has to come after nav.css or the category
+     never gets the last word on a token both of them set. */
+  if (sheet === 'category')
+    is('and it is loaded AFTER nav.css in every one', order.every(Boolean), true);
 }
-is('every tool loads nav.css at one and the same version', [...vers].length, 1);
-is('and it is not missing from any of them', [...vers][0] !== 'MISSING', true);
 
 /* ---- 5. the directory agrees with the tools ----
    index.html groups a card by the SAME access.js group, through FAMILY. */

@@ -1,0 +1,97 @@
+/* Emortia tool category colours ("Your Picks").
+   Set data-cat on <html>; overrides each tool's own accent + surfaces.
+   Low-glare: warm charcoal (dark) / warm off-white (light), parchment/espresso text.
+   design #6F1D1B · emortia #FF467A · field #76C457 · people #C654C3 · site #B58500 */
+html[data-cat="design"]{
+  --accent:#C9756E !important; --accentB:#E09A92 !important; --accentT:#E09A92 !important; --accentD:#8A3A36 !important;
+  --accent-ink:#1A1214 !important;
+  --bg:#1C1615 !important; --card:#271E1D !important; --card-2:#211A19 !important;
+  --line:#3A2B29 !important; --line3:#523C39 !important;
+  --text:#EDE3D3 !important; --muted:#B3A597 !important;
+  --navy:#151011 !important; --navy-2:#2E201F !important;
+  --glow:rgba(224,154,146,0.32) !important; --glowSoft:rgba(224,154,146,0.16) !important;
+}
+html[data-cat="design"][data-theme="light"]{
+  --accent:#7A2A27 !important; --accentB:#6F1D1B !important; --accentT:#6F1D1B !important; --accentD:#5A1715 !important;
+  --accent-ink:#FFFFFF !important;
+  --bg:#F7F2EE !important; --card:#FCF9F6 !important; --card-2:#F1E9E4 !important;
+  --line:#E6D6D2 !important; --line3:#D2BCB7 !important;
+  --text:#2B1E1A !important; --muted:#6B5E55 !important;
+  --navy:#3A1614 !important; --navy-2:#4A201D !important;
+  --glow:rgba(111,29,27,0.24) !important; --glowSoft:rgba(111,29,27,0.12) !important;
+}
+html[data-cat="emortia"]{
+  --accent:#EE7C9C !important; --accentB:#FF94B1 !important; --accentT:#FF94B1 !important; --accentD:#9C3D58 !important;
+  --accent-ink:#1A1214 !important;
+  --bg:#1C1517 !important; --card:#291D21 !important; --card-2:#22191C !important;
+  --line:#3D2A30 !important; --line3:#573A44 !important;
+  --text:#EDE3D3 !important; --muted:#B3A597 !important;
+  --navy:#161012 !important; --navy-2:#2F1E23 !important;
+  --glow:rgba(255,148,177,0.32) !important; --glowSoft:rgba(255,148,177,0.16) !important;
+}
+html[data-cat="emortia"][data-theme="light"]{
+  --accent:#C23D63 !important; --accentB:#B8325A !important; --accentT:#B8325A !important; --accentD:#9E2A4C !important;
+  --accent-ink:#FFFFFF !important;
+  --bg:#F8F1F2 !important; --card:#FDF9F9 !important; --card-2:#F3E7EA !important;
+  --line:#EDD5DC !important; --line3:#DDB6C2 !important;
+  --text:#2B1E1A !important; --muted:#6B5E55 !important;
+  --navy:#3D1324 !important; --navy-2:#4E1A2F !important;
+  --glow:rgba(194,61,99,0.24) !important; --glowSoft:rgba(194,61,99,0.12) !important;
+}
+html[data-cat="field"]{
+  --accent:#8CC473 !important; --accentB:#A8DA91 !important; --accentT:#A8DA91 !important; --accentD:#4F7A3E !important;
+  --accent-ink:#1A1214 !important;
+  --bg:#161A15 !important; --card:#21271E !important; --card-2:#1B2019 !important;
+  --line:#2E3829 !important; --line3:#435239 !important;
+  --text:#EDE3D3 !important; --muted:#B3A597 !important;
+  --navy:#111410 !important; --navy-2:#1F271C !important;
+  --glow:rgba(168,218,145,0.32) !important; --glowSoft:rgba(168,218,145,0.16) !important;
+}
+html[data-cat="field"][data-theme="light"]{
+  --accent:#477F32 !important; --accentB:#3D7329 !important; --accentT:#3D7329 !important; --accentD:#335F23 !important;
+  --accent-ink:#FFFFFF !important;
+  --bg:#F3F5EE !important; --card:#FBFCF8 !important; --card-2:#EBEFE3 !important;
+  --line:#D9E3D0 !important; --line3:#BFD0B2 !important;
+  --text:#2B1E1A !important; --muted:#6B5E55 !important;
+  --navy:#1E3016 !important; --navy-2:#28401E !important;
+  --glow:rgba(71,127,50,0.24) !important; --glowSoft:rgba(71,127,50,0.12) !important;
+}
+html[data-cat="people"]{
+  --accent:#D08ACD !important; --accentB:#E5A6E2 !important; --accentT:#E5A6E2 !important; --accentD:#7E3F7C !important;
+  --accent-ink:#1A1214 !important;
+  --bg:#1B161A !important; --card:#281E26 !important; --card-2:#211920 !important;
+  --line:#3B2C39 !important; --line3:#543F52 !important;
+  --text:#EDE3D3 !important; --muted:#B3A597 !important;
+  --navy:#151013 !important; --navy-2:#2A1E2B !important;
+  --glow:rgba(229,166,226,0.32) !important; --glowSoft:rgba(229,166,226,0.16) !important;
+}
+html[data-cat="people"][data-theme="light"]{
+  --accent:#954192 !important; --accentB:#8A3887 !important; --accentT:#8A3887 !important; --accentD:#74306F !important;
+  --accent-ink:#FFFFFF !important;
+  --bg:#F6F0F4 !important; --card:#FDF9FC !important; --card-2:#EFE5ED !important;
+  --line:#E7D5E4 !important; --line3:#D3B7D0 !important;
+  --text:#2B1E1A !important; --muted:#6B5E55 !important;
+  --navy:#351736 !important; --navy-2:#452047 !important;
+  --glow:rgba(149,65,146,0.24) !important; --glowSoft:rgba(149,65,146,0.12) !important;
+}
+html[data-cat="site"]{
+  --accent:#D2AE4E !important; --accentB:#E3C46C !important; --accentT:#E3C46C !important; --accentD:#7D6320 !important;
+  --accent-ink:#1A1214 !important;
+  --bg:#1A1713 !important; --card:#26211A !important; --card-2:#1F1C16 !important;
+  --line:#3A3226 !important; --line3:#524634 !important;
+  --text:#EDE3D3 !important; --muted:#B3A597 !important;
+  --navy:#14110D !important; --navy-2:#29231A !important;
+  --glow:rgba(227,196,108,0.32) !important; --glowSoft:rgba(227,196,108,0.16) !important;
+}
+html[data-cat="site"][data-theme="light"]{
+  --accent:#856300 !important; --accentB:#765700 !important; --accentT:#765700 !important; --accentD:#614700 !important;
+  --accent-ink:#FFFFFF !important;
+  --bg:#F7F3EA !important; --card:#FCFAF4 !important; --card-2:#F0EADB !important;
+  --line:#E8DDC3 !important; --line3:#D6C59E !important;
+  --text:#2B1E1A !important; --muted:#6B5E55 !important;
+  --navy:#33270A !important; --navy-2:#43340F !important;
+  --glow:rgba(133,99,0,0.24) !important; --glowSoft:rgba(133,99,0,0.12) !important;
+}
+html[data-cat]{color-scheme:dark}
+html[data-cat][data-theme="light"]{color-scheme:light}
+html[data-cat] ::selection{background:var(--glow)}

@@ -117,36 +117,7 @@ textarea::-webkit-scrollbar, [data-scroll]::-webkit-scrollbar,
    it some other way; it simply is not drawn.
    ======================================================================== */
 .hdr .theme, .hdr #themeBtn { display: none !important; }
-
-/* ===================================================== FAMILY COLOUR ===
-
-   A tool wears the colour of the family it is filed under, and it reads that
-   colour from HERE - the one stylesheet all sixteen already load. Each page
-   says only WHICH family it is, on <html data-family="...">, and defines no
-   accent of its own.
-
-   It used to define its own. Sixteen pages each picked an accent with nothing
-   tying it to the shelf the tool sits on, so Material Codes and the GIN
-   Extractor were maroon on the directory and green when opened. That is the
-   same mistake as a hand-copied field list: two places holding what should be
-   one fact, drifting the moment either is edited.
-
-   The values are measured, not eyeballed. The sixteen tools do not share one
-   ground - they range from #0c1619 to #2b1206 dark and #e9edf4 to #ffffff
-   light - so every accent is checked against the HARDEST ground in its theme:
-   the lightest dark card, and the darkest light page. Lowest accent contrast
-   5.20, lowest ink-on-accent 6.11, across all five families in both themes.
-
-   --accent is text AND fill AND border in these pages (41, 47 and 88 uses),
-   so it has to work as all three; --accent-ink is what sits on it, measured
-   against it. --ink is the same value under the name two tools use. */
-html[data-family="design"],html[data-family="design"][data-theme="dark"]{--accent:#dd7875;--accentB:#e78886;--accentD:#d14844;--accent-ink:#0e0a0b;--ink:#0e0a0b;--glow:rgba(221,120,117,.5);--glowSoft:rgba(221,120,117,.26);}
-html[data-family="design"][data-theme="light"]{--accent:#b42f2c;--accentB:#a52421;--accentD:#d14542;--accent-ink:#ffffff;--ink:#ffffff;--glow:rgba(180,47,44,.5);--glowSoft:rgba(180,47,44,.26);}
-html[data-family="emortia"],html[data-family="emortia"][data-theme="dark"]{--accent:#f85e8a;--accentB:#fe769c;--accentD:#f5235f;--accent-ink:#0e0a0b;--ink:#0e0a0b;--glow:rgba(248,94,138,.5);--glowSoft:rgba(248,94,138,.26);}
-html[data-family="emortia"][data-theme="light"]{--accent:#c2083c;--accentB:#ae0232;--accentD:#f30a4b;--accent-ink:#ffffff;--ink:#ffffff;--glow:rgba(194,8,60,.5);--glowSoft:rgba(194,8,60,.26);}
-html[data-family="field"],html[data-family="field"][data-theme="dark"]{--accent:#59a63a;--accentB:#5cb837;--accentD:#41792a;--accent-ink:#0e0a0b;--ink:#0e0a0b;--glow:rgba(89,166,58,.5);--glowSoft:rgba(89,166,58,.26);}
-html[data-family="field"][data-theme="light"]{--accent:#3a6d26;--accentB:#31611d;--accentD:#4e9333;--accent-ink:#ffffff;--ink:#ffffff;--glow:rgba(58,109,38,.5);--glowSoft:rgba(58,109,38,.26);}
-html[data-family="people"],html[data-family="people"][data-theme="dark"]{--accent:#d071cd;--accentB:#dc83da;--accentD:#c143bd;--accent-ink:#0e0a0b;--ink:#0e0a0b;--glow:rgba(208,113,205,.5);--glowSoft:rgba(208,113,205,.26);}
-html[data-family="people"][data-theme="light"]{--accent:#9e359b;--accentB:#8f288d;--accentD:#c145bd;--accent-ink:#ffffff;--ink:#ffffff;--glow:rgba(158,53,155,.5);--glowSoft:rgba(158,53,155,.26);}
-html[data-family="site"],html[data-family="site"][data-theme="dark"]{--accent:#be8e08;--accentB:#d29b02;--accentD:#836206;--accent-ink:#0e0a0b;--ink:#0e0a0b;--glow:rgba(190,142,8,.5);--glowSoft:rgba(190,142,8,.26);}
-html[data-family="site"][data-theme="light"]{--accent:#7b5c05;--accentB:#6f5201;--accentD:#ac8107;--accent-ink:#ffffff;--ink:#ffffff;--glow:rgba(123,92,5,.5);--glowSoft:rgba(123,92,5,.26);}
+/* Category colour lives in category.css, which every tool loads after this
+   file. It was designed in Claude Design and is copied in byte for byte;
+   the five family blocks that used to sit here are gone rather than left
+   to disagree with it. A tool says which category it is with data-cat. */
