@@ -753,10 +753,18 @@
        made that one header 70.5 instead of 66.
        Written out, it applies, it is the size it was meant to be, and no
        page's button rule can reach past it again. */
+    /* line-height 1.2, not 1. The site leaves this at `normal`, which for
+       Space Mono is about 1.2, so pinning it at 1 made the tools' name box
+       two pixels shorter than the site's and the whole pill with it - the
+       "small size change" that survived matching every other dimension.
+       It is still written out rather than inherited, because a tool whose
+       body sets 1.5 would push the pill past the 66px header, which is the
+       bug this file already carries a comment about. Both ends now say 1.2,
+       so neither can drift from the other. */
     '.acc-who{font-family:"Space Mono",ui-monospace,monospace;font-weight:400;font-size:14px;',
-    '  line-height:1;color:#f7f1e8;max-width:14ch;overflow:hidden;text-overflow:ellipsis;',
+    '  line-height:1.2;color:#f7f1e8;max-width:14ch;overflow:hidden;text-overflow:ellipsis;',
     '  white-space:nowrap}',
-    '.acc-caret{font-size:11px;line-height:1;color:#e6bdc4;display:inline-block;',
+    '.acc-caret{font-size:11px;line-height:1.2;color:#e6bdc4;display:inline-block;',
     '  transition:transform .25s ease}',
     '.acc-chip.open .acc-caret{transform:rotate(180deg)}',
     /* Fixed, measured off the pill - and hung on the BODY rather than inside

@@ -141,6 +141,47 @@ Do that again when adding one.
 
 ---
 
+## Known debt: the theme button is hidden, not removed
+
+Every tool grew its own ☀/◐ button in its header. The setting moved into the
+account menu — which is on every page, so one control instead of sixteen — and
+the old buttons are now hidden by one rule in `tools/_lib/nav.css`:
+
+```css
+.hdr .theme, .hdr #themeBtn { display: none !important; }
+```
+
+**They are still in the markup of all sixteen tools.** This is deliberate, and
+it is debt.
+
+**Why hidden rather than deleted.** Each tool's own script binds to the button
+on load — `$('themeBtn').onclick = …` — and several read it again when they
+repaint their header. Deleting the element from sixteen files without also
+editing sixteen scripts throws a TypeError on page load in every one of them,
+which takes the whole tool down, not just the button.
+
+**What removing it properly takes**, per tool:
+
+1. delete the `<button class="theme" id="themeBtn">` from the header markup
+2. delete that tool's `paintTheme()` and its `$('themeBtn').onclick = …`
+3. leave the tool reading `document.documentElement.dataset.theme`, which
+   `access.js` sets on the way in — the tool keeps its light mode, it just
+   stops owning the switch
+4. check the tool's own storage key: `access.js` writes every existing
+   `*.theme` key as well as `em-theme`, so a tool that keeps reading its old
+   key still works, but one whose key is only written by the deleted handler
+   will stop remembering
+
+It is sixteen small, identical, independently verifiable edits and no shared
+code changes. Do them in one pass or not at all — half-done leaves two
+controls disagreeing on some pages.
+
+**Until then:** the button exists, is bound, and works. It is simply not
+drawn. A tool that opens it another way would still toggle the theme, and
+because `access.js` writes every `*.theme` key, the two would agree.
+
+---
+
 ## The stream model, and why it is two rows
 
 A PH2 card is a site work order carrying two parallel vendor streams. One row

@@ -372,6 +372,10 @@
   .sitereq .h{font:700 11px 'Space Mono',monospace;letter-spacing:.08em;text-transform:uppercase;
     color:var(--muted);margin-bottom:6px}
   .sitereq .h small{font-weight:400;text-transform:none;letter-spacing:0}
+  /* the shape of a sync, said rather than inferred from a subtraction */
+  .tally{margin-top:10px;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px;
+    background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+  .tally b{color:var(--text)}
   .chk{font:700 11px 'Space Mono',monospace;white-space:nowrap}
   /* struck off the card, not dropped from the page */
   tr.gone td{text-decoration:line-through;color:var(--muted);opacity:.72}
@@ -1357,6 +1361,28 @@ async function receive(data){
 
   const byKey = {}; TICKETS.forEach(t => byKey[KEY(t)] = t);
   const out = [], lines = [];
+  /* ---- the accounting ----
+
+     "451 of 522 tickets changed" compared a count of ROWS with a count of
+     CARDS and called the difference unchanged tickets. They are not the same
+     unit: a PH2 card becomes two rows, one, or none, so the subtraction was
+     meaningless and the 71 it implied were never skipped.
+
+     What is actually true, and worth saying because this is the number the
+     whole sync is judged on:
+
+       cards   what WorkHub returned
+       rows    what those cards become
+       new     rows with no row in the database for that (id, stream)
+       changed rows already there whose signature moved
+       same    rows already there that did not move
+       none    cards that produced NO row, and why
+
+     A row that is NEW is never skipped - the test below is `old && …`, and a
+     row with no `old` cannot satisfy it - so the changed-detection rule is
+     not wrong for the new sources. It was the reporting that was wrong. */
+  const acc = { cards: raws.length, rows: 0, fresh: 0, changed: 0, same: 0,
+                none: [], byPhase: {} };
   raws.forEach(raw => {
     const files = raw.files || [];
     const fresh = parsed[raw.id] || [];
@@ -1370,15 +1396,47 @@ async function receive(data){
     const docs = keep.concat(fresh);
     /* W.rowsFor, not W.record: only it knows a PH2 card is two rows. PH1 and
        Bulk come back as one, and for PH1 rowsFor IS record. */
-    W.rowsFor(W.attachDocs(raw, docs)).forEach(rec => {
+    const rows = W.rowsFor(W.attachDocs(raw, docs));
+    const ph = raw.phase || '?';
+    const p = acc.byPhase[ph] || (acc.byPhase[ph] = { cards: 0, rows: 0, fresh: 0, changed: 0, same: 0, none: 0 });
+    p.cards++;
+    acc.rows += rows.length; p.rows += rows.length;
+    /* A card that becomes nothing is the single biggest piece of the gap, and
+       it was invisible. Say which card and why, because "no stream carries a
+       reservation" is a real state of a real work order and not an error. */
+    if (!rows.length){
+      p.none++;
+      acc.none.push({ id: raw.id, phase: ph,
+        why: ph === 'PH2' ? 'no stream has a reservation number yet'
+           : !raw.timeline || !raw.timeline.length ? 'the card has no tasks - a draft'
+           : 'the card produced no row' });
+    }
+    rows.forEach(rec => {
       const old = byKey[KEY(rec)];
-      if (old && sig(old) === sig(rec)) return;
+      if (old && sig(old) === sig(rec)){ acc.same++; p.same++; return; }
+      if (old){ acc.changed++; p.changed++; } else { acc.fresh++; p.fresh++; }
       out.push(rec);
       const was = old ? W.state(old, mk(old)) : null, now = W.state(rec, mk(rec));
       const who = '#' + rec.id + (rec.stream ? ' ' + esc(rec.stream) : '');
       lines.push(`<span>${who} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(stLabel(was)) + ' → <b>' + esc(stLabel(now)) + '</b>') : 'new · <b>' + esc(stLabel(now)) + '</b>'}</span>`);
     });
   });
+  /* Printed whether or not anything changed: the reason this exists is that
+     the shape of a sync was being inferred from one subtraction. */
+  const tally = () => {
+    const per = Object.keys(acc.byPhase).map(k => {
+      const p = acc.byPhase[k];
+      return `${esc(k)} ${p.cards} card${p.cards === 1 ? '' : 's'} → ${p.rows} row${p.rows === 1 ? '' : 's'}` +
+             (p.none ? ` (${p.none} produced none)` : '');
+    }).join(' · ');
+    return `<div class="tally"><b>${acc.cards} cards → ${acc.rows} rows</b> · ` +
+      `${acc.fresh} new · ${acc.changed} changed · ${acc.same} already matched` +
+      (acc.none.length ? ` · ${acc.none.length} card${acc.none.length === 1 ? '' : 's'} produced no row` : '') +
+      `<span>${per}</span>` +
+      (acc.none.length ? `<span>No row: ${acc.none.slice(0, 12).map(n => '#' + n.id + ' ' + esc(n.why)).join(' · ')}` +
+        (acc.none.length > 12 ? ` · and ${acc.none.length - 12} more` : '') + `</span>` : '') +
+      `</div>`;
+  };
   /* Two different nothings, and they used to print the same sentence.
      Nothing CAME BACK is not nothing CHANGED: with "Tickets since" set to
      today, WorkHub lists only tickets raised today, so a sync can fetch zero
@@ -1396,14 +1454,14 @@ async function receive(data){
   }
   if (!out.length){
     await window.DB.wh24NoteCheck({ tickets: raws.length, changed: 0, by: ME || null }).catch(() => {});
-    dlg(`All ${raws.length} tickets already match WorkHub24. Nothing to publish.` + pdfNote());
+    dlg(`All ${acc.rows} rows from ${acc.cards} cards already match WorkHub24. Nothing to publish.` + pdfNote() + tally());
     await refreshChecked();
     return;
   }
   PENDING = out;
   const ready = out.filter(r => W.state(r, mk(r)) === 'ready').length;
-  dlg(`${out.length} of ${raws.length} tickets changed${ready ? ` – <b>${ready}</b> of them can be collected` : ''}.` +
-      pdfNote(),
+  dlg(`<b>${out.length}</b> row${out.length === 1 ? '' : 's'} to publish${ready ? ` – <b>${ready}</b> can be collected` : ''}.` +
+      pdfNote() + tally(),
       { changes: lines.join(''), go: true });
 }
 $('syncGo').onclick = async () => {
