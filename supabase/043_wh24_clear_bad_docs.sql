@@ -80,38 +80,114 @@ from storage.objects
 where bucket_id = 'wh24-docs';
 
 -- ---------------------------------------------------------------------------
+-- STEP 0 — SHOW THE DATA. Run this before anything, and believe it over every
+-- comment in this file.
+--
+-- One row, the whole gins value, unmodified and indented. This is where the
+-- path lives and what it looks like. Everything below is written against what
+-- this prints, and if it ever disagrees with this file, this file is wrong.
+-- ---------------------------------------------------------------------------
+select id, stream, jsonb_array_length(gins) as documents, jsonb_pretty(gins) as gins
+from public.wh24_tickets
+where jsonb_typeof(gins) = 'array' and jsonb_array_length(gins) > 0
+order by id desc
+limit 1;
+
+-- ---------------------------------------------------------------------------
 -- STEP 3 — forget the paths on the rows. This is the repair.
 --
 -- Sets path back to '' on every document entry inside wh24_tickets.gins. The
 -- key stays, so the row shape is exactly what the page writes; it is the value
 -- the page tests, and '' is falsy.
 --
+-- THIS VERSION REPORTS WHAT IT DID.
+--
+-- The first version did not, and it cost an evening. An UPDATE with no
+-- RETURNING prints "Success. No rows returned" in the Supabase SQL editor
+-- whether it changed every row or none of them - the message is about the
+-- absence of a result set, not the absence of work. Paired with a broken
+-- verification query it was indistinguishable from doing nothing.
+--
+--   rows_changed    ticket rows whose gins were rewritten
+--   paths_cleared   document entries that actually had a path to clear
+--
+-- 0 AND 0 MEANS ALREADY DONE, not failed. There was nothing left carrying a
+-- path. Step 4 is what confirms it either way.
+--
+-- Nothing here matches on text. A row is selected because one of its document
+-- entries has a non-empty 'path' VALUE, found by walking the array; and each
+-- entry is rewritten with jsonb_set, not by editing a string. `? 'path'` keeps
+-- an entry that never had the key from gaining one.
+--
 -- WITH ORDINALITY and the ORDER BY are not decoration: jsonb_agg has no
 -- defined order without them, and the order of this array is the order the
 -- documents are listed on the ticket.
---
--- After this the tool shows no Download button on any row, which is the truth,
--- and the next sync will fetch all of those documents again.
 -- ---------------------------------------------------------------------------
-update public.wh24_tickets
-set gins = (
-      select jsonb_agg(jsonb_set(g, '{path}', '""'::jsonb) order by ord)
-      from jsonb_array_elements(gins) with ordinality as e(g, ord)
-    )
-where jsonb_typeof(gins) = 'array'
-  and jsonb_array_length(gins) > 0
-  and gins::text like '%"path"%';
+with target as (
+  select t.id,
+         t.stream,
+         (select coalesce(jsonb_agg(
+                   case when e.g ? 'path'
+                        then jsonb_set(e.g, '{path}', '""'::jsonb)
+                        else e.g end
+                   order by e.ord), '[]'::jsonb)
+            from jsonb_array_elements(t.gins) with ordinality as e(g, ord)) as cleared,
+         (select count(*)
+            from jsonb_array_elements(t.gins) as e(g)
+           where coalesce(e.g ->> 'path', '') <> '') as had
+    from public.wh24_tickets t
+   where jsonb_typeof(t.gins) = 'array'
+     and jsonb_array_length(t.gins) > 0
+),
+changed as (
+  update public.wh24_tickets t
+     set gins = target.cleared
+    from target
+   where t.id = target.id
+     and t.stream = target.stream
+     and target.had > 0
+  returning target.had
+)
+select count(*)              as rows_changed,
+       coalesce(sum(had), 0) as paths_cleared
+from changed;
 
 -- ---------------------------------------------------------------------------
 -- STEP 4 — check it took.
 --
--- stored must be 0. If it is not, step 3 matched nothing: say so rather than
--- running it again.
+-- rows_claiming_a_file and documents_claiming_a_file must both be 0.
+--
+-- THE FIRST VERSION OF THIS QUERY WAS WRONG AND IS WHY STEP 3 LOOKED BROKEN.
+-- It tested gins::text LIKE '%"path": "_%'. In LIKE, `_` matches ANY single
+-- character - including the closing quote - so '{"path": ""}' matched it. The
+-- query counted every row that had a path KEY, empty or not, and could never
+-- return 0 while any document existed anywhere. It reported 365 "stored" rows
+-- after a successful clear and that is exactly what it was built to report.
+--
+--   select '{"path": ""}' like '%"path": "_%';   -- true. That was the bug.
+--
+-- This version walks the array and compares the VALUE. No LIKE, no ::text, no
+-- pattern that has to be reasoned about.
+--
+--   ticket_rows                 every row in the table
+--   rows_claiming_a_file        rows with at least one non-empty path
+--   documents_claiming_a_file   document entries with a non-empty path
+--   documents_in_total          document entries altogether - this one does
+--                               NOT go to 0, and is here so a 0 above can be
+--                               told from an empty table
 -- ---------------------------------------------------------------------------
-select count(*)                                              as ticket_rows,
-       count(*) filter (where gins::text like '%"path": "_%'
-                           or gins::text like '%"path":"_%')  as stored
-from public.wh24_tickets;
+select count(*)                        as ticket_rows,
+       count(*) filter (where p.n > 0) as rows_claiming_a_file,
+       coalesce(sum(p.n), 0)           as documents_claiming_a_file,
+       coalesce(sum(p.docs), 0)        as documents_in_total
+from public.wh24_tickets t
+cross join lateral (
+  select count(*) filter (where coalesce(e.g ->> 'path', '') <> '') as n,
+         count(*)                                                   as docs
+  from jsonb_array_elements(
+         case when jsonb_typeof(t.gins) = 'array' then t.gins else '[]'::jsonb end
+       ) as e(g)
+) p;
 
 -- ---------------------------------------------------------------------------
 -- STEP 5 — not SQL. Set "Tickets since" back far enough.

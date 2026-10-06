@@ -296,3 +296,46 @@ fetches it, and the sync reads only tickets raised on or after **Tickets
 since** — so that date has to go back far enough to cover every ticket holding
 a document, once. Anything missed keeps its zero-byte file and its row stays
 truthful but empty: no path, no button, nothing offered to anybody.
+
+### The fifth one, and it was the check
+
+043 step 4 tested whether a document had been stored with
+
+```sql
+gins::text like '%"path": "_%'
+```
+
+In `LIKE`, `_` matches **any single character — including the closing quote**,
+so `{"path": ""}` matched it. The query counted every row that had a `path`
+*key*, empty or not. It could not return `0` while any document existed
+anywhere in the table, so it reported 365 rows as stored immediately after they
+had all been cleared, and the `UPDATE` took the blame.
+
+Two things made it hold up for an evening:
+
+- The `UPDATE` had no `RETURNING`, and an `UPDATE` with no `RETURNING` prints
+  *Success. No rows returned* in the Supabase SQL editor whether it changed
+  every row or none. The message is about the absence of a result set, not the
+  absence of work.
+- The verification query was confidently wrong in the direction of "not done",
+  so re-running the `UPDATE` looked like the reasonable response.
+
+This one is the inverse of the other four. The no-op upload, *All 0 tickets
+already match* and the zero-byte files were all a **failure that read as
+success**. This was **work that read as failure** — which is less dangerous and
+more expensive, because the response to it is to do the work again.
+
+The shared cause is the same every time: a count of zero, or a check that
+cannot return the value meaning *fine*, rendered as something other than a
+sentence.
+
+**Fixed:** step 3 reports `rows_changed` and `paths_cleared` from a `RETURNING`,
+so `0 / 0` now plainly means *already done*. Step 4 walks the array and compares
+the value — no `LIKE`, no `::text`, no pattern to be reasoned about at eleven at
+night. A new **step 0** prints one whole `gins` value with `jsonb_pretty`, so
+the structure is read rather than assumed.
+
+`db.schema.test.js` now refuses `<jsonb column>::text like` in any file under
+`supabase/`, and — because a lint that matches nothing passes for ever —
+asserts first that the pattern still catches the exact line step 4 shipped
+with.

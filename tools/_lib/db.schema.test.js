@@ -189,5 +189,61 @@ const mcols = columnsOf('wh24_marks');
      /upsert:\s*true/.test(call), true);
 }
 
+/* ============ no SQL in here checks a JSON value by pattern-matching ===
+
+   043 step 4 tested whether a document had been stored with
+
+     gins::text like '%"path": "_%'
+
+   In LIKE, `_` matches ANY single character - the closing quote included - so
+   '{"path": ""}' matched it. The query counted every row that had a path KEY,
+   empty or not, and could not return 0 while any document existed. It reported
+   365 rows as stored immediately after they had all been cleared, and the
+   UPDATE that did the clearing got the blame for an evening.
+
+   Casting jsonb to text and pattern-matching it is the whole mistake. The
+   structure is right there: walk the array and compare the value. So this
+   refuses the cast, in every SQL file, rather than trusting the next pattern
+   to be reasoned about correctly at eleven at night. */
+{
+  const dir = path.join(ROOT, 'supabase');
+  const JSONB = ['gins', 'timeline', 'lines', 'doc'];
+  const rx = col => new RegExp(col + '\\s*::\\s*text\\s+(not\\s+)?i?like', 'i');
+  /* A LINT THAT MATCHES NOTHING PASSES FOREVER. Before trusting the empty
+     result below, prove this pattern still catches the exact line it exists
+     for - the one 043 step 4 actually shipped with. A green suite has already
+     meant nothing once in this project. */
+  is('the lint catches the line it was written for',
+     rx('gins').test(`  count(*) filter (where gins::text like '%"path": "_%'`), true);
+  is('and does not fire on the structural test that replaced it',
+     rx('gins').test(`  where coalesce(e.g ->> 'path', '') <> ''`), false);
+
+  const bad = [];
+  for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.sql'))) {
+    fs.readFileSync(path.join(dir, f), 'utf8').split('\n').forEach((ln, i) => {
+      /* comments are where this is explained, so they are allowed to show it */
+      if (/^\s*--/.test(ln)) return;
+      for (const col of JSONB)
+        if (rx(col).test(ln)) bad.push(f + ':' + (i + 1) + ' ' + ln.trim());
+    });
+  }
+  is('no SQL pattern-matches a jsonb column cast to text', bad, []);
+
+  /* And the shape of the mistake itself, so the reason is not just prose:
+     this is why the 365 was impossible to get to 0. */
+  const likeMatch = (s, pat) => {
+    const rx = new RegExp('^' + pat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/%/g, '[\\s\\S]*').replace(/_/g, '[\\s\\S]') + '$');
+    return rx.test(s);
+  };
+  is('an empty path matches the old test, which is why it never reached 0',
+     likeMatch('{"path": "", "file": "a.pdf"}', '%"path": "_%'), true);
+  is('and so does a real one, so the two were indistinguishable',
+     likeMatch('{"path": "25490/_/a.pdf"}', '%"path": "_%'), true);
+  is('the structural test tells them apart',
+     [JSON.parse('{"path": ""}').path !== '', JSON.parse('{"path": "x"}').path !== ''],
+     [false, true]);
+}
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
