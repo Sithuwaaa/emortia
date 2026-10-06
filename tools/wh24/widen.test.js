@@ -783,6 +783,17 @@ is('a GIN and an Activity Report are distinct without any help',
                { kind: 'move', res: '', gi: '', rep: '5001234567', date: '2026-09-30' }]),
    ['1776693.pdf', '5001234567.pdf']);
 is('an empty ticket names nothing', W.docNames([]), []);
+/* THE NAME TRAVELS AS A QUERY PARAMETER. storage-js builds the signed URL as
+   `…&download=<name>` and runs encodeURI over the whole thing - and encodeURI
+   leaves & ? # + % alone. A name carrying any of those would not be escaped,
+   it would be read as more URL, and the filename would be truncated at the
+   first one. The sanitiser already prevents it; this is why it must. */
+is('a name can never carry a character that would corrupt the signed URL',
+   /[&?#+%]/.test(W.docName({ res: 'A&B?C#D+E%F' })), false);
+is('and a space, which the name DOES carry, is escaped rather than bare',
+   encodeURI('&download=' + W.docNames([{ res: '1718878', date: '2026-04-29' },
+                                        { res: '1718878', date: '2026-04-28' }])[0]),
+   '&download=1718878%202026-04-29.pdf');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

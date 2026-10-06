@@ -187,6 +187,7 @@ const mcols = columnsOf('wh24_marks');
   const call = put.slice(put.indexOf('.upload('), put.indexOf('.upload(') + 200);
   is('wh24PutDoc uploads with upsert:true, so a re-sync overwrites',
      /upsert:\s*true/.test(call), true);
+
 }
 
 /* ============ no SQL in here checks a JSON value by pattern-matching ===
@@ -245,5 +246,52 @@ const mcols = columnsOf('wh24_marks');
      [false, true]);
 }
 
-console.log(pass + ' passed, ' + fail + ' failed');
-process.exit(fail ? 1 : 0);
+/* ========= the download name has to reach Supabase, not the anchor ====
+
+   <a download="…"> IS IGNORED CROSS-ORIGIN. The signed URL is on supabase.co
+   and the page is not, so the browser threw the computed name away and saved
+   every file under its storage path - CM5736____4931212559.pdf. The attribute
+   was correct, the render was correct, and the test that asserted the
+   attribute passed. The browser disagreed, and it is the only one that counts.
+
+   The one place the name works is the signing call: Supabase answers it with
+   Content-Disposition, which comes from the same origin as the bytes.
+
+   So this runs the real function against a fake client and reads what it
+   actually hands over - not whether the source looks right. */
+(async () => {
+  const DB = fs.readFileSync(path.join(ROOT, 'tools/_lib/db.js'), 'utf8');
+  const j = DB.indexOf('async function wh24DocLink');
+  if (j < 0) throw new Error('wh24DocLink is not where it was');
+  const seen = [];
+  const fakeClient = async () => ({ storage: { from: b => ({
+    createSignedUrl: async (p, secs, opt) => {
+      seen.push({ bucket: b, path: p, secs: secs, opt: opt });
+      return { data: { signedUrl: 'https://project.supabase.co/sign?token=t' } };
+    } }) } });
+  const out = {};
+  new Function('client', 'WH24B', 'exports',
+    DB.slice(j, DB.indexOf('\n  }', j) + 4) + ';exports.link = wh24DocLink;'
+  )(fakeClient, 'wh24-docs', out);
+
+  const url = await out.link('25490/Advantis/a.pdf', 300, '1718878 2026-04-29.pdf');
+  is('a signed URL comes back', typeof url === 'string' && url.length > 0, true);
+  is('and Supabase was asked for Content-Disposition with that exact name',
+     seen[0].opt, { download: '1718878 2026-04-29.pdf' });
+  is('against the right bucket, path and expiry',
+     [seen[0].bucket, seen[0].path, seen[0].secs],
+     ['wh24-docs', '25490/Advantis/a.pdf', 300]);
+  /* A missing name must not send download:'' - that would ask for an empty
+     filename rather than leaving the object its own. */
+  await out.link('x.pdf', 300, '');
+  is('no name sends no download option at all', seen[1].opt, undefined);
+  await out.link('x.pdf', 300);
+  is('and an omitted name likewise', seen[2].opt, undefined);
+  /* A name is stringified, so a number or an object cannot reach the header
+     as "[object Object]" by accident. */
+  await out.link('x.pdf', 300, 1718878);
+  is('a non-string name is stringified', seen[3].opt, { download: '1718878' });
+
+  console.log(pass + ' passed, ' + fail + ' failed');
+  process.exit(fail ? 1 : 0);
+})();

@@ -812,10 +812,21 @@
   }
   /* The bucket is private, so a path is not a URL. Short-lived links, asked
      for at the moment somebody clicks. */
-  async function wh24DocLink(path, seconds){
+  /* THE FILENAME IS PART OF THE LINK, not of the anchor that opens it.
+     <a download="1718878 2026-04-29.pdf"> was ignored outright: the download
+     attribute only works same-origin, and the signed URL is on supabase.co
+     while the page is on emortia.com, so Chrome dropped the name and saved the
+     object under its storage path instead. Every layer looked right - the
+     attribute was on the button, the test asserted it was there - and the only
+     program whose opinion counts disagreed.
+     Supabase returns Content-Disposition: attachment from this option, and
+     that header comes from the same origin as the bytes, so it is honoured.
+     Note the consequence: attachment means the file SAVES rather than opening
+     in a tab. */
+  async function wh24DocLink(path, seconds, name){
     const c = await client(); if (!c || !path) return null;
     const { data, error } = await c.storage.from(WH24B)
-      .createSignedUrl(path, seconds || 300);
+      .createSignedUrl(path, seconds || 300, name ? { download: String(name) } : undefined);
     return error ? null : (data ? data.signedUrl : null);
   }
 

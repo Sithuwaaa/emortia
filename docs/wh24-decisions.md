@@ -403,3 +403,45 @@ One case needs no help at all: **a GIN and an Activity Report cannot collide.**
 The report carries no reservation and no GI, so it falls through to its own
 report number. That was the case that would have been worst – two vendors'
 paperwork under one name on a PH2 card – and it was never possible.
+
+#### The name has to be signed in, not attached
+
+`<a download="1718878 2026-04-29.pdf">` did nothing. **The `download`
+attribute is ignored for cross-origin URLs** — the signed URL is on
+`supabase.co` and the page is not, so the browser dropped the computed name and
+saved the file under its storage path, `CM5736____4931212559.pdf`.
+
+Everything above the browser reported success: the name was computed correctly,
+it was on the button, and the test asserted it was on the button. Exactly the
+shape of the zero-byte uploads — every layer agreeing while the only program
+whose opinion matters disagrees.
+
+The name has to be known **before** the URL is signed:
+
+```js
+createSignedUrl(path, 300, { download: '1718878 2026-04-29.pdf' })
+```
+
+Supabase answers that with `Content-Disposition: attachment`, which comes from
+the same origin as the bytes and is therefore honoured.
+
+**Consequence, deliberately accepted:** `attachment` makes the file **save**
+rather than open in a tab. So `download=` and `target="_blank"` are both gone
+from the anchor — the first because it never worked, the second because a
+`Content-Disposition` response would flash a tab open and abandon it.
+
+**One hazard found by reading `storage-js` rather than assuming it.** The option
+is not sent as a body field; it is appended to the URL as `&download=<name>`,
+and the whole URL is then passed through `encodeURI`, which leaves `& ? # + %`
+untouched. A name containing any of those would be read as more URL and the
+filename would truncate at the first one. `docClean` already strips everything
+outside `A-Za-z0-9._ -`, so it cannot happen — and that is now asserted with
+the reason attached, because the sanitiser otherwise looks like mere tidiness.
+
+**The test changed with it.** `page.test.js` no longer checks `data-name` on the
+element. It drives the real click handler against a fake `wh24DocLink` and
+asserts the resolved name reaching the signing call, that no `download` or
+`target` is set on the anchor, and that a colliding pair signs with both dates.
+`db.schema.test.js` runs the real `wh24DocLink` against a fake client and reads
+the options object it actually hands over — including that a missing name sends
+no `download` option at all, rather than `download: ''`.

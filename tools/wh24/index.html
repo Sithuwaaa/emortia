@@ -1093,11 +1093,22 @@ $('list').addEventListener('click', async e => {
   if (dl){
     dl.disabled = true;
     try {
-      const url = await window.DB.wh24DocLink(dl.dataset.path, 300);
+      /* The name goes INTO THE SIGNING CALL. It cannot go on the anchor:
+         download= is ignored cross-origin, and the signed URL is on
+         supabase.co while this page is not, so the browser quietly saved the
+         object under its storage path - CM5736____4931212559.pdf - however
+         carefully the attribute had been computed. Supabase answers this
+         option with Content-Disposition: attachment, which comes from the same
+         origin as the bytes and is therefore honoured.
+
+         No download= here and no target=_blank: the header makes this a save
+         rather than a navigation, so an extra tab would open and close for
+         nothing. */
+      const url = await window.DB.wh24DocLink(dl.dataset.path, 300,
+                                              dl.dataset.name || 'document.pdf');
       if (!url) throw new Error('That document is not in the store.');
       const a = document.createElement('a');
-      a.href = url; a.download = dl.dataset.name || 'document.pdf';
-      a.rel = 'noopener'; a.target = '_blank';
+      a.href = url; a.rel = 'noopener';
       document.body.appendChild(a); a.click(); a.remove();
     } catch(err){ toast(err.message, 4000); }
     dl.disabled = false;
