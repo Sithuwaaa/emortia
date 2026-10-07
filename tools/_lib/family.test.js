@@ -258,7 +258,25 @@ for (const [group, fam] of Object.entries(FAMILY_OF)) {
   is('the directory maps ' + group + ' to ' + fam,
      new RegExp('"' + group.replace('&', '&') + '":\\s*\\{[^}]*"key":\\s*"' + fam + '"').test(INDEX), true);
   is('and .tgrp-' + fam + ' exists', INDEX.includes('.tgrp-' + fam + '{'), true);
+  /* ONE .tgrp- RULE PER FAMILY. The old set was ordered differently, so a
+     splice that replaced up to .tgrp-emortia left field, people and site
+     behind - and being later in the file they won, silently. */
+  is('exactly once, not shadowed by a leftover',
+     (INDEX.match(new RegExp('^\\.tgrp-' + fam + '\\{', 'gm')) || []).length, 1);
 }
+
+/* ---- 6. the directory wears the same five colours as the tools ----
+
+   index.html carries its OWN .tool- and .tgrp- blocks - a different token shape
+   from category.css, because its ground is the burgundy page rather than a
+   tool's. They are two files, so they are two chances to disagree: the
+   directory sat on the old maroon set for a day after the tools had moved.
+   Different tokens, same five anchors, asserted. */
+console.log('\n--- the directory uses the same five anchors ---');
+for (const [fam, pick] of [['design','#d0f4de'], ['emortia','#ff99c8'], ['field','#a9def9'],
+                           ['people','#e4c1f9'], ['site','#fcf6bd']])
+  is('.tgrp-' + fam + ' is ' + pick,
+     new RegExp('^\\.tgrp-' + fam + '\\{--gc:' + pick + ';\\}', 'm').test(INDEX), true);
 
 console.log('\n--- the mapping ---');
 for (const r of mapping) console.log('  ' + r.tool.padEnd(17) + r.group.padEnd(21) + r.family);
