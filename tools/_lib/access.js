@@ -686,10 +686,16 @@
      working: its key is updated too, so it does not undo this on its next
      load. Keys that do not already exist are left alone. */
   var THEME_KEY = 'em-theme';
+  /* THE SUITE OPENS LIGHT. It used to open dark, or follow the operating
+     system, which meant the same tool greeted two people differently and
+     neither had asked for it. Light is the default now, in here and in each
+     tool's own startup - the toggle still works and a choice still sticks. */
+  var THEME_DEFAULT = 'light';
   function themeNow() {
     var d = document.documentElement.dataset.theme;
     if (d) return d;
-    try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { return 'dark'; }
+    try { return localStorage.getItem(THEME_KEY) || THEME_DEFAULT; }
+    catch (e) { return THEME_DEFAULT; }
   }
   function setTheme(t) {
     t = t === 'light' ? 'light' : 'dark';
@@ -698,7 +704,10 @@
       localStorage.setItem(THEME_KEY, t);
       for (var i = localStorage.length - 1; i >= 0; i--) {
         var k = localStorage.key(i);
-        if (k && k !== THEME_KEY && /\.theme$/.test(k)) localStorage.setItem(k, t);
+        /* _theme as well as .theme: six tools key on office_tool_theme, which
+           the old pattern did not match, so the account menu's switch quietly
+           did not reach them and they went back on their next load. */
+        if (k && k !== THEME_KEY && /\.theme$|_theme$/.test(k)) localStorage.setItem(k, t);
       }
     } catch (e) {}
     /* tools draw their own button off this */
@@ -706,13 +715,33 @@
   }
   /* Apply the stored choice on the way in, but never over a page that has
      already decided - a tool's own paintTheme may have run first, and the two
-     agree from the next toggle onwards. */
+     agree from the next toggle onwards.
+
+     ONE-TIME RESET. Changing the default is not enough on its own: anyone who
+     has already opened a tool has 'dark' in storage, written by the old
+     default rather than chosen, and nothing distinguishes the two. So the
+     stored theme is cleared ONCE - across every key shape the tools use,
+     em-theme, *.theme and *_theme - and from then on a choice is a choice.
+     The flag means this happens exactly once per browser, never again. */
+  var THEME_RESET = 'em-theme-default-light';
   (function () {
+    var done = true;
+    try { done = !!localStorage.getItem(THEME_RESET); } catch (e) {}
+    if (!done) {
+      try {
+        localStorage.setItem(THEME_RESET, '1');
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var k = localStorage.key(i);
+          if (k && (k === THEME_KEY || /\.theme$|_theme$/.test(k))) localStorage.removeItem(k);
+        }
+      } catch (e) {}
+      document.documentElement.dataset.theme = THEME_DEFAULT;
+      return;
+    }
     if (document.documentElement.dataset.theme) return;
-    try {
-      var t = localStorage.getItem(THEME_KEY);
-      if (t) document.documentElement.dataset.theme = t;
-    } catch (e) {}
+    var t = null;
+    try { t = localStorage.getItem(THEME_KEY); } catch (e) {}
+    document.documentElement.dataset.theme = t || THEME_DEFAULT;
   })();
 
   var CHIP_CSS = [

@@ -52,7 +52,7 @@
     --bad:#e2607a;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
   html[data-theme="light"]{
     
-    --bad:#c2405c;--zebra:rgba(0,0,0,.024);--goHover:#18492f}
+    --bad:#c2405c;--zebra:rgba(0,0,0,.024);}
 
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);
@@ -138,7 +138,7 @@
 
   /* ----------------------------------------------------------- the detail */
   .detail{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
-  .dhead{padding:16px 18px;border-bottom:1px solid var(--line);background:var(--card2)}
+  .dhead{padding:16px 18px;border-bottom:1px solid var(--line);background:var(--card-2)}
   .dcode{font-family:'Space Mono',monospace;font-size:19px;color:var(--accent);font-weight:700}
   .ddesc{font-size:15.5px;margin-top:5px;word-break:break-word}
   .dtags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
@@ -179,7 +179,7 @@
 <script src="../_lib/motion.js?v=1" defer></script>
 <script src="../_lib/ask.js?v=1" defer></script>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=2">
+<link rel="stylesheet" href="../_lib/category.css?v=4">
 </head>
 <body>
 <header class="hdr">
@@ -411,7 +411,7 @@ function applyTheme(t){
 }
 let savedTheme = null;
 try { savedTheme = localStorage.getItem(THEME_KEY); } catch(e){}
-applyTheme(savedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+applyTheme(savedTheme || 'light');
 $('themeBtn').onclick = () => {
   const to = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   try { localStorage.setItem(THEME_KEY, to); } catch(e){}

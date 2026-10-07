@@ -216,7 +216,7 @@
 <script src="../_lib/motion.js?v=1" defer></script>
 <script src="../_lib/ask.js?v=1" defer></script>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=2">
+<link rel="stylesheet" href="../_lib/category.css?v=4">
 </head>
 <body>
 <header class="hdr">
@@ -552,7 +552,7 @@ const S = {
 const THEME_KEY = 'office_tool_theme';
 function applyTheme(t){ document.documentElement.dataset.theme = t; $('themeBtn').textContent = t === 'dark' ? '☀' : '☾';
   try { localStorage.setItem(THEME_KEY, t); } catch(e){} }
-applyTheme(localStorage.getItem(THEME_KEY) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+applyTheme(localStorage.getItem(THEME_KEY) || 'light');
 $('themeBtn').onclick = () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 
 let tt; function toast(m, ms){ const t = $('toast'); t.textContent = m; t.classList.add('show');

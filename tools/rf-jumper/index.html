@@ -48,16 +48,30 @@
 <style>
   /* Amber - the colour the design gave this chart. Only the accent is this
      tool's own; the ground, the lines and the type come from the aurora skin. */
+  /* --swatchEdge WAS --gridLine, and it does NOT follow the category.
+
+     It outlines the jumper colour swatches, and a swatch outline has to
+     separate an ARBITRARY colour from the card - including a black jumper,
+     which is 1.37:1 against the card on its own and would otherwise simply
+     not be there. The outline is what makes it a swatch rather than a hole.
+
+     Measured on the field dark card #21271E: this value is 6.76:1. The
+     category's --line is 1.25 and --line3 is 1.82, so handing this to either
+     would erase the thing it exists to draw.
+
+     Renamed rather than left as "gridLine" because the old name read like
+     furniture, which is why it was nearly swapped for a hairline. It is the
+     same kind of thing as the chart fills below: information, not chrome. */
   :root,html[data-theme="dark"]{
     --bad:#e2607a;--zebra:rgba(255,255,255,.02);
-    --gridLine:rgba(255,255,255,.62);--goHover:var(--accentB)}
+    --swatchEdge:rgba(255,255,255,.62);--goHover:var(--accentB)}
   html[data-theme="light"]{
     --bad:#c2405c;--zebra:rgba(0,0,0,.024);
-    --gridLine:#1c1c1c;--goHover:#6e4812}
+    --swatchEdge:#1c1c1c;}
 
   /* the chart's own fills, the same in both themes - they are the information */
   :root{--c-green:#00b050;--c-red:#ff0000;--c-yellow:#ffff00;--c-blue:#558ed5;--c-white:#ffffff;
-    --s-teal:#31849b;--s-maroon:#953735;--s-jumper:#558ed5}
+    }
 
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);
@@ -144,7 +158,7 @@
     padding:5px 12px 5px 7px;cursor:pointer;transition:border-color .15s ease,background .15s ease}
   .band:hover{border-color:var(--line3)}
   .band.on{border-color:var(--accent);background:var(--glowSoft)}
-  .sw{display:inline-block;width:15px;height:15px;border:1px solid var(--gridLine);flex:none}
+  .sw{display:inline-block;width:15px;height:15px;border:1px solid var(--swatchEdge);flex:none}
   .sw.green{background:var(--c-green)} .sw.red{background:var(--c-red)} .sw.yellow{background:var(--c-yellow)}
   .sw.blue{background:var(--c-blue)} .sw.white{background:var(--c-white)}
 
@@ -175,8 +189,8 @@
   /* the grid itself, drawn the way the chart draws it */
   table.grid{width:100%;border-collapse:collapse;table-layout:fixed}
   table.grid th{font-family:Arial,Helvetica,sans-serif;font-size:9px;font-weight:700;color:#111;background:#fff;
-    border:1px solid var(--gridLine);padding:2px 0;text-align:center;letter-spacing:.02em;white-space:nowrap}
-  table.grid td{height:17px;border:1px solid var(--gridLine)}
+    border:1px solid var(--swatchEdge);padding:2px 0;text-align:center;letter-spacing:.02em;white-space:nowrap}
+  table.grid td{height:17px;border:1px solid var(--swatchEdge)}
   table.grid td.none{border:0;background:transparent}
   table.grid td.green{background:var(--c-green)} table.grid td.red{background:var(--c-red)}
   table.grid td.yellow{background:var(--c-yellow)} table.grid td.blue{background:var(--c-blue)}
@@ -227,7 +241,7 @@
   @media (prefers-reduced-motion:reduce){ .combo,.modal,.toast{animation:none} }
 </style>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=2">
+<link rel="stylesheet" href="../_lib/category.css?v=4">
 </head>
 <body>
 
@@ -309,7 +323,7 @@
   }
   var saved = null;
   try { saved = localStorage.getItem(THEME); } catch(e){}
-  applyTheme(saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  applyTheme(saved || 'light');
   $('themeBtn').onclick = function(){
     var to = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     try { localStorage.setItem(THEME, to); } catch(e){}

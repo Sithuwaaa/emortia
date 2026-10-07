@@ -44,12 +44,12 @@
 <style>
   :root{
     --navy:#3a1a05;
-    --bg:#1c0700;--card:#2a1206;--card2:#230d03;--line:#4a2400;--line3:#6b3a12;
+    --bg:#1c0700;--card:#2a1206;--line:#4a2400;--line3:#6b3a12;
     --text:#f8ecdc;--muted:#bda183;--ok:#34c98b;--warn:#ffc634;--bad:#ff7d92;--info:#8fb8ff;
   }
   html[data-theme="light"]{
     --navy:#4a2407;
-    --bg:#fbf6f0;--card:#fff;--card2:#fdfaf6;--line:#ead9c9;--line3:#cdb49a;
+    --bg:#fbf6f0;--card:#fff;--line:#ead9c9;--line3:#cdb49a;
     --text:#2e1a05;--muted:#6d5a45;--ok:#1f9a68;--warn:#9a6c00;--bad:#c2405c;--info:#2f5fb3;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -100,7 +100,7 @@
   .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700}
   .btn.ok{background:var(--ok);border-color:var(--ok);color:#06200f;font-weight:700}
   .btn:disabled{opacity:.5;cursor:not-allowed}
-  .mini{height:32px;border-radius:8px;border:1px solid var(--line3);background:var(--card2);padding:0 10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .mini{height:32px;border-radius:8px;border:1px solid var(--line3);background:var(--card-2);padding:0 10px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
   .mini:hover{border-color:var(--accentB)}
 
   /* ---- the board: the answer first, in numbers you can read across a room ---- */
@@ -141,7 +141,7 @@
   .pipe h2,.panel h2{font:700 10.5px 'Space Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;
     display:flex;align-items:baseline;gap:10px}
   .pipe h2 span,.panel h2 span{margin-left:auto;letter-spacing:0;text-transform:none;font-weight:400}
-  .pbar{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:var(--card2)}
+  .pbar{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:var(--card-2)}
   .pbar i{display:block;min-width:4px;transition:flex-grow .4s ease}
   .pkey{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:9px;font-size:12.5px;color:var(--muted)}
   .pkey button{background:none;border:0;padding:0;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:6px}
@@ -168,7 +168,7 @@
   .rdy .meta{font-size:12.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rdy .meta b{color:var(--text);font-weight:600}
   .age{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);white-space:nowrap}
-  .age .tr{flex:1;height:6px;border-radius:3px;background:var(--card2);overflow:hidden}
+  .age .tr{flex:1;height:6px;border-radius:3px;background:var(--card-2);overflow:hidden}
   .age .tr i{display:block;height:100%;border-radius:3px}
   .age b{font:800 15px 'Bricolage Grotesque',sans-serif;min-width:2ch;text-align:right}
   .age.hot b{color:var(--bad)} .age.hot i{background:var(--bad)}
@@ -196,7 +196,7 @@
   .panel .none{color:var(--muted);font-size:13.5px;padding:14px 0 10px}
 
   /* ---- syncing, which is the owner's ---- */
-  .sync{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--card2);border:1px dashed var(--line3);border-radius:14px;padding:12px 16px;font-size:13.5px}
+  .sync{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;background:var(--card-2);border:1px dashed var(--line3);border-radius:14px;padding:12px 16px;font-size:13.5px}
   .sync .when{margin-right:auto;color:var(--muted)}
   .sync .when b{color:var(--text);font-weight:600}
   .sync label{font:700 10.5px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
@@ -210,7 +210,7 @@
 
   /* ---- finding ---- */
   .sbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .sbar input{flex:1;min-width:220px;background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;outline:none}
+  .sbar input{flex:1;min-width:220px;background:var(--card-2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;outline:none}
   .sbar input:focus{border-color:var(--accent)}
   .seg{display:flex;border:1px solid var(--line3);border-radius:10px;overflow:auto;max-width:100%}
   .seg button{background:transparent;border:0;padding:10px 13px;font-weight:600;cursor:pointer;white-space:nowrap}
@@ -232,7 +232,7 @@
   .pickbox{display:flex;align-items:center;justify-content:center;cursor:pointer;padding:2px}
   .pickbox input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;margin:0}
   .tk.picked{border-left-color:var(--accent)}
-  .tk.picked>summary{background:var(--card2)}
+  .tk.picked>summary{background:var(--card-2)}
 
   /* ---- a ticket ---- */
   #list{display:flex;flex-direction:column;gap:10px}
@@ -314,7 +314,7 @@
   .facts span{overflow-wrap:anywhere}
 
   /* collecting it: the one thing anybody does on this page */
-  .got{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .got{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
   .got .lbl{font-weight:700;margin-right:4px}
   .got input{background:var(--card);border:1px solid var(--line3);border-radius:8px;padding:7px 9px;outline:none;min-width:0}
   .got input[type=date]{font:12.5px 'Space Mono',monospace;color-scheme:dark}
@@ -332,7 +332,7 @@
 
   .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
   table{border-collapse:collapse;width:100%;min-width:1100px}
-  th{font:700 12px 'Hanken Grotesk',sans-serif;text-align:left;background:var(--card2);padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{font:700 12px 'Hanken Grotesk',sans-serif;text-align:left;background:var(--card-2);padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
   td{border-bottom:1px solid var(--line);padding:8px 10px;font-size:13.5px;vertical-align:top}
   tr:last-child td{border-bottom:0}
   td.m{font-family:'Space Mono',monospace;font-size:12.5px;white-space:nowrap}
@@ -354,13 +354,13 @@
   .needs i{font-style:normal;font-size:13px;color:var(--text2)}
   /* the card title in full - wrapped, selectable, nothing cut off. The row
      above shows it truncated; this is where you copy it from. */
-  .cardtitle{display:flex;flex-direction:column;gap:3px;background:var(--card2);
+  .cardtitle{display:flex;flex-direction:column;gap:3px;background:var(--card-2);
     border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin-bottom:10px}
   .cardtitle i{font:700 10px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
     color:var(--muted);font-style:normal}
   .cardtitle span{font-size:12.5px;line-height:1.5;word-break:break-word;user-select:all}
   /* ---- the card's own documents ---- */
-  .docs{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin-top:10px}
+  .docs{background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin-top:10px}
   .docs .h{font:700 11px 'Space Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
   .docs .doc{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;padding:4px 0;font-size:13px}
   .docs .doc+.doc{border-top:1px solid var(--line)}
@@ -374,7 +374,7 @@
   .sitereq .h small{font-weight:400;text-transform:none;letter-spacing:0}
   /* the shape of a sync, said rather than inferred from a subtraction */
   .tally{margin-top:10px;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px;
-    background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+    background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
   .tally b{color:var(--text)}
   .chk{font:700 11px 'Space Mono',monospace;white-space:nowrap}
   /* struck off the card, not dropped from the page */
@@ -389,7 +389,7 @@
   #syncDlg .box{background:var(--card);border:1px solid var(--line3);border-radius:16px;padding:18px;width:min(620px,100%);max-height:86vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
   #syncDlg h3{font:700 18px 'Bricolage Grotesque',sans-serif}
   #syncDlg p{font-size:14px;color:var(--muted)}
-  #syncDlg .chg{font:12.5px 'Space Mono',monospace;display:flex;flex-direction:column;gap:3px;max-height:240px;overflow:auto;background:var(--card2);border-radius:10px;padding:10px}
+  #syncDlg .chg{font:12.5px 'Space Mono',monospace;display:flex;flex-direction:column;gap:3px;max-height:240px;overflow:auto;background:var(--card-2);border-radius:10px;padding:10px}
   #syncDlg .bar{display:flex;gap:10px;justify-content:flex-end}
   .bar2{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
   .bar2 i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease}
@@ -402,7 +402,7 @@
   }
 </style>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=2">
+<link rel="stylesheet" href="../_lib/category.css?v=4">
 </head>
 <body>
 <header class="hdr">
@@ -525,7 +525,7 @@ const inSrc = t => SRC === 'all' || (t.phase || '') === SRC;
 
 /* ---- theme ---- */
 function paintTheme(){
-  let t = 'dark'; try { t = localStorage.getItem('wh24.theme') || 'dark'; } catch(e){}
+  let t = 'light'; try { t = localStorage.getItem('wh24.theme') || 'light'; } catch(e){}
   document.documentElement.dataset.theme = t;
   $('themeBtn').textContent = t === 'light' ? '☀' : '◐';
 }

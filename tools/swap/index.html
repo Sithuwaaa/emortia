@@ -48,12 +48,12 @@
 <style>
   :root{
     --navy:#3a2205;
-    --bg:#1e0500;--card:#2b1206;--card2:#240d03;--line:#4a2200;--line3:#6b3a10;
+    --bg:#1e0500;--card:#2b1206;--line:#4a2200;--line3:#6b3a10;
     --text:#f8ecdc;--muted:#bda183;--ok:#34c98b;--bad:#ff7d92;
   }
   html[data-theme="light"]{
     --navy:#4a2c07;
-    --bg:#fbf6f0;--card:#fff;--card2:#fdfaf6;--line:#ead9c9;--line3:#cdb49a;
+    --bg:#fbf6f0;--card:#fff;--line:#ead9c9;--line3:#cdb49a;
     --text:#2e1a05;--muted:#6d5a45;--ok:#1f9a68;--bad:#c2405c;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -133,7 +133,7 @@
   @media (max-width:900px){.top{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
   .fld{display:flex;flex-direction:column;gap:5px;min-width:0}
   .fld label{font:700 10.5px 'Space Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-  .fld input{background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;min-width:0;outline:none}
+  .fld input{background:var(--card-2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;min-width:0;outline:none}
   .fld input:focus{border-color:var(--accent)}
   .fld input[readonly]{border-color:var(--line);color:var(--muted)}
   .fld .big{font:700 16px 'Space Mono',monospace;color:var(--accentB);text-transform:uppercase}
@@ -156,10 +156,10 @@
   table{border-collapse:collapse;width:100%;min-width:1420px}
   html:not(.is-owner) .own{display:none}
   html:not(.is-owner) #rows ~ * table, html:not(.is-owner) .panel table{min-width:1080px}
-  th{font:700 12.5px 'Hanken Grotesk',sans-serif;text-align:left;color:var(--text);background:var(--card2);padding:11px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{font:700 12.5px 'Hanken Grotesk',sans-serif;text-align:left;color:var(--text);background:var(--card-2);padding:11px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
   td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;vertical-align:middle;height:48px}
   td:last-child{border-right:0}
-  td.n{width:38px;text-align:center;color:var(--muted);font:12px 'Space Mono',monospace;background:var(--card2)}
+  td.n{width:38px;text-align:center;color:var(--muted);font:12px 'Space Mono',monospace;background:var(--card-2)}
   td.ro{padding:0 10px;color:var(--muted);font-size:13.5px;white-space:nowrap}
   td.ro.id{font-family:'Space Mono',monospace;color:var(--accentB)}
   td input,td select{width:100%;height:48px;border:0;background:transparent;padding:0 10px;outline:none}
@@ -175,14 +175,14 @@
   td.sn{min-width:230px}
   .sncell{display:flex;align-items:center;gap:6px;padding-right:6px}
   .sncell input{font-family:'Space Mono',monospace;text-transform:uppercase}
-  .mini{height:32px;border-radius:8px;border:1px solid var(--line3);background:var(--card2);padding:0 9px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .mini{height:32px;border-radius:8px;border:1px solid var(--line3);background:var(--card-2);padding:0 9px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
   .mini:hover{border-color:var(--accentB)}
   .mini.go{background:var(--accent);color:var(--ink);border-color:var(--accent)}
   .mini.on{border-color:var(--accentB);color:var(--accentB)}
   .phadd.opt{border-color:var(--line3);color:var(--muted)}
   td.loc{min-width:390px}
   .steps{display:flex;align-items:stretch;gap:0;padding:6px 8px}
-  .stp{display:flex;flex-direction:column;gap:3px;min-width:0;padding:4px 8px;border:1px solid var(--line3);background:var(--card2);cursor:pointer;position:relative}
+  .stp{display:flex;flex-direction:column;gap:3px;min-width:0;padding:4px 8px;border:1px solid var(--line3);background:var(--card-2);cursor:pointer;position:relative}
   .stp:first-child{border-radius:9px 0 0 9px} .stp:last-child{border-radius:0 9px 9px 0} .stp+.stp{border-left:0}
   .stp .hd{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;white-space:nowrap;color:var(--muted)}
   .stp .bx{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--line3);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;flex:0 0 auto}
@@ -261,7 +261,7 @@
   .tab.on{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700}
   .tab b{font-family:'Space Mono',monospace;font-size:12px;margin-left:4px}
   .sbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .sbar input{flex:1;min-width:200px;background:var(--card2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;outline:none}
+  .sbar input{flex:1;min-width:200px;background:var(--card-2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;outline:none}
   .sbar input:focus{border-color:var(--accent)}
   .site{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .site>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:14px 16px}
@@ -310,7 +310,7 @@
   }
 </style>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=2">
+<link rel="stylesheet" href="../_lib/category.css?v=4">
 </head>
 <body>
 <header class="hdr">
@@ -440,7 +440,7 @@ let SITES = {}, MAT = { byCode:{}, all:[] }, ROWS = [], SITE = { id:'', name:'' 
 
 /* ---- theme ---- */
 function paintTheme(){
-  let t = 'dark'; try { t = localStorage.getItem('swap.theme') || 'dark'; } catch(e){}
+  let t = 'light'; try { t = localStorage.getItem('swap.theme') || 'light'; } catch(e){}
   document.documentElement.dataset.theme = t;
   $('themeBtn').textContent = t === 'light' ? '☀' : '◐';
 }

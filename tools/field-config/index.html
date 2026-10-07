@@ -50,11 +50,11 @@
   :root,html[data-theme="dark"]{
     
     --bad:#e2607a;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB);
-    --vsub:#93acb1}
+    }
   html[data-theme="light"]{
     
-    --bad:#c2405c;--zebra:rgba(0,0,0,.024);--goHover:#6b4104;
-    --vsub:#586f75}
+    --bad:#c2405c;--zebra:rgba(0,0,0,.024);
+    }
 
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);
@@ -117,7 +117,7 @@
     letter-spacing:.02em;text-transform:uppercase}
   /* the sub-label needs its own colour per theme; --muted is 4.29 on the bar
      in light and 3.81 in dark, and this is 9.5px type */
-  .vendor i{color:var(--vsub);font-style:normal;font-family:'Space Mono',monospace;
+  .vendor i{color:var(--muted);font-style:normal;font-family:'Space Mono',monospace;
     font-size:9.5px;letter-spacing:.11em;text-transform:uppercase}
   .vendor.on b,.vendor.on i{color:var(--accent-ink)}
   .vendor.on i{opacity:.82}
@@ -242,7 +242,7 @@
 <script src="../_lib/motion.js?v=1" defer></script>
 <script src="../_lib/ask.js?v=1" defer></script>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=2">
+<link rel="stylesheet" href="../_lib/category.css?v=4">
 </head>
 <body>
 
@@ -506,7 +506,7 @@
   }
   var saved = null;
   try { saved = localStorage.getItem(THEME); } catch(e){}
-  applyTheme(saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  applyTheme(saved || 'light');
 
   /* --------------------------------------------------------------- start */
 

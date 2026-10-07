@@ -61,7 +61,7 @@
      gets its own colour rather than washing out in light mode. */
   html[data-theme="light"]{
     
-    --bad:#c2405c;--zebra:rgba(0,0,0,.024);--goHover:#46590f}
+    --bad:#c2405c;--zebra:rgba(0,0,0,.024);}
 
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);
@@ -290,7 +290,7 @@
   }
 </style>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=2">
+<link rel="stylesheet" href="../_lib/category.css?v=4">
 </head>
 <body>
 
@@ -1283,7 +1283,7 @@
   }
   var saved = null;
   try { saved = localStorage.getItem(THEME); } catch(e){}
-  applyTheme(saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  applyTheme(saved || 'light');
 
   /* --------------------------------------------------------------- start */
 

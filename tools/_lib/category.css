@@ -1,108 +1,134 @@
-/* Emortia tool category colours ("Your Picks").
-   Set data-cat on <html>; overrides each tool's own accent + surfaces.
-   Low-glare: warm charcoal (dark) / warm off-white (light), parchment/espresso text.
-   design #6F1D1B · emortia #FF467A · field #76C457 · people #C654C3 · site #B58500 */
+/* Emortia tool category colours.
+
+   THE FIVE IDENTITIES, chosen to stop the palette shouting:
+
+     Design & materials  #d0f4de    Emortia           #ff99c8
+     Field operations    #a9def9    People & work     #e4c1f9
+     Site intelligence   #fcf6bd
+
+   These replace the saturated set before them (#6F1D1B, #FF467A, #76C457,
+   #C654C3, #B58500). The grounds stay where they were - warm charcoal dark,
+   warm off-white light, parchment and espresso text - and are tinted toward
+   each family rather than coloured by it.
+
+   HOW A PASTEL IS USED, because it cannot be used the same way in both
+   themes. On charcoal the pastel IS the colour: --accentT and --accentB are
+   the hex above, verbatim, and --accent is a half-step deeper so a filled
+   button is not a lamp. On warm off-white the same hex is invisible as text,
+   so the light theme carries a deepened version of the same hue and keeps the
+   pastel only in --glow / --glowSoft, where it is a tint rather than a mark.
+
+   EVERY LIGHT VALUE IS SOLVED, NOT SET. A pale yellow deepened by the same
+   fixed amount as a lavender lands at 2.91:1 on off-white, under even the 3:1
+   floor for a non-text element, while the lavender is 9.09. Hues do not carry
+   the same luminance, so each one's lightness is found against its own ground
+   until it clears the bar. Measured across all ten blocks: lowest --accent
+   4.63, lowest --accentT 5.61, lowest ink-on-accent 5.03, lowest body text
+   13.12. Nothing here is under 4.5, so there is no exception to remember.
+
+   EVERY DECLARATION IS !important, AND THAT IS DELIBERATE. Nine of the
+   sixteen tools declare --bg, --card, --text, --navy and friends in their own
+   :root, and a tool's own <style> comes after this file, so without it the
+   ground would simply not move in those nine - silently, and obviously wrong
+   on only the one tool whose private palette was a different colour.
+   It is blunt and it has a cost: a page that later needs to legitimately
+   override one of these cannot, and will not be told why. If that day comes,
+   the fix is to delete the shadowing declarations from the tools, not to
+   weaken this file - the duplicates are the problem and !important is only
+   holding them down.
+
+   Set data-cat on <html>. tools/_lib/family.test.js ties this file, the
+   data-cat on each page and the group in access.js together, and fails if a
+   tool grows a colour of its own again. */
 html[data-cat="design"]{
-  --accent:#C9756E !important; --accentB:#E09A92 !important; --accentT:#E09A92 !important; --accentD:#8A3A36 !important;
+  --accent:#94e6b4 !important; --accentB:#d0f4de !important; --accentT:#d0f4de !important; --accentD:#2fa75e !important;
   --accent-ink:#1A1214 !important;
-  --bg:#1C1615 !important; --card:#271E1D !important; --card-2:#211A19 !important;
-  --line:#3A2B29 !important; --line3:#523C39 !important;
+  --bg:#161714 !important; --card:#1b1e1a !important; --card-2:#191b17 !important;
+  --line:#222822 !important; --line3:#2a322b !important;
   --text:#EDE3D3 !important; --muted:#B3A597 !important;
-  --navy:#151011 !important; --navy-2:#2E201F !important;
-  --glow:rgba(224,154,146,0.32) !important; --glowSoft:rgba(224,154,146,0.16) !important;
+  --navy:#141412 !important; --navy-2:#1d201c !important;
+  --glow:rgba(208,244,222,0.30) !important; --glowSoft:rgba(208,244,222,0.15) !important;
 }
 html[data-cat="design"][data-theme="light"]{
-  --accent:#7A2A27 !important; --accentB:#6F1D1B !important; --accentT:#6F1D1B !important; --accentD:#5A1715 !important;
+  --accent:#377c52 !important; --accentB:#306d48 !important; --accentT:#306d48 !important; --accentD:#285a3c !important;
   --accent-ink:#FFFFFF !important;
-  --bg:#F7F2EE !important; --card:#FCF9F6 !important; --card-2:#F1E9E4 !important;
-  --line:#E6D6D2 !important; --line3:#D2BCB7 !important;
+  --bg:#f4f6f2 !important; --card:#f9f8f6 !important; --card-2:#eff3ee !important;
+  --line:#e7efe7 !important; --line3:#d6e6d9 !important;
   --text:#2B1E1A !important; --muted:#6B5E55 !important;
-  --navy:#3A1614 !important; --navy-2:#4A201D !important;
-  --glow:rgba(111,29,27,0.24) !important; --glowSoft:rgba(111,29,27,0.12) !important;
+  --navy:#1d211c !important; --navy-2:#222822 !important;
+  --glow:rgba(48,109,72,0.30) !important; --glowSoft:rgba(48,109,72,0.15) !important;
 }
 html[data-cat="emortia"]{
-  --accent:#EE7C9C !important; --accentB:#FF94B1 !important; --accentT:#FF94B1 !important; --accentD:#9C3D58 !important;
+  --accent:#fa80b8 !important; --accentB:#ff99c8 !important; --accentT:#ff99c8 !important; --accentD:#c41264 !important;
   --accent-ink:#1A1214 !important;
-  --bg:#1C1517 !important; --card:#291D21 !important; --card-2:#22191C !important;
-  --line:#3D2A30 !important; --line3:#573A44 !important;
+  --bg:#1a1414 !important; --card:#20191a !important; --card-2:#1d1617 !important;
+  --line:#2a2022 !important; --line3:#34282b !important;
   --text:#EDE3D3 !important; --muted:#B3A597 !important;
-  --navy:#161012 !important; --navy-2:#2F1E23 !important;
-  --glow:rgba(255,148,177,0.32) !important; --glowSoft:rgba(255,148,177,0.16) !important;
+  --navy:#161212 !important; --navy-2:#221b1c !important;
+  --glow:rgba(255,153,200,0.30) !important; --glowSoft:rgba(255,153,200,0.15) !important;
 }
 html[data-cat="emortia"][data-theme="light"]{
-  --accent:#C23D63 !important; --accentB:#B8325A !important; --accentT:#B8325A !important; --accentD:#9E2A4C !important;
+  --accent:#c33577 !important; --accentB:#ab2f68 !important; --accentT:#ab2f68 !important; --accentD:#902758 !important;
   --accent-ink:#FFFFFF !important;
-  --bg:#F8F1F2 !important; --card:#FDF9F9 !important; --card-2:#F3E7EA !important;
-  --line:#EDD5DC !important; --line3:#DDB6C2 !important;
+  --bg:#f7f2f2 !important; --card:#faf7f6 !important; --card-2:#f5edee !important;
+  --line:#f0e5e7 !important; --line3:#e7d4da !important;
   --text:#2B1E1A !important; --muted:#6B5E55 !important;
-  --navy:#3D1324 !important; --navy-2:#4E1A2F !important;
-  --glow:rgba(194,61,99,0.24) !important; --glowSoft:rgba(194,61,99,0.12) !important;
+  --navy:#231b1d !important; --navy-2:#2a2022 !important;
+  --glow:rgba(171,47,104,0.30) !important; --glowSoft:rgba(171,47,104,0.15) !important;
 }
 html[data-cat="field"]{
-  --accent:#8CC473 !important; --accentB:#A8DA91 !important; --accentT:#A8DA91 !important; --accentD:#4F7A3E !important;
+  --accent:#83cff6 !important; --accentB:#a9def9 !important; --accentT:#a9def9 !important; --accentD:#1786bf !important;
   --accent-ink:#1A1214 !important;
-  --bg:#161A15 !important; --card:#21271E !important; --card-2:#1B2019 !important;
-  --line:#2E3829 !important; --line3:#435239 !important;
+  --bg:#161616 !important; --card:#1b1c1d !important; --card-2:#191919 !important;
+  --line:#222526 !important; --line3:#2a2e31 !important;
   --text:#EDE3D3 !important; --muted:#B3A597 !important;
-  --navy:#111410 !important; --navy-2:#1F271C !important;
-  --glow:rgba(168,218,145,0.32) !important; --glowSoft:rgba(168,218,145,0.16) !important;
+  --navy:#141413 !important; --navy-2:#1d1e1f !important;
+  --glow:rgba(169,222,249,0.30) !important; --glowSoft:rgba(169,222,249,0.15) !important;
 }
-/* --accent here is 4.39:1 on this --bg. THAT IS CORRECT AND DELIBERATE - do
-   not "fix" it.
-
-   4.5:1 is the threshold for TEXT. --accent in light mode is a border and
-   fill token: borders, focus rings, the filled state of a toggle. Non-text UI
-   components need 3:1 (WCAG 1.4.11), which 4.39 clears comfortably.
-
-   The text-coloured accent for this category is --accentT, and it is 5.19:1
-   on the same ground. Nothing readable is rendered in 4.39.
-
-   Changing a designed colour to satisfy a rule that does not apply to its
-   role is how a palette gets worse one well-meaning commit at a time. */
 html[data-cat="field"][data-theme="light"]{
-  --accent:#477F32 !important; --accentB:#3D7329 !important; --accentT:#3D7329 !important; --accentD:#335F23 !important;
+  --accent:#2e759a !important; --accentB:#286787 !important; --accentT:#286787 !important; --accentD:#225671 !important;
   --accent-ink:#FFFFFF !important;
-  --bg:#F3F5EE !important; --card:#FBFCF8 !important; --card-2:#EBEFE3 !important;
-  --line:#D9E3D0 !important; --line3:#BFD0B2 !important;
+  --bg:#f4f5f4 !important; --card:#f9f8f6 !important; --card-2:#eff1f1 !important;
+  --line:#e7ebed !important; --line3:#d6e0e4 !important;
   --text:#2B1E1A !important; --muted:#6B5E55 !important;
-  --navy:#1E3016 !important; --navy-2:#28401E !important;
-  --glow:rgba(71,127,50,0.24) !important; --glowSoft:rgba(71,127,50,0.12) !important;
+  --navy:#1d1f20 !important; --navy-2:#222526 !important;
+  --glow:rgba(40,103,135,0.30) !important; --glowSoft:rgba(40,103,135,0.15) !important;
 }
 html[data-cat="people"]{
-  --accent:#D08ACD !important; --accentB:#E5A6E2 !important; --accentT:#E5A6E2 !important; --accentD:#7E3F7C !important;
+  --accent:#ca86f3 !important; --accentB:#e4c1f9 !important; --accentT:#e4c1f9 !important; --accentD:#7f1cba !important;
   --accent-ink:#1A1214 !important;
-  --bg:#1B161A !important; --card:#281E26 !important; --card-2:#211920 !important;
-  --line:#3B2C39 !important; --line3:#543F52 !important;
+  --bg:#191416 !important; --card:#1f191d !important; --card-2:#1b1619 !important;
+  --line:#272026 !important; --line3:#312831 !important;
   --text:#EDE3D3 !important; --muted:#B3A597 !important;
-  --navy:#151013 !important; --navy-2:#2A1E2B !important;
-  --glow:rgba(229,166,226,0.32) !important; --glowSoft:rgba(229,166,226,0.16) !important;
+  --navy:#161213 !important; --navy-2:#201b1f !important;
+  --glow:rgba(228,193,249,0.30) !important; --glowSoft:rgba(228,193,249,0.15) !important;
 }
 html[data-cat="people"][data-theme="light"]{
-  --accent:#954192 !important; --accentB:#8A3887 !important; --accentT:#8A3887 !important; --accentD:#74306F !important;
+  --accent:#9649c4 !important; --accentB:#893bb7 !important; --accentT:#893bb7 !important; --accentD:#723199 !important;
   --accent-ink:#FFFFFF !important;
-  --bg:#F6F0F4 !important; --card:#FDF9FC !important; --card-2:#EFE5ED !important;
-  --line:#E7D5E4 !important; --line3:#D3B7D0 !important;
+  --bg:#f6f2f4 !important; --card:#f9f7f6 !important; --card-2:#f2edf1 !important;
+  --line:#ede5ed !important; --line3:#e1d4e4 !important;
   --text:#2B1E1A !important; --muted:#6B5E55 !important;
-  --navy:#351736 !important; --navy-2:#452047 !important;
-  --glow:rgba(149,65,146,0.24) !important; --glowSoft:rgba(149,65,146,0.12) !important;
+  --navy:#211b20 !important; --navy-2:#272026 !important;
+  --glow:rgba(137,59,183,0.30) !important; --glowSoft:rgba(137,59,183,0.15) !important;
 }
 html[data-cat="site"]{
-  --accent:#D2AE4E !important; --accentB:#E3C46C !important; --accentT:#E3C46C !important; --accentD:#7D6320 !important;
+  --accent:#f9ee80 !important; --accentB:#fcf6bd !important; --accentT:#fcf6bd !important; --accentD:#c3b213 !important;
   --accent-ink:#1A1214 !important;
-  --bg:#1A1713 !important; --card:#26211A !important; --card-2:#1F1C16 !important;
-  --line:#3A3226 !important; --line3:#524634 !important;
+  --bg:#1a1713 !important; --card:#201e18 !important; --card-2:#1d1a15 !important;
+  --line:#2a271f !important; --line3:#343126 !important;
   --text:#EDE3D3 !important; --muted:#B3A597 !important;
-  --navy:#14110D !important; --navy-2:#29231A !important;
-  --glow:rgba(227,196,108,0.32) !important; --glowSoft:rgba(227,196,108,0.16) !important;
+  --navy:#161411 !important; --navy-2:#221f19 !important;
+  --glow:rgba(252,246,189,0.30) !important; --glowSoft:rgba(252,246,189,0.15) !important;
 }
 html[data-cat="site"][data-theme="light"]{
-  --accent:#856300 !important; --accentB:#765700 !important; --accentT:#765700 !important; --accentD:#614700 !important;
+  --accent:#787021 !important; --accentB:#69621d !important; --accentT:#69621d !important; --accentD:#595319 !important;
   --accent-ink:#FFFFFF !important;
-  --bg:#F7F3EA !important; --card:#FCFAF4 !important; --card-2:#F0EADB !important;
-  --line:#E8DDC3 !important; --line3:#D6C59E !important;
+  --bg:#f7f5f0 !important; --card:#faf8f5 !important; --card-2:#f5f3eb !important;
+  --line:#f0eee3 !important; --line3:#e7e4d2 !important;
   --text:#2B1E1A !important; --muted:#6B5E55 !important;
-  --navy:#33270A !important; --navy-2:#43340F !important;
-  --glow:rgba(133,99,0,0.24) !important; --glowSoft:rgba(133,99,0,0.12) !important;
+  --navy:#23201a !important; --navy-2:#2a271f !important;
+  --glow:rgba(105,98,29,0.30) !important; --glowSoft:rgba(105,98,29,0.15) !important;
 }
 html[data-cat]{color-scheme:dark}
 html[data-cat][data-theme="light"]{color-scheme:light}
