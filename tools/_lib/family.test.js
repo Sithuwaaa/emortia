@@ -77,13 +77,13 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     '5e12d206f34c5bd74c3e35aecd5ce24a6f68c5644ba4ae9e7055d2c6e269af7f');
+     '9c51437dae420df42eab877757b9a859efa1a20c76a2613f2d82a1255b15ac1e');
   /* The five identities, verbatim, so a "tidy-up" cannot quietly round one.
      In dark these ARE --accentT; in light they survive only in --glow. */
   for (const [cat, pick] of [['design','#d0f4de'], ['emortia','#ff99c8'],
                              ['field','#a9def9'], ['people','#e4c1f9'], ['site','#fcf6bd']])
     is(cat + ' still wears ' + pick,
-       new RegExp('data-cat="' + cat + '"\\]\\{[^}]*--accentT:' + pick + '\\b').test(NAV), true);
+       new RegExp('data-cat="' + cat + '"\\]\\{[^}]*--accentT:' + pick + '\\b', 'i').test(NAV), true);
   is('and the reason !important is here is written down',
      /!important, AND THAT IS DELIBERATE/.test(NAV), true);
 }
@@ -272,11 +272,41 @@ for (const [group, fam] of Object.entries(FAMILY_OF)) {
    tool's. They are two files, so they are two chances to disagree: the
    directory sat on the old maroon set for a day after the tools had moved.
    Different tokens, same five anchors, asserted. */
-console.log('\n--- the directory uses the same five anchors ---');
-for (const [fam, pick] of [['design','#d0f4de'], ['emortia','#ff99c8'], ['field','#a9def9'],
-                           ['people','#e4c1f9'], ['site','#fcf6bd']])
-  is('.tgrp-' + fam + ' is ' + pick,
-     new RegExp('^\\.tgrp-' + fam + '\\{--gc:' + pick + ';\\}', 'm').test(INDEX), true);
+/* THE SAME HUE, NOT THE SAME HEX. The directory sits on the burgundy page
+   rather than a tool's own ground, and the pastel at full strength was a lamp
+   there - 9.7 to 17.3 against #170d10, where the band the page was designed
+   around was 1.7. So the directory carries a dimmed tone of each family. What
+   must hold is that it is the SAME COLOUR, dimmer - which is a statement
+   about hue, and asserting the hex would only have forced the brightness
+   back. */
+console.log('\n--- the directory carries the same five hues ---');
+{
+  const hueOf = h => {
+    const [r, g, b] = [0, 2, 4].map(i => parseInt(h.replace('#','').slice(i, i + 2), 16) / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (!d) return null;
+    let x = mx === r ? ((g - b) / d + (g < b ? 6 : 0)) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (x * 60 + 360) % 360;
+  };
+  const apart = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+  for (const [fam, pick] of [['design','#d0f4de'], ['emortia','#ff99c8'], ['field','#a9def9'],
+                             ['people','#e4c1f9'], ['site','#fcf6bd']]) {
+    const m = INDEX.match(new RegExp('^\\.tgrp-' + fam + '\\{--gc:(#[0-9a-fA-F]{6});\\}', 'm'));
+    is('.tgrp-' + fam + ' is set', !!m, true);
+    if (!m) continue;
+    is('and it is the ' + pick + ' hue, within 6 degrees',
+       apart(hueOf(m[1]), hueOf(pick)) <= 6, true);
+  }
+  /* The point of the change: nothing in the directory glares any more. */
+  const lum = h => { const c = [0,2,4].map(i => parseInt(h.replace('#','').slice(i,i+2),16)/255)
+      .map(v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
+    return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2]; };
+  const onPage = h => (Math.max(lum(h), lum('#170d10')) + 0.05) / (Math.min(lum(h), lum('#170d10')) + 0.05);
+  const bands = [...INDEX.matchAll(/^\.tool-[a-z0-9]+\{--tc:(#[0-9a-fA-F]{6})/gm)].map(m => m[1]);
+  is('all sixteen card bands are present', bands.length, 16);
+  is('and not one of them is a lamp on the page',
+     bands.filter(b => onPage(b) > 5).map(b => b + ' ' + onPage(b).toFixed(1)), []);
+}
 
 console.log('\n--- the mapping ---');
 for (const r of mapping) console.log('  ' + r.tool.padEnd(17) + r.group.padEnd(21) + r.family);
