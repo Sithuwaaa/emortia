@@ -129,7 +129,7 @@
   .lg-day .wd{font-size:10.5px;letter-spacing:.06em}
   .lg-day .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px;color:var(--text)}
   .lg-day.on{background:var(--accent);border-color:var(--accent)}
-  .lg-day.on .wd,.lg-day.on .n{color:var(--ink)}
+  .lg-day.on .wd,.lg-day.on .n{color:var(--accent-ink)}
   .lg-page{flex:none;align-self:stretch;min-width:34px;padding:0 10px;border-radius:12px;
     border:1px solid var(--line3);background:var(--card);color:var(--muted);cursor:pointer;
     font:inherit;font-size:15px;line-height:1}
@@ -205,7 +205,7 @@
   .lv-chip,.tm-chip{flex:none;white-space:nowrap;padding:7px 12px;border-radius:999px;cursor:pointer;
     font-size:13px;font-weight:600;border:1px solid var(--line3);background:transparent;color:var(--muted)}
   .lv-chip.on,.tm-chip.on{border-color:var(--accent);background:rgba(var(--accentRGB,234,132,250),.16);color:var(--accentB)}
-  .lv-add{padding:13px;border:0;border-radius:12px;background:var(--accent);color:var(--ink);
+  .lv-add{padding:13px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);
     font-weight:700;font-size:15px;cursor:pointer}
   .lv-add:hover{filter:brightness(1.08)}
   .lv-list{padding:0;overflow:hidden}
@@ -282,7 +282,7 @@
   .xp-seg{display:flex;background:var(--card-2);border:1px solid var(--line3);border-radius:10px;padding:3px;gap:2px}
   .xp-b{font:inherit;font-size:13px;font-weight:600;padding:7px 13px;border:0;border-radius:7px;
     background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
-  .xp-b.on{background:var(--accent);color:var(--ink)}
+  .xp-b.on{background:var(--accent);color:var(--accent-ink)}
   .xp-in{background:var(--card-2);border:1px solid var(--line3);border-radius:10px;padding:9px 12px;
     color:var(--text);font:inherit;font-size:14px;color-scheme:dark;outline:none;min-width:190px}
   .xp-in:focus{border-color:var(--accent)}
@@ -323,7 +323,7 @@
   .lk-extras{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   .lk-ex{display:flex;align-items:center;gap:8px;background:var(--card-2);border:1px solid var(--line3);
     border-radius:999px;padding:6px 12px;font-size:12.5px;color:var(--text)}
-  .lk-tail{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+  .lk-tail{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)}
   @media (max-width:560px){ .lk-qr{width:100%;max-width:240px;margin:0 auto} }
 
   /* ---- the month view ----
@@ -340,7 +340,7 @@
   .dsh-shape{display:flex;background:var(--card-2);border:1px solid var(--line3);border-radius:10px;padding:3px;margin-left:auto}
   .dsh-sh{padding:7px 14px;border:0;border-radius:7px;cursor:pointer;font-weight:600;font-size:13px;
     background:transparent;color:var(--muted)}
-  .dsh-sh.on{background:var(--accent);color:var(--ink)}
+  .dsh-sh.on{background:var(--accent);color:var(--accent-ink)}
   .dsh-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
   .dsh-stat{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--line);
     border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
@@ -363,12 +363,12 @@
     font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .dsh-hrow .dsh-who{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.14em;
     text-transform:uppercase;color:var(--muted);padding:8px 14px}
-  .dsh-who .av{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--ink);
+  .dsh-who .av{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
     font:700 10.5px/1 'Space Mono',monospace;display:flex;align-items:center;justify-content:center;flex:none}
   .dsh-dh{width:30px;min-width:30px;flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0}
   .dsh-dh .wd{font-size:10px;color:var(--muted)}
   .dsh-dh .dn{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:700;color:var(--dim)}
+    font-size:12px;font-weight:700;color:var(--muted)}
   /* Sunday in red and Saturday in ash, so the shape of a week is readable
      before a single cell is. A holiday takes the red too - it is the same
      kind of day - and a dot under it, because the name will not fit in a
@@ -394,7 +394,7 @@
     width:7px;height:7px;border-radius:50%;background:var(--holPub);
     box-shadow:0 0 0 2px var(--card),0 0 0 3px rgba(0,0,0,.35)}
   .dsh-dh.hol.poya::after{background:var(--holPoya)}
-  .dsh-dh.now .dn{background:var(--accent);color:var(--ink);opacity:1}
+  .dsh-dh.now .dn{background:var(--accent);color:var(--accent-ink);opacity:1}
   .dsh-c{width:30px;min-width:30px;flex:none;display:flex;justify-content:center;padding:3px 0}
   .dsh-row:hover{background:rgba(var(--accentRGB,234,132,250),.05)}
   .dsh-role{position:sticky;left:0;width:max-content;white-space:nowrap;padding:14px 14px 6px;
@@ -406,7 +406,7 @@
   .dsh-tile{background:var(--card-2);border:1px solid var(--line3);border-radius:14px;padding:14px;
     display:flex;flex-direction:column;gap:12px}
   .dsh-tile .hd{display:flex;align-items:center;gap:10px}
-  .dsh-tile .av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--ink);
+  .dsh-tile .av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
     font:700 12px/1 'Space Mono',monospace;display:flex;align-items:center;justify-content:center;flex:none}
   .dsh-tile .nm{display:flex;flex-direction:column;min-width:0;flex:1}
   .dsh-tile .nm b{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -426,22 +426,22 @@
     padding:15px 17px;margin-bottom:18px}
   .panel .row{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:13.5px}
   .panel .row + .row{border-top:1px solid var(--line)}
-  .sw{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);cursor:pointer}
+  .sw{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);cursor:pointer}
 
   /* Asking twice, properly */
   .ask-back{position:fixed;inset:0;z-index:200;background:rgba(4,6,14,.74);backdrop-filter:blur(3px);
     display:grid;place-items:center;padding:20px;animation:askIn .18s ease}
   @keyframes askIn{from{opacity:0}to{opacity:1}}
-  .ask{width:min(430px,100%);background:var(--card);border:1px solid var(--line2);border-radius:16px;
+  .ask{width:min(430px,100%);background:var(--card);border:1px solid var(--line);border-radius:16px;
     padding:22px;box-shadow:0 30px 70px rgba(0,0,0,.6)}
   .ask .step{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;
     text-transform:uppercase;color:var(--muted)}
   .ask h3{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;
     letter-spacing:-.02em;margin:7px 0 9px;line-height:1.2}
-  .ask p{font-size:13.5px;color:var(--dim);line-height:1.65}
+  .ask p{font-size:13.5px;color:var(--muted);line-height:1.65}
   .ask .btns{display:flex;gap:9px;justify-content:flex-end;margin-top:19px;flex-wrap:wrap}
   .ask .btns button{font:inherit;font-size:13.5px;padding:9px 15px;border-radius:9px;cursor:pointer;
-    border:1px solid var(--line2);background:transparent;color:var(--text)}
+    border:1px solid var(--line);background:transparent;color:var(--text)}
   .ask .btns .no:hover{border-color:var(--accent)}
   .ask .btns .yes{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
   .ask .btns .yes:hover{opacity:.9}
@@ -457,7 +457,7 @@
   select:focus,input[type=text]:focus,input[type=month]:focus{border-color:var(--accent);
     box-shadow:0 0 0 3px var(--glowSoft)}
   /* the photograph itself, 4:3 because that is what a phone camera hands over */
-  .shot{width:100%;aspect-ratio:4/3;border:1px solid var(--line2);border-radius:12px;
+  .shot{width:100%;aspect-ratio:4/3;border:1px solid var(--line);border-radius:12px;
     background:var(--card) center/cover no-repeat}
   .shot.gone{display:flex;align-items:center;justify-content:center;border-style:dashed;
     font-size:12px;color:var(--muted);text-align:center;padding:12px}
@@ -477,7 +477,7 @@
     border-top:1px solid var(--line)}
   .up .when{display:flex;align-items:center;gap:8px;margin-top:9px}
   .tag{font-size:10.5px;font-family:'Space Mono',monospace;letter-spacing:.1em;
-    text-transform:uppercase;border-radius:999px;padding:3px 9px;border:1px solid var(--line2);color:var(--dim)}
+    text-transform:uppercase;border-radius:999px;padding:3px 9px;border:1px solid var(--line);color:var(--muted)}
   .tag-in{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
   .tag-ok{color:var(--ok);border-color:var(--ok)}
   .tag-late{background:var(--bad);border-color:var(--bad);color:#fff}
@@ -490,14 +490,14 @@
   .up .fine2{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.6}
   .chips{display:flex;flex-wrap:wrap;gap:6px}
   .chip{display:flex;align-items:center;gap:6px;font:inherit;font-size:13px;padding:7px 11px;
-    cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--dim);
+    cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--muted);
     border-radius:999px;transition:border-color .15s ease,background .15s ease,color .15s ease}
   .chip:hover{border-color:var(--accent);color:var(--text)}
   .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
 
   table{width:100%;border-collapse:collapse;font-size:14px}
   th{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.13em;text-transform:uppercase;
-    color:var(--muted);text-align:left;padding:9px 10px;border-bottom:2px solid var(--line2);white-space:nowrap}
+    color:var(--muted);text-align:left;padding:9px 10px;border-bottom:2px solid var(--line);white-space:nowrap}
   td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
   tbody tr:nth-child(even){background:var(--zebra)}
   .num{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -513,23 +513,23 @@
     letter-spacing:-.02em;color:var(--accent);font-variant-numeric:tabular-nums}
 
   /* a heading row per group, so twenty-five names read as four crews */
-  tr.grp td{background:var(--zebra);border-bottom:1px solid var(--line2);
+  tr.grp td{background:var(--zebra);border-bottom:1px solid var(--line);
     font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
     color:var(--muted);padding:11px 10px 7px}
-  tr.grp .grpn{float:right;letter-spacing:.1em;color:var(--dim)}
+  tr.grp .grpn{float:right;letter-spacing:.1em;color:var(--muted)}
   tbody tr.grp:nth-child(even){background:none}
 
   /* the office's own entries, and the buttons that make them */
   .typed{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
-    color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:1px 4px;margin-left:6px;
+    color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 4px;margin-left:6px;
     vertical-align:2px}
-  .addt{font-size:12px;opacity:.6;border:1px dashed var(--line2);border-radius:7px;padding:3px 8px}
+  .addt{font-size:12px;opacity:.6;border:1px dashed var(--line);border-radius:7px;padding:3px 8px}
   .addt:hover{opacity:1;border-color:var(--accent);border-style:solid}
   .tw{margin-left:6px;font-size:11px;opacity:0;color:var(--muted)}
   tr:hover .tw{opacity:.55}
   .tw:hover{opacity:1;color:var(--bad)}
   .ask input[type=time]{font:inherit;font-size:19px;font-family:'Space Mono',monospace;
-    color:var(--text);background:var(--bg);border:1px solid var(--line2);border-radius:9px;
+    color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:9px;
     padding:9px 11px;margin-top:12px;width:100%}
   .who .n{font-weight:600}
   .who .r{font-size:11.5px;color:var(--muted)}
@@ -539,7 +539,7 @@
     background:var(--glowSoft)}
   .madelink .url{font-family:'Space Mono',monospace;font-size:12.5px;word-break:break-all;
     margin-top:8px;color:var(--text);user-select:all}
-  .madelink .fine2{font-size:12px;color:var(--dim);line-height:1.65}
+  .madelink .fine2{font-size:12px;color:var(--muted);line-height:1.65}
   .empty{padding:34px 4px;color:var(--muted);font-size:13.5px;line-height:1.75}
   .foot{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;
     font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
@@ -561,7 +561,7 @@
 <script src="../_lib/motion.js?v=1" defer></script>
 <script src="../_lib/ask.js?v=1" defer></script>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=5">
+<link rel="stylesheet" href="../_lib/category.css?v=6">
 </head>
 <body>
 <header class="hdr" id="hdr"></header>
@@ -1027,8 +1027,8 @@ function viewDash(){
         '<span>' + esc(r.who.name) + '</span></div>' +
         r.cells.map(c => '<div class="dsh-c"><span title="' + esc(c.tip) + '" style="' + c.st + '">' + c.t + '</span></div>').join('') +
         '<div class="dsh-tot"><span style="color:var(--ok)">' + r.p + '</span>' +
-        '<span style="color:' + (r.a ? 'var(--bad)' : 'var(--mute)') + '">' + r.a + '</span>' +
-        '<span style="color:' + (r.lv ? 'var(--accent)' : 'var(--mute)') + '">' + r.lv + '</span>' +
+        '<span style="color:' + (r.a ? 'var(--bad)' : 'var(--muted)') + '">' + r.a + '</span>' +
+        '<span style="color:' + (r.lv ? 'var(--accent)' : 'var(--muted)') + '">' + r.lv + '</span>' +
         '<b>' + (r.rate == null ? '—' : r.rate + '%') + '</b></div></div>';
     });
   });
@@ -1403,7 +1403,7 @@ function bellPanel(day){
     '<label class="sw"><input type="checkbox" id="swSound"' + (SOUND?' checked':'') + '> Sound when one arrives</label>' +
     '<label class="sw"><input type="checkbox" id="swDesk"' + (DESKTOP?' checked':'') + '> Desktop notification</label>' +
     '</div>';
-  h += '<div class="fine2" style="font-size:11.5px;color:var(--dim);margin-top:6px">' +
+  h += '<div class="fine2" style="font-size:11.5px;color:var(--muted);margin-top:6px">' +
     'A browser will not play a sound until the page has been clicked once, so the first photo of the ' +
     'morning may arrive quietly if the tab has only been left open.' +
     (DESKTOP && 'Notification' in window && Notification.permission !== 'granted'

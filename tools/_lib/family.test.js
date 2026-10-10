@@ -223,6 +223,49 @@ console.log('\n--- every tool opens light ---');
      [true, true, true]);
 }
 
+/* ---- 3d. no tool reads a token that nothing defines ----
+
+   THE QUIETEST FAILURE IN CSS. var(--x) where --x is undefined does not warn,
+   does not fall back to anything sensible, and does not even leave the
+   property alone - it makes the declaration invalid at computed-value time,
+   so the element inherits instead.
+
+   On WH24 that meant `background:var(--accent); color:var(--ink)` - with
+   --ink gone, the label inherited parchment --text and sat on a mint fill.
+   The Sync button, the active filter tab and the source chip all had
+   unreadable labels, and nothing anywhere reported a problem.
+
+   --ink existed while a generated category.css happened to define it; the
+   design's file defines --accent-ink and not --ink, so removing the tools'
+   own copies left 16 references pointing at nothing. The others - --dim,
+   --mute, --text2, --line2 - were borrowed from the site palette in
+   index.html, which a tool page does not load, and had never resolved.
+
+   A var() WITH a fallback is fine and is skipped: that is a deliberate
+   default, not an accident. */
+console.log('\n--- every token a tool reads is defined somewhere ---');
+{
+  const sheets = ['category.css', 'theme.css', 'nav.css', 'motion.css', 'lookup.css']
+    .map(f => path.join(TOOLS, '_lib', f)).filter(p => fs.existsSync(p))
+    .map(p => fs.readFileSync(p, 'utf8')).join('\n');
+  const names = s => new Set([...s.matchAll(/--([a-zA-Z0-9_-]+)\s*:/g)].map(m => m[1]));
+  const shared = names(sheets);
+  is('the shared stylesheets were actually read', shared.size > 10, true);
+
+  const dangling = [];
+  for (const row of mapping) {
+    const src = fs.readFileSync(path.join(TOOLS, row.tool, 'index.html'), 'utf8');
+    const own = names(src);
+    for (const m of src.matchAll(/var\(\s*--([a-zA-Z0-9_-]+)\s*([,)])/g)) {
+      if (m[2] === ',') continue;                       /* has a fallback */
+      if (!own.has(m[1]) && !shared.has(m[1])) dangling.push(row.tool + ' --' + m[1]);
+    }
+  }
+  is('no tool reads an undefined custom property', [...new Set(dangling)], []);
+  /* Sensitivity: the check must see a name that is genuinely absent. */
+  is('and it would notice one', shared.has('definitely-not-a-token'), false);
+}
+
 /* ---- 4. and they all load the same stylesheet, at the same version ----
 
    A cache-buster that moves on some pages and not others is how half the

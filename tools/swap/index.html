@@ -147,10 +147,10 @@
   .count{font:12px 'Space Mono',monospace;color:var(--muted)}
   .btn{border:1px solid var(--line3);background:transparent;border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
   .btn:hover{border-color:var(--accentB)}
-  .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
   .btn.pri:disabled{opacity:.5;cursor:not-allowed}
   .btn.bad{border-color:var(--bad);color:var(--bad)}
-  .btn.bad:hover{background:var(--bad);color:var(--ink);border-color:var(--bad)}
+  .btn.bad:hover{background:var(--bad);color:var(--accent-ink);border-color:var(--bad)}
 
   .wrap{overflow-x:auto}
   table{border-collapse:collapse;width:100%;min-width:1420px}
@@ -177,7 +177,7 @@
   .sncell input{font-family:'Space Mono',monospace;text-transform:uppercase}
   .mini{height:32px;border-radius:8px;border:1px solid var(--line3);background:var(--card-2);padding:0 9px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
   .mini:hover{border-color:var(--accentB)}
-  .mini.go{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+  .mini.go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
   .mini.on{border-color:var(--accentB);color:var(--accentB)}
   .phadd.opt{border-color:var(--line3);color:var(--muted)}
   td.loc{min-width:390px}
@@ -258,7 +258,7 @@
   [hidden]{display:none !important}
   .tabs{position:sticky;top:var(--hdrH,66px);z-index:28;background:var(--bg);border-bottom:1px solid var(--line);display:flex;gap:6px;padding:10px 18px}
   .tab{border:1px solid var(--line3);background:transparent;border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap;flex:0 0 auto}
-  .tab.on{background:var(--accent);border-color:var(--accent);color:var(--ink);font-weight:700}
+  .tab.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
   .tab b{font-family:'Space Mono',monospace;font-size:12px;margin-left:4px}
   .sbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .sbar input{flex:1;min-width:200px;background:var(--card-2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;outline:none}
@@ -283,7 +283,7 @@
   .seg{display:flex;border:1px solid var(--line3);border-radius:10px;overflow:hidden}
   .seg button{background:transparent;border:0;padding:10px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
   .seg button+button{border-left:1px solid var(--line3)}
-  .seg button.on{background:var(--accent);color:var(--ink);font-weight:700}
+  .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:700}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .kpis div{background:var(--card);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
   .kpis b{font:800 26px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em}
@@ -310,7 +310,7 @@
   }
 </style>
 <link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=5">
+<link rel="stylesheet" href="../_lib/category.css?v=6">
 </head>
 <body>
 <header class="hdr">
