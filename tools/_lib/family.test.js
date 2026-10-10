@@ -266,6 +266,96 @@ console.log('\n--- every token a tool reads is defined somewhere ---');
   is('and it would notice one', shared.has('definitely-not-a-token'), false);
 }
 
+/* ---- 3e. text on a painted background, measured, in both themes ----
+
+   The pastel palette flipped --accent from dark to light, so every rule that
+   paints a background and puts text on it had to be re-checked - a pairing
+   that worked when the fill was dark can be invisible when it is pale, and
+   the other way round. Two found that way:
+
+     wh24/swap/attendance  a mint fill with parchment text, because --ink
+                           had stopped resolving
+     design-extractor,     th{background:var(--navy);color:var(--muted)} at
+     bom, esn              2.17 in LIGHT - --navy stays dark in light mode by
+                           design, --muted flips, and only one of the two
+                           moved
+
+   So this resolves both sides to the real value for that tool's category and
+   theme, following var() chains, and measures. Static: no markup, no
+   sign-in, and it covers a rule however it is written. */
+console.log('\n--- text on a painted background ---');
+{
+  const CAT = {};
+  for (const row of mapping) CAT[row.tool] = row.family;
+  const hx = h => { h = h.trim().replace('#',''); if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+    return [0,2,4].map(i => parseInt(h.slice(i,i+2),16)); };
+  const lin = c => { c /= 255; return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+  const lum = a => 0.2126*lin(a[0]) + 0.7152*lin(a[1]) + 0.0722*lin(a[2]);
+  const ratio = (a,b) => { const p = lum(a), q = lum(b); return (Math.max(p,q)+0.05)/(Math.min(p,q)+0.05); };
+  const catCss = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
+  const themeCss = fs.existsSync(path.join(TOOLS,'_lib/theme.css'))
+    ? fs.readFileSync(path.join(TOOLS,'_lib/theme.css'),'utf8') : '';
+  const blockVars = (css, rx) => { const o = {};
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) { if (!rx.test(m[1])) continue;
+      for (const d of m[2].matchAll(/--([a-zA-Z0-9_-]+)\s*:\s*([^;!]+)/g)) o[d[1]] = d[2].trim(); }
+    return o; };
+  const resolve = (v, t, n) => { if (n > 6 || !v) return null; v = v.trim();
+    if (/^#[0-9a-fA-F]{3,6}$/.test(v)) return v;
+    let m = v.match(/^var\(\s*--([a-zA-Z0-9_-]+)\s*(?:,([^)]*))?\)$/);
+    if (m) return t[m[1]] !== undefined ? resolve(t[m[1]], t, n+1) : (m[2] ? resolve(m[2], t, n+1) : null);
+    m = v.match(/^rgba?\(([^)]*)\)$/);
+    if (m) { const p = m[1].split(',').map(Number);
+      if (p.length >= 3 && (p.length < 4 || p[3] >= 0.9))
+        return '#' + p.slice(0,3).map(x => Math.round(x).toString(16).padStart(2,'0')).join('');
+      return null; }
+    return null; };
+
+  /* Known and accepted: white on the --bad red and the --warn orange. Both
+     are STATUS colours, both predate the palette work (checked against the
+     tree before it), and status keeps its own colours by instruction. They
+     are listed rather than filtered by a pattern, so a NEW one cannot hide
+     behind the exemption. */
+  const ACCEPTED = new Set([
+    'lyric-video|dark|.btn.rec', 'field-config|dark|.toast.bad', 'rf-jumper|dark|.toast.bad',
+    'team|dark|.toast.bad', 'attendance|dark|.bell .badge', 'attendance|dark|.ask .btns .yes',
+    'attendance|dark|.tag-late', 'whattodo|light|.btn.stop', 'field-config|light|.none code'
+  ]);
+
+  const bad = [];
+  let pairs = 0;
+  for (const row of mapping) {
+    const src = fs.readFileSync(path.join(TOOLS, row.tool, 'index.html'), 'utf8');
+    const css = [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\n')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const theme of ['dark','light']) {
+      const t = {};
+      Object.assign(t, blockVars(themeCss, theme === 'light' ? /light|:root/ : /:root|dark/));
+      Object.assign(t, blockVars(css, /:root|html\[data-theme="dark"\]/));
+      if (theme === 'light') Object.assign(t, blockVars(css, /html\[data-theme="light"\]/));
+      Object.assign(t, blockVars(catCss, new RegExp('data-cat="' + CAT[row.tool] + '"\\]' +
+        (theme === 'light' ? '\\[data-theme="light"\\]' : '(?!\\[)'))));
+      for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const sel = m[1].replace(/\s+/g,' ').trim(), body = m[2];
+        if (/^\s*(:root|html\[data-theme|@)/.test(sel)) continue;
+        const b = body.match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/);
+        const f = body.match(/(?:^|;)\s*color\s*:\s*([^;]+)/);
+        if (!b || !f) continue;
+        const bg = resolve(b[1].trim().split(/\s+/)[0], t, 0), fg = resolve(f[1].trim(), t, 0);
+        if (!bg || !fg) continue;
+        pairs++;
+        const c = ratio(hx(fg), hx(bg));
+        if (c >= 4.5) continue;
+        const key = row.tool + '|' + theme + '|' + sel;
+        if (ACCEPTED.has(key)) continue;
+        bad.push(key + '  ' + c.toFixed(2) + '  ' + fg + ' on ' + bg);
+      }
+    }
+  }
+  /* A resolver that resolves nothing measures nothing and passes. */
+  is('the resolver actually resolved some pairs', pairs > 150, true);
+  is('no unaccepted text sits under 4.5:1 on its own background', bad, []);
+}
+
 /* ---- 4. and they all load the same stylesheet, at the same version ----
 
    A cache-buster that moves on some pages and not others is how half the

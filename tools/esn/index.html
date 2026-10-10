@@ -197,7 +197,11 @@
 
   .gridwrap{border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:64vh;background:var(--card)}
   table{border-collapse:collapse;width:100%;font-size:12.5px}
-  th{position:sticky;top:0;background:var(--navy);color:var(--muted);text-align:left;padding:9px 10px;
+  th{position:sticky;top:0;background:var(--navy);/* --navy is dark in BOTH themes - the bar stays dark in light mode by
+     design - but --muted flips to a dark grey there, so the sticky header
+     read 2.17:1. The ink has to be light because the background always is,
+     and no token is light in both themes. */
+    color:#EEE8E4;text-align:left;padding:9px 10px;
     font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;
     border-bottom:1px solid var(--line3);white-space:nowrap;z-index:1}
   td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
