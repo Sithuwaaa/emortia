@@ -1225,8 +1225,73 @@
     return out;
   }
 
+  /* ------------------------------------------------ how old is this screen
+
+     Two stamps, because they answer two different questions:
+
+       checked_at   when WorkHub24 was last ASKED. Written by every sync,
+                    including one that found nothing - that is the whole
+                    reason wh24_sync exists (migration 038).
+       updatedAt    when a ticket last actually CHANGED, which is the newest
+                    synced_at across the rows on screen.
+
+     A sync that finds nothing moves the first and not the second, so
+     "checked ten minutes ago and nothing had moved" and "nobody has synced
+     since Tuesday" are different answers and must never look the same.
+
+     The thresholds live here because two controls ask this same question -
+     the hero tile's note and the bar's status button - and a copy each is how
+     they end up disagreeing about what "stale" means. Hours, not days: the
+     warehouse issues through the morning and the number anybody acts on is
+     "can collect now". */
+  var FRESH_WARN = 12, FRESH_BAD = 24;              /* hours */
+  function freshness(f) {
+    f = f || {};
+    var now = f.now != null ? new Date(f.now).getTime() : Date.now();
+    var checked = f.checkedAt || null, updated = f.updatedAt || null;
+    /* The check where there is one. It is the later of the two by definition -
+       a row cannot be written without a sync writing it - and it is the one
+       that says somebody looked. */
+    var at = checked || updated;
+    var hours = at ? (now - new Date(at).getTime()) / 3600000 : null;
+    var level = hours == null ? 'never'
+              : hours >= FRESH_BAD ? 'bad'
+              : hours >= FRESH_WARN ? 'warn' : 'ok';
+    var changed = f.changed == null ? null : +f.changed;
+    return {
+      level: level,
+      hours: hours,
+      checkedAt: checked,
+      updatedAt: updated,
+      checkedBy: f.checkedBy || null,
+      tickets: f.tickets == null ? null : +f.tickets,
+      changed: changed,
+      headline: level === 'never' ? 'Never synced'
+              : level === 'bad'   ? 'Out of date'
+              : level === 'warn'  ? 'Worth a sync'
+              :                     'Up to date',
+      why: level === 'never'
+             ? 'Nothing has been read from WorkHub24 yet, so none of these numbers are real.'
+           : level === 'bad'
+             ? 'Nobody has asked WorkHub24 in over a day – sync before you act on this.'
+             /* the hours, not "half a day": the person reading this is deciding
+                whether to drive to the warehouse */
+           : level === 'warn'
+             ? 'Nobody has asked WorkHub24 in over ' + FRESH_WARN + ' hours.'
+             : 'WorkHub24 was asked recently, so this is what WorkHub says.',
+      /* Said out loud, because "checked, and nothing had moved" is a real and
+         reassuring answer that an unchanged timestamp cannot give. Null when
+         nothing has ever been checked - there is no result to report. */
+      result: checked == null ? null
+            : changed === 0 ? 'nothing had moved'
+            : changed > 0 ? changed + (changed === 1 ? ' ticket changed' : ' tickets changed')
+            : null
+    };
+  }
+
   return { splitTask: splitTask, current: current, doneTimes: doneTimes, num: num, ginDate: ginDate,
            reservations: reservations,
+           freshness: freshness, FRESH_WARN: FRESH_WARN, FRESH_BAD: FRESH_BAD,
            stem: stem, stems: stems, key: key, markOf: markOf,
            rowsFor: rowsFor, ph2Ready: ph2Ready, ph2Material: ph2Material, attachDocs: attachDocs,
            bulkApproved: bulkApproved, bulkState: bulkState, bulkStatus: bulkStatus,

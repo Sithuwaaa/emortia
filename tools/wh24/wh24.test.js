@@ -166,5 +166,60 @@ is('order is first seen',
 is('blanks and stray separators are dropped',
    W.reservations({ reservation: ' / 9000001 /  / ' }), ['9000001']);
 
+/* ---- how old is this screen ----
+   Every assertion fixes `now`, so these say what the function computes rather
+   than what time the suite happened to run. The levels are read off the
+   returned object, not off a class name a page might paint. */
+const NOW = '2026-10-11T12:00:00Z';
+const fr = (o) => W.freshness(Object.assign({ now: NOW }, o));
+const at = (h) => new Date(Date.parse(NOW) - h * 3600000).toISOString();
+
+is('nothing has ever been synced', [fr({}).level, fr({}).hours, fr({}).headline],
+   ['never', null, 'Never synced']);
+is('a check an hour ago is fresh', fr({ checkedAt: at(1) }).level, 'ok');
+/* the two thresholds, from both sides, because an off-by-one here is a page
+   that says "up to date" about yesterday's numbers */
+is('just inside twelve hours', fr({ checkedAt: at(11.99) }).level, 'ok');
+is('twelve hours exactly', fr({ checkedAt: at(12) }).level, 'warn');
+is('just inside a day', fr({ checkedAt: at(23.99) }).level, 'warn');
+is('a day exactly', fr({ checkedAt: at(24) }).level, 'bad');
+is('the thresholds themselves', [W.FRESH_WARN, W.FRESH_BAD], [12, 24]);
+is('the age is in hours', fr({ checkedAt: at(3) }).hours, 3);
+
+/* The point of the whole thing: a check that found nothing is NOT the same as
+   never having checked, and the two must not come back looking alike. */
+is('checked, and nothing had moved',
+   [fr({ checkedAt: at(1), changed: 0 }).level, fr({ checkedAt: at(1), changed: 0 }).result],
+   ['ok', 'nothing had moved']);
+is('checked, and three had', fr({ checkedAt: at(1), changed: 3 }).result, '3 tickets changed');
+is('one is not three', fr({ checkedAt: at(1), changed: 1 }).result, '1 ticket changed');
+is('a check with no count reports no result', fr({ checkedAt: at(1) }).result, null);
+is('never checked has no result to report', fr({ updatedAt: at(1) }).result, null);
+
+/* A row write with no check behind it still dates the screen - that is the
+   pre-038 case, and it must not read as "never". */
+is('a row write alone still dates it',
+   [fr({ updatedAt: at(30) }).level, fr({ updatedAt: at(30) }).headline], ['bad', 'Out of date']);
+is('the check wins over the row write', fr({ checkedAt: at(1), updatedAt: at(40) }).level, 'ok');
+is('both stamps come back out',
+   [fr({ checkedAt: at(1), updatedAt: at(40) }).checkedAt === at(1),
+    fr({ checkedAt: at(1), updatedAt: at(40) }).updatedAt === at(40)], [true, true]);
+is('who checked and what was on screen',
+   [fr({ checkedAt: at(1), checkedBy: 'sithara', tickets: 61 }).checkedBy,
+    fr({ checkedAt: at(1), checkedBy: 'sithara', tickets: 61 }).tickets], ['sithara', 61]);
+/* the sentence under the headline, per level - the button is useless without it */
+is('every level says why, in a sentence',
+   ['never', 'bad', 'warn', 'ok'].map(lv => {
+     const o = lv === 'never' ? fr({}) : fr({ checkedAt: at(lv === 'bad' ? 30 : lv === 'warn' ? 15 : 1) });
+     return o.level === lv && /^[A-Z].*[.]$/.test(o.why);
+   }), [true, true, true, true]);
+is('the warn sentence names the threshold', fr({ checkedAt: at(15) }).why,
+   'Nobody has asked WorkHub24 in over 12 hours.');
+is('no em dash in the copy',
+   ['never', 'bad', 'warn', 'ok'].map(lv => {
+     const o = lv === 'never' ? fr({}) : fr({ checkedAt: at(lv === 'bad' ? 30 : lv === 'warn' ? 15 : 1) });
+     return (o.why + o.headline).indexOf('—') < 0;
+   }), [true, true, true, true]);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

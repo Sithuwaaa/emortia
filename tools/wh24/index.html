@@ -40,7 +40,7 @@
 <script src="../_lib/access.js"></script>
 <script>Access.protect({ feature: 'tool:wh24' });</script>
 <script src="../_lib/sapdocs.js"></script>
-<script src="wh24.js?v=1"></script>
+<script src="wh24.js?v=2"></script>
 <style>
   :root{
     --navy:#3a1a05;
@@ -89,8 +89,96 @@
   .ibtn{background:none;border:1px solid var(--line3);color:#fff;border-radius:999px;width:34px;height:34px;padding:0;
     font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;transition:transform .2s ease,border-color .2s ease}
   .ibtn:hover{border-color:var(--accentB);transform:rotate(20deg)}
+
+  /* ---- the status button, in the bar ----
+
+     How old this screen is used to be said in ONE place: the line at the top
+     of the sync section, which sits under the board, under the pipeline and
+     under the dashboard. So "Can collect now: 5" - the one number anybody
+     acts on - was three screens above the sentence saying whether it was
+     true this minute or yesterday morning, and the hero tile only spoke up
+     once the numbers were already twelve hours old.
+
+     The bar is sticky, so a button in it is on screen whenever the board is.
+     It carries the verdict and a dot; the detail is one click away, because a
+     bar is not the place for four lines of prose.
+
+     WHY THE COLOURS HERE ARE FIXED, and are not the theme's:
+     the bar is var(--navy), which is dark in BOTH themes by design - and not
+     the brown this file declares, because category.css overrides --navy with
+     !important and wins. Its neighbours are #fff and #f7ded2 for the same
+     reason. So the dot uses the DARK-theme status values whatever the theme
+     is: the light ones are chosen to sit on a white card, and on this bar
+     they would be dark on dark.
+
+     Measured in the browser against the bar as category.css actually paints
+     it - rgb(15,20,17) dark, rgb(16,48,31) light - not against the values
+     above, which never reach the screen. Dot, needing 3:1 as a non-text
+     indicator: ok 8.75 / 6.74, warn 11.86 / 9.14, bad and never 7.62 / 5.87.
+     Label #f7ded2, needing 4.5:1: 14.47 / 11.15. */
+  .news{position:relative;background:rgba(255,255,255,.06);border:1px solid var(--line3);
+    color:#f7ded2;border-radius:999px;height:32px;padding:0 12px;flex:none;cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;
+    font:600 12px/1 'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif;
+    transition:border-color .2s ease,background .2s ease}
+  .news:hover,.news[aria-expanded="true"]{border-color:var(--accentB);background:rgba(255,255,255,.12)}
+  .news svg{width:15px;height:15px;flex:none;opacity:.85}
+  .news .ndot{width:8px;height:8px;border-radius:50%;flex:none;background:#bda183}
+  .news.lv-ok    .ndot{background:#34c98b}
+  .news.lv-warn  .ndot{background:#ffc634}
+  .news.lv-bad   .ndot,
+  .news.lv-never .ndot{background:#ff7d92}
+  /* Only the two that want you to do something pulse. A permanent heartbeat
+     on "up to date" is a bar that is always asking for attention. */
+  .news.lv-bad .ndot,.news.lv-never .ndot{animation:whLed 1.5s ease-in-out infinite}
+  .news .nlab{white-space:nowrap}
+
+  /* The panel is on the BODY, not in the header, for two reasons that each
+     break it on their own: .hdr is overflow:hidden, which clips it, and it is
+     position:sticky, which makes a stacking context a fixed child cannot get
+     out of. Same reason the account menu is on the body - see access.js.
+     Placed by script against the button, like that menu. */
+  /* It fades in with an ANIMATION, not a transition between a hidden state
+     and an open one. A transition needs the element to be painted once at
+     its start before the class that moves it is added, which means a
+     requestAnimationFrame - and a rAF does not fire on a throttled tab. That
+     left the panel present, fully transparent and pointer-events:none: an
+     invisible control that swallows nothing and shows nothing. An animation
+     runs from the moment the element appears, with no callback to miss, and
+     under prefers-reduced-motion the blanket `*{animation:none}` above simply
+     shows it outright. Presence is the hidden attribute and nothing else. */
+  .newspop{position:fixed;z-index:2147482000;width:290px;max-width:calc(100vw - 16px);
+    background:var(--card);color:var(--text);border:1px solid var(--line3);border-radius:14px;
+    padding:14px 15px 13px;box-shadow:0 18px 50px rgba(0,0,0,.45);
+    animation:newsIn .16s ease both}
+  @keyframes newsIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .newspop .nhd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  /* The headline is --text on a card except where it is telling you to act.
+     NOT --ok when it is fine: --ok on the light card measures 3.57, which is
+     enough for a dot and not enough for a word, so the dot carries the green
+     and the word stays --text (16.4). The two that do colour are measured
+     light / dark: warn 4.58 / 9.9, bad 4.95 / 6.36. The warn one is only
+     just over 4.5 - lighten the card and it goes under, so measure before
+     touching either. */
+  .newspop .nhd b{font:700 14px 'Bricolage Grotesque',sans-serif}
+  .newspop.lv-warn .nhd b{color:var(--warn)}
+  .newspop.lv-bad .nhd b,.newspop.lv-never .nhd b{color:var(--bad)}
+  .newspop .nhd span{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)}
+  .newspop p{font-size:12.5px;line-height:1.5;color:var(--muted);margin-bottom:11px}
+  .newspop dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12px;
+    border-top:1px solid var(--line);padding-top:10px}
+  .newspop dt{color:var(--muted);white-space:nowrap}
+  .newspop dd{text-align:right}
+  .newspop dd b{font-family:'Space Mono',monospace;font-weight:700}
+  .newspop .nact{margin-top:12px;display:flex;gap:8px}
+  .newspop .nact .btn{flex:1;padding:7px 10px;font-size:12.5px;text-align:center}
+
   @media (max-width:900px){.bname,.hsep{display:none}}
   @media (max-width:760px){.pill{display:none}}
+  /* The label goes before the pill does: the dot and the bubble still say
+     there is something to read, and the bar is a fixed height that nothing in
+     the row is allowed to change. */
+  @media (max-width:860px){.news .nlab{display:none}.news{padding:0 10px}}
 
   @keyframes rise{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
   main{max-width:1400px;margin:0 auto;padding:22px 18px 80px;display:flex;flex-direction:column;gap:18px;animation:rise .4s ease both}
@@ -410,8 +498,28 @@
   <span class="hsep"></span>
   <h1>WH24 Material Checker</h1>
   <span class="pill" id="pill">loading</span>
+  <!-- The last-update status, in the bar. See the note on .news for why it is
+       here and not only in the sync section, and why its colours are fixed. -->
+  <button class="news" id="newsBtn" aria-haspopup="dialog" aria-expanded="false"
+          aria-controls="newsPop" title="When this was last synced">
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path d="M2.3 2.7h11.4v8H6.8L3.8 13.1v-2.4H2.3z" fill="none" stroke="currentColor"
+            stroke-width="1.6" stroke-linejoin="round"/>
+    </svg>
+    <span class="nlab" id="newsLab">checking…</span>
+    <i class="ndot" aria-hidden="true"></i>
+  </button>
   <button class="ibtn" id="themeBtn" title="Light or dark" aria-label="Light or dark">◐</button>
 </header>
+
+<!-- On the body, outside the header: .hdr is overflow:hidden and sticky, and
+     either one alone would swallow this. -->
+<div class="newspop" id="newsPop" role="dialog" aria-labelledby="newsHd" hidden>
+  <div class="nhd"><b id="newsHd">Checking…</b><span id="newsAge"></span></div>
+  <p id="newsWhy">Reading the sync log.</p>
+  <dl id="newsFacts"></dl>
+  <div class="nact"><button class="btn" id="newsGo">Sync details</button></div>
+</div>
 
 <main>
   <section class="board" id="board" aria-label="Where the tickets stand"></section>
@@ -612,13 +720,19 @@ function board(){
      three laptops and one of them syncs, so nobody else can tell whether
      "Can collect now: 5" was true this minute or yesterday morning - and it
      is the one number anybody acts on. Past half a day it is worth a look;
-     past a day it should stop you. Never synced reads as unknown, not fresh. */
-  const sh = staleHours();
-  const stale = sh == null ? 'never' : sh >= 24 ? 'bad' : sh >= 12 ? 'warn' : '';
+     past a day it should stop you. Never synced reads as unknown, not fresh.
+
+     The thresholds are W.freshness's, not this function's. They were written
+     out here as 12 and 24 and again in the bar's button, and two copies of a
+     rule is how the tile and the button end up disagreeing about the same
+     screen. The LEVEL comes from there; the wording stays here, because what
+     a tile has room to say is not what a panel has. */
+  const lv = freshNow().level;
+  const stale = lv === 'ok' ? '' : lv;
   const staleNote =
-    stale === 'bad'   ? `<span class="stale bad">This may be out of date — sync before acting on it</span>`
-  : stale === 'warn'  ? `<span class="stale warn">Last checked ${esc(ago((CHECKED && CHECKED.checked_at) || lastWrite()))} — worth a sync</span>`
-  : stale === 'never' ? `<span class="stale bad">Never synced — this is not a real number yet</span>`
+    stale === 'bad'   ? `<span class="stale bad">This may be out of date – sync before acting on it</span>`
+  : stale === 'warn'  ? `<span class="stale warn">Last checked ${esc(ago((CHECKED && CHECKED.checked_at) || lastWrite()))} – worth a sync</span>`
+  : stale === 'never' ? `<span class="stale bad">Never synced – this is not a real number yet</span>`
   : '';
   $('board').innerHTML =
     tile('ready', 'hero' + (ready.length ? '' : ' none') + (stale && stale !== '' ? ' s-' + stale : ''),
@@ -1229,32 +1343,137 @@ async function refreshChecked(){
 function lastWrite(){
   return TICKETS.reduce((a, t) => !a || t.synced_at > a ? t.synced_at : a, null);
 }
+/* The one answer, worked out once. The thresholds and the wording are in
+   wh24.js so the tile, the line and the bar's button cannot drift apart, and
+   so they can be tested without a browser. */
+/* freshNow, not fresh: render(fresh) and the sync accumulator both already
+   use that name for something else, and a global shadowed inside two
+   functions is a bug that only shows up from one of them. */
+function freshNow(){
+  return W.freshness({
+    checkedAt: CHECKED && CHECKED.checked_at,
+    checkedBy: CHECKED && CHECKED.checked_by,
+    tickets:   CHECKED && CHECKED.tickets,
+    changed:   CHECKED && CHECKED.changed,
+    updatedAt: lastWrite()
+  });
+}
 /* Age in hours of what is on screen, counted from the CHECK where there is
    one. Null when nothing has ever been synced - that is "unknown", not
    "fresh", and the caller must not treat it as zero. */
-function staleHours(){
-  const at = (CHECKED && CHECKED.checked_at) || lastWrite();
-  if (!at) return null;
-  return (Date.now() - new Date(at).getTime()) / 3600000;
-}
+function staleHours(){ return freshNow().hours; }
 function drawWhen(){
-  const upd = lastWrite();
-  if (!upd && !(CHECKED && CHECKED.checked_at)){
+  const f = freshNow(), upd = f.updatedAt;
+  drawNews(f);
+  if (!upd && !f.checkedAt){
     $('when').innerHTML = 'Not synced from WorkHub24 yet.';
     return;
   }
   const bits = [];
-  if (CHECKED && CHECKED.checked_at){
-    bits.push(`Checked <b>${esc(ago(CHECKED.checked_at))}</b>`);
+  if (f.checkedAt){
+    bits.push(`Checked <b>${esc(ago(f.checkedAt))}</b>`);
     /* said out loud, because "checked, and nothing had moved" is a real and
        reassuring answer that an unchanged timestamp cannot give */
-    if (CHECKED.changed === 0) bits.push('no changes');
-    else if (CHECKED.changed > 0) bits.push(`${CHECKED.changed} changed`);
+    if (f.changed === 0) bits.push('no changes');
+    else if (f.changed > 0) bits.push(`${f.changed} changed`);
   }
   if (upd) bits.push(`updated <b>${esc(ago(upd))}</b>`);
   bits.push(`${TICKETS.length} ticket${TICKETS.length === 1 ? '' : 's'}`);
   $('when').innerHTML = bits.join(' · ');
 }
+
+/* ---- the status button in the bar ----
+
+   The verdict on the button, the detail in the panel. Both are painted from
+   the same object drawWhen() already has, so the bar cannot say one thing
+   while the sync line says another. */
+function drawNews(f){
+  const btn = $('newsBtn'), pop = $('newsPop');
+  for (const el of [btn, pop]) el.classList.remove('lv-ok', 'lv-warn', 'lv-bad', 'lv-never');
+  btn.classList.add('lv-' + f.level);
+  pop.classList.add('lv-' + f.level);
+  $('newsLab').textContent = f.headline;
+  /* The button is read by itself, with no panel open and nothing else on the
+     bar explaining it, so the title and the accessible name carry the whole
+     sentence rather than just the verdict. */
+  /* No age when there is no stamp: "Never synced · never synced" is what
+     reading the headline and the age out of the same empty state gives you. */
+  const age = f.checkedAt ? 'last checked ' + ago(f.checkedAt)
+            : f.updatedAt ? 'a ticket last changed ' + ago(f.updatedAt) : '';
+  btn.title = f.headline + (age ? ' · ' + age : '') + '. Click for the detail.';
+  btn.setAttribute('aria-label', 'Sync status: ' + f.headline + (age ? ', ' + age : ''));
+  $('newsHd').textContent = f.headline;
+  $('newsAge').textContent = f.checkedAt ? ago(f.checkedAt) : '';
+  $('newsWhy').textContent = f.why;
+
+  /* Absolute times, not just "3 h ago": "checked 3 h ago" is the right thing
+     on the button and the wrong thing when you are deciding whether a sync
+     ran before or after somebody collected. Both, here. */
+  const rows = [];
+  const row = (k, v) => rows.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`);
+  if (f.checkedAt)
+    row('WorkHub24 asked', `<b>${esc(ago(f.checkedAt))}</b><br>${esc(niceT(f.checkedAt))}`);
+  else
+    row('WorkHub24 asked', '<b>never</b>');
+  if (f.result) row('That check found', esc(f.result));
+  if (f.checkedBy) row('By', esc(f.checkedBy));
+  row('A ticket last changed', f.updatedAt
+    ? `<b>${esc(ago(f.updatedAt))}</b><br>${esc(niceT(f.updatedAt))}`
+    : '<b>never</b>');
+  row('On screen now', `<b>${TICKETS.length}</b> ticket${TICKETS.length === 1 ? '' : 's'}`);
+  $('newsFacts').innerHTML = rows.join('');
+}
+
+/* Placed against the button and against the window, the way the account menu
+   is - see access.js. Flipped above the bar when there is no room below,
+   which on a short phone in landscape there is not. */
+function placeNews(){
+  const pop = $('newsPop'), r = $('newsBtn').getBoundingClientRect();
+  const w = pop.offsetWidth || 290;
+  pop.style.left = Math.round(Math.min(Math.max(8, r.right - w), innerWidth - w - 8)) + 'px';
+  const h = pop.offsetHeight || 240;
+  if (innerHeight - r.bottom > h + 16){ pop.style.top = Math.round(r.bottom + 10) + 'px'; pop.style.bottom = ''; }
+  else { pop.style.bottom = Math.round(innerHeight - r.top + 10) + 'px'; pop.style.top = ''; }
+}
+/* Open and shut are both synchronous, and `hidden` is the only state there
+   is - no class that arrives a frame later and no timer that clears one a
+   fifth of a second after. Reading a late class is what made a click on the
+   button followed straight away by a click outside leave the panel open: the
+   outside handler asked whether it was open, was told no, and did nothing. */
+function openNews(){
+  const pop = $('newsPop');
+  pop.hidden = false;
+  placeNews();                                /* measured while visible, before it moves */
+  $('newsBtn').setAttribute('aria-expanded', 'true');
+}
+function closeNews(){
+  /* hidden, not transparent: out of the tab order and off the accessibility
+     tree, rather than an invisible thing a screen reader still reads */
+  $('newsPop').hidden = true;
+  $('newsBtn').setAttribute('aria-expanded', 'false');
+}
+const newsOpen = () => !$('newsPop').hidden;
+$('newsBtn').onclick = e => { e.stopPropagation(); newsOpen() ? closeNews() : openNews(); };
+$('newsGo').onclick = () => {
+  closeNews();
+  const s = $('sync');
+  /* Not behavior:'smooth'. A smooth scroll is driven frame by frame, so on a
+     tab the browser is not painting it crawls or never arrives - measured at
+     6px of the 487 it owed - and starting the flash below cancels what is
+     left of it outright. The jump is the part that has to work; the flash is
+     the part that is allowed to be skipped, so the flash goes second. */
+  s.scrollIntoView({ block: 'center' });
+  /* a reader who has just been moved down three screens needs telling where
+     they landed */
+  s.animate([{ opacity: .35 }, { opacity: 1 }], { duration: 600, easing: 'ease-out' });
+};
+document.addEventListener('pointerdown', e => {
+  if (!newsOpen()) return;
+  if (e.target && e.target.closest && (e.target.closest('#newsBtn') || e.target.closest('#newsPop'))) return;
+  closeNews();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && newsOpen()) closeNews(); });
+addEventListener('resize', () => { if (newsOpen()) placeNews(); });
 
 /* ================================================================ syncing
 
@@ -1708,6 +1927,11 @@ window.addEventListener('message', e => {
   try { window.DB.wh24Subscribe(() => { if (!BUSY) loadAll(); }); } catch(e){}
   /* the day turns over while the page is open; the counts should too */
   setInterval(() => render(), 600000);
+  /* A minute, for the status alone. The ten-minute tick above redraws the
+     whole list, which is too heavy to run every minute and too slow to keep
+     "checked 2 min ago" honest - or to turn the dot amber the moment the
+     twelve hours are up on a page that has been open all morning. */
+  setInterval(drawWhen, 60000);
 })();
 </script>
 <script src="../_lib/ask.js?v=1" defer></script>
