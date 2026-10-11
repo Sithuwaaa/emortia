@@ -50,19 +50,33 @@ html,body{
 main{position:relative;z-index:1;}
 .stage,.bar,.drop{z-index:1;}
 
-/* --- header: one plain colour, no lines, and a live LED --- */
+/* --- header: one plain colour, the family's rule, and a live LED ---
+
+   THE SHADOW WAS !important AND OUTRANKED THE FIX. nav.css sets
+   box-shadow:none on every bar, and three tools kept showing the 26px black
+   blur anyway, because this file says otherwise and says it louder. That is
+   the whole hazard of !important in a shared sheet: the correction looks
+   applied, the tests that read the tools' own CSS agree, and the screen
+   disagrees. Caught by measuring the rendered bar, not by reading files.
+
+   Elevation on a dark ground is lightness, not shade - the bar is --card-2,
+   the top rung. The 2px family rule comes from nav.css; this file no longer
+   draws an edge of its own. */
 .hdr{
   background:var(--navy) !important;
-  border-bottom:1px solid var(--line3);
-  box-shadow:0 6px 26px rgba(0,0,0,.5) !important;
+  box-shadow:none !important;
   overflow:hidden;
 }
 .hdr > *{position:relative;z-index:1;}
+/* The mark is NEUTRAL on tool pages: a brand mark that changes colour per
+   page is not a brand mark, and the accent gradient made it a sixth copy of
+   the family colour in a bar that already carries one. See
+   docs/wh24-decisions.md for the reversal and the reason. */
 .hdr .logo{
   border-radius:50% !important;
-  background:linear-gradient(150deg,var(--accentB),var(--accentD)) !important;
-  color:#f2fbfd !important;
-  box-shadow:0 0 18px var(--glow) !important;
+  background:var(--text) !important;
+  color:var(--bg) !important;
+  box-shadow:none !important;
   animation:tLogoFloat 4.5s ease-in-out infinite;
 }
 @keyframes tLogoFloat{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);} }
@@ -72,7 +86,9 @@ main{position:relative;z-index:1;}
 }
 .pill{
   font-family:'Space Mono',ui-monospace,monospace;
-  background:rgba(0,0,0,.32) !important;border-color:var(--line3) !important;
+  /* a 32% black wash was a darker patch on a dark bar; on the light bar it
+     is a grey smear. One rung down from the bar, in tokens, instead. */
+  background:var(--card) !important;border-color:var(--line) !important;
   display:inline-flex;align-items:center;gap:7px;
 }
 .pill::before{

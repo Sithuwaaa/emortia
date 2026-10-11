@@ -54,9 +54,25 @@ main,footer{position:relative;z-index:1}
   100%{transform:translateY(-106vh) translateX(3vw);opacity:0}
 }
 
-/* glass everywhere the tools draw a panel */
-.hdr{background:rgba(18,15,36,.55);backdrop-filter:blur(18px) saturate(1.3);
-  -webkit-backdrop-filter:blur(18px) saturate(1.3);border-bottom:1px solid var(--line);
+/* Glass everywhere the tools draw a panel - but the TINT UNDER THE GLASS
+   comes from the category now, not from a fixed violet.
+
+   rgba(18,15,36,.55) was the same value in both themes, so site-access and
+   site-data wore a dark violet translucent bar on a near-white light-mode
+   page - and violet on two tools whose family is Site orange. It was the
+   only bar in the suite that did not follow its family, and the only one
+   that did not change between themes.
+
+   --card-2 is the bar everywhere else in the suite (see category.css on the
+   elevation ladder); here it goes under the blur instead of replacing it,
+   so these two keep the glass they were designed with. color-mix keeps the
+   translucency: 72% of the category surface, the rest let through. The 2px
+   accent rule along the lower edge is what says which family this is. */
+.hdr{background:color-mix(in srgb, var(--card-2) 72%, transparent);
+  backdrop-filter:blur(18px) saturate(1.3);
+  -webkit-backdrop-filter:blur(18px) saturate(1.3);
+  border-bottom:2px solid var(--accent);
+  box-shadow:none;
   overflow:hidden}
 /* Blueprint's setting-out line, borrowed for the bar: a wedge of light
    crossing it every few seconds. Behind the content, never over it. */

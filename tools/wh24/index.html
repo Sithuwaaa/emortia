@@ -60,33 +60,33 @@
   [hidden]{display:none !important}
 
   /* ---- the bar every tool wears, to the pixel ---- */
-  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;
+  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:var(--text);display:flex;align-items:center;gap:10px;
     padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--line3);
-    box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden}
+    box-shadow:none;overflow:hidden}
   .hdr>*{position:relative;z-index:1}
   .hdr h1::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accentB);
     margin-left:10px;vertical-align:middle;animation:whLed 1.5s ease-in-out infinite}
   @keyframes whLed{0%,100%{opacity:.25;box-shadow:none}50%{opacity:1;box-shadow:0 0 10px var(--accentB)}}
-  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:#fff;flex-shrink:0;transition:opacity .18s ease}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--text);flex-shrink:0;transition:opacity .18s ease}
   .brand:hover{opacity:.86}
   .brand:focus-visible{outline:2px solid #f7edf0;outline-offset:4px;border-radius:10px}
-  .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:linear-gradient(150deg,#d15873,#87213c);
+  .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:var(--text);
     display:flex;align-items:center;justify-content:center;gap:2.4px;font-size:0;
-    box-shadow:0 0 22px rgba(176,58,86,.55);animation:whFloat 6s ease-in-out infinite;
+    box-shadow:none;animation:whFloat 6s ease-in-out infinite;
     transition:scale .18s ease,box-shadow .18s ease}
   @keyframes whFloat{0%,100%{translate:0 0}50%{translate:0 -3px}}
-  .brand:hover .logo{scale:1.06;box-shadow:0 0 26px rgba(176,58,86,.8)}
-  .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
+  .brand:hover .logo{scale:1.06;box-shadow:none}
+  .logo i{width:2.6px;border-radius:2px;background:var(--bg);display:block}
   .logo i:nth-child(1){height:7px}.logo i:nth-child(2){height:12px}.logo i:nth-child(3){height:9px}.logo i:nth-child(4){height:13px}
-  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:#fff;white-space:nowrap}
-  .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0}
-  .hdr h1{font-size:18px;font-weight:700;line-height:1.5;margin-right:auto;white-space:nowrap;color:#fff;
+  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:var(--text);white-space:nowrap}
+  .hsep{width:1px;height:19px;background:var(--line3);flex-shrink:0}
+  .hdr h1{font-size:18px;font-weight:700;line-height:1.5;margin-right:auto;white-space:nowrap;color:var(--text);
     overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
-  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:rgba(255,255,255,.06);border:1px solid var(--line3);
-    color:#f7ded2;border-radius:999px;padding:4px 11px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
+  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:var(--card);border:1px solid var(--line);
+    color:var(--muted);border-radius:999px;padding:4px 11px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
     flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
   .pill b{color:var(--accentB)}
-  .ibtn{background:none;border:1px solid var(--line3);color:#fff;border-radius:999px;width:34px;height:34px;padding:0;
+  .ibtn{background:none;border:1px solid var(--line3);color:var(--text);border-radius:999px;width:34px;height:34px;padding:0;
     font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;transition:transform .2s ease,border-color .2s ease}
   .ibtn:hover{border-color:var(--accentB);transform:rotate(20deg)}
 
@@ -103,31 +103,32 @@
      It carries the verdict and a dot; the detail is one click away, because a
      bar is not the place for four lines of prose.
 
-     WHY THE COLOURS HERE ARE FIXED, and are not the theme's:
-     the bar is var(--navy), which is dark in BOTH themes by design - and not
-     the brown this file declares, because category.css overrides --navy with
-     !important and wins. Its neighbours are #fff and #f7ded2 for the same
-     reason. So the dot uses the DARK-theme status values whatever the theme
-     is: the light ones are chosen to sit on a white card, and on this bar
-     they would be dark on dark.
+     THE DOT USES THE THEME'S OWN STATUS TOKENS, and this is a reversal.
 
-     Measured in the browser against the bar as category.css actually paints
-     it - rgb(15,20,17) dark, rgb(16,48,31) light - not against the values
-     above, which never reach the screen. Dot, needing 3:1 as a non-text
-     indicator: ok 8.75 / 6.74, warn 11.86 / 9.14, bad and never 7.62 / 5.87.
-     Label #f7ded2, needing 4.5:1: 14.47 / 11.15. */
-  .news{position:relative;background:rgba(255,255,255,.06);border:1px solid var(--line3);
-    color:#f7ded2;border-radius:999px;height:32px;padding:0 12px;flex:none;cursor:pointer;
+     It used to hold the dark-theme status values outright, with a comment
+     explaining that the bar was var(--navy) and therefore dark in BOTH
+     themes, so a light-mode green would have been dark on dark. That was
+     true when it was written and is not true now: --navy is --card-2, the
+     page's most raised surface, which is near-white in light mode. Every
+     fixed value here would have been the wrong one in exactly one theme -
+     the same trap the literals it replaced were in.
+
+     So the dot is var(--ok) / var(--warn) / var(--bad), which flip with the
+     theme, and the label is var(--muted) on var(--card). Nothing in this
+     group is a literal any more, and nothing here needs re-measuring when
+     the ground moves again. */
+  .news{position:relative;background:var(--card);border:1px solid var(--line);
+    color:var(--muted);border-radius:999px;height:32px;padding:0 12px;flex:none;cursor:pointer;
     display:inline-flex;align-items:center;gap:8px;
     font:600 12px/1 'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif;
     transition:border-color .2s ease,background .2s ease}
-  .news:hover,.news[aria-expanded="true"]{border-color:var(--accentB);background:rgba(255,255,255,.12)}
+  .news:hover,.news[aria-expanded="true"]{border-color:var(--accentB);background:var(--card-2)}
   .news svg{width:15px;height:15px;flex:none;opacity:.85}
-  .news .ndot{width:8px;height:8px;border-radius:50%;flex:none;background:#bda183}
-  .news.lv-ok    .ndot{background:#34c98b}
-  .news.lv-warn  .ndot{background:#ffc634}
+  .news .ndot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}
+  .news.lv-ok    .ndot{background:var(--ok)}
+  .news.lv-warn  .ndot{background:var(--warn)}
   .news.lv-bad   .ndot,
-  .news.lv-never .ndot{background:#ff7d92}
+  .news.lv-never .ndot{background:var(--bad)}
   /* Only the two that want you to do something pulse. A permanent heartbeat
      on "up to date" is a bar that is always asking for attention. */
   .news.lv-bad .ndot,.news.lv-never .ndot{animation:whLed 1.5s ease-in-out infinite}
@@ -548,8 +549,8 @@
     .ibtn:hover,.tile:hover{transform:none}
   }
 </style>
-<link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=6">
+<link rel="stylesheet" href="../_lib/nav.css?v=5">
+<link rel="stylesheet" href="../_lib/category.css?v=7">
 </head>
 <body>
 <header class="hdr">

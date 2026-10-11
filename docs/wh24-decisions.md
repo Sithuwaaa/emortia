@@ -445,3 +445,77 @@ asserts the resolved name reaching the signing call, that no `download` or
 `db.schema.test.js` runs the real `wh24DocLink` against a fake client and reads
 the options object it actually hands over — including that a missing name sends
 no `download` option at all, rather than `download: ''`.
+
+---
+
+## The dark theme revision, and the logo reversal
+
+Applied 12 October 2026. The five category colours, the three-rung elevation
+ladder and the token table are the brief's; what follows is only the things
+decided *against* an earlier instruction, or decided by measurement, so that
+nobody reading the older notes "fixes" them back.
+
+### The logo is neutral on tool pages. This reverses the earlier spec.
+
+The earlier instruction said category identity in the nav bar should be
+carried by "the 2px rule, the logo mark, and the active nav item". The logo
+was then withdrawn from that list, and the reasoning is worth keeping:
+
+- **A brand mark that changes colour per page is not a brand mark.** The
+  whole value of a mark is that it is the same object everywhere.
+- **It could not stay as it was either.** All sixteen tools drew the disc as
+  a hardcoded `#d15873 → #87213c` gradient — Emortia pink. Pink *is* one of
+  the five families, so emortia pages got a free match and the other four
+  got a mark clashing with their own chrome. site-access and site-data had a
+  second, amber disc from `lookup.css`, which is Site's hue — same problem.
+
+So on tool pages the disc is `--text` with the page ground showing through
+its four bars: the same neutral mark on all sixteen, legible in both themes
+without a value of its own. **On the main site the logo stays pink** — there
+it is the brand, not nav furniture.
+
+Category identity in the bar is now carried by exactly one thing: a 2px
+`--accent` rule along the lower edge, set once in `nav.css`.
+
+### The bar is `--card-2`, and that inverted what it used to be
+
+`--navy` used to sit *below* `--bg` — the bar was the darkest thing on the
+page. On a dark theme that is upside down: elevation is lightness, so the
+raised thing must be the lighter thing. `--navy` is now the same value as
+`--card-2`, the top rung, and is kept as a name only because sixteen tools
+already say `var(--navy)`.
+
+Three consequences that were **not** obvious and were each caught by
+measurement rather than by reading the files:
+
+1. **Every bar still said `color:#fff`.** Once the bar is near-white in light
+   mode that is 1.13:1 — thirteen tools, invisible titles. The ink, the
+   divider, the pill ground and the pill border were all chosen for a dark
+   bar and were all wrong in exactly one theme.
+2. **`theme.css` set the bar's shadow with `!important`.** `nav.css` turning
+   it off looked applied and was not; three tools kept the 26px black blur.
+   A shared sheet using `!important` means a correction can be complete in
+   the source and absent on the screen.
+3. **A surface token was being used as ink.** attendance's selected tab was
+   `color:var(--navy)` on white — fine while `--navy` was dark, 1.14:1 after.
+   A surface token is not an ink; the rule now reads `--text` on `--card`.
+
+### Two numbers that look wrong and are not
+
+**OKLab, not WCAG.** The ladder is `--bg` 0.195, `--card` 0.248, `--card-2`
+0.300 in **OKLab lightness**. The same colours in WCAG relative luminance are
+0.007, 0.016 and 0.027. Both are correct; they are different quantities.
+Comparing one against the other is how a right value gets called wrong.
+
+**`--disabled` is about 2.46:1 on `--card-2`, deliberately.** WCAG 1.4.3
+exempts inactive components and Material's own disabled tier is 38% opacity.
+Do not raise it to satisfy a checker.
+
+### Rotating a hue does not preserve brightness
+
+The tools directory's sixteen bands and five titles were re-hued to the new
+families. Holding HSL lightness across a hue change does **not** hold
+measured contrast — Site's title went 7.05:1 → 4.01 and Field's 7.05 → 3.98
+purely from yellow→orange and cyan→blue, a change meant to touch only hue.
+The generator now searches lightness back until each value measures what it
+measured before, so the dimming done after "it crashes the eyes" survives.

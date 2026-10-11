@@ -57,6 +57,19 @@ header.hdr{
   height:calc(env(safe-area-inset-top) + var(--navH));
   box-sizing:border-box;
   align-items:center;
+  /* THE ONE PLACE THE FAMILY SHOWS IN THE BAR.
+
+     The bar itself is --card-2, a neutral raised surface, the same rung on
+     all sixteen; this rule is the only coloured thing on it. Written here
+     rather than in each tool so the five families cannot drift apart again,
+     and inside the fixed height above so it cannot move the geometry: the
+     bar is border-box, so two pixels of rule come out of the 66, they do
+     not add to it. */
+  border-bottom:2px solid var(--accent);
+  /* No elevation shadow. On a dark ground a black blur is invisible - that
+     is why the overlay ladder exists - and on the light bar it was a smudge
+     under the brand. Lightness raises a surface here, not shade. */
+  box-shadow:none;
 }
 
 header.hdr .logo{width:var(--navLogo);height:var(--navLogo);gap:2.5px}

@@ -11,11 +11,17 @@ html[data-theme="dark"]{
 html,body{background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
   font-size:15px;line-height:1.5}
-.hdr{position:fixed;top:0;left:0;right:0;z-index:20;background:var(--navy);color:#fff;
+/* --text, not #fff: --navy is --card-2 now, the page's most raised surface,
+   which is near-white in light mode. White ink on it was 1.13:1. */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:20;background:var(--navy);color:var(--text);
   padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
-  display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
-.hdr .logo{width:30px;height:30px;border-radius:7px;background:linear-gradient(150deg,#ffc04d,#d8892a);
-  display:grid;place-items:center;font-weight:800;color:#231a04;font-size:15px;flex-shrink:0}
+  display:flex;align-items:center;gap:10px;box-shadow:none}
+/* The mark is NEUTRAL on tool pages. It cannot be a per-page colour - a
+   brand mark that changes colour is not a brand mark - and it cannot stay
+   the amber it was, because that is Site's own hue and these two tools are
+   Site. The ground shows through it. See docs/wh24-decisions.md. */
+.hdr .logo{width:30px;height:30px;border-radius:7px;background:var(--text);
+  display:grid;place-items:center;font-weight:800;color:var(--bg);font-size:15px;flex-shrink:0}
 .hdr h1{font-size:18px;font-weight:700;margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pill{font-size:11.5px;background:var(--navy-2);border:1px solid rgba(255,255,255,.15);
   color:#cfd6e6;border-radius:999px;padding:4px 11px;white-space:nowrap}

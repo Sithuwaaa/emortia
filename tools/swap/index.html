@@ -71,46 +71,46 @@
      - carried over from the lookup tools' skin. Against the page showing
      through, that read as a heavier, taller band than the others even
      though it measured the same 66 pixels, so it is paint again. */
-  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;
+  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:var(--text);display:flex;align-items:center;gap:10px;
     padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--line3);
-    box-shadow:0 6px 26px rgba(0,0,0,.5);overflow:hidden}
+    box-shadow:none;overflow:hidden}
   .hdr>*{position:relative;z-index:1}
   .hdr h1::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accentB);
     margin-left:10px;vertical-align:middle;animation:swLed 1.5s ease-in-out infinite}
   @keyframes swLed{0%,100%{opacity:.25;box-shadow:none}50%{opacity:1;box-shadow:0 0 10px var(--accentB)}}
-  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:#fff;flex-shrink:0;transition:opacity .18s ease}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--text);flex-shrink:0;transition:opacity .18s ease}
   .brand:hover{opacity:.86}
   .brand:focus-visible{outline:2px solid #f7edf0;outline-offset:4px;border-radius:10px}
-  .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:linear-gradient(150deg,#d15873,#87213c);
+  .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:var(--text);
     display:flex;align-items:center;justify-content:center;gap:2.4px;font-size:0;
-    box-shadow:0 0 22px rgba(176,58,86,.55);animation:swFloat 6s ease-in-out infinite;
+    box-shadow:none;animation:swFloat 6s ease-in-out infinite;
     transition:scale .18s ease,box-shadow .18s ease}
   /* the float is written as `translate` and the hover lift as `scale`, which
      are separate properties: an animation on one no longer eats the other,
      so the mark keeps breathing while it grows under the cursor */
   @keyframes swFloat{0%,100%{translate:0 0}50%{translate:0 -3px}}
-  .brand:hover .logo{scale:1.06;box-shadow:0 0 26px rgba(176,58,86,.8)}
-  .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
+  .brand:hover .logo{scale:1.06;box-shadow:none}
+  .logo i{width:2.6px;border-radius:2px;background:var(--bg);display:block}
   .logo i:nth-child(1){height:7px}.logo i:nth-child(2){height:12px}.logo i:nth-child(3){height:9px}.logo i:nth-child(4){height:13px}
-  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:#fff;white-space:nowrap}
-  .hsep{width:1px;height:19px;background:rgba(255,255,255,.2);flex-shrink:0}
+  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:var(--text);white-space:nowrap}
+  .hsep{width:1px;height:19px;background:var(--line3);flex-shrink:0}
   /* The title is not set in Bricolage. Every box in this bar already matched
      the lookup tools to the pixel - 59px tall, a 30px mark, a 34px button -
      and the one thing that made it look bigger was the face: Bricolage runs
      about a fifth wider than the body face at the same 18px, so the same
      size read as a larger bar. The name beside the mark keeps Bricolage,
      because every tool sets it that way. */
-  .hdr h1{font-size:18px;font-weight:700;line-height:1.5;margin-right:auto;white-space:nowrap;color:#fff;
+  .hdr h1{font-size:18px;font-weight:700;line-height:1.5;margin-right:auto;white-space:nowrap;color:var(--text);
     overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
-  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:rgba(255,255,255,.06);border:1px solid var(--line3);
+  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:var(--card);border:1px solid var(--line);
     -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
-    color:#f7ded2;border-radius:999px;padding:4px 11px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
+    color:var(--muted);border-radius:999px;padding:4px 11px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
     flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
   /* no light on the pill: the title carries the status light now, and two
      of them blinking out of step is a fidget rather than a signal */
   .pill b{color:var(--accentB)}
   /* round, and it turns under the cursor - the same button the lookups have */
-  .ibtn{background:none;border:1px solid var(--line3);color:#fff;border-radius:999px;width:34px;height:34px;padding:0;
+  .ibtn{background:none;border:1px solid var(--line3);color:var(--text);border-radius:999px;width:34px;height:34px;padding:0;
     font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;transition:transform .2s ease,border-color .2s ease}
   .ibtn:hover{border-color:var(--accentB);transform:rotate(20deg)}
   @media (max-width:900px){.bname,.hsep{display:none}}
@@ -309,8 +309,8 @@
     .ibtn:hover{transform:none}
   }
 </style>
-<link rel="stylesheet" href="../_lib/nav.css?v=4">
-<link rel="stylesheet" href="../_lib/category.css?v=6">
+<link rel="stylesheet" href="../_lib/nav.css?v=5">
+<link rel="stylesheet" href="../_lib/category.css?v=7">
 </head>
 <body>
 <header class="hdr">

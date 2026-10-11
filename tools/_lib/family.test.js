@@ -63,11 +63,11 @@ const FOLDER = { 'whattodo': 'whattodo', 'lyric-video': 'lyric-video' };
 
 const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
 
-/* ---- 0. the DESIGNED VALUES are exactly what the design project published
+/* ---- 0. the DESIGNED VALUES are exactly what the brief specified
 
-   category.css was fetched from Claude Design, not retyped, and checked by
-   SHA-256 on arrival. This keeps it that way: comments may be added - one
-   already has been, explaining why a 4.39 contrast is correct for its role -
+   category.css is not retyped from a screenshot; its values are the brief's
+   token table, checked here so none of them can drift. Comments may be
+   added - several have been, each explaining why a value is what it is -
    but not one colour may move without this failing and saying so.
 
    Hash is over the declarations with every comment and all whitespace
@@ -77,15 +77,66 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     '9c51437dae420df42eab877757b9a859efa1a20c76a2613f2d82a1255b15ac1e');
-  /* The five identities, verbatim, so a "tidy-up" cannot quietly round one.
-     In dark these ARE --accentT; in light they survive only in --glow. */
-  for (const [cat, pick] of [['design','#d0f4de'], ['emortia','#ff99c8'],
-                             ['field','#a9def9'], ['people','#e4c1f9'], ['site','#fcf6bd']])
-    is(cat + ' still wears ' + pick,
-       new RegExp('data-cat="' + cat + '"\\]\\{[^}]*--accentT:' + pick + '\\b', 'i').test(NAV), true);
+     'c0ab13722c122d3790119a4c00d0ea69c47b157fc197f0da2719916b89850174');
+  /* THE FIVE IDENTITIES, light and dark, verbatim, so a "tidy-up" cannot
+     quietly round one. The light values are the brief's own category
+     colours; the dark ones are derived from the same hues because the
+     light set is unusable on a dark ground - #240046 and #03045E measure
+     1.02:1 and 1.03:1 against the page, which is invisible. */
+  for (const [cat, dark, light] of [['design','#81D67B','#006400'],
+                                    ['emortia','#EF717E','#FF0054'],
+                                    ['field','#88AEFF','#03045E'],
+                                    ['people','#B98FF6','#240046'],
+                                    ['site','#FFB573','#FF5400']]) {
+    is(cat + ' wears ' + dark + ' on dark',
+       new RegExp('data-cat="' + cat + '"\\]\\{[^}]*--accent:' + dark + '\\b', 'i').test(NAV), true);
+    is(cat + ' wears ' + light + ' on light',
+       new RegExp('data-cat="' + cat + '"\\]\\[data-theme="light"\\]\\{[^}]*--accent:' + light + '\\b', 'i')
+         .test(NAV), true);
+  }
   is('and the reason !important is here is written down',
      /!important, AND THAT IS DELIBERATE/.test(NAV), true);
+
+  /* ---- THE ELEVATION LADDER HAS EXACTLY THREE RUNGS, AND THEY ASCEND ----
+
+     The old dark ladder had --card-2 DARKER than --card, so the "raised"
+     surface was the recessed one and a nav bar pointed at it would have
+     gone the wrong way. Measured in OKLab lightness, which is what the
+     brief's 0.195 / 0.248 / 0.300 are - WCAG relative luminance is a
+     different quantity and reads 0.007 for the same colour, so comparing
+     the two is how a correct value gets called wrong. */
+  const hx = h => { h = h.replace('#',''); return [0,2,4].map(i => parseInt(h.slice(i,i+2),16)); };
+  const sl = c => { c /= 255; return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+  const okL = x => {
+    const [r,g,b] = hx(x).map(sl);
+    const l = Math.cbrt(0.4122214708*r + 0.5363325363*g + 0.0514459929*b);
+    const m = Math.cbrt(0.2119034982*r + 0.6806995451*g + 0.1073969566*b);
+    const s = Math.cbrt(0.0883024619*r + 0.2817188376*g + 0.6299787005*b);
+    return 0.2104542553*l + 0.7936177850*m - 0.0040720468*s;
+  };
+  for (const fam of ['design','emortia','field','people','site']) {
+    const blk = new RegExp('html\\[data-cat="' + fam + '"\\]\\{([^}]*)\\}').exec(NAV);
+    is(fam + ' has a dark block to measure', !!blk, true);
+    if (!blk) continue;
+    const get = k => (new RegExp('--' + k + ':(#[0-9A-Fa-f]{6})').exec(blk[1]) || [])[1];
+    const bg = get('bg'), card = get('card'), c2 = get('card-2');
+    is(fam + ' dark ladder ascends bg < card < card-2',
+       [okL(bg) < okL(card), okL(card) < okL(c2)], [true, true]);
+    is(fam + ' lands on the brief\'s rungs (.195 / .248 / .300 OKLab, ±.012)',
+       [bg, card, c2].map((v, i) => Math.abs(okL(v) - [0.195, 0.248, 0.300][i]) <= 0.012),
+       [true, true, true]);
+    /* NO FOURTH SURFACE. Named explicitly rather than "everything except the
+       ones I thought of": --line and --disabled are both legitimately
+       lighter than --card-2 - one is a border and the other is text - and an
+       exclusion list would have grown every time a token was added. The
+       surfaces are these five and the check is over exactly them. */
+    const SURFACES = ['bg', 'card', 'card-2', 'navy', 'navy-2'];
+    const above = SURFACES.map(k => [k, get(k)]).filter(([, v]) => v)
+      .filter(([, v]) => okL(v) > okL(c2) + 0.001).map(([k]) => k);
+    is(fam + ' has no surface above --card-2', above, []);
+    /* and the bar IS that top rung, which is the whole of item 2 */
+    is(fam + ' nav bar sits on --card-2', get('navy'), c2);
+  }
 }
 
 /* ---- 1. category.css defines all five categories, in both themes ---- */
@@ -422,8 +473,10 @@ console.log('\n--- the directory carries the same five hues ---');
     return (x * 60 + 360) % 360;
   };
   const apart = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
-  for (const [fam, pick] of [['design','#d0f4de'], ['emortia','#ff99c8'], ['field','#a9def9'],
-                             ['people','#e4c1f9'], ['site','#fcf6bd']]) {
+  /* The anchors are the DARK accents, because the directory's ground is the
+     burgundy page and the dark set is the one built for a dark ground. */
+  for (const [fam, pick] of [['design','#81D67B'], ['emortia','#EF717E'], ['field','#88AEFF'],
+                             ['people','#B98FF6'], ['site','#FFB573']]) {
     const m = INDEX.match(new RegExp('^\\.tgrp-' + fam + '\\{--gc:(#[0-9a-fA-F]{6});\\}', 'm'));
     is('.tgrp-' + fam + ' is set', !!m, true);
     if (!m) continue;
