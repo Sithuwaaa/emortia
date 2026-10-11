@@ -653,6 +653,18 @@
     const c = await client(); if (!c) throw new Error('Not connected just now.');
     const s = await session(); if (!s) throw new Error('Sign in first.');
     const CHUNK = 40;
+    /* ONE STAMP FOR THE WHOLE PUBLISH, hoisted out of the chunk loop where it
+       used to be. A 696-row sync goes out in eighteen requests and used to
+       write eighteen different synced_at values for what is one event, so
+       nothing downstream could tell "these rows were written together" from
+       "these rows were written one after another over a minute".
+
+       The notification feed needs exactly that: rows sharing a stamp are one
+       publish, and counting them is how it knows a mass republish happened
+       and collapses it to a line instead of burying a week of real changes
+       under 696 of them. Identical stamps, so plain equality groups them -
+       no column recording the batch size and no migration to add one. */
+    const stamp = new Date().toISOString();
     for (let i = 0; i < rows.length; i += CHUNK){
       /* stream SET, not defaulted. A column default only applies when the
          column is left out of the insert, and a row that leaves it out cannot
@@ -661,7 +673,7 @@
          PH1 and Bulk carry. */
       const part = rows.slice(i, i + CHUNK).map(r => ({
         ...r, stream: r.stream == null ? '' : String(r.stream),
-        synced_at: new Date().toISOString() }));
+        synced_at: stamp }));
       /* the key 039 made: (id, stream). 'id' alone no longer resolves. */
       let { error } = await c.from(WH24T).upsert(part, { onConflict: 'id,stream' });
       /* THE ROW MODEL MAY BE AHEAD OF THE SCHEMA, and that must not stop a

@@ -105,7 +105,32 @@ const mcols = columnsOf('wh24_marks');
      why('something nobody has seen before'), 'something nobody has seen before');
 }
 
-/* ---- the fallback column list must BE the pre-042 schema ---- */
+/* ---- the fallback column list must BE the schema the ESSENTIAL migrations
+       make, and nothing later ----
+
+   WH24T_COLS is what wh24Publish retries with when PostgREST refuses an
+   upsert over a column the database has not got. So it has to be exactly the
+   set a database that ran only the essential migrations has: 036 creates the
+   table, 037 and 039 add to it, and every migration above that is optional
+   BY DESIGN - the publish drops its columns and writes the rest.
+
+   This used to name 042, which was right while 042 was the only optional
+   one. 044 made it silently wrong in the worst direction: it started
+   demanding prev_state in the very list whose whole job is to work on a
+   database without prev_state. Optional is now read off the file numbers
+   rather than hard-coded, so the next one cannot repeat it. */
+const MIGRATIONS = fs.readdirSync(path.join(ROOT, 'supabase'))
+  .filter(f => /^\d+_wh24.*\.sql$/.test(f)).sort();
+const ESSENTIAL = /^0(36|37|39)_/;              /* create, and the two that must be run */
+function addsOf(files, table) {
+  const out = [];
+  files.forEach(f => {
+    const src = fs.readFileSync(path.join(ROOT, 'supabase', f), 'utf8');
+    const re = new RegExp('alter\\s+table\\s+' + table + '\\s+add column if not exists ([a-z_0-9]+)', 'g');
+    let m; while ((m = re.exec(src))) out.push(m[1]);
+  });
+  return out;
+}
 {
   const DB = fs.readFileSync(path.join(ROOT, 'tools/_lib/db.js'), 'utf8');
   const m = /const WH24T_COLS = \[([\s\S]*?)\];/.exec(DB);
@@ -113,23 +138,49 @@ const mcols = columnsOf('wh24_marks');
   const listed = m[1].match(/'([a-z_0-9]+)'/g).map(s => s.replace(/'/g, ''));
   /* every one of them must be a real column, or the fallback fails too */
   is('every fallback column exists in the schema', listed.filter(k => !cols.has(k)), []);
-  /* and it must not quietly include a 042 column, or the fallback is not a
-     fallback - it would fail on exactly the database it exists to serve */
-  const sql042 = fs.existsSync(path.join(ROOT, 'supabase/042_wh24_facts.sql'))
-    ? fs.readFileSync(path.join(ROOT, 'supabase/042_wh24_facts.sql'), 'utf8') : '';
-  const added = [];
-  let mm, re2 = /add column if not exists ([a-z_0-9]+)/g;
-  while ((mm = re2.exec(sql042))) added.push(mm[1]);
-  is('and none of 042\'s new columns are in it', listed.filter(k => added.indexOf(k) >= 0), []);
-  /* Compared against the schema WITHOUT 042, not against itself. With 042 in
-     the folder `missing` is empty, so comparing to it would have been a
-     tautology that passes whatever 042 contains. */
-  const before = new Set([...cols].filter(k => added.indexOf(k) < 0));
-  const needed = keys.filter(k => !before.has(k)).sort();
-  is('042 adds exactly the columns the row needs and no others',
-     added.slice().sort(), needed);
-  is('and the fallback list IS the pre-042 schema',
+
+  const optional = addsOf(MIGRATIONS.filter(f => !ESSENTIAL.test(f)), 'wh24_tickets');
+  is('there are optional migrations to be wrong about', optional.length > 0, true);
+  /* The fallback must not quietly include one, or it is not a fallback - it
+     would fail on exactly the database it exists to serve. */
+  is('no optional migration\'s column is in the fallback list',
+     listed.filter(k => optional.indexOf(k) >= 0), []);
+  /* Compared against the schema WITHOUT them, not against itself. With every
+     migration in the folder `missing` is empty, so comparing to that would
+     have been a tautology that passes whatever the migrations contain. */
+  const before = new Set([...cols].filter(k => optional.indexOf(k) < 0));
+  is('and the fallback list IS the essential schema',
      listed.slice().sort(), [...before].sort());
+
+  /* 042 is the one that carries the row model, so it alone must cover
+     everything record() produces that the essential schema has not got. */
+  const added042 = addsOf(['042_wh24_facts.sql'], 'wh24_tickets');
+  is('042 adds exactly the columns the row needs and no others',
+     added042.slice().sort(), keys.filter(k => !before.has(k)).sort());
+}
+
+/* ---- prev_state is attached to the row OUTSIDE record(), so the check
+       above cannot see it ----
+
+   The sync writes it in index.html, at the one moment it holds both the old
+   row and the new one. That puts it past every guard here - rowKeys() asks
+   record() what a row carries, and record() has never heard of it - so it
+   gets its own assertions or it gets none. A key sent with no column behind
+   it makes PostgREST refuse the whole upsert, which is the bug this file
+   exists for. */
+{
+  const page = fs.readFileSync(path.join(ROOT, 'tools/wh24/index.html'), 'utf8');
+  const sets = page.match(/\.prev_state\s*=/g) || [];
+  is('the sync writes prev_state onto the row', sets.length > 0, true);
+  is('and wh24_tickets has a column for it', cols.has('prev_state'), true);
+  is('which is optional, so an unrun 044 only costs the feed its verdicts',
+     addsOf(MIGRATIONS.filter(f => !ESSENTIAL.test(f)), 'wh24_tickets').indexOf('prev_state') >= 0,
+     true);
+  /* Every row that goes out with a fresh stamp must say what it was, or the
+     feed reads a stale prev_state as a change that just happened. There are
+     two places a row joins the publish: the diff, and the late pass that
+     adds rows whose document gained a path. Both set it. */
+  is('both paths that add a row to the publish set it', sets.length >= 2, true);
 }
 
 /* ================ the bucket heals itself, and only because of these ===

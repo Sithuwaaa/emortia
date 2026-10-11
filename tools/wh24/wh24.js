@@ -1289,9 +1289,136 @@
     };
   }
 
+  /* ------------------------------------------------------ what has happened
+
+     A week of changes, newest first, built from rows the page already has.
+     No table of its own, and nothing to prune: an entry falls out of the
+     window when its stamp ages past seven days, and a sync that changes
+     nothing writes no rows, so a quiet week leaves the list exactly as it
+     was. That is the behaviour, not a happy accident of it.
+
+     THREE THINGS IT IS CAREFUL ABOUT, each of which it got wrong first:
+
+     1. synced_at says the ROW was written, not what about it moved. A
+        corrected title or a newly stored document writes a fresh stamp too.
+        So the verdict comes from prev_state, which the sync writes at the
+        one moment it holds both versions, and never from the stamp:
+
+          prev === ''        a new ticket
+          prev == null       unknown - the row predates migration 044, or
+                             was written by a page talking to a database
+                             without the column. Reads 'update', never a
+                             state change, because we do not know there was
+                             one.
+          prev === state     the row changed for some other reason
+          otherwise          a real move, prev -> state
+
+     2. A MASS REPUBLISH IS NOT A WEEK OF NEWS. The widening rewrote every
+        row; so did the document re-sync. Either would have filled the feed
+        with 696 identical lines and buried the twelve tickets that actually
+        moved - useless precisely when something big has just happened. Rows
+        written by one publish share one synced_at (wh24Publish stamps the
+        whole publish, not each chunk), so a publish is countable, and one
+        over `bulk` rows collapses to a single entry carrying its own events
+        for whoever wants to open it. Collapsed, never hidden: a mass
+        republish is a real event and should be visible as one.
+
+     3. ONE ENTRY PER TICKET. A row carries only its latest write, so a
+        ticket that moved twice this week shows its latest move and the state
+        it was in just before that - not the whole path. Known and accepted;
+        the alternative is a history table.
+
+     Hand-marked collections come from the mark, not the ticket: marking
+     collected writes wh24_marks and never touches the ticket row, so without
+     this the one event somebody enters by hand would be the one event the
+     feed never mentioned. */
+  var NEWS_DAYS = 7, NEWS_BULK = 50;
+  function news(tickets, marks, opt) {
+    opt = opt || {};
+    var now = opt.now != null ? new Date(opt.now).getTime() : Date.now();
+    var days = opt.days == null ? NEWS_DAYS : opt.days;
+    var bulk = opt.bulk == null ? NEWS_BULK : opt.bulk;
+    var cut = now - days * 86400000;
+    var list = (tickets || []).filter(function (t) { return !!t; });
+
+    /* How big each publish was. Counted over EVERY row held, not only the
+       ones in the window: a publish's size is its size, and a row rewritten
+       since legitimately no longer counts towards the one that wrote it. */
+    var size = {};
+    list.forEach(function (t) {
+      if (t.synced_at) size[t.synced_at] = (size[t.synced_at] || 0) + 1;
+    });
+
+    var items = [];
+    list.forEach(function (t) {
+      var mk = markOf(marks, t);
+      var rowAt = t.synced_at || null;
+      var markAt = mk && mk.updated_at ? mk.updated_at : null;
+      var rowMs = rowAt ? Date.parse(rowAt) : NaN;
+      var markMs = markAt ? Date.parse(markAt) : NaN;
+      /* The later of the two is what happened to this ticket most recently.
+         A mark is its own kind of event and carries no prev_state - nobody
+         recorded what the ticket was before somebody wrote the date on it. */
+      var byMark = !isNaN(markMs) && (isNaN(rowMs) || markMs > rowMs);
+      var at = byMark ? markAt : rowAt, ms = byMark ? markMs : rowMs;
+      if (at == null || isNaN(ms) || !(ms > cut)) return;
+
+      var st = state(t, mk);
+      var prev = byMark ? null : t.prev_state;
+      var kind = byMark ? 'mark'
+               : prev === '' ? 'new'
+               : prev == null ? 'update'
+               : prev === st ? 'update'
+               : 'move';
+      items.push({
+        key: key(t), id: t.id, stream: s(t.stream),
+        site: s(t.site), siteName: s(t.site_name),
+        at: at, ms: ms, state: st,
+        prev: kind === 'move' ? prev : null,
+        kind: kind,
+        by: byMark ? ((mk && mk.collected_by) || null) : null,
+        /* which publish wrote it, so the caller can see the grouping it was
+           put in rather than having to trust it */
+        batch: byMark ? null : rowAt,
+        batchSize: byMark ? 0 : (size[rowAt] || 0)
+      });
+    });
+
+    /* Collapse the mass publishes. A batch keeps its own events so it can be
+       opened, and takes the time of the publish that made it. */
+    var out = [], batches = {};
+    items.forEach(function (it) {
+      if (it.batch && it.batchSize > bulk) {
+        var b = batches[it.batch];
+        if (!b) {
+          b = batches[it.batch] = { kind: 'batch', at: it.batch, ms: Date.parse(it.batch),
+                                    n: it.batchSize, events: [] };
+          out.push(b);
+        }
+        b.events.push(it);
+        return;
+      }
+      out.push(it);
+    });
+    var byTime = function (a, b) { return b.ms - a.ms || (a.key < b.key ? -1 : 1); };
+    out.sort(byTime);
+    Object.keys(batches).forEach(function (k) { batches[k].events.sort(byTime); });
+    return out;
+  }
+  /* How many of them are newer than the last time this person looked. A
+     collapsed publish counts as the one line it draws, not as its 696 rows -
+     a badge saying 696 after a maintenance sync is the same flood in a
+     smaller place. */
+  function newsUnseen(entries, since) {
+    var t = since ? Date.parse(since) : NaN;
+    if (isNaN(t)) return (entries || []).length;
+    return (entries || []).filter(function (e) { return e.ms > t; }).length;
+  }
+
   return { splitTask: splitTask, current: current, doneTimes: doneTimes, num: num, ginDate: ginDate,
            reservations: reservations,
            freshness: freshness, FRESH_WARN: FRESH_WARN, FRESH_BAD: FRESH_BAD,
+           news: news, newsUnseen: newsUnseen, NEWS_DAYS: NEWS_DAYS, NEWS_BULK: NEWS_BULK,
            stem: stem, stems: stems, key: key, markOf: markOf,
            rowsFor: rowsFor, ph2Ready: ph2Ready, ph2Material: ph2Material, attachDocs: attachDocs,
            bulkApproved: bulkApproved, bulkState: bulkState, bulkStatus: bulkStatus,

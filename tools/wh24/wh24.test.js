@@ -221,5 +221,123 @@ is('no em dash in the copy',
      return (o.why + o.headline).indexOf('—') < 0;
    }), [true, true, true, true]);
 
+/* ---- what has happened, this week ----
+   Synthetic ids and site codes throughout: the repo is public. */
+const nAt = h => new Date(Date.parse(NOW) - h * 3600000).toISOString();
+/* a ticket whose state is decided by the fields, not asserted by the fixture:
+   stage 'Material Reservation - Infomate Team' is reserving, done_at makes it
+   ready, 'Material Shortage - ACE' is a shortage. */
+const tk = (id, o) => Object.assign({ id, stream: '', site: 'ZZ0001', site_name: 'Test_Site',
+  stage: 'Material Reservation - Infomate Team', timeline: [], lines: [], gins: [] }, o);
+const NEWS = (ts, mk, o) => W.news(ts, mk || {}, Object.assign({ now: NOW }, o));
+
+/* the states are derived, not declared - if this drifts the rest is noise */
+is('the fixture really is reserving then ready then shortage',
+   [W.state(tk(1), null), W.state(tk(1, { done_at: nAt(50) }), null),
+    W.state(tk(1, { stage: 'Material Shortage - ACE' }), null)],
+   ['reserving', 'ready', 'shortage']);
+
+/* 1. a move the sync actually recorded */
+const moved = NEWS([tk(9001, { synced_at: nAt(3), prev_state: 'reserving', done_at: nAt(4) })]);
+is('a real move says what it was and what it is',
+   moved.map(e => [e.id, e.kind, e.prev, e.state]), [[9001, 'move', 'reserving', 'ready']]);
+is('and carries the time it happened', moved[0].at, nAt(3));
+
+/* 2. THE CORRECTION: a fresh stamp is not a state change */
+is('prev_state equal to the state reads as an update, not a verdict',
+   NEWS([tk(9002, { synced_at: nAt(2), prev_state: 'reserving' })])
+     .map(e => [e.kind, e.prev]), [['update', null]]);
+is('prev_state null is unknown, and still not a verdict',
+   NEWS([tk(9003, { synced_at: nAt(2), prev_state: null })])
+     .map(e => [e.kind, e.prev]), [['update', null]]);
+is('a column that does not exist is the same unknown',
+   NEWS([tk(9004, { synced_at: nAt(2) })]).map(e => e.kind), ['update']);
+is('the empty string is a new ticket, which null must not be confused with',
+   NEWS([tk(9005, { synced_at: nAt(2), prev_state: '' })]).map(e => [e.kind, e.state]),
+   [['new', 'reserving']]);
+
+/* 3. the week, from both sides */
+is('six days ago is in, eight days ago is out',
+   NEWS([tk(9006, { synced_at: nAt(24 * 6), prev_state: '' }),
+         tk(9007, { synced_at: nAt(24 * 8), prev_state: '' })]).map(e => e.id), [9006]);
+is('the window is a week', W.NEWS_DAYS, 7);
+is('and it can be asked for a different one',
+   NEWS([tk(9008, { synced_at: nAt(24 * 3), prev_state: '' })], {}, { days: 2 }).length, 0);
+
+/* 4. newest first */
+is('newest first', NEWS([tk(9010, { synced_at: nAt(50), prev_state: '' }),
+                         tk(9011, { synced_at: nAt(2), prev_state: '' }),
+                         tk(9012, { synced_at: nAt(20), prev_state: '' })]).map(e => e.id),
+   [9011, 9012, 9010]);
+
+/* 5. THE CORRECTION: a mass republish collapses to one line and is not hidden */
+const massAt = nAt(5);
+const mass = [];
+for (let i = 0; i < 60; i++) mass.push(tk(9100 + i, { synced_at: massAt, prev_state: 'reserving' }));
+/* twelve real changes, at a different stamp, which must survive it */
+for (let i = 0; i < 12; i++)
+  mass.push(tk(9200 + i, { synced_at: nAt(4), prev_state: 'reserving', done_at: nAt(4) }));
+const mixed = NEWS(mass);
+is('sixty rows written together become one entry, twelve real ones stay',
+   [mixed.length, mixed.filter(e => e.kind === 'batch').length], [13, 1]);
+const batch = mixed.find(e => e.kind === 'batch');
+is('the batch says how big it was and keeps its rows to open',
+   [batch.n, batch.events.length, batch.at], [60, 60, massAt]);
+is('the twelve real moves are not inside it',
+   mixed.filter(e => e.kind === 'move').map(e => e.id).sort((a, b) => a - b),
+   [9200, 9201, 9202, 9203, 9204, 9205, 9206, 9207, 9208, 9209, 9210, 9211]);
+is('the real ones are newest first, above the batch', mixed[0].kind, 'move');
+is('the threshold is fifty', W.NEWS_BULK, 50);
+is('fifty exactly is not a mass republish, fifty-one is',
+   [NEWS(Array.from({ length: 50 }, (_, i) => tk(9300 + i, { synced_at: nAt(6), prev_state: '' })))
+      .filter(e => e.kind === 'batch').length,
+    NEWS(Array.from({ length: 51 }, (_, i) => tk(9400 + i, { synced_at: nAt(6), prev_state: '' })))
+      .filter(e => e.kind === 'batch').length], [0, 1]);
+/* the size is counted over every row held, not only the ones in the window -
+   otherwise a maintenance sync eight days old would decollapse as it aged */
+const aged = [];
+for (let i = 0; i < 60; i++) aged.push(tk(9500 + i, { synced_at: nAt(24 * 8), prev_state: '' }));
+is('a mass publish outside the window produces nothing at all', NEWS(aged).length, 0);
+
+/* 6. a hand-marked collection, which never touches the ticket row */
+const marked = NEWS([tk(9600, { synced_at: nAt(60), prev_state: 'reserving' })],
+                    { '9600|': { ticket_id: 9600, stream: '', collected_on: '2026-10-10',
+                                 collected_by: 'ruwan', updated_at: nAt(1) } });
+is('a mark is an event even when the row is older than the week',
+   marked.map(e => [e.id, e.kind, e.state, e.by, e.at]),
+   [[9600, 'mark', 'collected', 'ruwan', nAt(1)]]);
+is('a mark claims no previous state, because nobody recorded one', marked[0].prev, null);
+is('the row wins when the row is newer',
+   NEWS([tk(9601, { synced_at: nAt(1), prev_state: 'reserving', done_at: nAt(9) })],
+        { '9601|': { ticket_id: 9601, stream: '', updated_at: nAt(5) } })
+     .map(e => [e.kind, e.prev, e.state, e.at]), [['move', 'reserving', 'ready', nAt(1)]]);
+is('a mark never joins a batch',
+   NEWS(mass.concat([tk(9602, { synced_at: massAt, prev_state: 'reserving' })]),
+        { '9602|': { ticket_id: 9602, stream: '', collected_on: '2026-10-10',
+                     collected_by: 'ruwan', updated_at: nAt(1) } })
+     .filter(e => e.kind === 'mark').length, 1);
+
+/* 7. PH2 keeps its two streams apart */
+is('two streams on one ticket are two entries',
+   NEWS([tk(9700, { stream: 'ACE', synced_at: nAt(2), prev_state: '' }),
+         tk(9700, { stream: 'Advantis', synced_at: nAt(3), prev_state: '' })])
+     .map(e => e.key), ['9700|ACE', '9700|Advantis']);
+
+/* 8. nothing to say */
+is('no tickets', NEWS([]), []);
+is('a ticket that has never been written says nothing', NEWS([tk(9800)]), []);
+is('null tickets are survived', NEWS([null, tk(9801, { synced_at: nAt(1), prev_state: '' })]).length, 1);
+
+/* 9. the unread count, which is what the badge shows */
+const feed = NEWS([tk(9900, { synced_at: nAt(1), prev_state: '' }),
+                   tk(9901, { synced_at: nAt(10), prev_state: '' }),
+                   tk(9902, { synced_at: nAt(30), prev_state: '' })]);
+is('everything is unread when nothing has been seen', W.newsUnseen(feed, null), 3);
+is('unseen is strictly newer than the stamp', W.newsUnseen(feed, nAt(10)), 1);
+is('nothing is unread once the latest has been seen', W.newsUnseen(feed, nAt(0)), 0);
+is('a rubbish stamp is treated as having seen nothing', W.newsUnseen(feed, 'not a date'), 3);
+is('a collapsed publish counts as the one line it draws, not its sixty rows',
+   W.newsUnseen(NEWS(mass), nAt(24 * 7)), 13);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

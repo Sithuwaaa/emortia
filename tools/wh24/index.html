@@ -147,10 +147,25 @@
      runs from the moment the element appears, with no callback to miss, and
      under prefers-reduced-motion the blanket `*{animation:none}` above simply
      shows it outright. Presence is the hidden attribute and nothing else. */
+  /* A COLUMN, so the feed is the part that gives when there is no room. The
+     panel grew a week of changes and became tall enough to run off a short
+     window; placeNews caps it to the space that is actually there, and
+     everything except the list is flex:none, so the squeeze lands on the one
+     child that can scroll instead of clipping the buttons off the bottom. */
   .newspop{position:fixed;z-index:2147482000;width:290px;max-width:calc(100vw - 16px);
     background:var(--card);color:var(--text);border:1px solid var(--line3);border-radius:14px;
     padding:14px 15px 13px;box-shadow:0 18px 50px rgba(0,0,0,.45);
+    display:flex;flex-direction:column;min-height:0;
+    /* and the panel itself scrolls once the feed has given all it can. On a
+       420-tall window the fixed parts alone fill the cap, so leaving the
+       squeeze unbounded shrank the list to one pixel - a section that was
+       there and showed nothing. The list keeps three rows' worth and the
+       overflow becomes the panel's problem. Gutterless, like every scroller
+       in the suite. */
+    overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;
     animation:newsIn .16s ease both}
+  .newspop::-webkit-scrollbar{width:0;height:0;display:none}
+  .newspop>*{flex:none}
   @keyframes newsIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
   .newspop .nhd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
   /* The headline is --text on a card except where it is telling you to act.
@@ -172,6 +187,50 @@
   .newspop dd b{font-family:'Space Mono',monospace;font-weight:700}
   .newspop .nact{margin-top:12px;display:flex;gap:8px}
   .newspop .nact .btn{flex:1;padding:7px 10px;font-size:12.5px;text-align:center}
+
+  /* ---- the week's changes ----
+     Scrolls rather than growing: a busy week is a hundred lines and a panel
+     hanging off the bar cannot be a hundred lines tall. The gutter is hidden
+     suite-wide by nav.css, so the scroll is there and the grey channel is
+     not. */
+  .newspop .nfeed{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;
+    flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .newspop .nfeed h4{font:700 10.5px 'Space Mono',monospace;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;
+    align-items:baseline;gap:8px;margin-bottom:7px}
+  .newspop .nfeed h4 span{font-weight:400;text-transform:none;letter-spacing:0}
+  /* No gutter, like every other scroller in the suite - nav.css hides them
+     by name and does not know about this one. */
+  /* min-height is the floor the squeeze stops at - three rows. Without it
+     the list gave up every pixel it had and the section rendered one pixel
+     tall: present, and showing nothing. */
+  .newspop .nfeed ul{list-style:none;max-height:232px;min-height:86px;overflow-y:auto;
+    margin:0 -4px;padding:0 4px;scrollbar-width:none;-ms-overflow-style:none}
+  .newspop .nfeed ul::-webkit-scrollbar{width:0;height:0;display:none}
+  .newspop .ne{display:grid;grid-template-columns:1fr auto;gap:1px 10px;
+    padding:6px 0;border-bottom:1px solid var(--line);font-size:12px}
+  .newspop .ne:last-child{border-bottom:0}
+  .newspop .ne .nwho{font-family:'Space Mono',monospace;font-weight:700}
+  .newspop .ne .nwhen{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted);
+    text-align:right;white-space:nowrap}
+  .newspop .ne .nwhat{grid-column:1/-1;color:var(--muted);font-size:11.5px}
+  /* The state a ticket has ARRIVED at is the part you read; where it came
+     from is context. Weight carries that, not colour - these lines sit three
+     to a centimetre and five colours down the list is a barcode. The one
+     exception is a problem, which is the whole reason to look. */
+  .newspop .ne .nwhat b{color:var(--text);font-weight:700}
+  .newspop .ne.s-shortage .nwhat b,
+  .newspop .ne.s-rejected .nwhat b{color:var(--bad)}
+  .newspop .ne.s-collected .nwhat b{color:var(--ok)}
+  .newspop .nmore{background:none;border:0;padding:0;cursor:pointer;text-align:left;
+    font:inherit;color:var(--accentB);text-decoration:underline;text-underline-offset:2px}
+  .newspop .nempty{color:var(--muted);font-size:12px;padding:4px 0 2px}
+
+  /* the unread count. --accent is the family pastel and --accent-ink is the
+     ink the design pairs with it, so this is the one governed pair rather
+     than a colour chosen here. */
+  .news .ncount{background:var(--accent);color:var(--accent-ink);border-radius:999px;
+    font:700 10.5px/1 'Space Mono',monospace;padding:3px 6px;flex:none}
 
   @media (max-width:900px){.bname,.hsep{display:none}}
   @media (max-width:760px){.pill{display:none}}
@@ -507,6 +566,7 @@
             stroke-width="1.6" stroke-linejoin="round"/>
     </svg>
     <span class="nlab" id="newsLab">checking…</span>
+    <span class="ncount" id="newsN" hidden></span>
     <i class="ndot" aria-hidden="true"></i>
   </button>
   <button class="ibtn" id="themeBtn" title="Light or dark" aria-label="Light or dark">◐</button>
@@ -518,6 +578,10 @@
   <div class="nhd"><b id="newsHd">Checking…</b><span id="newsAge"></span></div>
   <p id="newsWhy">Reading the sync log.</p>
   <dl id="newsFacts"></dl>
+  <div class="nfeed">
+    <h4>What has changed <span id="newsSpan"></span></h4>
+    <ul id="newsList"></ul>
+  </div>
   <div class="nact"><button class="btn" id="newsGo">Sync details</button></div>
 </div>
 
@@ -1422,7 +1486,80 @@ function drawNews(f){
     : '<b>never</b>');
   row('On screen now', `<b>${TICKETS.length}</b> ticket${TICKETS.length === 1 ? '' : 's'}`);
   $('newsFacts').innerHTML = rows.join('');
+  drawFeed();
 }
+
+/* ---- the week's changes ----
+
+   Built from the rows already loaded, by W.news. Nothing is stored for it
+   and nothing has to be pruned: an entry leaves the list when its stamp ages
+   past seven days, and a sync that changes nothing writes no rows, so a
+   quiet week leaves the list exactly as it was.
+
+   WHAT HAS BEEN SEEN is per-person and lives in this browser, not in the
+   database: three of us read the same rows on three laptops, and one of us
+   having opened the panel says nothing about the other two. */
+const SEEN_KEY = 'wh24.newsSeen';
+const seenAt  = () => { try { return localStorage.getItem(SEEN_KEY); } catch(e){ return null; } };
+const markSeen = () => { try { localStorage.setItem(SEEN_KEY, new Date().toISOString()); } catch(e){} };
+let FEED = [], OPENED = {};
+function drawFeed(){
+  FEED = W.news(TICKETS, MARKS, {});
+  const unseen = W.newsUnseen(FEED, seenAt());
+  const n = $('newsN');
+  n.hidden = !unseen;
+  n.textContent = unseen > 99 ? '99+' : String(unseen);
+  /* the count is on the button, so it has to be in the button's spoken name
+     too - a badge a screen reader cannot see is not a notification */
+  if (unseen){
+    const b = $('newsBtn');
+    b.setAttribute('aria-label', b.getAttribute('aria-label') + ', ' +
+      unseen + ' unread change' + (unseen === 1 ? '' : 's'));
+  }
+  $('newsSpan').textContent = 'last ' + W.NEWS_DAYS + ' days';
+  if (!FEED.length){
+    $('newsList').innerHTML =
+      `<li class="nempty">Nothing has changed in the last ${W.NEWS_DAYS} days.</li>`;
+    return;
+  }
+  $('newsList').innerHTML = FEED.map(feedRow).join('');
+}
+/* "#25307 ACE · ZZ0001" - the stream only when there is one, because it is
+   PH2's two vendor rows that need telling apart and nothing else does. */
+const feedWho = e => '#' + e.id + (e.stream ? ' ' + e.stream : '') + (e.site ? ' · ' + e.site : '');
+function feedSays(e){
+  return e.kind === 'mark' ? `marked <b>collected</b>${e.by ? ' by ' + esc(e.by) : ''}`
+       : e.kind === 'new'  ? `new ticket · <b>${esc(stLabel(e.state))}</b>`
+       : e.kind === 'move' ? `${esc(stLabel(e.prev))} → <b>${esc(stLabel(e.state))}</b>`
+       /* NOT a state change. The row was written - a corrected title, a
+          document stored - and nothing records that it moved, so the line
+          does not say it did. */
+       : `updated · ${esc(stLabel(e.state))}`;
+}
+function feedRow(e){
+  if (e.kind === 'batch'){
+    const open = !!OPENED[e.at];
+    return `<li class="ne k-batch">` +
+      `<span class="nwho">${e.n} tickets re-synced</span>` +
+      `<span class="nwhen">${esc(niceT(e.at))}</span>` +
+      `<span class="nwhat">maintenance – everything was rewritten, not changed. ` +
+      `<button class="nmore" data-batch="${esc(e.at)}">${open ? 'hide' : 'show ' + e.n}</button></span>` +
+      `</li>` +
+      (open ? e.events.map(feedRow).join('') : '');
+  }
+  return `<li class="ne s-${esc(e.state)}">` +
+    `<span class="nwho">${esc(feedWho(e))}</span>` +
+    `<span class="nwhen">${esc(niceT(e.at))}</span>` +
+    `<span class="nwhat">${feedSays(e)}</span>` +
+    `</li>`;
+}
+/* Delegated, because the list is rewritten every minute and on every sync. */
+$('newsList').addEventListener('click', ev => {
+  const b = ev.target.closest('.nmore'); if (!b) return;
+  const k = b.dataset.batch;
+  OPENED[k] = !OPENED[k];
+  $('newsList').innerHTML = FEED.map(feedRow).join('');
+});
 
 /* Placed against the button and against the window, the way the account menu
    is - see access.js. Flipped above the bar when there is no room below,
@@ -1431,9 +1568,18 @@ function placeNews(){
   const pop = $('newsPop'), r = $('newsBtn').getBoundingClientRect();
   const w = pop.offsetWidth || 290;
   pop.style.left = Math.round(Math.min(Math.max(8, r.right - w), innerWidth - w - 8)) + 'px';
+  /* Measure the room BEFORE capping, or each open reads back the cap the
+     last one set and the panel ratchets smaller. */
+  pop.style.maxHeight = '';
+  const below = innerHeight - r.bottom - 18, above = r.top - 18;
   const h = pop.offsetHeight || 240;
-  if (innerHeight - r.bottom > h + 16){ pop.style.top = Math.round(r.bottom + 10) + 'px'; pop.style.bottom = ''; }
+  /* Below unless it does not fit and above is roomier. The old test was
+     "does it fit below, else above", which on a window too short for either
+     put the panel above and ran it off the top of the screen. */
+  const under = h <= below || below >= above;
+  if (under){ pop.style.top = Math.round(r.bottom + 10) + 'px'; pop.style.bottom = ''; }
   else { pop.style.bottom = Math.round(innerHeight - r.top + 10) + 'px'; pop.style.top = ''; }
+  pop.style.maxHeight = Math.max(160, Math.round(under ? below : above)) + 'px';
 }
 /* Open and shut are both synchronous, and `hidden` is the only state there
    is - no class that arrives a frame later and no timer that clears one a
@@ -1445,6 +1591,14 @@ function openNews(){
   pop.hidden = false;
   placeNews();                                /* measured while visible, before it moves */
   $('newsBtn').setAttribute('aria-expanded', 'true');
+  /* Opening it IS having seen it, so the count clears now rather than on
+     close - a badge that survives being read is a badge nobody trusts. The
+     list in front of them does not change; only the number on the button.
+     drawWhen and not drawFeed, so the spoken name is rebuilt from scratch
+     instead of having the count appended to it a second time. */
+  markSeen();
+  drawWhen();
+  placeNews();                                /* the badge went; the button moved */
 }
 function closeNews(){
   /* hidden, not transparent: out of the tab order and off the accessibility
@@ -1751,8 +1905,17 @@ async function receive(data){
       const old = byKey[KEY(rec)];
       if (old && sig(old) === sig(rec)){ acc.same++; p.same++; return; }
       if (old){ acc.changed++; p.changed++; } else { acc.fresh++; p.fresh++; }
-      out.push(rec);
       const was = old ? W.state(old, mk(old)) : null, now = W.state(rec, mk(rec));
+      /* WHAT IT WAS, written onto the row as it goes out.
+         synced_at says the row was written; it does not say what moved - a
+         corrected title or a new document path writes a fresh stamp too - so
+         a feed reading only that would announce state changes that never
+         happened. This line is the one moment anything holds both versions,
+         and it costs no query to use it. '' for a new ticket, never null:
+         null is reserved for "unknown", which is what a row written before
+         migration 044 has, and the two must not read alike. */
+      rec.prev_state = old ? was : '';
+      out.push(rec);
       const who = '#' + rec.id + (rec.stream ? ' ' + esc(rec.stream) : '');
       lines.push(`<span>${who} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(stLabel(was)) + ' → <b>' + esc(stLabel(now)) + '</b>') : 'new · <b>' + esc(stLabel(now)) + '</b>'}</span>`);
     });
@@ -1850,7 +2013,16 @@ $('syncGo').onclick = async () => {
        a moment ago, so it has to go in the publish or the path is thrown away
        and the whole pass repeats on the next sync. */
     (PRODUCED || []).forEach(t => {
-      if ((t.gins || []).some(g => g.path) && PENDING.indexOf(t) < 0) PENDING.push(t);
+      if ((t.gins || []).some(g => g.path) && PENDING.indexOf(t) < 0){
+        /* It is going out with a fresh synced_at, and its state did NOT
+           move - a document arrived, that is all. Say so, or the row keeps
+           whatever prev_state its last real change left behind and the feed
+           reports that change a second time, days later, as if it had just
+           happened. This is the whole reason prev_state is written rather
+           than inferred. */
+        t.prev_state = W.state(t, mk(t));
+        PENDING.push(t);
+      }
     });
 
     await window.DB.wh24Publish(PENDING, (n, of) => dlg(`Publishing ${n} of ${of}…`, { pct: n / of }));
