@@ -217,6 +217,32 @@ console.log('\n--- no ungoverned chrome anywhere ---');
      a category gets a say in, so they are status and keep their own colours.
      --c-* are the jumper chart's own fills - the cable colours themselves -
      and swatchEdge is what keeps a black one from vanishing into the card. */
+
+  /* ---- DECLARED LOOKS: a tool's own surface system, named out loud ----
+
+     The rule above is about CHROME - the shared vocabulary of ground, card,
+     text, line and accent - because a tool quietly redefining those is the
+     drift this file exists to stop. It is not about a tool having a look.
+
+     What To Do is built on frosted panes over a lit ground, which needs
+     tokens the five families have no opinion about: the glass itself, the
+     four blobs under it, and four decorative hues for its type chips. Those
+     are listed HERE, by tool and by name, so they are a decision on the
+     record rather than a hole in the check. A token this tool grows later
+     and does not add to this list still fails, which is the point.
+
+     None of these may be a chrome name: the loop below refuses any entry
+     category.css already governs, so "allowed" can never become a way to
+     take --bg or --text back. */
+  const DECLARED = {
+    whattodo: ['glass','glass-hero','glass-edge','glass-shadow',
+               'lq-ground','lq-b1','lq-b2','lq-b3','lq-b4','lq-ink','lq-track',
+               'sky','mint','amber','coral','chk-on','chk-ink','chk-edge']
+  };
+  for (const [tool, list] of Object.entries(DECLARED))
+    for (const p of list)
+      is('declared look ' + tool + ' --' + p + ' does not shadow governed chrome',
+         GOVERNED.has(p), false);
   /* ONLY the <style> blocks, and only a rule body found by walking braces
      from its own selector. The first version of this scanned the whole HTML
      with a naive /\{([^{}]*)\}/ - which runs straight through the page's
@@ -246,8 +272,10 @@ console.log('\n--- no ungoverned chrome anywhere ---');
       for (const d of body.matchAll(/--([a-zA-Z0-9-]+)\s*:\s*([^;}]*)/g))
         if (/#[0-9a-f]{3,8}|rgba?\(|hsla?\(/i.test(d[2])) props.add(d[1]);
     }
+    const declared = new Set(DECLARED[row.tool] || []);
     for (const p of [...props].sort())
-      if (!GOVERNED.has(p) && !STATUS.test(p)) left.push(row.tool + ' --' + p);
+      if (!GOVERNED.has(p) && !STATUS.test(p) && !declared.has(p))
+        left.push(row.tool + ' --' + p);
   }
   /* A SCAN THAT READS NOTHING PASSES EVERYTHING. Assert it found the blocks
      before believing what it says about them. */
