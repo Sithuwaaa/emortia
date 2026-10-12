@@ -74,9 +74,9 @@ main{position:relative;z-index:1;}
    docs/wh24-decisions.md for the reversal and the reason. */
 .hdr .logo{
   border-radius:50% !important;
-  background:var(--text) !important;
-  color:var(--bg) !important;
-  box-shadow:none !important;
+  background:linear-gradient(150deg,var(--accentB),var(--accentD)) !important;
+  color:#f2fbfd !important;
+  box-shadow:0 0 18px var(--glow) !important;
   animation:tLogoFloat 4.5s ease-in-out infinite;
 }
 @keyframes tLogoFloat{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);} }

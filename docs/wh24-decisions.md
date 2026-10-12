@@ -455,27 +455,24 @@ ladder and the token table are the brief's; what follows is only the things
 decided *against* an earlier instruction, or decided by measurement, so that
 nobody reading the older notes "fixes" them back.
 
-### The logo is neutral on tool pages. This reverses the earlier spec.
+### The logo is the brand mark. It stays Emortia pink, everywhere.
 
-The earlier instruction said category identity in the nav bar should be
-carried by "the 2px rule, the logo mark, and the active nav item". The logo
-was then withdrawn from that list, and the reasoning is worth keeping:
+`#d15873 → #87213c` on all sixteen tools and on the main site. It does not
+take the category colour, it does not go neutral, and **nobody changes it
+without Sithara asking for it.**
 
-- **A brand mark that changes colour per page is not a brand mark.** The
-  whole value of a mark is that it is the same object everywhere.
-- **It could not stay as it was either.** All sixteen tools drew the disc as
-  a hardcoded `#d15873 → #87213c` gradient — Emortia pink. Pink *is* one of
-  the five families, so emortia pages got a free match and the other four
-  got a mark clashing with their own chrome. site-access and site-data had a
-  second, amber disc from `lookup.css`, which is Site's hue — same problem.
+This entry replaces an earlier one that argued the disc should be neutral on
+tool pages because pink is also one of the five family colours. That change
+was never requested — it came out of an audit and was agreed between two
+sessions rather than with the person whose brand it is — and it was reverted
+on sight. It was not even self-consistent: the disc went white while the
+account pill beside it stayed crimson, so the bar carried two different
+answers about what the brand colour was.
 
-So on tool pages the disc is `--text` with the page ground showing through
-its four bars: the same neutral mark on all sixteen, legible in both themes
-without a value of its own. **On the main site the logo stays pink** — there
-it is the brand, not nav furniture.
-
-Category identity in the bar is now carried by exactly one thing: a 2px
-`--accent` rule along the lower edge, set once in `nav.css`.
+The standing rule this produced, which is wider than the logo: **if it is
+not on the list, raise it and wait.** Noticing something in passing is
+useful; acting on it is not. That applies to the mark, the account pill, bar
+geometry and anything else spotted while doing something adjacent.
 
 ### The bar is `--card-2`, and that inverted what it used to be
 
@@ -519,3 +516,31 @@ measured contrast — Site's title went 7.05:1 → 4.01 and Field's 7.05 → 3.9
 purely from yellow→orange and cyan→blue, a change meant to touch only hue.
 The generator now searches lightness back until each value measures what it
 measured before, so the dimming done after "it crashes the eyes" survives.
+
+---
+
+## 043 is COMPLETE. Stop listing it as outstanding.
+
+**Done.** Recorded here because it was re-reported as pending six times, each
+time re-derived from a stale note rather than from anything observed. There
+is nothing left to run.
+
+- **Step 4 returned 451 / 0 / 0 / 617.**
+- The wide sync ran afterwards.
+- The `wh24-docs` bucket holds **617 verified PDFs** — real files, not the
+  zero-byte objects that caused 043 to be written.
+- Goods Issue Notes have been downloaded out of it on **three separate
+  occasions**, by hand, successfully.
+
+Why it kept coming back: I cannot see the live database, so "has 043 run?"
+is not a question I can answer by looking. The honest default is to ask, and
+the failure mode is to instead carry a months-old note forward as if it were
+current state. **The note is the state now. Do not re-derive it.**
+
+The related rule, already in memory and worth repeating here: never list a
+migration as unrun. Ask, or read an entry like this one.
+
+**Migration 044 (`prev_state`) is a different thing and is genuinely
+optional** — unrun, the notification feed reads "updated" on every line
+instead of "reserving → collected", `wh24Publish` drops the column and
+retries, and nothing else notices.

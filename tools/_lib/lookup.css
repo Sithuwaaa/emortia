@@ -20,8 +20,8 @@ html,body{background:var(--bg);color:var(--text);
    brand mark that changes colour is not a brand mark - and it cannot stay
    the amber it was, because that is Site's own hue and these two tools are
    Site. The ground shows through it. See docs/wh24-decisions.md. */
-.hdr .logo{width:30px;height:30px;border-radius:7px;background:var(--text);
-  display:grid;place-items:center;font-weight:800;color:var(--bg);font-size:15px;flex-shrink:0}
+.hdr .logo{width:30px;height:30px;border-radius:7px;background:linear-gradient(150deg,#ffc04d,#d8892a);
+  display:grid;place-items:center;font-weight:800;color:#231a04;font-size:15px;flex-shrink:0}
 .hdr h1{font-size:18px;font-weight:700;margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pill{font-size:11.5px;background:var(--navy-2);border:1px solid rgba(255,255,255,.15);
   color:#cfd6e6;border-radius:999px;padding:4px 11px;white-space:nowrap}
