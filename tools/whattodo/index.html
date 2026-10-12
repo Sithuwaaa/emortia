@@ -64,7 +64,6 @@
 
        Set on html and body as well as here, so the colour runs edge to
        edge instead of a panel sitting on a different shade. */
-    --lq-ground:#22060E;
     /* the glass itself */
     --glass:#2E1218;
     --glass-hero:#3A161F;
@@ -79,10 +78,9 @@
     --lq-ink:#F7F1E8;
     /* the selected chip: dark fill, light ink, accent ring - the same
        treatment in both themes, so it reads as picked either way */
-    --sel-bg:#22060E; --sel-ink:#F7F1E8;
+    --sel-bg:#181014; --sel-ink:#F7F1E8;
   }
   html[data-theme="light"]{
-    --lq-ground:#FBF3F4;
     --glass:#FFFFFF;
     --glass-hero:#FFF4F6;
     --glass-edge:#EBD9DE;
@@ -129,7 +127,7 @@
   /* THE GROUND IS ON html AND body, so it fills the viewport. It used to
      be painted only on the .liquid panel, which left the panel one colour
      and everything outside it another - two backgrounds on one page. */
-  html,body{background:var(--lq-ground);color:var(--lq-ink);
+  html,body{background:var(--bg);color:var(--lq-ink);
     font:15px/1.55 Jost,'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
   button,input,textarea{font:inherit;color:inherit}
   [hidden]{display:none !important}
@@ -348,8 +346,8 @@
 <script src="../_lib/ask.js?v=1" defer></script>
 <!-- Last in the head on purpose: this is what holds every tool header to
      the same size, so it has to win against the page's own .hdr rules. -->
-<link rel="stylesheet" href="../_lib/nav.css?v=6">
-<link rel="stylesheet" href="../_lib/category.css?v=9">
+<link rel="stylesheet" href="../_lib/nav.css?v=7">
+<link rel="stylesheet" href="../_lib/category.css?v=10">
 </head>
 <body>
 <header class="hdr">

@@ -61,102 +61,102 @@
 html[data-cat="emortia"]{
   --accent:#EF717E !important; --accentB:#F58F97 !important; --accentT:#F58F97 !important;
   --accentD:#A54D56 !important; --accentBg:#3A2022 !important; --accent-ink:#1B0A0B !important;
-  --bg:#191313 !important; --card:#271F1F !important; --card-2:#352B2B !important;
-  --line:#46393A !important; --line3:#615151 !important; --text:#EEE3E3 !important;
-  --muted:#B29D9E !important; --disabled:#746465 !important; --navy:#352B2B !important;
-  --navy-2:#271F1F !important; --barInk:#F3EAEA !important; --barDim:#B29D9E !important;
-  --barLine:#615151 !important; --barFill:#271F1F !important; --barRule:#EF717E !important;
-  --glow:rgba(239,113,126,0.3) !important; --glowSoft:rgba(239,113,126,0.14) !important;
+  --bg:#241619 !important; --card:#2F1F23 !important; --card-2:#3B282C !important;
+  --line:#4E393D !important; --line3:#685154 !important; --text:#EEE3E3 !important;
+  --muted:#B29D9E !important; --disabled:#746465 !important; --bar:#47312F !important;
+  --navy:#47312F !important; --navy-2:#2F1F23 !important; --barInk:#F3EAEA !important;
+  --barDim:#B29D9E !important; --barLine:#685154 !important; --barFill:#2F1F23 !important;
+  --barRule:#EF717E !important; --glow:rgba(239,113,126,0.3) !important; --glowSoft:rgba(239,113,126,0.14) !important;
 }
 html[data-cat="emortia"][data-theme="light"]{
   --accent:#FF0054 !important; --accentB:#A6002E !important; --accentT:#A6002E !important;
   --accentD:#C70042 !important; --accentBg:#FFE5E6 !important; --accent-ink:#101010 !important;
   --bg:#FEF9F9 !important; --card:#FFFFFF !important; --card-2:#F9EEEE !important;
   --line:#E8D9DA !important; --line3:#D3C2C2 !important; --text:#2D2021 !important;
-  --muted:#796263 !important; --disabled:#A79393 !important; --navy:#FFFFFF !important;
-  --navy-2:#F9EEEE !important; --barInk:#281F1F !important; --barDim:#796263 !important;
-  --barLine:#D3C2C2 !important; --barFill:#F9EEEE !important; --barRule:#FF0054 !important;
-  --glow:rgba(255,0,84,0.22) !important; --glowSoft:rgba(255,0,84,0.1) !important;
+  --muted:#796263 !important; --disabled:#A79393 !important; --bar:#FFFFFF !important;
+  --navy:#FFFFFF !important; --navy-2:#F9EEEE !important; --barInk:#281F1F !important;
+  --barDim:#796263 !important; --barLine:#D3C2C2 !important; --barFill:#F9EEEE !important;
+  --barRule:#FF0054 !important; --glow:rgba(255,0,84,0.22) !important; --glowSoft:rgba(255,0,84,0.1) !important;
 }
 html[data-cat="site"]{
   --accent:#FFB573 !important; --accentB:#FFC899 !important; --accentT:#FFC899 !important;
   --accentD:#AF7A4C !important; --accentBg:#382414 !important; --accent-ink:#190C03 !important;
-  --bg:#181411 !important; --card:#26201B !important; --card-2:#342C26 !important;
-  --line:#453B34 !important; --line3:#5F5349 !important; --text:#EDE4DF !important;
-  --muted:#AFA095 !important; --disabled:#72665E !important; --navy:#342C26 !important;
-  --navy-2:#26201B !important; --barInk:#F3EAEA !important; --barDim:#AFA095 !important;
-  --barLine:#5F5349 !important; --barFill:#26201B !important; --barRule:#FFB573 !important;
-  --glow:rgba(255,181,115,0.3) !important; --glowSoft:rgba(255,181,115,0.14) !important;
+  --bg:#231711 !important; --card:#2F2119 !important; --card-2:#3A2A21 !important;
+  --line:#4D3B31 !important; --line3:#665447 !important; --text:#ECE5DE !important;
+  --muted:#AFA094 !important; --disabled:#72665D !important; --bar:#423525 !important;
+  --navy:#423525 !important; --navy-2:#2F2119 !important; --barInk:#F3EAEA !important;
+  --barDim:#AFA094 !important; --barLine:#665447 !important; --barFill:#2F2119 !important;
+  --barRule:#FFB573 !important; --glow:rgba(255,181,115,0.3) !important; --glowSoft:rgba(255,181,115,0.14) !important;
 }
 html[data-cat="site"][data-theme="light"]{
   --accent:#FF5400 !important; --accentB:#834100 !important; --accentT:#834100 !important;
   --accentD:#C74200 !important; --accentBg:#FEE8D8 !important; --accent-ink:#101010 !important;
   --bg:#FDF9F6 !important; --card:#FFFFFF !important; --card-2:#F8EFE9 !important;
   --line:#E6DBD3 !important; --line3:#D1C4BA !important; --text:#2C221A !important;
-  --muted:#776558 !important; --disabled:#A4958A !important; --navy:#FFFFFF !important;
-  --navy-2:#F8EFE9 !important; --barInk:#281F1F !important; --barDim:#776558 !important;
-  --barLine:#D1C4BA !important; --barFill:#F8EFE9 !important; --barRule:#FF5400 !important;
-  --glow:rgba(255,84,0,0.22) !important; --glowSoft:rgba(255,84,0,0.1) !important;
+  --muted:#776558 !important; --disabled:#A4958A !important; --bar:#FFFFFF !important;
+  --navy:#FFFFFF !important; --navy-2:#F8EFE9 !important; --barInk:#281F1F !important;
+  --barDim:#776558 !important; --barLine:#D1C4BA !important; --barFill:#F8EFE9 !important;
+  --barRule:#FF5400 !important; --glow:rgba(255,84,0,0.22) !important; --glowSoft:rgba(255,84,0,0.1) !important;
 }
 html[data-cat="design"]{
   --accent:#81D67B !important; --accentB:#A2E59C !important; --accentT:#A2E59C !important;
   --accentD:#569252 !important; --accentBg:#1D2E1C !important; --accent-ink:#071307 !important;
-  --bg:#121612 !important; --card:#1E231D !important; --card-2:#293029 !important;
-  --line:#384037 !important; --line3:#4E594D !important; --text:#E2E8E1 !important;
-  --muted:#9BA799 !important; --disabled:#636C61 !important; --navy:#293029 !important;
-  --navy-2:#1E231D !important; --barInk:#F3EAEA !important; --barDim:#9BA799 !important;
-  --barLine:#4E594D !important; --barFill:#1E231D !important; --barRule:#81D67B !important;
-  --glow:rgba(129,214,123,0.3) !important; --glowSoft:rgba(129,214,123,0.14) !important;
+  --bg:#161D12 !important; --card:#202719 !important; --card-2:#293122 !important;
+  --line:#394333 !important; --line3:#505C4B !important; --text:#E1E8E1 !important;
+  --muted:#9BA799 !important; --disabled:#626C61 !important; --bar:#2B3C2F !important;
+  --navy:#2B3C2F !important; --navy-2:#202719 !important; --barInk:#F3EAEA !important;
+  --barDim:#9BA799 !important; --barLine:#505C4B !important; --barFill:#202719 !important;
+  --barRule:#81D67B !important; --glow:rgba(129,214,123,0.3) !important; --glowSoft:rgba(129,214,123,0.14) !important;
 }
 html[data-cat="design"][data-theme="light"]{
   --accent:#006400 !important; --accentB:#006400 !important; --accentT:#006400 !important;
   --accentD:#004E00 !important; --accentBg:#E1F3DF !important; --accent-ink:#FFFFFF !important;
   --bg:#F8FBF7 !important; --card:#FFFFFF !important; --card-2:#EDF3EC !important;
   --line:#D8E0D7 !important; --line3:#C0CABE !important; --text:#1F271E !important;
-  --muted:#5F6E5E !important; --disabled:#909C8F !important; --navy:#FFFFFF !important;
-  --navy-2:#EDF3EC !important; --barInk:#281F1F !important; --barDim:#5F6E5E !important;
-  --barLine:#C0CABE !important; --barFill:#EDF3EC !important; --barRule:#006400 !important;
-  --glow:rgba(0,100,0,0.22) !important; --glowSoft:rgba(0,100,0,0.1) !important;
+  --muted:#5F6E5E !important; --disabled:#909C8F !important; --bar:#FFFFFF !important;
+  --navy:#FFFFFF !important; --navy-2:#EDF3EC !important; --barInk:#281F1F !important;
+  --barDim:#5F6E5E !important; --barLine:#C0CABE !important; --barFill:#EDF3EC !important;
+  --barRule:#006400 !important; --glow:rgba(0,100,0,0.22) !important; --glowSoft:rgba(0,100,0,0.1) !important;
 }
 html[data-cat="field"]{
   --accent:#88AEFF !important; --accentB:#A5C3FF !important; --accentT:#A5C3FF !important;
   --accentD:#5C76B0 !important; --accentBg:#1F283D !important; --accent-ink:#090F1D !important;
-  --bg:#13151A !important; --card:#1E2128 !important; --card-2:#2A2E36 !important;
-  --line:#393D47 !important; --line3:#4F5562 !important; --text:#E2E6EF !important;
-  --muted:#9CA3B3 !important; --disabled:#636975 !important; --navy:#2A2E36 !important;
-  --navy-2:#1E2128 !important; --barInk:#F3EAEA !important; --barDim:#9CA3B3 !important;
-  --barLine:#4F5562 !important; --barFill:#1E2128 !important; --barRule:#88AEFF !important;
-  --glow:rgba(136,174,255,0.3) !important; --glowSoft:rgba(136,174,255,0.14) !important;
+  --bg:#131B25 !important; --card:#1B2530 !important; --card-2:#242F3D !important;
+  --line:#354150 !important; --line3:#4D596A !important; --text:#E2E6EE !important;
+  --muted:#9BA3B3 !important; --disabled:#626975 !important; --bar:#323649 !important;
+  --navy:#323649 !important; --navy-2:#1B2530 !important; --barInk:#F3EAEA !important;
+  --barDim:#9BA3B3 !important; --barLine:#4D596A !important; --barFill:#1B2530 !important;
+  --barRule:#88AEFF !important; --glow:rgba(136,174,255,0.3) !important; --glowSoft:rgba(136,174,255,0.14) !important;
 }
 html[data-cat="field"][data-theme="light"]{
   --accent:#03045E !important; --accentB:#03045E !important; --accentT:#03045E !important;
   --accentD:#020349 !important; --accentBg:#E3EDFF !important; --accent-ink:#FFFFFF !important;
   --bg:#F8FAFE !important; --card:#FFFFFF !important; --card-2:#EDF1FA !important;
   --line:#D8DDE8 !important; --line3:#C0C7D4 !important; --text:#1F242E !important;
-  --muted:#61697B !important; --disabled:#9198A8 !important; --navy:#FFFFFF !important;
-  --navy-2:#EDF1FA !important; --barInk:#281F1F !important; --barDim:#61697B !important;
-  --barLine:#C0C7D4 !important; --barFill:#EDF1FA !important; --barRule:#03045E !important;
-  --glow:rgba(3,4,94,0.22) !important; --glowSoft:rgba(3,4,94,0.1) !important;
+  --muted:#61697B !important; --disabled:#9198A8 !important; --bar:#FFFFFF !important;
+  --navy:#FFFFFF !important; --navy-2:#EDF1FA !important; --barInk:#281F1F !important;
+  --barDim:#61697B !important; --barLine:#C0C7D4 !important; --barFill:#EDF1FA !important;
+  --barRule:#03045E !important; --glow:rgba(3,4,94,0.22) !important; --glowSoft:rgba(3,4,94,0.1) !important;
 }
 html[data-cat="people"]{
   --accent:#B98FF6 !important; --accentB:#C9A8FB !important; --accentT:#C9A8FB !important;
   --accentD:#7F61A9 !important; --accentBg:#2C2439 !important; --accent-ink:#120C1A !important;
-  --bg:#161419 !important; --card:#222026 !important; --card-2:#2F2C35 !important;
-  --line:#3F3B45 !important; --line3:#575360 !important; --text:#E7E4ED !important;
-  --muted:#A5A0B0 !important; --disabled:#6B6673 !important; --navy:#2F2C35 !important;
-  --navy-2:#222026 !important; --barInk:#F3EAEA !important; --barDim:#A5A0B0 !important;
-  --barLine:#575360 !important; --barFill:#222026 !important; --barRule:#B98FF6 !important;
-  --glow:rgba(185,143,246,0.3) !important; --glowSoft:rgba(185,143,246,0.14) !important;
+  --bg:#1A1925 !important; --card:#232230 !important; --card-2:#2E2C3C !important;
+  --line:#403D4F !important; --line3:#595568 !important; --text:#E7E4ED !important;
+  --muted:#A5A0B1 !important; --disabled:#6A6673 !important; --bar:#3D3344 !important;
+  --navy:#3D3344 !important; --navy-2:#232230 !important; --barInk:#F3EAEA !important;
+  --barDim:#A5A0B1 !important; --barLine:#595568 !important; --barFill:#232230 !important;
+  --barRule:#B98FF6 !important; --glow:rgba(185,143,246,0.3) !important; --glowSoft:rgba(185,143,246,0.14) !important;
 }
 html[data-cat="people"][data-theme="light"]{
   --accent:#240046 !important; --accentB:#240046 !important; --accentT:#240046 !important;
   --accentD:#1C0037 !important; --accentBg:#F0E8FF !important; --accent-ink:#FFFFFF !important;
   --bg:#FBF9FE !important; --card:#FFFFFF !important; --card-2:#F2EFF8 !important;
   --line:#DFDBE6 !important; --line3:#C9C4D2 !important; --text:#26222C !important;
-  --muted:#6C6578 !important; --disabled:#9B95A5 !important; --navy:#FFFFFF !important;
-  --navy-2:#F2EFF8 !important; --barInk:#281F1F !important; --barDim:#6C6578 !important;
-  --barLine:#C9C4D2 !important; --barFill:#F2EFF8 !important; --barRule:#240046 !important;
-  --glow:rgba(36,0,70,0.22) !important; --glowSoft:rgba(36,0,70,0.1) !important;
+  --muted:#6C6578 !important; --disabled:#9B95A5 !important; --bar:#FFFFFF !important;
+  --navy:#FFFFFF !important; --navy-2:#F2EFF8 !important; --barInk:#281F1F !important;
+  --barDim:#6C6578 !important; --barLine:#C9C4D2 !important; --barFill:#F2EFF8 !important;
+  --barRule:#240046 !important; --glow:rgba(36,0,70,0.22) !important; --glowSoft:rgba(36,0,70,0.1) !important;
 }
 html[data-cat]{color-scheme:dark}
 html[data-cat][data-theme="light"]{color-scheme:light}

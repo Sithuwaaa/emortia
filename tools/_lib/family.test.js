@@ -77,7 +77,7 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     '748d35776da9514a5cd102e9a773f4d58fc317afd10f61e13dc591a4ed4ee0ca');
+     '27e8a7a3a1c51857db97f9587d812f8a26bd29b6623ee0466d3c5b1a0a119afb');
 
   /* ---- THE BAR FLIPS WITH THE THEME ----
 
@@ -95,7 +95,7 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
      --navy is NOT bar-only; toasts and sticky table headers borrowed it.
      They take --barInk, so they flip together and neither theme is the
      broken one. */
-  const BARQ = ['navy', 'navy-2', 'barInk', 'barDim', 'barLine', 'barFill', 'barRule'];
+  const BARQ = ['bar', 'navy', 'navy-2', 'barInk', 'barDim', 'barLine', 'barFill', 'barRule'];
   for (const fam of ['design','emortia','field','people','site']) {
     const dk = new RegExp('html\\[data-cat="' + fam + '"\\]\\{([^}]*)\\}').exec(NAV);
     const lt = new RegExp('html\\[data-cat="' + fam + '"\\]\\[data-theme="light"\\]\\{([^}]*)\\}').exec(NAV);
@@ -108,19 +108,32 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
       is(fam + ' --' + k + ' is set in both themes', [!!g(dk[1], k), !!g(lt[1], k)], [true, true]);
       is(fam + ' --' + k + ' differs between themes', g(dk[1], k) !== g(lt[1], k), true);
     }
-    is(fam + ' dark bar is the family raised surface', g(dk[1], 'navy'), g(dk[1], 'card-2'));
-    is(fam + ' light bar is white', g(lt[1], 'navy'), '#FFFFFF');
-    /* and it has to be legible, measured, in both */
     const hx = h => { h = h.replace('#',''); return [0,2,4].map(i => parseInt(h.slice(i,i+2),16)); };
     const sl = c => { c /= 255; return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
     const lum = x => { const a = hx(x).map(sl); return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2]; };
     const ratio = (x,y) => { const p = lum(x), q = lum(y);
       return +((Math.max(p,q)+0.05)/(Math.min(p,q)+0.05)).toFixed(2); };
+
+    /* THE BAR IS ITS OWN RUNG, one step ABOVE --card-2. It used to BE
+       --card-2, which put it 1.39:1 against the page - under the 1.5
+       surface-separation floor - so it read as the same colour as the page
+       and the whole bar change looked, correctly, like it had not happened.
+       Bar colour alone is not the property worth asserting; separation is. */
+    is(fam + ' --bar and --navy are the same value', g(dk[1], 'bar'), g(dk[1], 'navy'));
+    is(fam + ' dark bar is lighter than --card-2',
+       lum(g(dk[1], 'bar')) > lum(g(dk[1], 'card-2')), true);
+    is(fam + ' dark bar separates from the page (>= 1.4)',
+       ratio(g(dk[1], 'bar'), g(dk[1], 'bg')) >= 1.4, true);
+    is(fam + ' light bar is white', g(lt[1], 'navy'), '#FFFFFF');
+    /* and it has to be legible, measured, in both */
     for (const [name, b] of [['dark', dk[1]], ['light', lt[1]]]) {
       is(fam + ' ' + name + ' bar ink clears 4.5', ratio(g(b,'barInk'), g(b,'navy')) >= 4.5, true);
       /* the rule is a 2px indicator, so 3:1 - the non-text threshold */
       is(fam + ' ' + name + ' bar rule clears 3', ratio(g(b,'barRule'), g(b,'navy')) >= 3, true);
     }
+    /* the body-text band the ramp was built to land in */
+    is(fam + ' body text on the page is 13.5 to 14.2',
+       ratio(g(dk[1],'text'), g(dk[1],'bg')) >= 13.5 && ratio(g(dk[1],'text'), g(dk[1],'bg')) <= 14.2, true);
   }
   /* THE FIVE IDENTITIES, light and dark, verbatim, so a "tidy-up" cannot
      quietly round one. The light values are the brief's own category
@@ -163,23 +176,34 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
     is(fam + ' has a dark block to measure', !!blk, true);
     if (!blk) continue;
     const get = k => (new RegExp('--' + k + ':(#[0-9A-Fa-f]{6})').exec(blk[1]) || [])[1];
-    const bg = get('bg'), card = get('card'), c2 = get('card-2');
-    is(fam + ' dark ladder ascends bg < card < card-2',
-       [okL(bg) < okL(card), okL(card) < okL(c2)], [true, true]);
-    is(fam + ' lands on the brief\'s rungs (.195 / .248 / .300 OKLab, ±.012)',
-       [bg, card, c2].map((v, i) => Math.abs(okL(v) - [0.195, 0.248, 0.300][i]) <= 0.012),
-       [true, true, true]);
-    /* NO FOURTH SURFACE. Named explicitly rather than "everything except the
-       ones I thought of": --line and --disabled are both legitimately
-       lighter than --card-2 - one is a border and the other is text - and an
-       exclusion list would have grown every time a token was added. The
-       surfaces are these five and the check is over exactly them. */
-    const SURFACES = ['bg', 'card', 'card-2', 'navy', 'navy-2'];
+    const bg = get('bg'), card = get('card'), c2 = get('card-2'), bar = get('bar');
+
+    /* ---- FOUR RUNGS NOW, AND THE FOURTH IS THE BAR ----
+
+       The ladder was three rungs at .195 / .248 / .300, with "no fourth
+       surface" asserted outright. It is four: .220 / .261 / .301 / .338.
+       The ground was lifted off black and warmed, and the bar was given a
+       rung of its own above --card-2.
+
+       Why the old rule gave way: with the bar AT --card-2 it measured
+       1.39:1 against the page, under the 1.50 separation floor, so it read
+       as the same colour as the page. "No fourth surface" was keeping the
+       bar from being visible. The bar is the fourth and last - nothing may
+       sit above it. */
+    const RUNGS = [['bg', bg, 0.220], ['card', card, 0.261],
+                   ['card-2', c2, 0.301], ['bar', bar, 0.338]];
+    is(fam + ' the ladder ascends, all four rungs',
+       RUNGS.slice(1).map(([, v], i) => okL(v) > okL(RUNGS[i][1])), [true, true, true]);
+    is(fam + ' lands on the ramp (.220 / .261 / .301 / .338 OKLab, ±.012)',
+       RUNGS.map(([, v, want]) => Math.abs(okL(v) - want) <= 0.012), [true, true, true, true]);
+    /* NOTHING ABOVE THE BAR. Named explicitly rather than "everything except
+       the ones I thought of": --line and --disabled are both legitimately
+       lighter - one is a border, the other is text - and an exclusion list
+       would have grown every time a token was added. */
+    const SURFACES = ['bg', 'card', 'card-2', 'bar', 'navy', 'navy-2'];
     const above = SURFACES.map(k => [k, get(k)]).filter(([, v]) => v)
-      .filter(([, v]) => okL(v) > okL(c2) + 0.001).map(([k]) => k);
-    is(fam + ' has no surface above --card-2', above, []);
-    /* and the bar IS that top rung, which is the whole of item 2 */
-    is(fam + ' nav bar sits on --card-2', get('navy'), c2);
+      .filter(([, v]) => okL(v) > okL(bar) + 0.001).map(([k]) => k);
+    is(fam + ' has no surface above --bar', above, []);
   }
 }
 
@@ -258,7 +282,7 @@ console.log('\n--- no ungoverned chrome anywhere ---');
      take --bg or --text back. */
   const DECLARED = {
     whattodo: ['glass','glass-hero','glass-edge','glass-shadow',
-               'lq-ground','lq-ink','lq-track','sel-bg','sel-ink',
+               'lq-ink','lq-track','sel-bg','sel-ink',
                'sky','mint','amber','coral','chk-on','chk-ink','chk-edge']
   };
   for (const [tool, list] of Object.entries(DECLARED))

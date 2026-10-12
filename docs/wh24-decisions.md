@@ -567,3 +567,40 @@ migration as unrun. Ask, or read an entry like this one.
 optional** — unrun, the notification feed reads "updated" on every line
 instead of "reserving → collected", `wh24Publish` drops the column and
 retries, and nothing else notices.
+
+---
+
+## The dark ramp, 13 October: lifted, warmed, and a bar of its own
+
+The bar changed and deployed, and still looked unchanged on screen. The
+cause was not cache, not a recorded instruction and not a test assertion -
+it was that the bar WAS `--card-2`, which measured **1.39:1** against the
+page. Under the 1.50 separation floor two surfaces read as one colour.
+
+So the ladder is four rungs now, not three, and the fourth is the bar:
+
+| rung | OKLab L | emortia |
+| --- | --- | --- |
+| `--bg` | 0.220 | `#241619` |
+| `--card` | 0.261 | `#2F1F23` |
+| `--card-2` | 0.301 | `#3B282C` |
+| `--bar` | 0.338 | `#47312F` |
+
+**The other four families are derived, not chosen.** Each is the emortia
+ramp with the hue rotated to its own accent at identical OKLab lightness -
+one rule, five outputs, so the next change to the ramp moves all of them.
+In OKLCH rather than HSL, because rotating a hue at constant HSL lightness
+changes how light the colour looks: that is what cost the tools directory
+its brightness and had to be searched back.
+
+`--bar` is the nav bar and nothing else. `--navy` is the same value, kept
+only because sixteen tools already say `var(--navy)`; anything new reads
+`--bar`.
+
+**One number I could not reproduce.** The brief gives bar-against-bg as
+1.50:1; the stated values measure **1.45** by WCAG relative luminance. The
+values are used as given and the figure is reported as measured rather than
+as quoted - flagging it beats quietly nudging a colour to hit a number.
+
+**`--muted` on the bar is 4.68-4.71** across the five. Above 4.5, below
+Material medium-emphasis. Do not put muted text in the bar.
