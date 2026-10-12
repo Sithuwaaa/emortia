@@ -68,10 +68,19 @@ main,footer{position:relative;z-index:1}
    so these two keep the glass they were designed with. color-mix keeps the
    translucency: 72% of the category surface, the rest let through. The 2px
    accent rule along the lower edge is what says which family this is. */
-.hdr{background:color-mix(in srgb, var(--card-2) 72%, transparent);
-  backdrop-filter:blur(18px) saturate(1.3);
-  -webkit-backdrop-filter:blur(18px) saturate(1.3);
-  border-bottom:2px solid var(--accent);
+/* OPAQUE, so these two match the other fourteen.
+
+   The glass is gone and that is a real loss - it was the skin's own look.
+   But a translucent bar composites with whatever is behind it, so it cannot
+   be the same colour in both themes: at 72% over a light page it measured
+   #6c6560 against #2c2520 in dark. "The same bar in both themes" and "a
+   translucent bar" are mutually exclusive, and the first one is the brief.
+
+   The blur goes with it: there is nothing behind an opaque bar to blur. Say
+   the word and the glass comes back, at the cost of these two reading
+   lighter than the rest in light mode. */
+.hdr{background:var(--navy);
+  border-bottom:2px solid var(--barRule);
   box-shadow:none;
   overflow:hidden}
 /* Blueprint's setting-out line, borrowed for the bar: a wedge of light

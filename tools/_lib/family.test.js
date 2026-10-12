@@ -77,7 +77,29 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     'c0ab13722c122d3790119a4c00d0ea69c47b157fc197f0da2719916b89850174');
+     '319d46df7764bfefbbeef54367f1dfbd68cc445ce3c39174ea7bdfafc82f32af');
+
+  /* ---- THE BAR DOES NOT FLIP ----
+
+     One dark bar in both themes, chosen deliberately after seeing a
+     near-white bar in light mode. Everything on it therefore takes a token
+     that does not flip either - barInk, barDim, barLine, barFill, barRule -
+     because the alternative is fixing each piece twice, once per theme,
+     which is how white-on-white happened in the first place.
+
+     --navy and --navy-2 are those non-flipping grounds and are NOT bar-only:
+     toasts and sticky table headers borrowed them wanting the same dark
+     band. The ground decides the ink, not the selector. */
+  for (const fam of ['design','emortia','field','people','site']) {
+    const dk = new RegExp('html\\[data-cat="' + fam + '"\\]\\{([^}]*)\\}').exec(NAV);
+    const lt = new RegExp('html\\[data-cat="' + fam + '"\\]\\[data-theme="light"\\]\\{([^}]*)\\}').exec(NAV);
+    if (!dk || !lt) { is(fam + ' has both blocks', false, true); continue; }
+    const g = (b, k) => (new RegExp('--' + k + ':(#[0-9A-Fa-f]{6}|rgba?\\([^)]*\\))').exec(b) || [])[1];
+    for (const k of ['navy', 'navy-2', 'barInk', 'barDim', 'barLine', 'barFill', 'barRule'])
+      is(fam + ' --' + k + ' is the same in both themes', g(dk[1], k), g(lt[1], k));
+    /* and the bar really is the dark card-2, not some fourth value */
+    is(fam + ' bar is the dark --card-2', g(dk[1], 'navy'), g(dk[1], 'card-2'));
+  }
   /* THE FIVE IDENTITIES, light and dark, verbatim, so a "tidy-up" cannot
      quietly round one. The light values are the brief's own category
      colours; the dark ones are derived from the same hues because the

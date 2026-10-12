@@ -30,11 +30,11 @@
 <meta name="apple-mobile-web-app-title" content="Emortia">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <script src="/pwa.js" defer></script>
-<link rel="stylesheet" href="../_lib/lookup.css?v=4">
+<link rel="stylesheet" href="../_lib/lookup.css?v=5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../_lib/skins/aurora.css?v=4">
+<link rel="stylesheet" href="../_lib/skins/aurora.css?v=5">
 <style>
   /* Site Data - violet. Technical site records. */
   :root,html[data-theme="dark"]{
@@ -44,7 +44,7 @@
 
   /* the site's mark, and the way back to it */
   .hdr .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;
-    background:var(--text) !important;
+    background:linear-gradient(150deg,#d15873,#87213c) !important;
     display:flex;align-items:center;justify-content:center;gap:2.4px;
     box-shadow:0 0 16px rgba(176,58,86,.45) !important;text-decoration:none;font-size:0;
     padding:0;border:none;cursor:pointer;
@@ -64,9 +64,9 @@
   .hdr .brand:hover{opacity:.86}
   .hdr .brand:focus-visible{outline:2px solid #f7edf0;outline-offset:4px;border-radius:10px}
   .hdr .bname{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;
-    letter-spacing:-0.02em;color:var(--text);white-space:nowrap}
+    letter-spacing:-0.02em;color:var(--barInk);white-space:nowrap}
   /* the site's name and the tool's are different things, so they are kept apart */
-  .hdr .hsep{width:1px;height:19px;background:var(--line3);flex-shrink:0;margin:0 1px}
+  .hdr .hsep{width:1px;height:19px;background:var(--barLine);flex-shrink:0;margin:0 1px}
   /* the mark is inside the link now, so the lift belongs to the whole brand */
   .hdr .brand:hover .logo{transform:scale(1.06)}
   /* on a narrow screen the tool's own name is the one worth keeping */
@@ -95,8 +95,8 @@
 <script src="../_lib/authgate.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script src="../_lib/ask.js?v=1" defer></script>
-<link rel="stylesheet" href="../_lib/nav.css?v=5">
-<link rel="stylesheet" href="../_lib/category.css?v=7">
+<link rel="stylesheet" href="../_lib/nav.css?v=6">
+<link rel="stylesheet" href="../_lib/category.css?v=8">
 </head>
 <body>
 <header class="hdr">

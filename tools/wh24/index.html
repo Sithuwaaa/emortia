@@ -60,14 +60,14 @@
   [hidden]{display:none !important}
 
   /* ---- the bar every tool wears, to the pixel ---- */
-  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:var(--text);display:flex;align-items:center;gap:10px;
-    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--line3);
+  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:var(--barInk);display:flex;align-items:center;gap:10px;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--barLine);
     box-shadow:none;overflow:hidden}
   .hdr>*{position:relative;z-index:1}
   .hdr h1::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accentB);
     margin-left:10px;vertical-align:middle;animation:whLed 1.5s ease-in-out infinite}
   @keyframes whLed{0%,100%{opacity:.25;box-shadow:none}50%{opacity:1;box-shadow:0 0 10px var(--accentB)}}
-  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--text);flex-shrink:0;transition:opacity .18s ease}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--barInk);flex-shrink:0;transition:opacity .18s ease}
   .brand:hover{opacity:.86}
   .brand:focus-visible{outline:2px solid #f7edf0;outline-offset:4px;border-radius:10px}
   .logo{width:30px;height:30px;border-radius:50%;flex-shrink:0;background:linear-gradient(150deg,#d15873,#87213c);
@@ -78,15 +78,15 @@
   .brand:hover .logo{scale:1.06;box-shadow:0 0 26px rgba(176,58,86,.8)}
   .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
   .logo i:nth-child(1){height:7px}.logo i:nth-child(2){height:12px}.logo i:nth-child(3){height:9px}.logo i:nth-child(4){height:13px}
-  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:var(--text);white-space:nowrap}
-  .hsep{width:1px;height:19px;background:var(--line3);flex-shrink:0}
-  .hdr h1{font-size:18px;font-weight:700;line-height:1.5;margin-right:auto;white-space:nowrap;color:var(--text);
+  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;color:var(--barInk);white-space:nowrap}
+  .hsep{width:1px;height:19px;background:var(--barLine);flex-shrink:0}
+  .hdr h1{font-size:18px;font-weight:700;line-height:1.5;margin-right:auto;white-space:nowrap;color:var(--barInk);
     overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:7ch}
-  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:var(--card);border:1px solid var(--line);
-    color:var(--muted);border-radius:999px;padding:4px 11px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
+  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:var(--barFill);border:1px solid var(--barLine);
+    color:var(--barDim);border-radius:999px;padding:4px 11px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;
     flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
   .pill b{color:var(--accentB)}
-  .ibtn{background:none;border:1px solid var(--line3);color:var(--text);border-radius:999px;width:34px;height:34px;padding:0;
+  .ibtn{background:none;border:1px solid var(--barLine);color:var(--barInk);border-radius:999px;width:34px;height:34px;padding:0;
     font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;transition:transform .2s ease,border-color .2s ease}
   .ibtn:hover{border-color:var(--accentB);transform:rotate(20deg)}
 
@@ -117,14 +117,14 @@
      theme, and the label is var(--muted) on var(--card). Nothing in this
      group is a literal any more, and nothing here needs re-measuring when
      the ground moves again. */
-  .news{position:relative;background:var(--card);border:1px solid var(--line);
-    color:var(--muted);border-radius:999px;height:32px;padding:0 12px;flex:none;cursor:pointer;
+  .news{position:relative;background:var(--barFill);border:1px solid var(--barLine);
+    color:var(--barDim);border-radius:999px;height:32px;padding:0 12px;flex:none;cursor:pointer;
     display:inline-flex;align-items:center;gap:8px;
     font:600 12px/1 'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif;
     transition:border-color .2s ease,background .2s ease}
-  .news:hover,.news[aria-expanded="true"]{border-color:var(--accentB);background:var(--card-2)}
+  .news:hover,.news[aria-expanded="true"]{border-color:var(--accentB);background:var(--barFill)}
   .news svg{width:15px;height:15px;flex:none;opacity:.85}
-  .news .ndot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}
+  .news .ndot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--barDim)}
   .news.lv-ok    .ndot{background:var(--ok)}
   .news.lv-warn  .ndot{background:var(--warn)}
   .news.lv-bad   .ndot,
@@ -360,9 +360,9 @@
   .sbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .sbar input{flex:1;min-width:220px;background:var(--card-2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;outline:none}
   .sbar input:focus{border-color:var(--accent)}
-  .seg{display:flex;border:1px solid var(--line3);border-radius:10px;overflow:auto;max-width:100%}
+  .seg{display:flex;border:1px solid var(--barLine);border-radius:10px;overflow:auto;max-width:100%}
   .seg button{background:transparent;border:0;padding:10px 13px;font-weight:600;cursor:pointer;white-space:nowrap}
-  .seg button+button{border-left:1px solid var(--line3)}
+  .seg button+button{border-left:1px solid var(--barLine)}
   .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:700}
   .seg button b{font:700 11px 'Space Mono',monospace;margin-left:5px;opacity:.75}
 
@@ -549,8 +549,8 @@
     .ibtn:hover,.tile:hover{transform:none}
   }
 </style>
-<link rel="stylesheet" href="../_lib/nav.css?v=5">
-<link rel="stylesheet" href="../_lib/category.css?v=7">
+<link rel="stylesheet" href="../_lib/nav.css?v=6">
+<link rel="stylesheet" href="../_lib/category.css?v=8">
 </head>
 <body>
 <header class="hdr">

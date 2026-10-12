@@ -88,7 +88,7 @@ main{position:relative;z-index:1;}
   font-family:'Space Mono',ui-monospace,monospace;
   /* a 32% black wash was a darker patch on a dark bar; on the light bar it
      is a grey smear. One rung down from the bar, in tokens, instead. */
-  background:var(--card) !important;border-color:var(--line) !important;
+  background:var(--barFill) !important;border-color:var(--barLine) !important;
   display:inline-flex;align-items:center;gap:7px;
 }
 .pill::before{
