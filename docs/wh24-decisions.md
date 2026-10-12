@@ -474,7 +474,30 @@ not on the list, raise it and wait.** Noticing something in passing is
 useful; acting on it is not. That applies to the mark, the account pill, bar
 geometry and anything else spotted while doing something adjacent.
 
-### The bar is `--card-2`, and that inverted what it used to be
+### The bar flips with the theme. REVERSED 13 October.
+
+The bar is the family's raised surface in **dark** and plain **white** in
+**light**, with the ink and the 2px rule flipping to suit. Measured:
+
+| family | dark bar / ink / rule | ink-on-bar | light bar / ink / rule | ink-on-bar |
+| --- | --- | --- | --- | --- |
+| design |    | 11.47 |    | 16.08 |
+| emortia |    | 11.60 |    | 16.08 |
+| field |    | 11.52 |    | 16.08 |
+| people |    | 11.59 |    | 16.08 |
+| site |    | 11.58 |    | 16.08 |
+
+**This reverses the entry below**, which argued for one dark bar in both
+themes. That was asked for after seeing a near-white bar in light mode and
+withdrawn a day later after seeing both side by side against a design. The
+older reasoning is kept because the *mechanism* it established is what made
+this reversal a two-line change rather than another sweep of sixteen files.
+
+---
+
+### Superseded: the bar was --card-2 in both themes
+
+
 
 `--navy` used to sit *below* `--bg` — the bar was the darkest thing on the
 page. On a dark theme that is upside down: elevation is lightness, so the

@@ -77,28 +77,50 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     '319d46df7764bfefbbeef54367f1dfbd68cc445ce3c39174ea7bdfafc82f32af');
+     '748d35776da9514a5cd102e9a773f4d58fc317afd10f61e13dc591a4ed4ee0ca');
 
-  /* ---- THE BAR DOES NOT FLIP ----
+  /* ---- THE BAR FLIPS WITH THE THEME ----
 
-     One dark bar in both themes, chosen deliberately after seeing a
-     near-white bar in light mode. Everything on it therefore takes a token
-     that does not flip either - barInk, barDim, barLine, barFill, barRule -
-     because the alternative is fixing each piece twice, once per theme,
-     which is how white-on-white happened in the first place.
+     REVERSAL, 13 October. The bar was one dark value in both themes for a
+     day; it is now the family's raised surface in dark and plain white in
+     light, with the ink and the rule following. Asked for after seeing the
+     two side by side, and matched to a design.
 
-     --navy and --navy-2 are those non-flipping grounds and are NOT bar-only:
-     toasts and sticky table headers borrowed them wanting the same dark
-     band. The ground decides the ink, not the selector. */
+     What survives from the previous arrangement is the shape: everything
+     standing on the bar reads --barInk, --barDim, --barLine, --barFill and
+     --barRule rather than a literal, so changing the bar is changing these
+     values and nothing else. That is the property worth asserting - not
+     which way round they happen to be this week.
+
+     --navy is NOT bar-only; toasts and sticky table headers borrowed it.
+     They take --barInk, so they flip together and neither theme is the
+     broken one. */
+  const BARQ = ['navy', 'navy-2', 'barInk', 'barDim', 'barLine', 'barFill', 'barRule'];
   for (const fam of ['design','emortia','field','people','site']) {
     const dk = new RegExp('html\\[data-cat="' + fam + '"\\]\\{([^}]*)\\}').exec(NAV);
     const lt = new RegExp('html\\[data-cat="' + fam + '"\\]\\[data-theme="light"\\]\\{([^}]*)\\}').exec(NAV);
     if (!dk || !lt) { is(fam + ' has both blocks', false, true); continue; }
     const g = (b, k) => (new RegExp('--' + k + ':(#[0-9A-Fa-f]{6}|rgba?\\([^)]*\\))').exec(b) || [])[1];
-    for (const k of ['navy', 'navy-2', 'barInk', 'barDim', 'barLine', 'barFill', 'barRule'])
-      is(fam + ' --' + k + ' is the same in both themes', g(dk[1], k), g(lt[1], k));
-    /* and the bar really is the dark card-2, not some fourth value */
-    is(fam + ' bar is the dark --card-2', g(dk[1], 'navy'), g(dk[1], 'card-2'));
+    /* every one of them is defined in BOTH blocks, or a token falls through
+       to the dark value in light mode and is wrong in exactly one theme -
+       the failure this whole set exists to make impossible */
+    for (const k of BARQ) {
+      is(fam + ' --' + k + ' is set in both themes', [!!g(dk[1], k), !!g(lt[1], k)], [true, true]);
+      is(fam + ' --' + k + ' differs between themes', g(dk[1], k) !== g(lt[1], k), true);
+    }
+    is(fam + ' dark bar is the family raised surface', g(dk[1], 'navy'), g(dk[1], 'card-2'));
+    is(fam + ' light bar is white', g(lt[1], 'navy'), '#FFFFFF');
+    /* and it has to be legible, measured, in both */
+    const hx = h => { h = h.replace('#',''); return [0,2,4].map(i => parseInt(h.slice(i,i+2),16)); };
+    const sl = c => { c /= 255; return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+    const lum = x => { const a = hx(x).map(sl); return 0.2126*a[0]+0.7152*a[1]+0.0722*a[2]; };
+    const ratio = (x,y) => { const p = lum(x), q = lum(y);
+      return +((Math.max(p,q)+0.05)/(Math.min(p,q)+0.05)).toFixed(2); };
+    for (const [name, b] of [['dark', dk[1]], ['light', lt[1]]]) {
+      is(fam + ' ' + name + ' bar ink clears 4.5', ratio(g(b,'barInk'), g(b,'navy')) >= 4.5, true);
+      /* the rule is a 2px indicator, so 3:1 - the non-text threshold */
+      is(fam + ' ' + name + ' bar rule clears 3', ratio(g(b,'barRule'), g(b,'navy')) >= 3, true);
+    }
   }
   /* THE FIVE IDENTITIES, light and dark, verbatim, so a "tidy-up" cannot
      quietly round one. The light values are the brief's own category
@@ -236,7 +258,7 @@ console.log('\n--- no ungoverned chrome anywhere ---');
      take --bg or --text back. */
   const DECLARED = {
     whattodo: ['glass','glass-hero','glass-edge','glass-shadow',
-               'lq-ground','lq-b1','lq-b2','lq-b3','lq-b4','lq-ink','lq-track',
+               'lq-ground','lq-ink','lq-track','sel-bg','sel-ink',
                'sky','mint','amber','coral','chk-on','chk-ink','chk-edge']
   };
   for (const [tool, list] of Object.entries(DECLARED))

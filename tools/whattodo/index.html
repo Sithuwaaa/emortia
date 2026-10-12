@@ -54,14 +54,22 @@
      categories stay one system and family.test.js still governs.
      =================================================================== */
   :root{
-    /* the lit ground, and the four blobs that make it move */
+    /* ONE FLAT COLOUR, no gradient and no blobs.
+
+       The lit ground cost more than it gave. A frosted pane takes its
+       lightness from whatever is behind it, so every blob moved the
+       contrast of the text standing on it - body text measured 4.81
+       against a spec of 13.5. On a flat ground the number is the same
+       everywhere and can be predicted from the tokens.
+
+       Set on html and body as well as here, so the colour runs edge to
+       edge instead of a panel sitting on a different shade. */
     --lq-ground:#22060E;
-    --lq-b1:#521323; --lq-b2:#6D1A2E; --lq-b3:#380C18; --lq-b4:#521323;
     /* the glass itself */
-    --glass:linear-gradient(180deg,rgba(168,156,148,.30) 0%,rgba(140,128,120,.24) 100%);
-    --glass-hero:linear-gradient(180deg,rgba(168,156,148,.30) 0%,rgba(140,128,120,.24) 100%);
-    --glass-edge:rgba(255,255,255,.30);
-    --glass-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 .5px rgba(255,255,255,.06),0 8px 28px rgba(0,0,0,.22);
+    --glass:#2E1218;
+    --glass-hero:#3A161F;
+    --glass-edge:#4A2630;
+    --glass-shadow:none;
     --blur:40px; --sat:120%;
     /* the four decorative hues, for type chips and stat dots. NOT status:
        --ok, --warn and --bad above keep their jobs. */
@@ -69,18 +77,21 @@
     --chk-on:#39FF9F; --chk-ink:#0E2418; --chk-edge:rgba(255,240,242,.42);
     --lq-track:rgba(255,240,242,.14);
     --lq-ink:#F7F1E8;
+    /* the selected chip: dark fill, light ink, accent ring - the same
+       treatment in both themes, so it reads as picked either way */
+    --sel-bg:#22060E; --sel-ink:#F7F1E8;
   }
   html[data-theme="light"]{
     --lq-ground:#FBF3F4;
-    --lq-b1:#F4E1E4; --lq-b2:#E6BDC4; --lq-b3:#F4E1E4; --lq-b4:#E6BDC4;
-    --glass:linear-gradient(180deg,rgba(255,255,255,.62) 0%,rgba(255,255,255,.50) 100%);
-    --glass-hero:linear-gradient(150deg,rgba(209,143,156,.30) 0%,rgba(255,255,255,.55) 60%,rgba(230,189,196,.35) 100%);
-    --glass-edge:rgba(255,255,255,.95);
-    --glass-shadow:inset 0 1px 0 #FFFFFF,0 8px 28px rgba(109,26,46,.10);
+    --glass:#FFFFFF;
+    --glass-hero:#FFF4F6;
+    --glass-edge:#EBD9DE;
+    --glass-shadow:none;
     --sky:#006F94; --mint:#007A44; --amber:#7A6500; --coral:#B0005A;
     --chk-on:#007A44; --chk-ink:#FFFFFF; --chk-edge:rgba(107,94,85,.55);
     --lq-track:rgba(109,26,46,.12);
     --lq-ink:#2B1E1A;
+    --sel-bg:#2B1E1A; --sel-ink:#FBF3F4;
   }
 
   /* ---- the bar every tool wears, to the pixel ----
@@ -115,7 +126,10 @@
   @media (max-width:900px){.bname,.hsep{display:none}}
   @media (max-width:760px){.pill{display:none}}
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--bg);color:var(--text);
+  /* THE GROUND IS ON html AND body, so it fills the viewport. It used to
+     be painted only on the .liquid panel, which left the panel one colour
+     and everything outside it another - two backgrounds on one page. */
+  html,body{background:var(--lq-ground);color:var(--lq-ink);
     font:15px/1.55 Jost,'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
   button,input,textarea{font:inherit;color:inherit}
   [hidden]{display:none !important}
@@ -125,13 +139,8 @@
   .cap{font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 
   /* ---- the lit ground ---- */
-  .liquid{position:relative;overflow:hidden;border-radius:32px;padding:24px;
-    background:var(--lq-ground);color:var(--lq-ink);min-height:70vh}
-  .blob{position:absolute;border-radius:50%;pointer-events:none;z-index:0}
-  .b1{left:-140px;top:-90px;width:640px;height:640px;background:radial-gradient(circle,var(--lq-b1) 0%,transparent 68%)}
-  .b2{right:-120px;top:360px;width:560px;height:560px;background:radial-gradient(circle,var(--lq-b2) 0%,transparent 68%)}
-  .b3{left:30%;bottom:-220px;width:620px;height:620px;background:radial-gradient(circle,var(--lq-b3) 0%,transparent 68%)}
-  .b4{right:8%;top:-200px;width:480px;height:480px;background:radial-gradient(circle,var(--lq-b4) 0%,transparent 68%)}
+  /* No radius, no inset, no second colour: the ground is the page. */
+  .liquid{position:relative;padding:0;background:transparent;color:var(--lq-ink);min-height:0}
   .lq-in{position:relative;z-index:1;display:flex;flex-direction:column;gap:20px}
 
   /* ---- a pane of glass ---- */
@@ -163,8 +172,14 @@
   .cell.out{opacity:.4}
   .cell.all .n{background:color-mix(in srgb,var(--mint) 18%,transparent)}
   .cell.all .c{color:var(--mint)}
-  .cell.sel .n{background:var(--lq-ink);color:var(--lq-ground);font-weight:600;border-color:var(--glass-edge)}
-  .cell.sel .c{color:var(--lq-ink)}
+  /* SELECTED IS THE DARK CHIP WITH THE ACCENT RING, in both themes.
+     This had the fill and the ink the wrong way round - it painted
+     --lq-ink, which is cream in dark mode, so the selected day was a
+     cream disc with dark text on an otherwise dark page: the light
+     treatment, rendered in the dark theme. Written against one mock and
+     never looked at in the other. */
+  .cell.sel .n{background:var(--sel-bg);color:var(--sel-ink);font-weight:600;border-color:var(--accent)}
+  .cell.sel .c{color:var(--accent)}
   .cell.today .n{box-shadow:inset 0 0 0 1.5px var(--accent)}
   .cell:hover .n{background:rgba(255,255,255,.10)}
 
@@ -197,8 +212,8 @@
   .wd .c{font-size:10.5px;font-weight:600;min-height:13px;color:var(--amber)}
   .wd:hover{background:rgba(255,255,255,.08)}
   .wd.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
-  .wd.sel{background:var(--lq-ink);border-color:var(--glass-edge);color:var(--lq-ground)}
-  .wd.sel .l,.wd.sel .c{color:var(--lq-ground)}
+  .wd.sel{background:var(--sel-bg);border-color:var(--accent);color:var(--sel-ink)}
+  .wd.sel .l{color:var(--sel-ink);opacity:.8} .wd.sel .c{color:var(--accent)}
 
   /* ---- tasks ---- */
   .tk-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -239,6 +254,21 @@
   .more{align-self:flex-start;cursor:pointer;margin:6px 0 0 32px;padding:6px 14px;border-radius:99px;
     border:1px solid var(--glass-edge);background:transparent;color:var(--muted);font-size:12.5px}
 
+  /* ---- carried over: the hero treatment, WITH its steps ----
+
+     The design gives a carried-over job a card of its own - a big serif
+     title, a summary line and two actions - and that is right when one job
+     is left over. It is wrong when the whole list is: every overdue,
+     unfinished job is carried, so a backlog rendered entirely as summary
+     cards and the steps could not be opened anywhere. The card keeps the
+     design's prominence and gains the step list and the expander, so it is
+     the same card whether you have one leftover or twenty. */
+  .task.carry{border-color:var(--coral);background:var(--glass-hero)}
+  .task.carry .ti{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:29px;line-height:1.1}
+  .carryk{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--coral);padding-bottom:12px}
+  .carryk i{width:8px;height:8px;border-radius:50%;background:var(--coral)}
+  .task .acts{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 2px 32px}
   /* ---- carried over ---- */
   .hero{padding:28px 30px;background:var(--glass-hero);display:flex;flex-direction:column;gap:12px}
   .hero .k{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase}
@@ -268,7 +298,7 @@
   .days .cap{margin-right:4px}
   .days button{cursor:pointer;padding:6px 12px;border-radius:99px;font-size:12.5px;white-space:nowrap;
     border:1px solid var(--glass-edge);background:transparent;color:inherit}
-  .days button.on{background:var(--lq-ink);color:var(--lq-ground)}
+  .days button.on{background:var(--sel-bg);color:var(--sel-ink);border-color:var(--accent)}
 
   .none{padding:48px;text-align:center;border-radius:38px;border:1px dashed var(--chk-edge);
     color:var(--muted);font-size:14px}
@@ -319,7 +349,7 @@
 <!-- Last in the head on purpose: this is what holds every tool header to
      the same size, so it has to win against the page's own .hdr rules. -->
 <link rel="stylesheet" href="../_lib/nav.css?v=6">
-<link rel="stylesheet" href="../_lib/category.css?v=8">
+<link rel="stylesheet" href="../_lib/category.css?v=9">
 </head>
 <body>
 <header class="hdr">
@@ -824,8 +854,25 @@ function weekHTML(){
   return h + '</div></div>';
 }
 
-/* ---- one job ---- */
-function taskHTML(t){
+/* ---- one job, carried over or not ----
+
+   ONE RENDERER, and that is the whole fix for a real bug. Carried-over jobs
+   used to get a separate "hero" card modelled on the design, which showed a
+   summary line - "5 steps · 4 done" - and no steps, no tick boxes and no
+   expander. That is fine for the one prominent leftover the mock imagines.
+   It is wrong for a real list: every job that is overdue and unfinished is
+   carried, so a backlog going back to August rendered ENTIRELY as summary
+   cards and the steps could not be opened at all. The feature the tool was
+   rebuilt around was unreachable for exactly the person with a backlog.
+
+   My own check missed it because I shaped the fixture to the design's mock -
+   four jobs dated today - so everything went down this path and the other
+   one was never drawn. The fixture tested the code I had written rather than
+   the data the tool actually holds.
+
+   So a carried job is a task card with a marker and a Move to today button,
+   not a different kind of card. Nothing can show a count it will not open. */
+function taskHTML(t, carry){
   const T = window.TodoCore;
   const items = T.noteItems(t.note);
   const done = !!t.done;
@@ -833,7 +880,9 @@ function taskHTML(t){
   const showAll = !!OPEN[t.id];
   const shown = items.length > 4 && !showAll ? items.slice(0, 3) : items;
   const d = new Date(dayOf(t) + 'T12:00:00');
-  let h = '<div class="glass task' + (done ? ' done' : '') + '">' +
+  let h = '<div class="glass task' + (done ? ' done' : '') + (carry ? ' carry' : '') + '">' +
+    (carry ? '<span class="carryk"><i></i>Carried over · ' +
+       esc(d.toLocaleDateString([], { weekday:'short', day:'numeric', month:'short' })) + '</span>' : '') +
     '<div class="task-top">' +
       '<button class="box' + (done ? ' on' : '') + '" data-tick="' + esc(t.id) + '" data-to="' + (done ? '0' : '1') +
         '" title="' + (done ? 'Not done yet' : 'Done') + '" aria-label="' + (done ? 'Mark not done' : 'Mark done') + '"><s></s></button>' +
@@ -859,24 +908,12 @@ function taskHTML(t){
   if (items.length > 4)
     h += '<button class="more" data-more="' + esc(t.id) + '">' +
       (showAll ? 'Show less' : 'Show all ' + items.length + ' steps') + '</button>';
-  return h + '</div>';
-}
-
-/* ---- a job left over from an earlier day ---- */
-function heroHTML(t){
-  const T = window.TodoCore, items = T.noteItems(t.note);
-  const d = new Date(dayOf(t) + 'T12:00:00');
-  return '<div class="glass hero">' +
-    '<span class="k"><i></i>Carried over · ' +
-      esc(d.toLocaleDateString([], { weekday:'short', day:'numeric', month:'short' })) + '</span>' +
-    '<span class="t">' + esc(t.title) + '</span>' +
-    '<span class="m">' + (items.length
-      ? items.length + ' steps · ' + items.filter(i => i.done).length + ' done'
-      : 'no steps written down') + '</span>' +
-    '<div class="acts">' +
+  if (carry)
+    h += '<div class="acts">' +
       '<button class="pri" data-bring="' + esc(t.id) + '">Move to today</button>' +
       '<button class="sec" data-tick="' + esc(t.id) + '" data-to="1">Mark done</button>' +
-    '</div></div>';
+    '</div>';
+  return h + '</div>';
 }
 
 /* ---- the add form, which takes the steps at the same time ---- */
@@ -927,8 +964,6 @@ function render(){
   const carry = SEL === TODAY() ? carried() : [];
 
   let h = '<div class="liquid">' +
-    '<span class="blob b1"></span><span class="blob b2"></span>' +
-    '<span class="blob b3"></span><span class="blob b4"></span>' +
     '<div class="lq-in">';
   if (LOAD_ERR) h += '<div class="err"><b>The list could not be read.</b><br>' + esc(LOAD_ERR) + '</div>';
   h += '<span class="lq-sub">' + esc(d.toLocaleDateString([], { weekday:'long', day:'numeric', month:'long' })) + '</span>' +
@@ -939,8 +974,8 @@ function render(){
           '<span class="n">' + dn + ' of ' + n + ' done</span><span class="sp"></span>' +
           '<button class="addbtn" id="openAdd"><i>+</i>Add task</button></div>' +
         addHTML() +
-        carry.map(heroHTML).join('') +
-        list.map(taskHTML).join('') +
+        carry.map(t => taskHTML(t, true)).join('') +
+        list.map(t => taskHTML(t, false)).join('') +
         (n ? '' : '<div class="none">Nothing planned for this day.</div>') +
       '</div>' +
     '</div>' +
