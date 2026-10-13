@@ -124,16 +124,23 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
     is(fam + ' --bar and --navy are the same value', g(dk[1], 'bar'), g(dk[1], 'navy'));
     /* THE BAR SEPARATES BY LIGHTNESS, AND THE FLOOR IS 1.50.
 
-       This assertion has been wrong twice. It was briefly rewritten to bless
-       the design file's 4% warm white over the ground - about 1.08:1 - on
-       the grounds that the rule and the glow do the separating. They do not:
-       1.39:1 was reported three times as "the bar looks unchanged", which is
-       where the 1.50 floor came from, and a guard that was relaxed to match
-       the code it was supposed to be guarding is not a guard.
+       THRESHOLD HISTORY - kept per the standing rule that a moved assertion
+       leaves its old value behind with the date it moved:
+
+         >= 1.50          until 13 Oct 2026, and again from 13 Oct 2026
+         1.02 to 1.25     13 Oct 2026 only, WRONGLY - see below
+
+       The middle row is the whole reason this block carries a history. The
+       assertion was relaxed to bless the design file's 4% warm white over
+       the ground - about 1.08:1 - on the grounds that the 2px rule and the
+       glow do the separating. They do not: 1.39:1 had already been reported
+       three times as "the bar looks unchanged", which is where the 1.50
+       floor came from. A guard relaxed to match the code it guards is not a
+       guard, and the suite stayed green at 1.08 because of it.
 
        THE FLOOR BEATS THE DESIGN FILE. The bar sits on its own rung of the
-       ramp, one step above --card-2, and the rule and glow are additions on
-       top of it. docs/wh24-decisions.md carries the decision. */
+       ramp, one step above --card-2; the rule and glow are additions on top
+       of it. docs/wh24-decisions.md carries both the decision and the rule. */
     const barLift = ratio(g(dk[1], 'bar'), g(dk[1], 'bg'));
     is(fam + ' dark bar clears the 1.50 floor over the page',
        barLift >= 1.5, true);

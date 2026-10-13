@@ -607,14 +607,14 @@ Material medium-emphasis. Do not put muted text in the bar.
 
 ---
 
-## The bar's lightness beats the design file, 13 October — final
+## The bar's lightness beats the design file, 13 October – final
 
 Reversed three times in one day, so this is the entry that settles it.
 
 **The floor is 1.50:1, bar against page, and it wins over any design file.**
 
 The final What To Do design draws the bar as `rgba(255,240,242,.04)` over
-the ground — about **1.08:1** — and separates it with a 2px rule and a glow
+the ground – about **1.08:1** – and separates it with a 2px rule and a glow
 hung beneath. That was applied, because the design was the newer of the two
 instructions. It was wrong, and the reason is on the record three times
 over: `--card-2` at **1.39:1** was reported as "the bar looks unchanged" in
@@ -637,7 +637,7 @@ the rendered page at `localhost` and to be confirmed on emortia.com:
 
 **The guard was relaxed to match the code it was guarding**, which is worth
 recording on its own. `family.test.js` asserted "a slight lift, 1.02 to
-1.25" while the 4% was in — an assertion rewritten to bless the thing it
+1.25" while the 4% was in – an assertion rewritten to bless the thing it
 existed to catch is not a guard. It now asserts `>= 1.50` and that the bar
 is lighter than `--card-2`.
 
@@ -647,17 +647,69 @@ is lighter than `--card-2`.
 
 Two rules were given at different times and they contradict:
 
-1. **Flat ground, earlier** — the page is burgundy 950 and nothing textures
+1. **Flat ground, earlier** – the page is burgundy 950 and nothing textures
    it; only the tiles and the bar lift off it.
-2. **The starfield, in the final What To Do design** — seventy faint dots
+2. **The starfield, in the final What To Do design** – seventy faint dots
    behind the page, and the design was approved after seeing it.
 
 **The starfield governs, in What To Do only.** It is approved, it stays, and
 flat ground must not come back as a "fix" to it.
 
-The flat-ground rule still governs **every other tool** — nothing else grew
+The flat-ground rule still governs **every other tool** – nothing else grew
 a texture, and nothing should without being asked for.
 
 The dots are generated **once from a fixed seed**, not per render: a ground
 that reshuffles every time a box is ticked is a ground you notice, which is
 the opposite of what a background is for.
+
+---
+
+# Two standing rules, 13 October
+
+These are not entries about a decision. They are rules about how the work is
+done, and they are here because each one has already cost a day.
+
+## A guard is never relaxed to match the code it guards
+
+`family.test.js` asserted **1.02 to 1.25** while the 4% lift was in, which is
+how the bar passed its own suite at **1.08**. An assertion rewritten to bless
+the thing it exists to catch is not a guard, and a green suite that contains
+one proves nothing.
+
+**If a measured value fails an assertion, the value changes or I am asked.
+The assertion does not.**
+
+When an assertion genuinely must move:
+
+- **the commit says why, in its own line** – not buried in a paragraph about
+  something else;
+- **the old threshold stays in the file as a comment, with the date it
+  moved**, so the next person can see what it used to be and when it stopped
+  being true.
+
+## A fix is not verified until it is read off the rendered page
+
+Today's gin-extractor edit went into `:root`, and `theme.css` loads after it,
+so `html[data-theme="light"]` won outright. The page kept rendering
+`rgb(31,154,104)` while the source read `#1C7A4F`, and the source looked
+correct through three reports.
+
+**That is the seventh instance:**
+
+| # | what the source said | what the page did |
+| --- | --- | --- |
+| 1 | the shadow was turned off in `nav.css` | `theme.css` set it `!important` |
+| 2 | the logo was reverted | CRLF left ten files untouched |
+| 3 | the toasts were fixed | they read `--navy`, which had moved |
+| 4 | the steps fixture passed | everything was dated today, so only the written path ran |
+| 5 | step 4's filter looked right | the `LIKE` wildcard was never escaped |
+| 6 | the bar had changed | it measured 1.39:1 and read as unchanged |
+| 7 | light `--ok` was `#1C7A4F` | the page rendered `rgb(31,154,104)` |
+
+**Source edits are not evidence.** Read the computed value off the element,
+in both themes, before reporting anything as fixed.
+
+One corollary learned the same day: the computed value may come back as
+`color(srgb 0.93 0.44 0.49 / 0.55)`, not `rgba()`. Those are 0-1 floats, and
+a parser that assumes 0-255 reads them as near-black – which produced a false
+1.15:1 on a pill that actually measured 2.72:1. Parse both forms.
