@@ -77,7 +77,7 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     'e75856c281f6fcde456d3b82de741d6ea587580ffaa71322fd5c9ada82c6c0b2');
+     'bf480bc93d30ddbbddbb61547b9feaab608b549a8bdd472c393055201a3bb3ea');
 
   /* ---- THE BAR FLIPS WITH THE THEME ----
 
@@ -120,10 +120,20 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
        and the whole bar change looked, correctly, like it had not happened.
        Bar colour alone is not the property worth asserting; separation is. */
     is(fam + ' --bar and --navy are the same value', g(dk[1], 'bar'), g(dk[1], 'navy'));
-    is(fam + ' dark bar is lighter than --card-2',
-       lum(g(dk[1], 'bar')) > lum(g(dk[1], 'card-2')), true);
-    is(fam + ' dark bar separates from the page (>= 1.4)',
-       ratio(g(dk[1], 'bar'), g(dk[1], 'bg')) >= 1.4, true);
+    /* THE BAR DOES NOT SEPARATE BY LIGHTNESS, and that is the design's
+       choice, not an oversight. It is 4% warm white over the ground - about
+       1.08:1 - and what divides it from the page is the 2px rule and the
+       glow hung beneath it. An earlier instruction had it a full step above
+       --card-2 at 1.56:1; the design is the newer of the two and wins.
+
+       So the assertion is that the bar is a SLIGHT lift over the ground -
+       present, but not a rung - and the separation is asserted on the rule
+       below, which has to clear 3:1 against the bar either way. */
+    const barLift = ratio(g(dk[1], 'bar'), g(dk[1], 'bg'));
+    is(fam + ' dark bar is a slight lift over the page (1.02 to 1.25)',
+       barLift >= 1.02 && barLift <= 1.25, true);
+    is(fam + ' dark bar is lighter than the page, not darker',
+       lum(g(dk[1], 'bar')) > lum(g(dk[1], 'bg')), true);
     is(fam + ' light bar is white', g(lt[1], 'navy'), '#FFFFFF');
     /* and it has to be legible, measured, in both */
     for (const [name, b] of [['dark', dk[1]], ['light', lt[1]]]) {
@@ -180,32 +190,26 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
     const get = k => (new RegExp('--' + k + ':(#[0-9A-Fa-f]{6})').exec(blk[1]) || [])[1];
     const bg = get('bg'), card = get('card'), c2 = get('card-2'), bar = get('bar');
 
-    /* ---- FOUR RUNGS NOW, AND THE FOURTH IS THE BAR ----
+    /* ---- THREE RUNGS, AND THE BAR IS NOT ONE OF THEM ----
 
-       The ladder was three rungs at .195 / .248 / .300, with "no fourth
-       surface" asserted outright. It is four: .220 / .261 / .301 / .338.
-       The ground was lifted off black and warmed, and the bar was given a
-       rung of its own above --card-2.
+       The ladder is the page and its tiles: bg .178, card .224, card-2 .259.
+       The bar sits just over the ground at 4% and is deliberately NOT a rung
+       - it is divided from the page by its rule and glow instead, which is
+       what the design does. It was briefly the fourth rung at .338; that
+       instruction was superseded and the assertion with it.
 
-       Why the old rule gave way: with the bar AT --card-2 it measured
-       1.39:1 against the page, under the 1.50 separation floor, so it read
-       as the same colour as the page. "No fourth surface" was keeping the
-       bar from being visible. The bar is the fourth and last - nothing may
-       sit above it. */
-    const RUNGS = [['bg', bg, 0.178], ['card', card, 0.224],
-                   ['card-2', c2, 0.259], ['bar', bar, 0.338]];
-    is(fam + ' the ladder ascends, all four rungs',
-       RUNGS.slice(1).map(([, v], i) => okL(v) > okL(RUNGS[i][1])), [true, true, true]);
-    is(fam + ' lands on the ramp (.178 / .224 / .259 / .338 OKLab, ±.012)',
-       RUNGS.map(([, v, want]) => Math.abs(okL(v) - want) <= 0.012), [true, true, true, true]);
-    /* NOTHING ABOVE THE BAR. Named explicitly rather than "everything except
-       the ones I thought of": --line and --disabled are both legitimately
-       lighter - one is a border, the other is text - and an exclusion list
-       would have grown every time a token was added. */
-    const SURFACES = ['bg', 'card', 'card-2', 'bar', 'navy', 'navy-2'];
+       NOTHING ABOVE --card-2 among the surfaces. Named explicitly rather
+       than "everything except the ones I thought of": --line and --disabled
+       are legitimately lighter - one is a border, the other is text. */
+    const RUNGS = [['bg', bg, 0.178], ['card', card, 0.224], ['card-2', c2, 0.259]];
+    is(fam + ' the ladder ascends, all three rungs',
+       RUNGS.slice(1).map(([, v], i2) => okL(v) > okL(RUNGS[i2][1])), [true, true]);
+    is(fam + ' lands on the ramp (.178 / .224 / .259 OKLab, ±.012)',
+       RUNGS.map(([, v, want]) => Math.abs(okL(v) - want) <= 0.012), [true, true, true]);
+    const SURFACES = ['bg', 'card', 'card-2', 'navy-2'];
     const above = SURFACES.map(k => [k, get(k)]).filter(([, v]) => v)
-      .filter(([, v]) => okL(v) > okL(bar) + 0.001).map(([k]) => k);
-    is(fam + ' has no surface above --bar', above, []);
+      .filter(([, v]) => okL(v) > okL(c2) + 0.001).map(([k]) => k);
+    is(fam + ' has no surface above --card-2', above, []);
   }
 }
 

@@ -399,6 +399,31 @@
     if (error) throw new Error(error.message);
   }
 
+  /* HARD DELETE, and the row goes with its steps.
+
+     The steps are not rows - they are lines inside the note on this same
+     row - so there is nothing else to clean up and nothing can be orphaned.
+     That is the one thing that makes a hard delete safe here; it would not
+     be if the checklist lived in a table of its own.
+
+     No soft delete. A deleted_at column means every read in the tool grows
+     a filter, and a filter that is missed shows a deleted task as a live
+     one - which is worse than losing it. The page asks before calling this,
+     and that confirmation is the undo.
+
+     RLS IS NOT CHECKED HERE and cannot be from the client: if the policy
+     refuses the delete, Supabase returns an error and the caller shows it.
+     That is the honest failure - the row stays and the page says why.
+     Nothing is removed from the list until the database agrees. */
+  async function removeTodo(id){
+    const c = await client();
+    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    const s = await session();
+    if (!s) throw new Error('Sign in first - removing writes to the shared list.');
+    const { error } = await c.from('todos').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
   async function subscribeTodos(fn){
     const c = await client(); if (!c) return;
     c.channel('todos')
@@ -2033,6 +2058,6 @@
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
                 load, publish, subscribe,
                 publishBook, loadBook, subscribeBook,
-                listTodos, addTodo, updateTodo, setTodoDone, subscribeTodos,
+                listTodos, addTodo, updateTodo, setTodoDone, removeTodo, subscribeTodos,
                 cacheSet, cacheGet };
 })();
