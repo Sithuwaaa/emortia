@@ -65,22 +65,23 @@
        Set on html and body as well as here, so the colour runs edge to
        edge instead of a panel sitting on a different shade. */
     /* the glass itself */
-    --glass:#2E1218;
+    --glass:#34121A;
     --glass-hero:#3A161F;
     /* THE SAME OUTER STROKE ON EVERY TILE. It used to be a dark grey line
        with only the carried-over card getting a rose one, so two kinds of
        card sat next to each other looking like two different components.
        One stroke, the family accent at a third strength - visible on the
        ground without ringing every card in full pink. */
-    --glass-edge:color-mix(in srgb,var(--accent) 34%,transparent);
-    --glass-shadow:none;
+    --glass-edge:rgba(239,113,126,.34);
+    --glass-shadow:0 18px 50px rgba(0,0,0,.25);
     --blur:40px; --sat:120%;
     /* the four decorative hues, for type chips and stat dots. NOT status:
        --ok, --warn and --bad above keep their jobs. */
-    --sky:#4DD8FF; --mint:#39FF9F; --amber:#FFE14D; --coral:#FF5FA2;
-    --chk-on:#39FF9F; --chk-ink:#0E2418; --chk-edge:rgba(255,240,242,.42);
-    --lq-track:rgba(255,240,242,.14);
+    --sky:#4DD8FF; --mint:#3DFFA4; --amber:#FFD94A; --coral:#FF5F8F;
+    --chk-on:#3DFFA4; --chk-ink:#0E2418; --chk-edge:rgba(255,240,242,.38);
+    --lq-track:rgba(255,240,242,.12);
     --lq-ink:#F7F1E8;
+    --star:#FFFFFF;    --iv-ink:#22060E; --chip-bg:rgba(255,240,242,.1); --stop-ink:#22060E;
     /* the selected chip: dark fill, light ink, accent ring - the same
        treatment in both themes, so it reads as picked either way */
     --sel-bg:#181014; --sel-ink:#F7F1E8;
@@ -88,12 +89,16 @@
   html[data-theme="light"]{
     --glass:#FFFFFF;
     --glass-hero:#FFF4F6;
-    --glass-edge:color-mix(in srgb,var(--accent) 28%,transparent);
-    --glass-shadow:none;
-    --sky:#006F94; --mint:#007A44; --amber:#7A6500; --coral:#B0005A;
-    --chk-on:#007A44; --chk-ink:#FFFFFF; --chk-edge:rgba(107,94,85,.55);
+    --glass-edge:rgba(194,0,63,.2);
+    --glass-shadow:0 18px 50px rgba(0,0,0,.25);
+    --sky:#006F94; --mint:#007A44; --amber:#8A6500; --coral:#B0005A;
+    /* #1F9E62 is the design's green and it stays; its own #FFFFFF ink is
+       3.43 on it, so the ink goes dark instead - 4.77, and the colour the
+       design picked is untouched. */
+    --chk-on:#1F9E62; --chk-ink:#0E2418; --chk-edge:rgba(107,94,85,.5);
     --lq-track:rgba(109,26,46,.12);
     --lq-ink:#2B1E1A;
+    --star:#93364D;    --iv-ink:#22060E; --chip-bg:rgba(109,26,46,.07); --stop-ink:#FFFFFF;
     --sel-bg:#2B1E1A; --sel-ink:#FBF3F4;
   }
 
@@ -169,7 +174,7 @@
     -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
     border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow)}
 
-  .lq-sub{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:32px;line-height:1.1}
+  .lq-sub{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:42px;line-height:1.1}
   .cols{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
   .colL{flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:20px}
   .colR{flex:1.4 1 360px;min-width:0;display:flex;flex-direction:column;gap:20px}
@@ -177,18 +182,18 @@
   /* ---- the month ---- */
   .cal{padding:24px;display:flex;flex-direction:column;gap:14px}
   .cal-h{display:flex;align-items:baseline;gap:10px}
-  .cal-h .m{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:34px}
-  .cal-h .y{font-size:14px;color:var(--muted)}
+  .cal-h .m{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:44px;line-height:1}
+  .cal-h .y{font-size:18px;color:var(--muted);align-self:flex-end;padding-bottom:4px}
   .cal-h .nav{margin-left:auto;display:flex;gap:4px}
   .cal-h .nav button{cursor:pointer;width:30px;height:30px;border-radius:50%;border:1px solid var(--glass-edge);
     background:transparent;color:inherit;font-size:15px;line-height:1}
   .grid7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));row-gap:4px}
-  .grid7 .dn{text-align:center;font-size:12px;color:var(--muted);padding-bottom:8px}
+  .grid7 .dn{text-align:center;font-size:14px;color:var(--muted);padding:6px 0 14px}
   .cell{cursor:pointer;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;
     gap:2px;padding:3px 0;color:inherit}
-  .cell .n{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-size:15px;border:1px solid transparent;transition:background .18s,border-color .18s}
-  .cell .c{font-size:10.5px;font-weight:600;min-height:13px;color:var(--amber)}
+  .cell .n{width:58px;height:58px;max-width:100%;aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:19px;border:2px solid transparent;transition:background .18s,border-color .18s}
+  .cell .c{font-size:13px;font-weight:600;min-height:16px;color:var(--amber)}
   .cell.out{opacity:.4}
   .cell.all .n{background:color-mix(in srgb,var(--mint) 18%,transparent)}
   .cell.all .c{color:var(--mint)}
@@ -205,34 +210,34 @@
 
   /* ---- progress ---- */
   .prog{padding:22px;display:flex;flex-direction:column;gap:10px}
-  .prog .big{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:46px;line-height:1}
+  .prog .big{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:44px;line-height:1}
   .prog .row{display:flex;align-items:baseline;gap:10px}
-  .prog .row span{font-size:14px;color:var(--muted)}
-  .segs{display:flex;gap:3px;height:24px;align-items:stretch}
+  .prog .row span{font-size:17px;color:var(--muted)}
+  .segs{display:flex;gap:4px;height:30px;align-items:stretch}
   .segs i{flex:1;border-radius:3px;background:var(--lq-track);transition:background .25s}
   .segs i.on{background:var(--sky)}
 
   /* ---- the four counts ---- */
   .stats{display:flex;flex-direction:column;gap:10px}
-  .stat{border-radius:99px;display:flex;align-items:center;gap:14px;padding:14px 22px}
+  .stat{border-radius:99px;display:flex;align-items:center;gap:16px;padding:20px 28px}
   /* All four the same width. The design staggers two of them to make a
      shape out of the column; four counts you compare against each other
      should be the same size, or the shorter ones read as less important
      than the longer ones. */
   .stat i{width:10px;height:10px;border-radius:50%;flex:none}
-  .stat .l{flex:1;font-size:15px}
-  .stat .v{font-size:18px;font-weight:600}
+  .stat .l{flex:1;font-size:18px}
+  .stat .v{font-size:23px;font-weight:600}
 
   /* ---- the week ---- */
   .wk{padding:22px;display:flex;flex-direction:column;gap:14px}
   .wk-h{display:flex;align-items:baseline;justify-content:space-between}
-  .wk-h .t{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:26px}
+  .wk-h .t{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:34px}
   .wk-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
   .wd{cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 0;
     border-radius:18px;background:transparent;border:1px solid transparent;color:inherit;transition:background .18s}
-  .wd .l{font-size:11.5px;color:var(--muted)}
-  .wd .n{font-size:18px;font-weight:500}
-  .wd .c{font-size:10.5px;font-weight:600;min-height:13px;color:var(--amber)}
+  .wd .l{font-size:14px;color:var(--muted)}
+  .wd .n{font-size:23px;font-weight:600}
+  .wd .c{font-size:13px;font-weight:600;min-height:16px;color:var(--amber)}
   .wd:hover{background:rgba(255,255,255,.08)}
   .wd.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
   .wd.sel{background:var(--sel-bg);border-color:var(--accent);color:var(--sel-ink)}
@@ -240,8 +245,8 @@
 
   /* ---- tasks ---- */
   .tk-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .tk-h .t{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:28px}
-  .tk-h .n{font-size:13px;color:var(--muted)}
+  .tk-h .t{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:36px}
+  .tk-h .n{font-size:16px;color:var(--muted)}
   .tk-h .sp{flex:1}
   .addbtn{cursor:pointer;display:flex;align-items:center;gap:9px;padding:9px 18px 9px 10px;border-radius:99px;
     border:1px solid var(--glass-edge);background:var(--glass);backdrop-filter:blur(var(--blur));
@@ -269,7 +274,7 @@
      components. One title treatment; the carried card is still told apart
      by its marker and its two buttons. */
   .task .ti{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;
-    font-size:29px;line-height:1.15}
+    font-size:38px;line-height:1.1}
   .task input.ti{font-size:22px}
   .doneline{align-self:flex-start;cursor:pointer;padding:8px 16px;border-radius:99px;
     border:1px dashed var(--glass-edge);background:transparent;color:var(--muted);font-size:12.5px}
@@ -277,13 +282,13 @@
   .task{padding:18px 22px;display:flex;flex-direction:column;gap:4px}
   .task-top{display:flex;align-items:center;gap:12px;padding-bottom:8px}
   .task-top .ti{flex:1;min-width:0;overflow-wrap:anywhere}
-  .task-top .dt{font-size:12.5px;color:var(--muted);white-space:nowrap}
-  .task-top .ct{font-size:12px;font-weight:600;color:var(--amber);white-space:nowrap}
+  .task-top .dt{font-size:15px;color:var(--muted);white-space:nowrap}
+  .task-top .ct{font-size:15px;font-weight:600;color:var(--amber);white-space:nowrap}
   .task.done .ti{color:var(--muted);text-decoration:line-through}
   .rm{flex:none;cursor:pointer;width:28px;height:28px;border-radius:50%;border:1px solid var(--glass-edge);
     background:transparent;color:var(--muted);font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center}
   .rm:hover{color:var(--coral);border-color:var(--coral)}
-  .chip{display:inline-flex;align-items:center;gap:7px;padding:4px 12px;border-radius:99px;font-size:12px;
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:7px 15px;border-radius:99px;font-size:14px;
     margin:0 0 6px 32px;align-self:flex-start}
   .chip i{width:7px;height:7px;border-radius:50%}
   .box{cursor:pointer;padding:0;flex:none;width:20px;height:20px;border-radius:6px;display:flex;
@@ -296,7 +301,7 @@
   .step{display:flex;align-items:center;gap:12px;padding:5px 0 5px 32px}
   .step .box{width:17px;height:17px}
   .step .box s{height:8px}
-  .step label{font-size:14px;cursor:pointer}
+  .step label{font-size:17px;cursor:pointer}
   .step.on label{color:var(--muted);text-decoration:line-through}
   .more{align-self:flex-start;cursor:pointer;margin:6px 0 0 32px;padding:6px 14px;border-radius:99px;
     border:1px solid var(--glass-edge);background:transparent;color:var(--muted);font-size:12.5px}
@@ -355,8 +360,46 @@
     color:var(--muted);font-size:14px}
   .err{border:1px solid var(--warn);border-radius:16px;padding:14px 18px;color:var(--text);font-size:14px}
 
-  /* ---- the reminder strip ---- */
-  .remind{border-radius:99px;display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:8px 8px 8px 24px}
+  /* ---- the starfield ----
+     Seventy faint dots fixed behind everything, from the design. Drawn once
+     from a fixed seed so they do not jump about on every redraw - a ground
+     that reshuffles each time you tick a box is a ground you notice. */
+  .stars{position:fixed;inset:0;pointer-events:none;z-index:0}
+  .stars i{position:absolute;border-radius:50%;background:var(--star);display:block}
+
+  /* ---- the reminder bar, stuck to the bottom ----
+
+     It was at the end of the page, so on a long day you scrolled past every
+     task to reach the thing that tells you when the next nudge is.
+
+     Two states, because the bar is the status display: OFF it is the nav
+     colour and sits quietly; ON it fills with the burgundy gradient, the
+     toggle goes green and the countdown runs in mint, so whether you are
+     being reminded is readable from across the desk. */
+  .rbar{position:sticky;bottom:0;z-index:20;margin:0 -16px -26px;padding:12px 24px;
+    background:var(--bar);border-top:2px solid var(--accent);
+    box-shadow:0 -12px 30px -14px var(--accent);
+    display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+    color:var(--text);transition:background .3s,box-shadow .3s,color .3s}
+  .rbar.on{background:linear-gradient(90deg,#B23A56,#7F2640);color:#FFFFFF;
+    box-shadow:0 -12px 30px -14px rgba(239,113,126,.6)}
+  .rbar .sw{color:inherit;font-size:15px;font-weight:500}
+  .rbar .sw i{width:48px;height:28px;background:var(--lq-track)}
+  .rbar .sw i s{width:22px;height:22px}
+  .rbar .sw.on i{background:var(--mint)}
+  .ivs{display:flex;gap:4px;padding:3px;border-radius:99px;background:rgba(255,240,242,.08)}
+  .rbar.on .ivs{background:rgba(255,255,255,.14)}
+  .ivs button{cursor:pointer;white-space:nowrap;padding:7px 14px;border-radius:99px;border:0;
+    font-size:14px;font-weight:500;background:transparent;color:inherit}
+  .ivs button.on{background:var(--accent);color:var(--iv-ink)}
+  .rbar.on .ivs button.on{background:#F7F1E8;color:#521323}
+  .bell{cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 18px 8px 8px;
+    border-radius:99px;border:1px solid var(--glass-edge);background:var(--glass);color:var(--text)}
+  .bell i{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:15px;font-style:normal;background:var(--chip-bg)}
+  .rbar.on .bell i{background:var(--mint)}
+  .bell b{font-family:'JetBrains Mono','Space Mono',monospace;font-size:14px;font-weight:400;color:var(--muted)}
+  .rbar.on .bell b{color:var(--mint)}
   .sw{cursor:pointer;display:flex;align-items:center;gap:8px;padding:0;border:0;background:transparent;
     color:inherit;font-size:13px}
   .sw i{width:42px;height:42px;width:42px;height:24px;border-radius:99px;padding:3px;display:flex;
@@ -384,15 +427,13 @@
   .rbtn.stop{border:0;background:var(--accentD);color:#F7F1E8;font-weight:600}
   .rbtn.stop[disabled]{opacity:1;cursor:default;background:var(--accentD);
     color:#F7F1E8;filter:saturate(.55) brightness(.9)}
-  .rbtn.stop:not([disabled]){background:var(--coral);color:var(--chk-ink);
+  .rbtn.stop:not([disabled]){background:var(--coral);color:var(--stop-ink);
     animation:stopPulse 1.1s ease-in-out infinite}
   @keyframes stopPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--coral) 55%,transparent)}
     50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--coral) 0%,transparent)}}
   .rbtn[disabled]{cursor:default}
   .remind .next{font-family:'JetBrains Mono','Space Mono',monospace;font-size:12px;color:var(--muted)}
 
-  footer{margin-top:18px;text-align:center;font-size:12.5px;color:var(--muted);line-height:1.6}
-  footer a{color:var(--accentB)}
 
   .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160px);background:var(--card);
     border:1px solid var(--accent);border-radius:14px;padding:11px 18px;z-index:90;
@@ -432,7 +473,7 @@
   <span class="pill" id="pill">loading…</span>
   <button class="theme" id="themeBtn" aria-label="Toggle theme">☾</button>
 </header>
-<main><div id="view"></div><footer></footer></main>
+<main><div id="view"></div></main>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -508,7 +549,9 @@ function refreshPill(){
    alive. Closing it stops the reminders. Making them arrive with
    the tab shut needs push, which needs a server - a later job.
    ============================================================ */
-const EVERY = 15 * 60 * 1000;
+/* EVERY was a fixed quarter hour; the bar lets you pick now, so it reads
+   the choice instead of hard-coding it. */
+const EVERY = () => IV * 60 * 1000;
 const REMIND_KEY = 'whattodo_remind';
 const SOUND_KEY = 'whattodo_sound';
 let REMIND = false, SOUND = true, timer = null, nextAt = 0, tick = null;
@@ -702,7 +745,7 @@ function setSound(on){
 }
 function fire(){
   const list = pending();
-  nextAt = Date.now() + EVERY;
+  nextAt = Date.now() + EVERY();
   if (!list.length) return;                       // nothing to nag about
   const overdue = list.filter(t => t.due && new Date(t.due) < new Date()).length;
   const head = list.length + (list.length === 1 ? ' job pending' : ' jobs pending')
@@ -725,8 +768,8 @@ async function setRemind(on){
       try { await Notification.requestPermission(); } catch(e){}
     }
     audioCtx();                                   // unlock sound on this click
-    nextAt = Date.now() + EVERY;
-    timer = setInterval(fire, EVERY);
+    nextAt = Date.now() + EVERY();
+    timer = setInterval(fire, EVERY());
     tick = setInterval(() => { const el = $('nextIn'); if (el) el.textContent = countdown(); }, 1000);
   } else {
     document.title = 'What To Do';
@@ -830,6 +873,25 @@ function jobType(title){
   return ['Task', 'sky'];
 }
 
+/* Seventy faint dots behind the page, from the design. Generated ONCE from
+   a fixed seed rather than on each render: a ground that reshuffles every
+   time you tick a box is a ground you notice, which is the opposite of what
+   a background is for. */
+const STARS = (() => {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  return Array.from({ length: 70 }, () => ({
+    x: (rnd() * 100).toFixed(2), y: (rnd() * 100).toFixed(2),
+    r: (1 + rnd() * 1.6).toFixed(1), o: (0.15 + rnd() * 0.35).toFixed(2) }));
+})();
+const starsHTML = () => '<div class="stars" aria-hidden="true">' + STARS.map(t =>
+  '<i style="left:' + t.x + '%;top:' + t.y + '%;width:' + t.r + 'px;height:' + t.r +
+  'px;opacity:' + t.o + '"></i>').join('') + '</div>';
+
+/* The reminder interval is a choice now, not a fixed quarter of an hour. */
+const IVS = [5, 15, 30, 60];
+const IV_KEY = 'whattodo_interval';
+let IV = (() => { try { return +localStorage.getItem(IV_KEY) || 15; } catch (e) { return 15; } })();
 let OPEN = {};
 /* Finished work is off the list by default. SHOWDONE reveals it again -
    see the note where the list is built. */
@@ -1032,17 +1094,21 @@ function addHTML(){
 }
 
 function remindBar(){
-  return '<div class="glass remind">' +
-    '<span class="cap">Remind me every 15 min</span>' +
-    '<button class="sw' + (REMIND ? ' on' : '') + '" id="remBtn"><i><s></s></i>' + (REMIND ? 'On' : 'Off') + '</button>' +
+  const ring = alarming();
+  return '<div class="rbar' + (REMIND ? ' on' : '') + '">' +
+    '<button class="sw' + (REMIND ? ' on' : '') + '" id="remBtn"><i><s></s></i>Remind me every</button>' +
+    '<div class="ivs">' + IVS.map(v =>
+      '<button data-iv="' + v + '" class="' + (IV === v ? 'on' : '') + '">' +
+      (v < 60 ? v + ' min' : '1 hr') + '</button>').join('') + '</div>' +
     '<span class="sp"></span>' +
-    '<button class="rbtn' + (SOUND ? '' : ' on') + '" id="sndBtn">' + (SOUND ? 'Ring' : 'Silenced') + '</button>' +
-    (alarming()
-      ? '<button class="rbtn stop" id="stopBtn">Stop alarm · <span id="almLeft">' + alarmLeft() + '</span></button>'
-      : '<button class="rbtn stop" id="stopBtn" disabled title="Nothing is ringing">Stop alarm</button>') +
-    '<span class="next" id="nextIn">' + countdown() + '</span></div>';
+    '<button class="bell" id="sndBtn" title="' + (SOUND ? 'Mute' : 'Unmute') + '">' +
+      '<i>' + (SOUND ? '\u{1F514}' : '\u{1F515}') + '</i>' +
+      '<b>' + esc(countdown()) + '</b></button>' +
+    (ring ? '<button class="rbtn stop" id="stopBtn">Stop alarm \u00b7 <span id="almLeft">' +
+        alarmLeft() + '</span></button>'
+          : '<button class="rbtn stop" id="stopBtn" disabled title="Nothing is ringing">Stop alarm</button>') +
+  '</div>';
 }
-
 function render(){
   /* a realtime redraw must not eat what is being typed */
   const ta = document.activeElement, taId = ta && ta.id;
@@ -1062,7 +1128,7 @@ function render(){
   const d = new Date(SEL + 'T12:00:00');
   const carry = SEL === TODAY() ? carried() : [];
 
-  let h = '<div class="liquid">' +
+  let h = starsHTML() + '<div class="liquid">' +
     '<div class="lq-in">';
   if (LOAD_ERR) h += '<div class="err"><b>The list could not be read.</b><br>' + esc(LOAD_ERR) + '</div>';
   h += '<span class="lq-sub">' + esc(d.toLocaleDateString([], { weekday:'long', day:'numeric', month:'long' })) + '</span>' +
@@ -1131,8 +1197,14 @@ function render(){
 
   const rb = $('remBtn'); if (rb) rb.onclick = () => setRemind(!REMIND);
   const sb = $('sndBtn'); if (sb) sb.onclick = () => setSound(!SOUND);
+  document.querySelectorAll('[data-iv]').forEach(b => b.onclick = () => {
+    IV = +b.dataset.iv;
+    try { localStorage.setItem(IV_KEY, String(IV)); } catch (e) {}
+    /* restart the countdown on the new interval, or the next nudge still
+       arrives on the old one and the chip is a lie */
+    if (REMIND) setRemind(true); else render();
+  });
   const stb = $('stopBtn'); if (stb && !stb.disabled) stb.onclick = () => { stopAlarm(); toast('Alarm stopped'); };
-  renderFooter();
 }
 
 function pushStep(){
@@ -1252,21 +1324,11 @@ async function removeTask(id){
   } catch (err){ toast(err.message, 6000); }
 }
 
-function renderFooter(){
-  const lead = window.DB.configured() ? 'Shared across every device' : 'Not syncing yet - anon key missing';
-  let h = lead + ' · reminders run while this page is open';
-  h += '<br><a href="#" id="acct">…</a>';
-  document.querySelector('footer').innerHTML = h;
-  const ac = $('acct');
-  const paint = s => { ac.textContent = s ? ('signed in as ' + s.user.email + ' · sign out') : 'sign in to add or tick off'; };
-  window.DB.session().then(paint);
-  ac.onclick = async e => {
-    e.preventDefault();
-    const s = await window.DB.session();
-    if (s){ await window.DB.signOut(); toast('Signed out'); paint(null); }
-    else { const ns = await window.AuthGate.signIn(); if (ns){ toast('Signed in'); paint(ns); } }
-  };
-}
+/* The footer is gone. It said two things: that the list is shared across
+   devices, which you know, and who is signed in with a way to sign out -
+   and the account chip in the bar already carries both, on every tool. A
+   second sign-out in a different place is not redundancy, it is two things
+   to keep in step. */
 
 /* ---------- boot ---------- */
 (async function(){
@@ -1274,7 +1336,6 @@ function renderFooter(){
         SOUND  = localStorage.getItem(SOUND_KEY)  !== '0'; } catch(e){}
   await refresh();
   if (REMIND) setRemind(true); else render();
-  window.DB.onAuth(() => renderFooter());
   // someone ticked one off elsewhere - drop it here too
   window.DB.subscribeTodos(refresh);
 })();

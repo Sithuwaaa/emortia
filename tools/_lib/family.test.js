@@ -288,7 +288,7 @@ console.log('\n--- no ungoverned chrome anywhere ---');
      take --bg or --text back. */
   const DECLARED = {
     whattodo: ['glass','glass-hero','glass-edge','glass-shadow',
-               'lq-ink','lq-track','sel-bg','sel-ink',
+               'lq-ink','lq-track','sel-bg','sel-ink','star','iv-ink','chip-bg','stop-ink',
                'sky','mint','amber','coral','chk-on','chk-ink','chk-edge']
   };
   for (const [tool, list] of Object.entries(DECLARED))
