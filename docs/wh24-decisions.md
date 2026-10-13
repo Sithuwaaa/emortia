@@ -713,3 +713,41 @@ One corollary learned the same day: the computed value may come back as
 `color(srgb 0.93 0.44 0.49 / 0.55)`, not `rgba()`. Those are 0-1 floats, and
 a parser that assumes 0-255 reads them as near-black – which produced a false
 1.15:1 on a pill that actually measured 2.72:1. Parse both forms.
+
+---
+
+## The bar, fourth turn: the design wins after all, 13 October
+
+The entry above – "the floor beats the design file" – is **superseded**. It
+is left standing rather than edited, because the sequence is the useful part.
+
+`--bar` is back to the design's 4% warm white over the ground, `#2B0F17` on
+emortia, about **1.08:1** against the page. The footer moves with it: the
+reminder bar reads the same token, which is why both changed at once.
+
+**Why this reversal is not the same as the earlier one.** The 4% went in the
+first time on my own reading of a design file, and I widened the test to let
+it pass. This time Sithara put the two side by side on screen, found the v71
+rung read as a grey-mauve band against the burgundy page, and said go with
+the design. The value was changed by the person entitled to change it, and
+the assertion followed afterwards – which is exactly the order the standing
+rule requires.
+
+**What makes it safe.** The bar carries no contrast requirement of its own:
+
+| measured on the rendered page, What To Do, dark | |
+| --- | --- |
+| bar ink on the bar | **15.01** |
+| the 2px rule on the bar | **6.20** |
+| bar against the page | 1.08 |
+
+(Both figures are *higher* than on the rung it replaced – 10.32 and 4.26 –
+because a darker bar puts more distance under the same ink and the same
+rule. Losing the lift did not cost legibility; it bought some.)
+
+Only the last is small, and no text depends on it. The 1.50 floor still
+governs everywhere it guards text.
+
+**The floor is not withdrawn, and it is not a precedent.** A future "the
+design says lighter text" does not get the same answer: this was granted
+because nothing legible rests on the number.

@@ -191,5 +191,51 @@ console.log('\nsearching the whole backlog');
      T.searchTasks(BACKLOG, 'the').some(m => m.t.id === 'f'), false);
 }
 
+console.log('\nthe weather');
+{
+  is('the four steps, in order',  T.RAIN_STEPS, ['off', 'light', 'medium', 'heavy']);
+
+  /* density is per area, or the same rain is a downpour on a phone and a
+     drizzle on a wide monitor */
+  const phone = T.dropCount('medium', 390, 844);
+  const desk  = T.dropCount('medium', 2560, 1440);
+  is('a phone gets few drops',        phone, 49);
+  is('a wide monitor gets many more', desk, 553);
+  is('and the ratio follows the area, not the width',
+     Math.abs(desk / phone - (2560 * 1440) / (390 * 844)) < 0.5, true);
+
+  /* a very large window must not schedule tens of thousands of segments */
+  is('an enormous window is capped', T.dropCount('heavy', 7680, 4320), 1200);
+
+  is('off means no drops at all',   T.dropCount('off', 1920, 1080), 0);
+  is('and off is the only zero',
+     ['light','medium','heavy'].every(s => T.dropCount(s, 1920, 1080) > 0), true);
+  is('heavier is more',
+     T.dropCount('light',1920,1080) < T.dropCount('medium',1920,1080) &&
+     T.dropCount('medium',1920,1080) < T.dropCount('heavy',1920,1080), true);
+
+  /* localStorage can hold anything, including what an older page wrote */
+  is('an unknown strength falls back to medium', T.rainProfile('torrential').name, 'medium');
+  is('and so does nothing at all',               T.rainProfile(null).name, 'medium');
+  is('off is honoured, not defaulted',           T.rainProfile('off').name, 'off');
+
+  /* speeds are per second, because this display is ~145Hz and a per-frame
+     step would run at more than twice the intended speed on it */
+  is('speeds are a sane per-second range',
+     T.rainProfile('medium').vMin === 700 && T.rainProfile('medium').vMax === 1100, true);
+  is('and vMin is never above vMax',
+     T.RAIN_STEPS.every(s => T.rainProfile(s).vMin <= T.rainProfile(s).vMax), true);
+
+  /* strikes must not arrive on a metronome - that is what makes weather
+     read as a loop */
+  const lo = T.strikeDelay('medium', () => 0), hi = T.strikeDelay('medium', () => 1);
+  is('the earliest strike',  lo, 4950);
+  is('the latest strike',    hi, 13050);
+  is('and the band is wide', hi > lo * 2, true);
+  is('heavy strikes more often than light',
+     T.strikeDelay('heavy', () => .5) < T.strikeDelay('light', () => .5), true);
+  is('with no rain there is never a strike', T.strikeDelay('off', () => .5), Infinity);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);

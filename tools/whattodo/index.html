@@ -82,6 +82,10 @@
     --lq-track:rgba(255,240,242,.12);
     --lq-ink:#F7F1E8;
     --star:#FFFFFF;    --iv-ink:#22060E; --chip-bg:rgba(255,240,242,.1); --stop-ink:#22060E;
+    /* the idle rain chips. --muted clears on this track in dark (5.63) but
+       measures 4.32 on the light one, under the 4.5 that 13px needs - so
+       light gets its own, a shade darker. Same reason --stop-ink exists. */
+    --wx-dim:var(--muted);
     /* the selected chip: dark fill, light ink, accent ring - the same
        treatment in both themes, so it reads as picked either way */
     --sel-bg:#181014; --sel-ink:#F7F1E8;
@@ -99,6 +103,7 @@
     --lq-track:rgba(109,26,46,.12);
     --lq-ink:#2B1E1A;
     --star:#93364D;    --iv-ink:#22060E; --chip-bg:rgba(109,26,46,.07); --stop-ink:#FFFFFF;
+    --wx-dim:#6D5A5E;   /* 4.93 on the light track, where --muted is 4.32 */
     --sel-bg:#2B1E1A; --sel-ink:#FBF3F4;
   }
 
@@ -397,6 +402,49 @@
      that reshuffles each time you tick a box is a ground you notice. */
   .stars{position:fixed;inset:0;pointer-events:none;z-index:0}
   .stars i{position:absolute;border-radius:50%;background:var(--star);display:block}
+
+  /* ---- the weather, over the ground and under the glass ----
+
+     From the Promenade design: rain falling behind the tiles, with distant
+     lightning low on the horizon. The design hangs it over a photograph of
+     a promenade; --wtd-scene is the hook for that image and is unset, so
+     until one is supplied the rain falls over the starfield instead.
+
+     z-index 0 puts it in the same layer as the stars and below .liquid,
+     which is why it reads as atmosphere rather than an overlay - the design
+     calls that "behind glass". pointer-events:none so it never eats a click;
+     the click-to-strike listener sits on the document instead. */
+  .wx{position:fixed;inset:0;pointer-events:none;z-index:0;display:block}
+  .scene{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:var(--wtd-scene,none) center/cover no-repeat}
+  /* the readability tint the design puts over the photo. No scene, no tint -
+     it would only be a grey veil over the ground. */
+  .scene::after{content:'';position:absolute;inset:0;
+    background:var(--wtd-scene-tint,transparent)}
+  html[data-wtd-scene="on"]{--wtd-scene-tint:rgba(11,3,6,.46)}
+  html[data-theme="light"][data-wtd-scene="on"]{--wtd-scene-tint:rgba(255,250,250,.30)}
+
+  /* the control, beside the day heading rather than in the bottom bar: that
+     bar was centred and signed off this morning and a fourth group would
+     have pushed the intervals off the middle */
+  .wxc{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .wxc .cap{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .wxc .seg{display:flex;gap:3px;padding:3px;border-radius:99px;background:var(--lq-track)}
+  .wxc .seg button{cursor:pointer;border:0;border-radius:99px;padding:5px 12px;font:inherit;
+    font-size:13px;background:transparent;color:var(--wx-dim)}
+  .wxc .seg button.on{background:var(--accent);color:var(--iv-ink);font-weight:500}
+  .wxc .lt{cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 14px 5px 6px;
+    border-radius:99px;border:1px solid var(--glass-edge);background:var(--glass);
+    color:var(--muted);font:inherit;font-size:13px}
+  .wxc .lt i{width:34px;height:20px;border-radius:99px;background:var(--lq-track);
+    position:relative;transition:background .2s}
+  .wxc .lt i s{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+    background:#FFFFFF;transition:transform .2s}
+  .wxc .lt.on{color:var(--text)}
+  .wxc .lt.on i{background:var(--mint)}
+  .wxc .lt.on i s{transform:translateX(14px)}
+  .hd-row{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .hd-row .sp{flex:1}
 
   /* ---- the reminder bar, stuck to the bottom ----
 
@@ -946,6 +994,193 @@ const starsHTML = () => '<div class="stars" aria-hidden="true">' + STARS.map(t =
   '<i style="left:' + t.x + '%;top:' + t.y + '%;width:' + t.r + 'px;height:' + t.r +
   'px;opacity:' + t.o + '"></i>').join('') + '</div>';
 
+/* ============================================================
+   The weather, from the Promenade design.
+
+   Rain behind the glass tiles and distant lightning low on the horizon.
+   The design hangs it over a photograph; that image is not in this repo, so
+   --wtd-scene is left unset and the rain falls over the starfield. Supplying
+   the photo is one declaration - see .scene in the stylesheet.
+
+   THE CANVAS LIVES OUTSIDE THE RENDER. render() rewrites #view wholesale on
+   every tick of a checkbox, and a canvas inside that would be destroyed and
+   recreated - losing every drop mid-fall and reallocating the backing store
+   several times a minute. It is appended to <body> once and left there.
+
+   EVERYTHING IS DRIVEN BY THE CLOCK. This display runs at about 145Hz, so a
+   per-frame step plays at more than twice the intended speed on it. Each
+   frame measures real elapsed time and multiplies; dt is capped at 50ms so
+   a backgrounded tab does not teleport every drop to the bottom on return.
+   ============================================================ */
+const WX_KEY = 'whattodo_rain', WX_LIT_KEY = 'whattodo_lightning';
+let WX = (() => { try { return localStorage.getItem(WX_KEY) || 'medium'; } catch (e) { return 'medium'; } })();
+let LIT = (() => { try { return localStorage.getItem(WX_LIT_KEY) !== '0'; } catch (e) { return true; } })();
+
+const weather = (() => {
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)');
+  let cv = null, ctx = null, drops = [], w = 0, h = 0, dpr = 1;
+  let raf = null, last = 0, nextStrike = 0, flash = 0, bolt = null, flicker = 0;
+
+  const rnd = () => Math.random();
+
+  function fit(){
+    if (!cv) return;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);   /* 3x on a phone buys nothing and costs fill rate */
+    w = window.innerWidth; h = window.innerHeight;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    seed();
+  }
+
+  /* Drops start spread over the full height, not at the top: filling from
+     the top edge makes the rain arrive as a visible curtain every time the
+     strength changes. */
+  function seed(){
+    const n = window.TodoCore.dropCount(WX, w, h);
+    const p = window.TodoCore.rainProfile(WX);
+    drops = Array.from({ length: n }, () => ({
+      x: rnd() * (w + Math.abs(p.slant) * h) - (p.slant > 0 ? p.slant * h : 0),
+      y: rnd() * h,
+      v: p.vMin + rnd() * (p.vMax - p.vMin),
+      l: p.len * (0.7 + rnd() * 0.7),
+      a: p.alpha * (0.55 + rnd() * 0.65)
+    }));
+  }
+
+  /* The rain takes its colour from the theme, not from a fixed white: a pale
+     streak is invisible on a near-white page. Light mode uses a dark, cool
+     grey; dark mode a warm near-white carrying a little of the accent. */
+  const ink = () => document.documentElement.getAttribute('data-theme') === 'light'
+    ? '120,132,148' : '236,214,220';
+
+  function strike(now){
+    flash = 1; flicker = 2;
+    /* low on the horizon, as the design has it - never a bolt through the
+       middle of the page where the tasks are */
+    const x = w * (0.1 + rnd() * 0.8), top = h * (0.04 + rnd() * 0.10);
+    const pts = [[x, top]];
+    let cx = x, cy = top;
+    const foot = top + h * (0.10 + rnd() * 0.12);
+    while (cy < foot){ cy += (foot - top) / 5; cx += (rnd() - 0.5) * w * 0.045; pts.push([cx, cy]); }
+    bolt = { pts, born: now };
+    nextStrike = now + window.TodoCore.strikeDelay(WX, rnd);
+  }
+
+  function frame(now){
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+    const p = window.TodoCore.rainProfile(WX);
+
+    if (LIT && p.gap){
+      if (!nextStrike) nextStrike = now + window.TodoCore.strikeDelay(WX, rnd);
+      else if (now >= nextStrike) strike(now);
+    }
+    /* the double flicker the design describes: the glow drops, catches once,
+       then falls away */
+    if (flash > 0){
+      flash -= dt * (flicker > 0 ? 5.2 : 1.9);
+      if (flash <= 0 && flicker > 0){ flicker--; flash = flicker ? 0.75 : 0; }
+      if (flash > 0){
+        const g = ctx.createLinearGradient(0, 0, 0, h * 0.5);
+        g.addColorStop(0, 'rgba(255,246,236,' + (flash * 0.30).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(255,246,236,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h * 0.5);
+      }
+    }
+    if (bolt && now - bolt.born < 190){
+      const k = 1 - (now - bolt.born) / 190;
+      ctx.strokeStyle = 'rgba(255,250,242,' + (k * 0.85).toFixed(3) + ')';
+      ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath();
+      bolt.pts.forEach((pt, i) => i ? ctx.lineTo(pt[0], pt[1]) : ctx.moveTo(pt[0], pt[1]));
+      ctx.stroke();
+    } else if (bolt) bolt = null;
+
+    if (!drops.length) return;
+    const col = ink();
+    ctx.lineWidth = 1.1; ctx.lineCap = 'round';
+    for (const d of drops){
+      d.y += d.v * dt;
+      d.x += d.v * p.slant * dt;
+      if (d.y - d.l > h){
+        d.y = -d.l - rnd() * h * 0.25;
+        d.x = rnd() * (w + Math.abs(p.slant) * h) - (p.slant > 0 ? p.slant * h : 0);
+        d.v = p.vMin + rnd() * (p.vMax - p.vMin);
+      }
+      ctx.strokeStyle = 'rgba(' + col + ',' + d.a.toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x - p.slant * d.l, d.y - d.l);
+      ctx.stroke();
+    }
+  }
+
+  function stop(){ if (raf) cancelAnimationFrame(raf); raf = null; if (ctx) ctx.clearRect(0, 0, w, h); }
+
+  function start(){
+    if (raf) return;
+    last = performance.now(); nextStrike = 0;
+    raf = requestAnimationFrame(frame);
+  }
+
+  function apply(){
+    if (!cv) return;
+    const off = WX === 'off' || (reduced && reduced.matches);
+    if (off){ drops = []; stop(); return; }
+    seed();
+    start();
+  }
+
+  return {
+    mount(){
+      if (cv) return;
+      cv = document.createElement('canvas');
+      cv.className = 'wx'; cv.setAttribute('aria-hidden', 'true');
+      const scene = document.createElement('div');
+      scene.className = 'scene'; scene.setAttribute('aria-hidden', 'true');
+      document.body.insertBefore(scene, document.body.firstChild);
+      document.body.insertBefore(cv, scene.nextSibling);
+      ctx = cv.getContext('2d');
+      fit();
+      addEventListener('resize', fit, { passive: true });
+      /* a hidden tab gets no frames anyway; stopping stops the clock drifting
+         and the battery draining behind another window */
+      document.addEventListener('visibilitychange', () => document.hidden ? stop() : apply());
+      /* "clicking anywhere makes the lightning strike now", from the design.
+         Capture-phase and passive so it never interferes with a button. */
+      document.addEventListener('pointerdown', () => {
+        if (LIT && WX !== 'off' && !(reduced && reduced.matches)) strike(performance.now());
+      }, { capture: true, passive: true });
+      if (reduced && reduced.addEventListener) reduced.addEventListener('change', apply);
+      apply();
+    },
+    apply
+  };
+})();
+
+function setRain(v){
+  WX = v; try { localStorage.setItem(WX_KEY, v); } catch (e) {}
+  weather.apply(); render();
+}
+function setLightning(on){
+  LIT = !!on; try { localStorage.setItem(WX_LIT_KEY, on ? '1' : '0'); } catch (e) {}
+  render();
+}
+function weatherHTML(){
+  return '<div class="wxc">' +
+    '<span class="cap">Rain</span>' +
+    '<span class="seg">' + window.TodoCore.RAIN_STEPS.map(s =>
+      '<button data-rain="' + s + '" class="' + (WX === s ? 'on' : '') + '">' +
+      s.charAt(0).toUpperCase() + s.slice(1) + '</button>').join('') + '</span>' +
+    '<button class="lt' + (LIT ? ' on' : '') + '" id="litBtn" ' +
+      'aria-pressed="' + (LIT ? 'true' : 'false') + '">' +
+      '<i><s></s></i>Lightning</button>' +
+  '</div>';
+}
+
 /* The reminder interval is a choice now, not a fixed quarter of an hour. */
 const IVS = [5, 15, 30, 60];
 const IV_KEY = 'whattodo_interval';
@@ -1218,7 +1453,9 @@ function render(){
   let h = starsHTML() + '<div class="liquid">' +
     '<div class="lq-in">';
   if (LOAD_ERR) h += '<div class="err"><b>The list could not be read.</b><br>' + esc(LOAD_ERR) + '</div>';
-  h += '<span class="lq-sub">' + esc(d.toLocaleDateString([], { weekday:'long', day:'numeric', month:'long' })) + '</span>' +
+  h += '<div class="hd-row"><span class="lq-sub">' +
+      esc(d.toLocaleDateString([], { weekday:'long', day:'numeric', month:'long' })) +
+    '</span><span class="sp"></span>' + weatherHTML() + '</div>' +
     '<div class="cols">' +
       '<div class="colL">' + calHTML() + progHTML() + statsHTML() + '</div>' +
       '<div class="colR">' + weekHTML() +
@@ -1291,6 +1528,9 @@ function render(){
     if (taId === 'q'){ qi.focus(); try { qi.setSelectionRange(caret, caret); } catch(e){} }
   }
   const qx = $('qx'); if (qx) qx.onclick = () => { Q = ''; render(); };
+
+  document.querySelectorAll('[data-rain]').forEach(b => b.onclick = () => setRain(b.dataset.rain));
+  const lb = $('litBtn'); if (lb) lb.onclick = () => setLightning(!LIT);
 
   /* adding leaves the search: the form draws on the day's list, which a
      search has replaced, and its fields would not be on the page to wire */
@@ -1457,6 +1697,7 @@ async function removeTask(id){
   try { REMIND = localStorage.getItem(REMIND_KEY) === '1';
         SOUND  = localStorage.getItem(SOUND_KEY)  !== '0'; } catch(e){}
   await refresh();
+  weather.mount();
   if (REMIND) setRemind(true); else render();
   // someone ticked one off elsewhere - drop it here too
   window.DB.subscribeTodos(refresh);

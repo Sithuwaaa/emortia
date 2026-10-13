@@ -63,8 +63,8 @@ html[data-cat="emortia"]{
   --accentD:#A54D56 !important; --accentBg:#3A2022 !important; --accent-ink:#1B0A0B !important;
   --bg:#22060E !important; --card:#2D1119 !important; --card-2:#381820 !important;
   --line:#4E393D !important; --line3:#685154 !important; --text:#EEE3E3 !important;
-  --muted:#B29D9E !important; --disabled:#746465 !important; --bar:#502A34 !important;
-  --navy:#502A34 !important; --navy-2:#2D1119 !important; --barInk:#F3EAEA !important;
+  --muted:#B29D9E !important; --disabled:#746465 !important; --bar:#2B0F17 !important;
+  --navy:#2B0F17 !important; --navy-2:#2D1119 !important; --barInk:#F3EAEA !important;
   --barDim:#B29D9E !important; --barLine:#685154 !important; --barFill:#2D1119 !important;
   --barRule:#EF717E !important; --glow:rgba(239,113,126,0.3) !important; --glowSoft:rgba(239,113,126,0.14) !important;
 }
@@ -83,8 +83,8 @@ html[data-cat="site"]{
   --accentD:#AF7A4C !important; --accentBg:#382414 !important; --accent-ink:#190C03 !important;
   --bg:#210900 !important; --card:#2D1406 !important; --card-2:#371C0A !important;
   --line:#4D3B31 !important; --line3:#665447 !important; --text:#ECE5DE !important;
-  --muted:#AFA094 !important; --disabled:#72665D !important; --bar:#4F2E1B !important;
-  --navy:#4F2E1B !important; --navy-2:#2D1406 !important; --barInk:#F3EAEA !important;
+  --muted:#AFA094 !important; --disabled:#72665D !important; --bar:#2A120A !important;
+  --navy:#2A120A !important; --navy-2:#2D1406 !important; --barInk:#F3EAEA !important;
   --barDim:#AFA094 !important; --barLine:#665447 !important; --barFill:#2D1406 !important;
   --barRule:#FFB573 !important; --glow:rgba(255,181,115,0.3) !important; --glowSoft:rgba(255,181,115,0.14) !important;
 }
@@ -103,8 +103,8 @@ html[data-cat="design"]{
   --accentD:#569252 !important; --accentBg:#1D2E1C !important; --accent-ink:#071307 !important;
   --bg:#081500 !important; --card:#142006 !important; --card-2:#1A290D !important;
   --line:#394333 !important; --line3:#505C4B !important; --text:#E1E8E1 !important;
-  --muted:#9BA799 !important; --disabled:#626C61 !important; --bar:#2D3D1C !important;
-  --navy:#2D3D1C !important; --navy-2:#142006 !important; --barInk:#F3EAEA !important;
+  --muted:#9BA799 !important; --disabled:#626C61 !important; --bar:#121E0A !important;
+  --navy:#121E0A !important; --navy-2:#142006 !important; --barInk:#F3EAEA !important;
   --barDim:#9BA799 !important; --barLine:#505C4B !important; --barFill:#142006 !important;
   --barRule:#81D67B !important; --glow:rgba(129,214,123,0.3) !important; --glowSoft:rgba(129,214,123,0.14) !important;
 }
@@ -123,8 +123,8 @@ html[data-cat="field"]{
   --accentD:#5C76B0 !important; --accentBg:#1F283D !important; --accent-ink:#090F1D !important;
   --bg:#021126 !important; --card:#091C31 !important; --card-2:#11243C !important;
   --line:#354150 !important; --line3:#4D596A !important; --text:#E2E6EE !important;
-  --muted:#9BA3B3 !important; --disabled:#626975 !important; --bar:#203954 !important;
-  --navy:#203954 !important; --navy-2:#091C31 !important; --barInk:#F3EAEA !important;
+  --muted:#9BA3B3 !important; --disabled:#626975 !important; --bar:#0C1A2E !important;
+  --navy:#0C1A2E !important; --navy-2:#091C31 !important; --barInk:#F3EAEA !important;
   --barDim:#9BA3B3 !important; --barLine:#4D596A !important; --barFill:#091C31 !important;
   --barRule:#88AEFF !important; --glow:rgba(136,174,255,0.3) !important; --glowSoft:rgba(136,174,255,0.14) !important;
 }
@@ -143,8 +143,8 @@ html[data-cat="people"]{
   --accentD:#7F61A9 !important; --accentBg:#2C2439 !important; --accent-ink:#120C1A !important;
   --bg:#120C25 !important; --card:#1B1730 !important; --card-2:#241F3A !important;
   --line:#403D4F !important; --line3:#595568 !important; --text:#E7E4ED !important;
-  --muted:#A5A0B1 !important; --disabled:#6A6673 !important; --bar:#373253 !important;
-  --navy:#373253 !important; --navy-2:#1B1730 !important; --barInk:#F3EAEA !important;
+  --muted:#A5A0B1 !important; --disabled:#6A6673 !important; --bar:#1B152D !important;
+  --navy:#1B152D !important; --navy-2:#1B1730 !important; --barInk:#F3EAEA !important;
   --barDim:#A5A0B1 !important; --barLine:#595568 !important; --barFill:#1B1730 !important;
   --barRule:#B98FF6 !important; --glow:rgba(185,143,246,0.3) !important; --glowSoft:rgba(185,143,246,0.14) !important;
 }

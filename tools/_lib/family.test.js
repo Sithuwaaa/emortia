@@ -77,9 +77,15 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     /* re-signed 13 Oct: --bar back on the v71 ramp rung in all five dark
-        blocks, after the design file's 4% was reverted. Nothing else moved. */
-     '903071b2c9cb42b43dd5622571f9cbb635a51c473b72e134d52b84b9bfc61d07');
+     /* SIGNATURE HISTORY
+          bf480bc9…  to 13 Oct   --bar at the design's 4% lift
+          903071b2…  13 Oct      --bar on the v71 rung
+          bf480bc9…  13 Oct      back to the 4%, asked for after seeing both
+
+        The signature returning to its earlier value is the check that the
+        revert touched --bar and nothing else: a byte of drift anywhere in
+        the stylesheet would have produced a third hash instead. */
+     'bf480bc93d30ddbbddbb61547b9feaab608b549a8bdd472c393055201a3bb3ea');
 
   /* ---- THE BAR FLIPS WITH THE THEME ----
 
@@ -122,31 +128,39 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
        and the whole bar change looked, correctly, like it had not happened.
        Bar colour alone is not the property worth asserting; separation is. */
     is(fam + ' --bar and --navy are the same value', g(dk[1], 'bar'), g(dk[1], 'navy'));
-    /* THE BAR SEPARATES BY LIGHTNESS, AND THE FLOOR IS 1.50.
+    /* THE BAR'S LIFT OVER THE PAGE.
 
        THRESHOLD HISTORY - kept per the standing rule that a moved assertion
        leaves its old value behind with the date it moved:
 
-         >= 1.50          until 13 Oct 2026, and again from 13 Oct 2026
-         1.02 to 1.25     13 Oct 2026 only, WRONGLY - see below
+         >= 1.50          to 13 Oct 2026   the lightness floor, #502A34
+         1.02 to 1.25     13 Oct 2026      RELAXED WITHOUT ASKING - wrong
+         >= 1.50          13 Oct 2026      restored
+         1.02 to 1.25     13 Oct 2026      ASKED FOR - the design, #2B0F17
 
-       The middle row is the whole reason this block carries a history. The
-       assertion was relaxed to bless the design file's 4% warm white over
-       the ground - about 1.08:1 - on the grounds that the 2px rule and the
-       glow do the separating. They do not: 1.39:1 had already been reported
-       three times as "the bar looks unchanged", which is where the 1.50
-       floor came from. A guard relaxed to match the code it guards is not a
-       guard, and the suite stayed green at 1.08 because of it.
+       Rows two and four are the same numbers and are not the same act, and
+       that difference is the whole point of keeping this history.
 
-       THE FLOOR BEATS THE DESIGN FILE. The bar sits on its own rung of the
-       ramp, one step above --card-2; the rule and glow are additions on top
-       of it. docs/wh24-decisions.md carries both the decision and the rule. */
+       Row two was a guard relaxed to match the code it guarded: the 4% lift
+       went in, the assertion was widened to let it pass, and the suite
+       stayed green at 1.08 while three reports said the bar looked
+       unchanged. Nobody was asked. That is the failure the standing rule in
+       docs/wh24-decisions.md now names.
+
+       Row four is the same threshold reached the other way. Sithara put the
+       rung and the design side by side on screen, found the rung read as a
+       grey-mauve band against the burgundy page, and chose the design. The
+       value was changed by the person entitled to change it, and the
+       assertion followed afterwards.
+
+       The bar carries no contrast requirement of its own: its ink measures
+       about 10.3:1 and its 2px rule about 4.3:1 against it, and both are
+       asserted below. Only the bar-against-page step is small, and no text
+       depends on that step. The 1.50 floor still governs wherever it guards
+       text. */
     const barLift = ratio(g(dk[1], 'bar'), g(dk[1], 'bg'));
-    is(fam + ' dark bar clears the 1.50 floor over the page',
-       barLift >= 1.5, true);
-    /* and it stays a bar, not a card: above --card-2, below --line */
-    is(fam + ' dark bar is lighter than --card-2',
-       ratio(g(dk[1],'bar'), g(dk[1],'bg')) > ratio(g(dk[1],'card-2'), g(dk[1],'bg')), true);
+    is(fam + ' dark bar is a slight lift over the page (1.02 to 1.25)',
+       barLift >= 1.02 && barLift <= 1.25, true);
     is(fam + ' dark bar is lighter than the page, not darker',
        lum(g(dk[1], 'bar')) > lum(g(dk[1], 'bg')), true);
     is(fam + ' light bar is white', g(lt[1], 'navy'), '#FFFFFF');
@@ -304,6 +318,10 @@ console.log('\n--- no ungoverned chrome anywhere ---');
   const DECLARED = {
     whattodo: ['glass','glass-hero','glass-edge','glass-shadow',
                'lq-ink','lq-track','sel-bg','sel-ink','star','iv-ink','chip-bg','stop-ink',
+               /* the weather, from the Promenade design: --wx-dim is the idle
+                  rain chip, --wtd-scene-tint the readability veil that goes
+                  over the background photograph when one is supplied. */
+               'wx-dim','wtd-scene-tint',
                'sky','mint','amber','coral','chk-on','chk-ink','chk-edge']
   };
   for (const [tool, list] of Object.entries(DECLARED))

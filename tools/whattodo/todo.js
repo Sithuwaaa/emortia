@@ -160,9 +160,62 @@
     return out;
   }
 
+  /* --------------------------------------------------------- the weather
+
+     From the Promenade design: rain behind the glass, with distant lightning
+     low on the horizon. The numbers live here rather than in the page
+     because density and timing are the two things that are easy to get
+     wrong and impossible to eyeball.
+
+     DENSITY IS PER AREA, NOT A COUNT. A fixed number of drops is a downpour
+     on a phone and a drizzle on a 34-inch monitor. `drops` is per million
+     square pixels, so the rain looks the same on both.
+
+     SPEED IS PIXELS PER SECOND, NOT PER FRAME. This display runs at about
+     145Hz; anything counted in frames plays at more than twice the intended
+     speed on it. Every number below is per second and the page multiplies
+     by real elapsed time. */
+  const RAIN = {
+    off:    { drops: 0,   vMin: 0,    vMax: 0,    len: 0,  alpha: 0,   slant: 0,    gap: 0 },
+    light:  { drops: 55,  vMin: 420,  vMax: 700,  len: 11, alpha: .26, slant: .10, gap: 14000 },
+    medium: { drops: 150, vMin: 700,  vMax: 1100, len: 17, alpha: .34, slant: .16, gap: 9000 },
+    heavy:  { drops: 330, vMin: 1050, vMax: 1600, len: 26, alpha: .42, slant: .24, gap: 5500 }
+  };
+  const RAIN_STEPS = ['off', 'light', 'medium', 'heavy'];
+
+  /* An unknown strength falls back to medium rather than throwing: this is
+     read from localStorage, which anyone can edit and which carries whatever
+     an older version of the page wrote. */
+  function rainProfile(strength) {
+    const k = RAIN[strength] ? strength : 'medium';
+    const p = RAIN[k];
+    return { name: k, drops: p.drops, vMin: p.vMin, vMax: p.vMax,
+             len: p.len, alpha: p.alpha, slant: p.slant, gap: p.gap };
+  }
+
+  /* How many drops a viewport of this size carries. Clamped at the top so a
+     very large window cannot schedule tens of thousands of line segments a
+     frame and turn the page to treacle. */
+  function dropCount(strength, w, h) {
+    const p = rainProfile(strength);
+    if (!p.drops) return 0;
+    return Math.max(0, Math.min(1200, Math.round(p.drops * (w * h) / 1e6)));
+  }
+
+  /* Time to the next flash. Random inside a band around the profile's gap so
+     strikes do not arrive on a metronome, which is the thing that makes a
+     weather effect read as a loop. rnd is injected so this is testable. */
+  function strikeDelay(strength, rnd) {
+    const gap = rainProfile(strength).gap;
+    if (!gap) return Infinity;
+    const r = typeof rnd === 'function' ? rnd() : Math.random();
+    return Math.round(gap * (0.55 + r * 0.9));
+  }
+
   return {
     noteItems, writeNote, toggleItem, setAllItems,
     itemCount, doneCount, allItemsDone,
-    shortDate, ago, dateLine, calendarDate, searchTasks
+    shortDate, ago, dateLine, calendarDate, searchTasks,
+    RAIN_STEPS, rainProfile, dropCount, strikeDelay
   };
 });
