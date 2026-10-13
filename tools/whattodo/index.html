@@ -215,7 +215,10 @@
   /* ---- the four counts ---- */
   .stats{display:flex;flex-direction:column;gap:10px}
   .stat{border-radius:99px;display:flex;align-items:center;gap:14px;padding:14px 22px}
-  .stat.in{margin-right:28px}
+  /* All four the same width. The design staggers two of them to make a
+     shape out of the column; four counts you compare against each other
+     should be the same size, or the shorter ones read as less important
+     than the longer ones. */
   .stat i{width:10px;height:10px;border-radius:50%;flex:none}
   .stat .l{flex:1;font-size:15px}
   .stat .v{font-size:18px;font-weight:600}
@@ -268,6 +271,9 @@
   .task .ti{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;
     font-size:29px;line-height:1.15}
   .task input.ti{font-size:22px}
+  .doneline{align-self:flex-start;cursor:pointer;padding:8px 16px;border-radius:99px;
+    border:1px dashed var(--glass-edge);background:transparent;color:var(--muted);font-size:12.5px}
+  .doneline:hover{color:var(--text);border-color:var(--accent)}
   .task{padding:18px 22px;display:flex;flex-direction:column;gap:4px}
   .task-top{display:flex;align-items:center;gap:12px;padding-bottom:8px}
   .task-top .ti{flex:1;min-width:0;overflow-wrap:anywhere}
@@ -824,7 +830,10 @@ function jobType(title){
   return ['Task', 'sky'];
 }
 
-let OPEN = {};            /* which tasks have their full step list showing */
+let OPEN = {};
+/* Finished work is off the list by default. SHOWDONE reveals it again -
+   see the note where the list is built. */
+let SHOWDONE = false;            /* which tasks have their full step list showing */
 let ADDING = false;
 let DRAFT = { id: null, title: '', day: null, steps: [], step: '' };
 
@@ -890,10 +899,10 @@ function statsHTML(){
   const tot = TODOS.length, done = TODOS.filter(t => t.done).length;
   const open = carried().length;
   const pct = tot ? Math.round(done / tot * 100) : 0;
-  const rows = [['Tasks', tot, 'sky', ''], ['Done', done, 'mint', ' in'],
-                ['Complete', pct + '%', 'amber', ''], ['Carried over', open, 'coral', ' in']];
-  return '<div class="stats">' + rows.map(([l, v, c, ind]) =>
-    '<div class="glass stat' + ind + '"><i style="background:var(--' + c + ')"></i>' +
+  const rows = [['Tasks', tot, 'sky'], ['Done', done, 'mint'],
+                ['Complete', pct + '%', 'amber'], ['Carried over', open, 'coral']];
+  return '<div class="stats">' + rows.map(([l, v, c]) =>
+    '<div class="glass stat"><i style="background:var(--' + c + ')"></i>' +
     '<span class="l">' + l + '</span>' +
     '<span class="v" style="color:var(--' + c + ')">' + v + '</span></div>').join('') + '</div>';
 }
@@ -1040,6 +1049,16 @@ function render(){
   const caret = ta && ta.selectionStart;
 
   const list = forDay(SEL), n = list.length, dn = list.filter(t => t.done).length;
+  /* FINISHED WORK LEAVES THE LIST. A ticked task with a line through it is
+     still a card taking a card's worth of room, and on a day with ten jobs
+     the four that are done push the six that are not off the screen.
+
+     Hidden, NOT dropped: it is still counted in 'x of y done', in the
+     calendar, in the week strip and in the progress bar - and one click on
+     the line below the list brings it all back, because a task ticked by
+     mistake has to be untickable. Removing it from the page outright would
+     have made a mis-tick unrecoverable. */
+  const open = list.filter(t => !t.done), done = list.filter(t => t.done);
   const d = new Date(SEL + 'T12:00:00');
   const carry = SEL === TODAY() ? carried() : [];
 
@@ -1055,7 +1074,11 @@ function render(){
           '<button class="addbtn" id="openAdd"><i>+</i>Add task</button></div>' +
         addHTML() +
         carry.map(t => taskHTML(t, true)).join('') +
-        list.map(t => taskHTML(t, false)).join('') +
+        open.map(t => taskHTML(t, false)).join('') +
+        (dn ? '<button class="doneline" id="showDone">' +
+          (SHOWDONE ? 'Hide ' + dn + ' finished' : dn + ' finished · show') +
+          '</button>' : '') +
+        (SHOWDONE ? done.map(t => taskHTML(t, false)).join('') : '') +
         (n ? '' : '<div class="none">Nothing planned for this day.</div>') +
       '</div>' +
     '</div>' +
@@ -1087,6 +1110,7 @@ function render(){
     ei.onblur = () => { if (EDIT_ID) saveEdit(EDIT_ID, ei.value.trim()); };
   }
 
+  const sd = $('showDone'); if (sd) sd.onclick = () => { SHOWDONE = !SHOWDONE; render(); };
   $('openAdd').onclick = () => { ADDING = true; DRAFT = { id:null, title:'', day:SEL, steps:[], step:'' }; render(); };
   if (ADDING){
     const ti = $('dTitle'), si = $('dStep');
