@@ -751,3 +751,67 @@ governs everywhere it guards text.
 **The floor is not withdrawn, and it is not a precedent.** A future "the
 design says lighter text" does not get the same answer: this was granted
 because nothing legible rests on the number.
+
+---
+
+## The ground, second reversal: the photograph governs What To Do
+
+13 October. The rule recorded this morning – *the starfield governs the
+ground in What To Do* – is **superseded**, the same way the bar entry was.
+It is left standing above rather than edited, because the sequence is the
+point: that rule was itself a reversal of the flat-ground rule, and this is
+the third position the ground has held in one day.
+
+**The photograph governs the ground in What To Do.** `media/backgroud/Magenta
+Twilight Promenade.png`, Sithara's own image, exported into the tool.
+
+**Flat ground still governs the other fifteen tools**, and the photo goes
+nowhere near them: every rule is gated on `html[data-wtd-scene="on"]`, which
+only this page sets.
+
+### The starfield is dropped, not kept as a layer
+
+Asked for my call, since I could see it and Sithara could not. Seventy faint
+dots read as a night sky only while the ground is empty. Over the promenade
+they land on trees, on the river, on lit buildings and on the umbrella –
+places a star cannot be – so they stop reading as sky and start reading as
+dirt on the lens. The photograph already does what the starfield was for.
+
+Hidden rather than deleted: `STARS` and `starsHTML` remain, so turning the
+scene off restores the sky in one attribute.
+
+### What the photograph cost
+
+| | |
+| --- | --- |
+| source PNG, 1672×941 | 2,542,720 B |
+| `scene-1280.webp` | 140,732 B |
+| `scene-1672.webp` | 200,664 B |
+
+**The large export is 1672 wide, not the 2560 asked for.** The source is only
+1672 across, so 2560 would have been an upscale: more bytes, no more detail.
+
+### One background, and what it forced
+
+The photograph is **not re-tinted for light mode** – it looks identical in
+both themes. That has a consequence worth keeping written down:
+
+- The ground is a dark photograph in **both** themes, so text sitting
+  directly on the ground uses its own inks (`--ground-ink`, `--ground-dim`),
+  identical in both themes. Text on a tile still follows the theme.
+- Light mode's tiles go to **93%** opacity where dark stays at **72%**. A
+  white tile at 72% over a dark photograph lands mid-grey, and the dark inks
+  inside it measured 2.84–3.08. The photo was not available as a lever, so
+  the tile was.
+
+**Light mode does read over it.** 22 text pairs measured on the rendered page
+against the real image, both themes: **zero failures**, light low 4.61, dark
+low 6.18.
+
+### The bars
+
+Nearly solid (93%) rather than glass, after the footer at 80% picked up the
+bright foliage at one end and stayed dark at the other. **Both glows removed**
+– over a flat ground a hung shadow reads as lift; over a photograph it reads
+as a smear. A single crisp rule separates them. Scoped: the other fifteen
+tools keep their glow.

@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" data-cat="emortia">
+<!-- data-wtd-scene turns the promenade photograph on. It is an attribute
+     rather than a hardcoded rule so the ground can be switched off in one
+     place - and so nothing in the other fifteen tools can ever pick it up. -->
+<html lang="en" data-cat="emortia" data-wtd-scene="on">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -402,6 +405,18 @@
      that reshuffles each time you tick a box is a ground you notice. */
   .stars{position:fixed;inset:0;pointer-events:none;z-index:0}
   .stars i{position:absolute;border-radius:50%;background:var(--star);display:block}
+  /* THE STARFIELD GOES WHEN THE PHOTOGRAPH ARRIVES - my call, asked for.
+
+     Seventy dots scattered over a whole viewport read as a night sky only
+     while the ground is empty. With the promenade behind them they land on
+     trees, on the river, on lit buildings and on the woman's umbrella -
+     places a star cannot be - so they stop reading as sky and start reading
+     as dirt on the lens. The photograph already supplies what the starfield
+     was there for: something to look at behind the glass.
+
+     Hidden, not deleted. STARS and starsHTML stay, so turning the scene off
+     brings the sky straight back. */
+  html[data-wtd-scene="on"] .stars{display:none}
 
   /* ---- the weather, over the ground and under the glass ----
 
@@ -415,14 +430,129 @@
      calls that "behind glass". pointer-events:none so it never eats a click;
      the click-to-strike listener sits on the document instead. */
   .wx{position:fixed;inset:0;pointer-events:none;z-index:0;display:block}
+
+  /* ---- the photograph ----
+
+     SOLID --bg UNDER IT, always. background-color paints immediately and
+     the image arrives on top whenever it arrives, so there is no moment of
+     blank page on a cold load and no flash if the file 404s.
+
+     THE WIDTH SWITCH IS A MEDIA QUERY, NOT image-set's x DESCRIPTORS, and
+     that is a correction to the brief rather than a shortcut. image-set()
+     selects on DEVICE PIXEL RATIO, not viewport width - so a phone at DPR 3
+     would have taken the LARGER file, which is the opposite of the
+     intention. The media query asks the question actually meant: is this a
+     small screen. image-set is still used, carrying type('image/webp'), so
+     a browser without WebP skips the image and keeps the solid ground. */
   .scene{position:fixed;inset:0;pointer-events:none;z-index:0;
-    background:var(--wtd-scene,none) center/cover no-repeat}
-  /* the readability tint the design puts over the photo. No scene, no tint -
-     it would only be a grey veil over the ground. */
+    background-color:var(--bg);
+    background-image:var(--wtd-scene,none);
+    background-position:center;background-size:cover;background-repeat:no-repeat}
+  html[data-wtd-scene="on"]{
+    --wtd-scene:image-set(url('img/scene-1280.webp') type('image/webp'));
+    --wtd-scene-tint:rgba(11,3,6,.46);
+  }
+  /* ONE BACKGROUND, THE SAME IN BOTH THEMES. There is no light-mode veil:
+     the photograph is not re-tinted when the theme flips, so it looks
+     identical either way. That is a deliberate instruction, and it has a
+     consequence worth stating next to it - see "the ground is dark in both
+     themes" below. */
+  @media (min-width:900px){
+    html[data-wtd-scene="on"]{
+      --wtd-scene:image-set(url('img/scene-1672.webp') type('image/webp'));
+    }
+  }
+  /* the readability tint, over the photo and under everything else */
   .scene::after{content:'';position:absolute;inset:0;
     background:var(--wtd-scene-tint,transparent)}
-  html[data-wtd-scene="on"]{--wtd-scene-tint:rgba(11,3,6,.46)}
-  html[data-theme="light"][data-wtd-scene="on"]{--wtd-scene-tint:rgba(255,250,250,.30)}
+
+  /* ---- glass, only once there is something to see through it ----
+
+     The tiles already carried backdrop-filter:blur(40px) and an OPAQUE
+     background, so the blur computed and painted nothing - forty pixels of
+     blur over a colour is that colour. The photo sat behind a wall.
+
+     Everything here is gated on [data-wtd-scene], so with no photograph the
+     tiles stay solid and nothing changes in the other fifteen tools.
+
+     The nav bar needs the !important and the extra attribute to outrank
+     category.css, which paints every tool's bar with !important and loads
+     after this block. Specificity decides a tie between two !important
+     rules, so [data-cat][data-wtd-scene] beats [data-cat] alone. This is
+     the one place a tool is allowed to overrule the shared chrome, and it
+     is scoped to the one page that has a scene behind it. */
+  html[data-wtd-scene="on"] .glass{
+    background:color-mix(in srgb,var(--glass) var(--glass-a,72%),transparent);
+    backdrop-filter:blur(var(--blur)) saturate(1.25);
+    -webkit-backdrop-filter:blur(var(--blur)) saturate(1.25)}
+  /* ---- the ground is dark in BOTH themes, so its text is light in both ----
+
+     The photograph is not re-tinted for light mode, which means the page
+     behind the tiles is a night scene whichever theme is on. Text that sits
+     on a TILE follows the theme as usual - a white tile wants dark ink. But
+     text that sits directly on the GROUND cannot: in light mode --muted is
+     #796263, and dark ink on a dark photograph measured 3.11 to 3.74 across
+     four places. Those four were the only real failures in the whole sweep.
+
+     So the ground carries its own two inks, identical in both themes,
+     because the thing they sit on is identical in both themes. This is not
+     a theme override - it is the ground refusing to pretend it is light. */
+  html[data-wtd-scene="on"]{ --ground-ink:#F7F1E8; --ground-dim:#D6C3C6; }
+  /* LIGHT MODE'S TILES ARE NEARLY OPAQUE, and this is the answer to "will
+     light mode read over a dark photo".
+
+     In dark the tile is a dark glass over a dark photo, so 72% is plenty and
+     the scene reads through beautifully. In light the tile is WHITE over the
+     same dark photo: at 72% it lands mid-grey, and the dark inks inside it
+     measured 2.84 to 3.08 - four real failures. The photograph is not being
+     re-tinted (that was the instruction), so the tile is the only lever, and
+     93% is where every pair clears. The photo still shows between the tiles
+     and through the bars, which is where it was doing the work anyway. */
+  html[data-theme="light"][data-wtd-scene="on"]{ --glass-a:93%; }
+  /* ONLY BARE TEXT ON THE GROUND. The search field and the Lightning pill
+     sit on the ground but carry their OWN opaque fill - white in light mode -
+     so they follow the theme like anything else with a background. Giving
+     them the ground's light ink put pale text on a white pill at 1.12:1. */
+  html[data-wtd-scene="on"] .lq-sub,
+  html[data-wtd-scene="on"] .tk-h .t{color:var(--ground-ink)}
+  html[data-wtd-scene="on"] .tk-h .n,
+  html[data-wtd-scene="on"] .wxc .cap,
+  /* :not(.on) - the active chip sits on an opaque accent fill, not on the
+     ground, and giving it the ground's light ink put pale text on pink at
+     1.7:1. The ground's inks are for text on the ground. */
+  html[data-wtd-scene="on"] .wxc .seg button:not(.on),
+  html[data-wtd-scene="on"] .doneline,
+  html[data-wtd-scene="on"] .none{color:var(--ground-dim)}
+  html[data-wtd-scene="on"] .doneline:hover{color:var(--ground-ink)}
+
+  /* NO GLOW ON EITHER BAR. Both hung a soft coloured shadow off their edge -
+     the nav bar 0 10px 30px -14px, the reminder bar the same upward. Over a
+     flat ground that read as lift; over a photograph it reads as a smear,
+     because the thing it is bleeding onto is already busy. A single crisp
+     rule separates them now, which is what the design draws.
+
+     Scoped like everything else here: the other fifteen tools keep theirs. */
+  /* THE BARS ARE NEARLY SOLID, THE TILES ARE NOT, and that is deliberate.
+     At 80% the photograph came through the footer strongly enough that the
+     bright foliage on the left of the frame lit one end of the bar and left
+     the other dark - a control strip that changes brightness along its
+     length is a control strip you have to hunt across. 93% keeps a hint of
+     the scene without letting it set the contrast. The tiles stay at 72%,
+     where the photo is the point. */
+  html[data-wtd-scene="on"] .rbar,
+  html[data-wtd-scene="on"] .rbar.on{
+    background:color-mix(in srgb,var(--bar) var(--bar-a,93%),transparent);
+    backdrop-filter:blur(24px) saturate(1.15);
+    -webkit-backdrop-filter:blur(24px) saturate(1.15);
+    box-shadow:none}
+  html[data-wtd-scene="on"] .rbar.on{
+    background:color-mix(in srgb,#8E2B46 var(--bar-a,93%),transparent)}
+  html[data-cat][data-wtd-scene="on"] header.hdr,
+  html[data-cat][data-wtd-scene="on"] .hdr{
+    background:color-mix(in srgb,var(--bar) var(--bar-a,93%),transparent) !important;
+    backdrop-filter:blur(24px) saturate(1.15);
+    -webkit-backdrop-filter:blur(24px) saturate(1.15);
+    box-shadow:none !important}
 
   /* the control, beside the day heading rather than in the bottom bar: that
      bar was centred and signed off this morning and a fourth group would
@@ -564,6 +694,15 @@
 <link rel="stylesheet" href="../_lib/category.css?v=13">
 </head>
 <body>
+<!-- THE PHOTOGRAPH IS IN THE STATIC MARKUP, NOT BUILT BY JAVASCRIPT.
+
+     It was created in weather.mount(), which runs after the task list has
+     come back from Supabase - so the browser did not even learn the image
+     existed until a network round trip had finished, and the ground stayed
+     bare until then. Here it is discovered while the HTML is being parsed
+     and fetched alongside everything else. The solid --bg under it means
+     the page is never blank in the meantime. -->
+<div class="scene" aria-hidden="true"></div>
 <header class="hdr">
   <a class="brand" href="../../" title="Emortia · back to the site" aria-label="Emortia · back to the site">
     <span class="logo"><i></i><i></i><i></i><i></i></span>
@@ -1139,10 +1278,12 @@ const weather = (() => {
       if (cv) return;
       cv = document.createElement('canvas');
       cv.className = 'wx'; cv.setAttribute('aria-hidden', 'true');
-      const scene = document.createElement('div');
-      scene.className = 'scene'; scene.setAttribute('aria-hidden', 'true');
-      document.body.insertBefore(scene, document.body.firstChild);
-      document.body.insertBefore(cv, scene.nextSibling);
+      /* .scene is in the static markup so the photograph starts loading
+         during parse; the canvas is built here because it needs sizing
+         against a laid-out viewport. It goes directly after the scene. */
+      const scene = document.querySelector('.scene');
+      if (scene && scene.parentNode) scene.parentNode.insertBefore(cv, scene.nextSibling);
+      else document.body.insertBefore(cv, document.body.firstChild);
       ctx = cv.getContext('2d');
       fit();
       addEventListener('resize', fit, { passive: true });

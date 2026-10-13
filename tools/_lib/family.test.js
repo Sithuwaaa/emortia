@@ -321,7 +321,7 @@ console.log('\n--- no ungoverned chrome anywhere ---');
                /* the weather, from the Promenade design: --wx-dim is the idle
                   rain chip, --wtd-scene-tint the readability veil that goes
                   over the background photograph when one is supplied. */
-               'wx-dim','wtd-scene-tint',
+               'wx-dim','wtd-scene-tint','ground-ink','ground-dim',
                'sky','mint','amber','coral','chk-on','chk-ink','chk-edge']
   };
   for (const [tool, list] of Object.entries(DECLARED))

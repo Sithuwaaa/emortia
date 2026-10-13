@@ -39,3 +39,8 @@ wh24-sync-bookmarklet.txt
 
 # Edit-tool scratch copies. One of these got committed once.
 *.tmp.*
+
+# The background source art stays local - the optimised WebP exports in
+# tools/whattodo/img/ are what ship. 2.4 MB of PNG has no business in a
+# repo that serves a website.
+media/backgroud/
