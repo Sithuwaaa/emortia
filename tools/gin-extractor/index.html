@@ -39,7 +39,11 @@
     --navy-2:#1d2a4d;
     
     
-    --ok:#2e9e5b;
+    /* --ok and --err are NOT set here. This block loads BEFORE theme.css,
+       whose html[data-theme="light"] beats :root outright, so anything
+       declared here is dead in light mode - which is how the green stayed
+       broken through three reports while the source looked correct. They
+       are set in the block after theme.css instead. */
     --err:#d8543c;
     --bg:#e9edf4;
     --card:#ffffff;
@@ -135,6 +139,24 @@
   :root,html[data-theme="dark"]{
     }
   html[data-theme="light"]{
+    /* THE LIGHT "ok" GREEN, 13 Oct - measured on the rendered page, not read
+       out of the source.
+
+       theme.css gives light --ok as #1f9a68. Printed at 12px/600 on the row
+       it actually lands on - the green family's --card-2, rgb(237,243,236) -
+       that measures 3.17:1, under the 4.5 that size needs. Darkened, not
+       re-hued, so "ok" is still the same green.
+
+       Two corrections to my own earlier reports: I called this 1.95:1 and
+       said the token was missing. It is declared, and the number was 3.17.
+
+       SCOPED TO THIS TOOL ON PURPOSE. --ok is shared and has 54 usages, and
+       some of them are FILLS carrying dark ink (#06200f, #0b1a12) where
+       darkening the green costs contrast rather than buying it. One token
+       cannot serve a text colour and a fill - the same split as --chk-ink
+       and --stop-ink. Here --ok is only ever text (.st.ok sets color), so
+       this is safe; the shared fix belongs to the light fill/text split. */
+    --ok:#1C7A4F;
     }
 
   /* the site's mark, and the way back to it */

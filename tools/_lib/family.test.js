@@ -77,7 +77,9 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     'bf480bc93d30ddbbddbb61547b9feaab608b549a8bdd472c393055201a3bb3ea');
+     /* re-signed 13 Oct: --bar back on the v71 ramp rung in all five dark
+        blocks, after the design file's 4% was reverted. Nothing else moved. */
+     '903071b2c9cb42b43dd5622571f9cbb635a51c473b72e134d52b84b9bfc61d07');
 
   /* ---- THE BAR FLIPS WITH THE THEME ----
 
@@ -120,18 +122,24 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
        and the whole bar change looked, correctly, like it had not happened.
        Bar colour alone is not the property worth asserting; separation is. */
     is(fam + ' --bar and --navy are the same value', g(dk[1], 'bar'), g(dk[1], 'navy'));
-    /* THE BAR DOES NOT SEPARATE BY LIGHTNESS, and that is the design's
-       choice, not an oversight. It is 4% warm white over the ground - about
-       1.08:1 - and what divides it from the page is the 2px rule and the
-       glow hung beneath it. An earlier instruction had it a full step above
-       --card-2 at 1.56:1; the design is the newer of the two and wins.
+    /* THE BAR SEPARATES BY LIGHTNESS, AND THE FLOOR IS 1.50.
 
-       So the assertion is that the bar is a SLIGHT lift over the ground -
-       present, but not a rung - and the separation is asserted on the rule
-       below, which has to clear 3:1 against the bar either way. */
+       This assertion has been wrong twice. It was briefly rewritten to bless
+       the design file's 4% warm white over the ground - about 1.08:1 - on
+       the grounds that the rule and the glow do the separating. They do not:
+       1.39:1 was reported three times as "the bar looks unchanged", which is
+       where the 1.50 floor came from, and a guard that was relaxed to match
+       the code it was supposed to be guarding is not a guard.
+
+       THE FLOOR BEATS THE DESIGN FILE. The bar sits on its own rung of the
+       ramp, one step above --card-2, and the rule and glow are additions on
+       top of it. docs/wh24-decisions.md carries the decision. */
     const barLift = ratio(g(dk[1], 'bar'), g(dk[1], 'bg'));
-    is(fam + ' dark bar is a slight lift over the page (1.02 to 1.25)',
-       barLift >= 1.02 && barLift <= 1.25, true);
+    is(fam + ' dark bar clears the 1.50 floor over the page',
+       barLift >= 1.5, true);
+    /* and it stays a bar, not a card: above --card-2, below --line */
+    is(fam + ' dark bar is lighter than --card-2',
+       ratio(g(dk[1],'bar'), g(dk[1],'bg')) > ratio(g(dk[1],'card-2'), g(dk[1],'bg')), true);
     is(fam + ' dark bar is lighter than the page, not darker',
        lum(g(dk[1], 'bar')) > lum(g(dk[1], 'bg')), true);
     is(fam + ' light bar is white', g(lt[1], 'navy'), '#FFFFFF');

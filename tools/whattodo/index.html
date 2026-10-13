@@ -165,7 +165,9 @@
 
   /* ---- the lit ground ---- */
   /* No radius, no inset, no second colour: the ground is the page. */
-  .liquid{position:relative;padding:0;background:transparent;color:var(--lq-ink);min-height:0}
+  /* the reminder bar is fixed to the viewport, so the page has to reserve
+     the room it no longer takes in the flow */
+  .liquid{position:relative;padding:0 0 104px;background:transparent;color:var(--lq-ink);min-height:0}
   .lq-in{position:relative;z-index:1;display:flex;flex-direction:column;gap:20px}
 
   /* ---- a pane of glass ---- */
@@ -248,6 +250,32 @@
   .tk-h .t{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:36px}
   .tk-h .n{font-size:16px;color:var(--muted)}
   .tk-h .sp{flex:1}
+  /* ---- the search box ----
+     It takes the slack in the header where the old spacer was, so the Add
+     button stays on the right. The clear × only exists while there is
+     something to clear. */
+  .qw{flex:1;min-width:170px;position:relative;display:flex;align-items:center}
+  .q{width:100%;padding:10px 38px 10px 16px;border-radius:99px;font:inherit;font-size:14px;
+    border:1px solid var(--glass-edge);background:var(--glass);color:var(--text);
+    -webkit-appearance:none;appearance:none}
+  .q::placeholder{color:var(--muted)}
+  .q:focus{outline:none;border-color:var(--accent)}
+  .q::-webkit-search-cancel-button{display:none}
+  .qw button{position:absolute;right:8px;cursor:pointer;width:24px;height:24px;border-radius:50%;
+    border:0;background:transparent;color:var(--muted);font-size:17px;line-height:1;
+    display:flex;align-items:center;justify-content:center}
+  .qw button:hover{color:var(--text)}
+  /* a result's day is the whole reason it is readable out of context, so it
+     stops being the quiet grey it is inside a single day's list */
+  /* the 16% wash alone measured 1.05 against the tile in dark - no pill at
+     all - so the edge is what actually draws it. The ink stays --text,
+     which is 14.1 dark and 10.8 light; tinting it instead would have put a
+     15px label on the accent's 3.9 in light. */
+  .task.hit .dt{color:var(--text);font-weight:500;padding:3px 11px;border-radius:99px;
+    background:color-mix(in srgb,var(--accent) 16%,transparent);
+    border:1px solid color-mix(in srgb,var(--accent) 75%,transparent)}
+  .task.hit .step.mt label{color:var(--text);font-weight:500}
+  .task.hit .step.mt{border-left:2px solid var(--accent);padding-left:30px}
   .addbtn{cursor:pointer;display:flex;align-items:center;gap:9px;padding:9px 18px 9px 10px;border-radius:99px;
     border:1px solid var(--glass-edge);background:var(--glass);backdrop-filter:blur(var(--blur));
     -webkit-backdrop-filter:blur(var(--blur));box-shadow:var(--glass-shadow);color:inherit;
@@ -288,6 +316,9 @@
   .rm{flex:none;cursor:pointer;width:28px;height:28px;border-radius:50%;border:1px solid var(--glass-edge);
     background:transparent;color:var(--muted);font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center}
   .rm:hover{color:var(--coral);border-color:var(--coral)}
+  /* disabled until the delete design is agreed - it must not look pressable */
+  .rm[disabled]{cursor:not-allowed;opacity:.38}
+  .rm[disabled]:hover{color:var(--muted);border-color:var(--glass-edge)}
   .chip{display:inline-flex;align-items:center;gap:8px;padding:7px 15px;border-radius:99px;font-size:14px;
     margin:0 0 6px 32px;align-self:flex-start}
   .chip i{width:7px;height:7px;border-radius:50%}
@@ -376,13 +407,32 @@
      colour and sits quietly; ON it fills with the burgundy gradient, the
      toggle goes green and the countdown runs in mint, so whether you are
      being reminded is readable from across the desk. */
-  .rbar{position:sticky;bottom:0;z-index:20;margin:0 -16px -26px;padding:12px 24px;
+  /* FULL WIDTH, LIKE THE NAV BAR. It was sticky inside the content column,
+     so it stopped 180px short of each edge while the bar at the top ran the
+     whole way - two bars of different lengths on the same page. Fixed to the
+     viewport now, with the nav bar's own 28px gutter so the switch on the
+     left lines up with the logo above it. .liquid carries the matching
+     padding-bottom, or a fixed bar hides the last card. */
+  .rbar{position:fixed;left:0;right:0;bottom:0;z-index:20;margin:0;
+    padding:12px 28px calc(12px + env(safe-area-inset-bottom));
     background:var(--bar);border-top:2px solid var(--accent);
     box-shadow:0 -12px 30px -14px var(--accent);
     display:flex;flex-wrap:wrap;align-items:center;gap:14px;
     color:var(--text);transition:background .3s,box-shadow .3s,color .3s}
   .rbar.on{background:linear-gradient(90deg,#B23A56,#7F2640);color:#FFFFFF;
     box-shadow:0 -12px 30px -14px rgba(239,113,126,.6)}
+  /* left, centre, right. The outer two share the slack equally, so the
+     intervals land on the bar's centre line rather than wherever the switch
+     happens to end. */
+  .rg{display:flex;align-items:center;gap:14px;min-width:0}
+  .rg.lft{flex:1 1 0;justify-content:flex-start}
+  .rg.mid{flex:0 0 auto;justify-content:center}
+  .rg.rgt{flex:1 1 0;justify-content:flex-end}
+  /* narrow: three rows, each still reading left, centre, right */
+  @media (max-width:760px){
+    .rbar{justify-content:center}
+    .rg.lft,.rg.rgt{flex:1 1 100%;justify-content:center}
+  }
   .rbar .sw{color:inherit;font-size:15px;font-weight:500}
   .rbar .sw i{width:48px;height:28px;background:var(--lq-track)}
   .rbar .sw i s{width:22px;height:22px}
@@ -435,14 +485,17 @@
   .remind .next{font-family:'JetBrains Mono','Space Mono',monospace;font-size:12px;color:var(--muted)}
 
 
-  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160px);background:var(--card);
+  /* clears the reminder bar, which is fixed to the bottom now - at 24px the
+     toast rose up behind it and told nobody anything */
+  .toast{position:fixed;left:50%;bottom:100px;transform:translate(-50%,160px);background:var(--card);
     border:1px solid var(--accent);border-radius:14px;padding:11px 18px;z-index:90;
     transition:transform .25s ease;font-size:14px;max-width:calc(100vw - 32px)}
   .toast.show{transform:translate(-50%,0)}
 
   @media (max-width:760px){
     main{padding:12px 10px 22px}
-    .liquid{border-radius:24px;padding:14px}
+    /* the bar wraps to three rows down here, so it reserves more */
+    .liquid{border-radius:24px;padding:14px 14px 210px}
     .glass{border-radius:28px}
     .cell .n{width:38px;height:38px;font-size:14px}
     .lq-sub{font-size:26px}
@@ -523,10 +576,15 @@ const TODAY = () => dayKey(new Date());
 let SEL = TODAY();
 let EDIT_ID = null;
 /* MON is the month the calendar is showing, which is not always the month
-   of the selected day - you can page ahead without picking anything. The old
-   MODE/FILT/Q went with the separate month view: the month is on screen all
-   the time now, so there is no mode to be in. */
+   of the selected day - you can page ahead without picking anything. MODE
+   and FILT went with the separate month view: the month is on screen all the
+   time now, so there is no mode to be in. */
 let MON = null;
+/* Q is the search box, and it is NOT a filter on the selected day - a day at
+   a time is exactly what you cannot search a two-month backlog with. While
+   it has text in it the right column shows matches from every day, each card
+   carrying the day it sits on. Empty means not searching. */
+let Q = '';
 const dayOf = t => dayKey(t.due || t.created_at || Date.now());
 const endOf = k => { const d = new Date(k + 'T23:59:00'); return d.toISOString(); };
 const shift = (k, n) => { const d = new Date(k + 'T12:00:00'); d.setDate(d.getDate() + n); return dayKey(d); };
@@ -1007,15 +1065,20 @@ function weekHTML(){
 
    So a carried job is a task card with a marker and a Move to today button,
    not a different kind of card. Nothing can show a count it will not open. */
-function taskHTML(t, carry){
+/* hit is the search match for this task, when it came from a search: it opens
+   the card on the steps that matched and marks them. Without it a card found
+   by its ninth step would show its first three and look like a mis-hit. */
+function taskHTML(t, carry, hit){
   const T = window.TodoCore;
   const items = T.noteItems(t.note);
   const done = !!t.done;
   const [type, hue] = jobType(t.title);
-  const showAll = !!OPEN[t.id];
+  const mk = hit ? hit.steps.map(s => s.k) : [];
+  const showAll = !!OPEN[t.id] || mk.length > 0;
   const shown = items.length > 4 && !showAll ? items.slice(0, 3) : items;
   const d = new Date(dayOf(t) + 'T12:00:00');
-  let h = '<div class="glass task' + (done ? ' done' : '') + (carry ? ' carry' : '') + '">' +
+  let h = '<div class="glass task' + (done ? ' done' : '') + (carry ? ' carry' : '') +
+      (hit ? ' hit' : '') + '">' +
     (carry ? '<span class="carryk"><i></i>Carried over · ' +
        esc(d.toLocaleDateString([], { weekday:'short', day:'numeric', month:'short' })) + '</span>' : '') +
     '<div class="task-top">' +
@@ -1029,22 +1092,29 @@ function taskHTML(t, carry){
       '<button class="edit" data-open="' + esc(t.id) + '" title="Edit this task" aria-label="Edit this task">' +
         '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.3 2.3a1.1 1.1 0 0 1 1.6 0l0.8 0.8a1.1 1.1 0 0 1 0 1.6L6.4 11.9 3.3 12.7l0.8-3.1z" ' +
         'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>' +
-      '<button class="edit rm" data-rm="' + esc(t.id) + '" title="Remove this task" aria-label="Remove this task">×</button>' +
-      /* NO REMOVE BUTTON, though the design draws one. There is no delete in
-         db.js - listTodos, addTodo, updateTodo, setTodoDone and nothing
-         else - so the × would have called an API that does not exist. Adding
-         one is a new destructive capability with row-level-security rules I
-         cannot check from here, which is a decision to ask for rather than
-         slip in behind a visual change. Raised; not built. */
+      /* THE × IS DISABLED ON PURPOSE, 2026-10-13.
+
+         It shipped in e124f9d and hard-deleted the row with no undo, while
+         the proposal it was supposed to wait for was never written. A
+         confirm() box is not an undo, so the control is inert until the
+         delete design is agreed: no data-rm attribute, so the handler below
+         has nothing to bind to, and the button cannot fire even if a stale
+         service worker serves an old script alongside this markup.
+         DELETE_ON in the test suite pins it off. */
+      '<button class="edit rm" disabled aria-disabled="true"' +
+        ' title="Removing is on hold while the delete design is agreed"' +
+        ' aria-label="Remove this task (disabled)">×</button>' +
     '</div>' +
     '<span class="chip" style="background:color-mix(in srgb,var(--' + hue + ') 15%,transparent)">' +
       '<i style="background:var(--' + hue + ')"></i>' + type + '</span>';
   h += shown.map((it, k) =>
-    '<div class="step' + (it.done ? ' on' : '') + '">' +
+    '<div class="step' + (it.done ? ' on' : '') + (mk.indexOf(k) >= 0 ? ' mt' : '') + '">' +
       '<button class="box' + (it.done ? ' on' : '') + '" data-step="' + esc(t.id) + '" data-k="' + k +
         '" data-to="' + (it.done ? '0' : '1') + '" aria-label="' + (it.done ? 'Untick step' : 'Tick step') + '"><s></s></button>' +
       '<label>' + esc(it.text) + '</label></div>').join('');
-  if (items.length > 4)
+  /* not in a search result: hit forces the card open, so the toggle would
+     report a state it cannot leave */
+  if (items.length > 4 && !hit)
     h += '<button class="more" data-more="' + esc(t.id) + '">' +
       (showAll ? 'Show less' : 'Show all ' + items.length + ' steps') + '</button>';
   if (carry)
@@ -1095,18 +1165,28 @@ function addHTML(){
 
 function remindBar(){
   const ring = alarming();
+  /* THREE GROUPS, NOT A ROW OF SIX THINGS. The switch sits left, the
+     intervals centre, the bell and the stop button right. The two outer
+     groups both take flex:1, which is what actually centres the middle one -
+     a single spacer only pushes things apart and left everything bunched at
+     the left edge. */
   return '<div class="rbar' + (REMIND ? ' on' : '') + '">' +
-    '<button class="sw' + (REMIND ? ' on' : '') + '" id="remBtn"><i><s></s></i>Remind me every</button>' +
-    '<div class="ivs">' + IVS.map(v =>
-      '<button data-iv="' + v + '" class="' + (IV === v ? 'on' : '') + '">' +
-      (v < 60 ? v + ' min' : '1 hr') + '</button>').join('') + '</div>' +
-    '<span class="sp"></span>' +
-    '<button class="bell" id="sndBtn" title="' + (SOUND ? 'Mute' : 'Unmute') + '">' +
-      '<i>' + (SOUND ? '\u{1F514}' : '\u{1F515}') + '</i>' +
-      '<b>' + esc(countdown()) + '</b></button>' +
-    (ring ? '<button class="rbtn stop" id="stopBtn">Stop alarm \u00b7 <span id="almLeft">' +
-        alarmLeft() + '</span></button>'
-          : '<button class="rbtn stop" id="stopBtn" disabled title="Nothing is ringing">Stop alarm</button>') +
+    '<div class="rg lft">' +
+      '<button class="sw' + (REMIND ? ' on' : '') + '" id="remBtn"><i><s></s></i>Remind me every</button>' +
+    '</div>' +
+    '<div class="rg mid">' +
+      '<div class="ivs">' + IVS.map(v =>
+        '<button data-iv="' + v + '" class="' + (IV === v ? 'on' : '') + '">' +
+        (v < 60 ? v + ' min' : '1 hr') + '</button>').join('') + '</div>' +
+    '</div>' +
+    '<div class="rg rgt">' +
+      '<button class="bell" id="sndBtn" title="' + (SOUND ? 'Mute' : 'Unmute') + '">' +
+        '<i>' + (SOUND ? '\u{1F514}' : '\u{1F515}') + '</i>' +
+        '<b>' + esc(countdown()) + '</b></button>' +
+      (ring ? '<button class="rbtn stop" id="stopBtn">Stop alarm \u00b7 <span id="almLeft">' +
+          alarmLeft() + '</span></button>'
+            : '<button class="rbtn stop" id="stopBtn" disabled title="Nothing is ringing">Stop alarm</button>') +
+    '</div>' +
   '</div>';
 }
 function render(){
@@ -1128,6 +1208,13 @@ function render(){
   const d = new Date(SEL + 'T12:00:00');
   const carry = SEL === TODAY() ? carried() : [];
 
+  /* null while the box is empty, so everything downstream can ask "searching?"
+     with one test. Newest day first, because a search of a backlog that runs
+     to 30 August otherwise opens on August. */
+  const hits = Q.trim()
+    ? window.TodoCore.searchTasks(TODOS, Q).sort((a, b) => dayOf(a.t) < dayOf(b.t) ? 1 : -1)
+    : null;
+
   let h = starsHTML() + '<div class="liquid">' +
     '<div class="lq-in">';
   if (LOAD_ERR) h += '<div class="err"><b>The list could not be read.</b><br>' + esc(LOAD_ERR) + '</div>';
@@ -1135,17 +1222,29 @@ function render(){
     '<div class="cols">' +
       '<div class="colL">' + calHTML() + progHTML() + statsHTML() + '</div>' +
       '<div class="colR">' + weekHTML() +
-        '<div class="tk-h"><span class="t">Tasks</span>' +
-          '<span class="n">' + dn + ' of ' + n + ' done</span><span class="sp"></span>' +
+        '<div class="tk-h"><span class="t">' + (hits ? 'Results' : 'Tasks') + '</span>' +
+          '<span class="n">' + (hits
+            ? hits.length + (hits.length === 1 ? ' match' : ' matches') + ' · all days'
+            : dn + ' of ' + n + ' done') + '</span>' +
+          '<span class="qw"><input id="q" class="q" type="search" autocomplete="off"' +
+            ' placeholder="Search every day" value="' + esc(Q) + '">' +
+            (Q ? '<button id="qx" title="Clear the search" aria-label="Clear the search">×</button>' : '') +
+          '</span>' +
           '<button class="addbtn" id="openAdd"><i>+</i>Add task</button></div>' +
-        addHTML() +
-        carry.map(t => taskHTML(t, true)).join('') +
-        open.map(t => taskHTML(t, false)).join('') +
-        (dn ? '<button class="doneline" id="showDone">' +
-          (SHOWDONE ? 'Hide ' + dn + ' finished' : dn + ' finished · show') +
-          '</button>' : '') +
-        (SHOWDONE ? done.map(t => taskHTML(t, false)).join('') : '') +
-        (n ? '' : '<div class="none">Nothing planned for this day.</div>') +
+        /* searching replaces the day's list rather than filtering it - the
+           whole point is to leave the selected day behind */
+        (hits
+          ? (hits.length
+              ? hits.map(m => taskHTML(m.t, false, m)).join('')
+              : '<div class="none">Nothing matches “' + esc(Q.trim()) + '”.</div>')
+          : addHTML() +
+            carry.map(t => taskHTML(t, true)).join('') +
+            open.map(t => taskHTML(t, false)).join('') +
+            (dn ? '<button class="doneline" id="showDone">' +
+              (SHOWDONE ? 'Hide ' + dn + ' finished' : dn + ' finished · show') +
+              '</button>' : '') +
+            (SHOWDONE ? done.map(t => taskHTML(t, false)).join('') : '') +
+            (n ? '' : '<div class="none">Nothing planned for this day.</div>')) +
       '</div>' +
     '</div>' +
     remindBar() +
@@ -1153,7 +1252,9 @@ function render(){
   $('view').innerHTML = h;
 
   /* ---- wiring ---- */
-  const go = k => { SEL = k; EDIT_ID = null; ADDING = false; render(); };
+  /* picking a day ends the search - otherwise you click a day and the page
+     does not move, because the results are not of a day */
+  const go = k => { SEL = k; EDIT_ID = null; ADDING = false; Q = ''; render(); };
   document.querySelectorAll('[data-day]').forEach(b => b.onclick = () => go(b.dataset.day));
   const mstep = n2 => () => { const b = new Date((MON || SEL.slice(0, 7) + '-01') + 'T12:00:00');
     b.setDate(1); b.setMonth(b.getMonth() + n2); MON = dayKey(b); render(); };
@@ -1166,7 +1267,9 @@ function render(){
   document.querySelectorAll('[data-more]').forEach(b => b.onclick = () => {
     OPEN[b.dataset.more] = !OPEN[b.dataset.more]; render(); });
   document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openEdit(b.dataset.open));
-  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => removeTask(b.dataset.rm));
+  /* no [data-rm] binding - see taskHTML. removeTask and DB.removeTodo are
+     left in place so the agreed design can switch them back on; nothing
+     reaches them from the page. */
 
   const ei = $('editIn');
   if (ei){
@@ -1177,7 +1280,22 @@ function render(){
   }
 
   const sd = $('showDone'); if (sd) sd.onclick = () => { SHOWDONE = !SHOWDONE; render(); };
-  $('openAdd').onclick = () => { ADDING = true; DRAFT = { id:null, title:'', day:SEL, steps:[], step:'' }; render(); };
+
+  /* The search box redraws the page on every keystroke, so it has to put the
+     caret back itself - the add form's restore below only covers its own two
+     fields, and without this you get one letter per redraw. */
+  const qi = $('q');
+  if (qi){
+    qi.oninput = () => { Q = qi.value; render(); };
+    qi.onkeydown = e => { if (e.key === 'Escape'){ Q = ''; render(); } };
+    if (taId === 'q'){ qi.focus(); try { qi.setSelectionRange(caret, caret); } catch(e){} }
+  }
+  const qx = $('qx'); if (qx) qx.onclick = () => { Q = ''; render(); };
+
+  /* adding leaves the search: the form draws on the day's list, which a
+     search has replaced, and its fields would not be on the page to wire */
+  $('openAdd').onclick = () => { Q = ''; ADDING = true;
+    DRAFT = { id:null, title:'', day:SEL, steps:[], step:'' }; render(); };
   if (ADDING){
     const ti = $('dTitle'), si = $('dStep');
     ti.oninput = () => { DRAFT.title = ti.value; const s = $('dSave'); if (s) s.style.opacity = ti.value.trim() ? 1 : .45; };
@@ -1220,6 +1338,10 @@ function pushStep(){
    same way the list draws them, so what you edit is exactly what you see. */
 function openEdit(id){
   const t = TODOS.find(x => x.id === id); if (!t) return;
+  /* from a search result: leave the search and land on the task's own day.
+     The form draws inside the day's list, which the results replaced, so
+     without this it would be wired to fields that were never drawn. */
+  if (Q.trim()){ Q = ''; SEL = dayOf(t); }
   ADDING = true;
   DRAFT = { id: t.id, title: t.title, day: dayOf(t),
             steps: window.TodoCore.noteItems(t.note).map(i => i.text), step: '' };

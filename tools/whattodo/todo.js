@@ -128,9 +128,41 @@
     return t0.created_at || t0.createdAt || null;
   }
 
+  /* ------------------------------------------------------------ searching
+
+     A backlog that goes back two months is not browsable a day at a time, so
+     the search runs across the whole list rather than the selected day.
+
+     It matches STEP TEXT as well as titles, and that is the part that needs
+     care: a step that matched can be the ninth line of a note whose card only
+     shows three. So the match carries the step's INDEX, not just a true/false
+     - the page uses it to open the card on the lines that matched and mark
+     them. Returning a bare boolean would have drawn a card with no visible
+     reason for being in the results.
+
+     Input order is preserved. The day a result belongs to is the page's
+     business - it has its own rule for that - so the caller labels and sorts.
+     Returning no results for an empty query is deliberate: an empty box means
+     "not searching", and the caller shows the day instead. */
+  function searchTasks(list, q) {
+    const needle = String(q == null ? '' : q).trim().toLowerCase();
+    if (!needle) return [];
+    const out = [];
+    (list || []).forEach(t => {
+      const inTitle = String((t && t.title) || '').toLowerCase().indexOf(needle) >= 0;
+      const steps = [];
+      noteItems(t && t.note).forEach((it, k) => {
+        if (it.text.toLowerCase().indexOf(needle) >= 0)
+          steps.push({ k: k, text: it.text, done: it.done });
+      });
+      if (inTitle || steps.length) out.push({ t: t, inTitle: inTitle, steps: steps });
+    });
+    return out;
+  }
+
   return {
     noteItems, writeNote, toggleItem, setAllItems,
     itemCount, doneCount, allItemsDone,
-    shortDate, ago, dateLine, calendarDate
+    shortDate, ago, dateLine, calendarDate, searchTasks
   };
 });

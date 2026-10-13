@@ -604,3 +604,60 @@ as quoted - flagging it beats quietly nudging a colour to hit a number.
 
 **`--muted` on the bar is 4.68-4.71** across the five. Above 4.5, below
 Material medium-emphasis. Do not put muted text in the bar.
+
+---
+
+## The bar's lightness beats the design file, 13 October — final
+
+Reversed three times in one day, so this is the entry that settles it.
+
+**The floor is 1.50:1, bar against page, and it wins over any design file.**
+
+The final What To Do design draws the bar as `rgba(255,240,242,.04)` over
+the ground — about **1.08:1** — and separates it with a 2px rule and a glow
+hung beneath. That was applied, because the design was the newer of the two
+instructions. It was wrong, and the reason is on the record three times
+over: `--card-2` at **1.39:1** was reported as "the bar looks unchanged" in
+three consecutive reports, which is exactly where the 1.50 floor came from.
+1.08 is further under it, not nearer.
+
+A rule and a glow are **additions, not substitutes**. The eye reads
+lightness. Both are kept, on top of a bar that is a rung of the ramp.
+
+So `--bar` is back on the v71 rung, one step above `--card-2`, measured on
+the rendered page at `localhost` and to be confirmed on emortia.com:
+
+| family | `--bar` | bar ÷ page |
+| --- | --- | --- |
+| emortia | `#502A34` | **1.56** |
+| design | `#2D3D1C` | 1.61 |
+| field | `#203954` | 1.60 |
+| people | `#373253` | 1.58 |
+| site | `#4F2E1B` | 1.58 |
+
+**The guard was relaxed to match the code it was guarding**, which is worth
+recording on its own. `family.test.js` asserted "a slight lift, 1.02 to
+1.25" while the 4% was in — an assertion rewritten to bless the thing it
+existed to catch is not a guard. It now asserts `>= 1.50` and that the bar
+is lighter than `--card-2`.
+
+---
+
+## Which rule governs the ground: the starfield, not flat
+
+Two rules were given at different times and they contradict:
+
+1. **Flat ground, earlier** — the page is burgundy 950 and nothing textures
+   it; only the tiles and the bar lift off it.
+2. **The starfield, in the final What To Do design** — seventy faint dots
+   behind the page, and the design was approved after seeing it.
+
+**The starfield governs, in What To Do only.** It is approved, it stays, and
+flat ground must not come back as a "fix" to it.
+
+The flat-ground rule still governs **every other tool** — nothing else grew
+a texture, and nothing should without being asked for.
+
+The dots are generated **once from a fixed seed**, not per render: a ground
+that reshuffles every time a box is ticked is a ground you notice, which is
+the opposite of what a background is for.
