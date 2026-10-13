@@ -77,7 +77,7 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
   is('not one colour has moved since the palette was signed off',
      crypto.createHash('sha256').update(values).digest('hex'),
-     '27e8a7a3a1c51857db97f9587d812f8a26bd29b6623ee0466d3c5b1a0a119afb');
+     'e75856c281f6fcde456d3b82de741d6ea587580ffaa71322fd5c9ada82c6c0b2');
 
   /* ---- THE BAR FLIPS WITH THE THEME ----
 
@@ -131,9 +131,11 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
       /* the rule is a 2px indicator, so 3:1 - the non-text threshold */
       is(fam + ' ' + name + ' bar rule clears 3', ratio(g(b,'barRule'), g(b,'navy')) >= 3, true);
     }
-    /* the body-text band the ramp was built to land in */
-    is(fam + ' body text on the page is 13.5 to 14.2',
-       ratio(g(dk[1],'text'), g(dk[1],'bg')) >= 13.5 && ratio(g(dk[1],'text'), g(dk[1],'bg')) <= 14.2, true);
+    /* The body-text band. 14.5 to 15.5 since the ground went back to
+       burgundy 950 - it was 13.5 to 14.2 while the ground was lifted, and
+       the tiles lifting instead of the page put the text further from it. */
+    is(fam + ' body text on the page is 14.5 to 15.5',
+       ratio(g(dk[1],'text'), g(dk[1],'bg')) >= 14.5 && ratio(g(dk[1],'text'), g(dk[1],'bg')) <= 15.5, true);
   }
   /* THE FIVE IDENTITIES, light and dark, verbatim, so a "tidy-up" cannot
      quietly round one. The light values are the brief's own category
@@ -190,11 +192,11 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
        as the same colour as the page. "No fourth surface" was keeping the
        bar from being visible. The bar is the fourth and last - nothing may
        sit above it. */
-    const RUNGS = [['bg', bg, 0.220], ['card', card, 0.261],
-                   ['card-2', c2, 0.301], ['bar', bar, 0.338]];
+    const RUNGS = [['bg', bg, 0.178], ['card', card, 0.224],
+                   ['card-2', c2, 0.259], ['bar', bar, 0.338]];
     is(fam + ' the ladder ascends, all four rungs',
        RUNGS.slice(1).map(([, v], i) => okL(v) > okL(RUNGS[i][1])), [true, true, true]);
-    is(fam + ' lands on the ramp (.220 / .261 / .301 / .338 OKLab, ±.012)',
+    is(fam + ' lands on the ramp (.178 / .224 / .259 / .338 OKLab, ±.012)',
        RUNGS.map(([, v, want]) => Math.abs(okL(v) - want) <= 0.012), [true, true, true, true]);
     /* NOTHING ABOVE THE BAR. Named explicitly rather than "everything except
        the ones I thought of": --line and --disabled are both legitimately
