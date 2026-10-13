@@ -136,7 +136,10 @@
     font:15px/1.55 Jost,'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
   button,input,textarea{font:inherit;color:inherit}
   [hidden]{display:none !important}
-  main{max-width:1340px;margin:0 auto;padding:20px 16px 90px}
+  /* 90px of bottom padding was left over from the old layout, which ended
+     in a text input you wanted room to type under. This one ends in the
+     footer, so that much empty page below it is just empty page. */
+  main{max-width:1340px;margin:0 auto;padding:20px 16px 26px}
   .serif{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500}
   .mono{font-family:'JetBrains Mono','Space Mono',ui-monospace,monospace}
   .cap{font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -382,7 +385,7 @@
   .rbtn[disabled]{cursor:default}
   .remind .next{font-family:'JetBrains Mono','Space Mono',monospace;font-size:12px;color:var(--muted)}
 
-  footer{margin-top:22px;text-align:center;font-size:12.5px;color:var(--muted);line-height:1.7}
+  footer{margin-top:18px;text-align:center;font-size:12.5px;color:var(--muted);line-height:1.6}
   footer a{color:var(--accentB)}
 
   .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,160px);background:var(--card);
@@ -391,7 +394,7 @@
   .toast.show{transform:translate(-50%,0)}
 
   @media (max-width:760px){
-    main{padding:12px 10px 80px}
+    main{padding:12px 10px 22px}
     .liquid{border-radius:24px;padding:14px}
     .glass{border-radius:28px}
     .cell .n{width:38px;height:38px;font-size:14px}
