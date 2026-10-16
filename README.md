@@ -1,6 +1,8 @@
-# Emortia
+<p align="center"><img src="icons/icon-512.png" alt="Emortia" width="110"></p>
 
-The site at **[emortia.com](https://emortia.com)** — sixteen working tools for telecom
+<h1 align="center">Emortia</h1>
+
+The site at **[emortia.com](https://emortia.com)** - sixteen working tools for telecom
 field and office work, and the songs and poems that are the other half of it.
 
 Built and kept by Sithara Perera.
