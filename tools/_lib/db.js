@@ -345,11 +345,28 @@
     if (!c) return { items: await cached(),
       error: configured() ? 'Could not reach Supabase.'
                           : 'Not syncing - the anon key is missing from tools/_lib/supabase-config.js.' };
-    const { data, error } = await c.from('todos')
-      .select('id,title,note,due,done,done_at,created_at')
-      .order('done', { ascending: true })
-      .order('due', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: true });
+    /* THE SOFT-DELETE FILTER. This is the single read path in the tool, and
+       the whole safety of soft delete rests on this one clause: without it
+       a removed task comes back looking live.
+
+       The fallback is for a database where 045 has not been run yet. It
+       retries WITHOUT the column rather than failing, because the tool
+       worked before the column existed and must keep working - but it only
+       does so when the error is specifically about deleted_at, never as a
+       blanket catch that would also swallow a real failure. */
+    const sel = (withDeleted) => {
+      let q = c.from('todos')
+        .select('id,title,note,due,done,done_at,created_at' + (withDeleted ? ',deleted_at' : ''));
+      if (withDeleted) q = q.is('deleted_at', null);
+      return q.order('done', { ascending: true })
+              .order('due', { ascending: true, nullsFirst: false })
+              .order('created_at', { ascending: true });
+    };
+    let { data, error } = await sel(true);
+    if (error && /deleted_at/i.test(error.message || '')){
+      console.warn('todos.deleted_at is missing - run supabase/045_todos_soft_delete.sql. Reading without it.');
+      ({ data, error } = await sel(false));
+    }
     if (error){
       console.warn('Todo read failed, using the cached list:', error.message);
       const missing = /schema cache|does not exist/i.test(error.message);
@@ -399,29 +416,101 @@
     if (error) throw new Error(error.message);
   }
 
-  /* HARD DELETE, and the row goes with its steps.
+  /* ---------------------------------------------- removing, reversibly
 
-     The steps are not rows - they are lines inside the note on this same
-     row - so there is nothing else to clean up and nothing can be orphaned.
-     That is the one thing that makes a hard delete safe here; it would not
-     be if the checklist lived in a table of its own.
+     SOFT DELETE. removeTodo stamps deleted_at; it does not delete anything.
+     restoreTodo clears it. listTodos filters on it, and that filter is the
+     whole risk of this design - a read that forgets it shows a removed task
+     as a live one, which is worse than losing it. There is exactly ONE read
+     path, right above, and a test asserts it carries the filter.
 
-     No soft delete. A deleted_at column means every read in the tool grows
-     a filter, and a filter that is missed shows a deleted task as a live
-     one - which is worse than losing it. The page asks before calling this,
-     and that confirmation is the undo.
+     The steps need no handling: they are lines inside the note on this same
+     row, so they travel with it and nothing is ever orphaned.
 
-     RLS IS NOT CHECKED HERE and cannot be from the client: if the policy
-     refuses the delete, Supabase returns an error and the caller shows it.
-     That is the honest failure - the row stays and the page says why.
-     Nothing is removed from the list until the database agrees. */
+     RLS IS NOT CHECKED HERE and cannot be from the client. If the policy
+     refuses the write, Supabase returns an error and the caller shows it -
+     the row stays and the page says why. Nothing leaves the list until the
+     database agrees. */
+  const NO_COLUMN = e => /deleted_at/i.test(e || '') &&
+                         /(does not exist|schema cache|column)/i.test(e || '');
+
   async function removeTodo(id){
     const c = await client();
     if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
     const s = await session();
     if (!s) throw new Error('Sign in first - removing writes to the shared list.');
-    const { error } = await c.from('todos').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    const { error } = await c.from('todos').update({
+      deleted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(), updated_by: s.user.id
+    }).eq('id', id);
+    /* IT MUST FAIL LOUDLY RATHER THAN FALL BACK TO A DELETE. If 045 has not
+       been run the column is missing, and quietly hard-deleting instead
+       would reintroduce exactly the data loss this replaced - with the user
+       believing there was an undo. */
+    if (error) throw new Error(NO_COLUMN(error.message)
+      ? 'Removing needs migration 045 - run supabase/045_todos_soft_delete.sql in the SQL Editor. Nothing was deleted.'
+      : error.message);
+  }
+
+  async function restoreTodo(id){
+    const c = await client();
+    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    const s = await session();
+    if (!s) throw new Error('Sign in first - the list is shared.');
+    const { error } = await c.from('todos').update({
+      deleted_at: null,
+      updated_at: new Date().toISOString(), updated_by: s.user.id
+    }).eq('id', id);
+    if (error) throw new Error(NO_COLUMN(error.message)
+      ? 'Restoring needs migration 045 - run supabase/045_todos_soft_delete.sql in the SQL Editor.'
+      : error.message);
+  }
+
+  /* What is in the bin. Newest removal first, because the one you want back
+     is almost always the one you just removed. */
+  async function listRemovedTodos(){
+    const c = await client(); if (!c) return [];
+    const { data, error } = await c.from('todos')
+      .select('id,title,note,due,done,done_at,created_at,deleted_at')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (error){
+      if (NO_COLUMN(error.message)) return [];   /* 045 unrun: nothing is removed */
+      throw new Error(error.message);
+    }
+    return data || [];
+  }
+
+  /* THE SWEEP, AND THE ONE THING IT MUST NEVER DO.
+
+     Rows removed more than `days` ago are hard-deleted - but ONLY where
+     done = false. A completed task that was removed stays soft-deleted and
+     restorable for ever.
+
+     That asymmetry is deliberate and is not an oversight to be tidied away:
+     completed work is a permanent record, and "what did I finish last
+     August" is a question worth answering next year. THE ARCHIVE THEREFORE
+     GROWS WITHOUT BOUND, BY DESIGN. At a few hundred rows a year that costs
+     nothing and buys a history.
+
+     .eq('done', false) is the load-bearing clause. todo.test.js asserts no
+     completed row is ever selected, at any age. */
+  async function purgeRemoved(days){
+    const c = await client(); if (!c) return { purged: 0 };
+    const s = await session(); if (!s) return { purged: 0 };
+    const cutoff = new Date(Date.now() - (days || 30) * 86400000).toISOString();
+    const { data, error } = await c.from('todos')
+      .delete()
+      .eq('done', false)                 /* NEVER a completed task */
+      .not('deleted_at', 'is', null)
+      .lt('deleted_at', cutoff)
+      .select('id');
+    if (error){
+      if (NO_COLUMN(error.message)) return { purged: 0 };
+      console.warn('Purge of removed tasks failed:', error.message);
+      return { purged: 0, error: error.message };
+    }
+    return { purged: (data || []).length };
   }
 
   async function subscribeTodos(fn){
@@ -2059,5 +2148,6 @@
                 load, publish, subscribe,
                 publishBook, loadBook, subscribeBook,
                 listTodos, addTodo, updateTodo, setTodoDone, removeTodo, subscribeTodos,
+                restoreTodo, listRemovedTodos, purgeRemoved,
                 cacheSet, cacheGet };
 })();

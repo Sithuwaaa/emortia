@@ -315,6 +315,30 @@
   .doneline{align-self:flex-start;cursor:pointer;padding:8px 16px;border-radius:99px;
     border:1px dashed var(--glass-edge);background:transparent;color:var(--muted);font-size:12.5px}
   .doneline:hover{color:var(--text);border-color:var(--accent)}
+  /* ---- the bin ---- */
+  .binline{opacity:.82}
+  .bin{display:flex;flex-direction:column;gap:8px}
+  .binrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 16px;
+    border-radius:18px;border:1px dashed var(--chk-edge);background:transparent}
+  .binrow .bt{flex:1;min-width:0;overflow-wrap:anywhere;font-size:16px;opacity:.85}
+  .binrow .bw{font-size:13px;color:var(--muted);white-space:nowrap}
+  .binrow .bre{cursor:pointer;white-space:nowrap;padding:6px 14px;border-radius:99px;font:inherit;
+    font-size:13px;border:1px solid var(--glass-edge);background:var(--glass);color:inherit}
+  .binrow .bre:hover{border-color:var(--chk-on);color:var(--text)}
+  /* a removed task found by search is struck through and leaning back */
+  .task.gone{opacity:.72}
+  .task.gone .ti{text-decoration:line-through}
+  .carryk.gone i{background:var(--coral)}
+  /* "Done" on a search result */
+  .fin{flex:none;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    padding:3px 9px;border-radius:99px;background:var(--chk-on);color:var(--chk-ink)}
+  /* the include-removed switch in the results header */
+  .incl{cursor:pointer;white-space:nowrap;padding:6px 13px;border-radius:99px;font:inherit;font-size:13px;
+    border:1px solid var(--glass-edge);background:var(--glass);color:var(--muted)}
+  .incl.on{background:var(--coral);border-color:var(--coral);color:var(--stop-ink);font-weight:500}
+  /* Undo, inside the toast */
+  .tundo{cursor:pointer;font:inherit;font-size:13px;font-weight:600;padding:4px 12px;margin-left:4px;
+    border-radius:99px;border:1px solid var(--accent);background:var(--accent);color:var(--iv-ink)}
   .task{padding:18px 22px;display:flex;flex-direction:column;gap:4px}
   .task-top{display:flex;align-items:center;gap:12px;padding-bottom:8px}
   .task-top .ti{flex:1;min-width:0;overflow-wrap:anywhere}
@@ -736,6 +760,28 @@ $('themeBtn').onclick = () => applyTheme(document.documentElement.dataset.theme 
 let tt; function toast(m, ms){ const t = $('toast'); t.textContent = m; t.classList.add('show');
   clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), ms || 2400); }
 
+/* A toast carrying one action, which is how Undo reaches the screen.
+
+   The two confirms catch the mis-click; this catches the decision you
+   regret ten seconds later. They are not the same mistake, which is why
+   both are here rather than one standing in for the other.
+
+   It stays up far longer than an ordinary toast - an undo you have to catch
+   is not an undo - and the handler is cleared on dismissal so a late click
+   on a stale toast cannot restore something you removed twice. */
+function toastDo(m, label, fn, ms){
+  const t = $('toast');
+  t.textContent = '';
+  t.append(document.createTextNode(m + '  '));
+  const b = document.createElement('button');
+  b.className = 'tundo'; b.textContent = label;
+  b.onclick = () => { clearTimeout(tt); t.classList.remove('show'); t.textContent = ''; fn(); };
+  t.appendChild(b);
+  t.classList.add('show');
+  clearTimeout(tt);
+  tt = setTimeout(() => { t.classList.remove('show'); b.onclick = null; }, ms || 12000);
+}
+
 /* ---------- time helpers ---------- */
 const pending = () => TODOS.filter(t => !t.done);
 function whenText(due){
@@ -1032,7 +1078,34 @@ function countdown(){
 async function refresh(){
   const r = await window.DB.listTodos();
   TODOS = r.items; LOAD_ERR = r.error;
+  /* The bin is a second read and must never take the page down with it: if
+     045 has not been run, listRemovedTodos returns [] and everything else
+     carries on exactly as before. */
+  try { REMOVED = await window.DB.listRemovedTodos(); }
+  catch (e){ REMOVED = []; console.warn('Could not read removed tasks:', e.message); }
   refreshPill(); render();
+}
+
+/* THE SWEEP, ONCE A DAY AT MOST, AND NEVER ON COMPLETED WORK.
+
+   Run from the page rather than a cron job: it is one delete with a filter,
+   owner-only, and a personal job list does not earn a scheduler. The daily
+   stamp stops it firing on every reload.
+
+   db.js carries .eq('done', false), so a finished task that was removed is
+   kept for ever. That asymmetry is deliberate - completed work is a record
+   to look back on - and it means THE ARCHIVE GROWS WITHOUT BOUND, which is
+   intended and is written down in 045 and in the proposal so nobody
+   "fixes" it later. */
+const SWEEP_KEY = 'whattodo_swept';
+async function sweepRemoved(){
+  try {
+    const last = +(localStorage.getItem(SWEEP_KEY) || 0);
+    if (Date.now() - last < 86400000) return;
+    const r = await window.DB.purgeRemoved(window.TodoCore.REMOVE_DAYS);
+    localStorage.setItem(SWEEP_KEY, String(Date.now()));
+    if (r && r.purged) { REMOVED = await window.DB.listRemovedTodos(); render(); }
+  } catch (e){ console.warn('Sweep skipped:', e.message); }
 }
 /* Ticking one off takes it out of the dashboard but not out of the list: it
    is marked, not dropped, so the calendar can still show the day it was for.
@@ -1330,6 +1403,10 @@ let OPEN = {};
 /* Finished work is off the list by default. SHOWDONE reveals it again -
    see the note where the list is built. */
 let SHOWDONE = false;            /* which tasks have their full step list showing */
+/* The bin. REMOVED is loaded separately from TODOS because listTodos
+   filters deleted_at out - the whole point of the filter - so the only way
+   to show what was removed is to ask for it on purpose. */
+let REMOVED = [], SHOWBIN = false, INCL_REMOVED = false;
 let ADDING = false;
 let DRAFT = { id: null, title: '', day: null, steps: [], step: '' };
 
@@ -1452,34 +1529,40 @@ function taskHTML(t, carry, hit){
   const mk = hit ? hit.steps.map(s => s.k) : [];
   const showAll = !!OPEN[t.id] || mk.length > 0;
   const shown = items.length > 4 && !showAll ? items.slice(0, 3) : items;
-  const d = new Date(dayOf(t) + 'T12:00:00');
+  /* IN A SEARCH RESULT A FINISHED TASK IS DATED BY WHEN IT WAS FINISHED.
+     Everywhere else the card shows the day it sits on, which for a done
+     task is also its completion day - but a result found from months back
+     is being asked "when did I do this", and the day it was once scheduled
+     for is the answer to a different question. */
+  const stamp = hit && hit.done && hit.doneAt ? dayKey(hit.doneAt) : dayOf(t);
+  const d = new Date(stamp + 'T12:00:00');
   let h = '<div class="glass task' + (done ? ' done' : '') + (carry ? ' carry' : '') +
-      (hit ? ' hit' : '') + '">' +
+      (hit ? ' hit' : '') + (hit && hit.removed ? ' gone' : '') + '">' +
     (carry ? '<span class="carryk"><i></i>Carried over · ' +
        esc(d.toLocaleDateString([], { weekday:'short', day:'numeric', month:'short' })) + '</span>' : '') +
+    (hit && hit.removed
+       ? '<span class="carryk gone"><i></i>Removed · ' + esc(T.ago(t.deleted_at)) + '</span>' : '') +
     '<div class="task-top">' +
       '<button class="box' + (done ? ' on' : '') + '" data-tick="' + esc(t.id) + '" data-to="' + (done ? '0' : '1') +
         '" title="' + (done ? 'Not done yet' : 'Done') + '" aria-label="' + (done ? 'Mark not done' : 'Mark done') + '"><s></s></button>' +
       (EDIT_ID === t.id
         ? '<input id="editIn" class="ti" value="' + esc(t.title) + '" maxlength="200">'
         : '<span class="ti" data-edit="' + esc(t.id) + '">' + esc(t.title) + '</span>') +
-      '<span class="dt">' + esc(d.toLocaleDateString([], { weekday:'short', day:'numeric', month:'short' })) + '</span>' +
+      /* a finished result says so, and its date is labelled as a finish date
+         rather than left ambiguous next to the open ones beside it */
+      (hit && hit.done ? '<span class="fin">Done</span>' : '') +
+      '<span class="dt">' + (hit && hit.done && hit.doneAt ? 'finished ' : '') +
+        esc(d.toLocaleDateString([], { weekday:'short', day:'numeric', month:'short' })) + '</span>' +
       (items.length ? '<span class="ct">' + items.filter(i => i.done).length + '/' + items.length + '</span>' : '') +
       '<button class="edit" data-open="' + esc(t.id) + '" title="Edit this task" aria-label="Edit this task">' +
         '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.3 2.3a1.1 1.1 0 0 1 1.6 0l0.8 0.8a1.1 1.1 0 0 1 0 1.6L6.4 11.9 3.3 12.7l0.8-3.1z" ' +
         'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>' +
-      /* THE × IS DISABLED ON PURPOSE, 2026-10-13.
-
-         It shipped in e124f9d and hard-deleted the row with no undo, while
-         the proposal it was supposed to wait for was never written. A
-         confirm() box is not an undo, so the control is inert until the
-         delete design is agreed: no data-rm attribute, so the handler below
-         has nothing to bind to, and the button cannot fire even if a stale
-         service worker serves an old script alongside this markup.
-         DELETE_ON in the test suite pins it off. */
-      '<button class="edit rm" disabled aria-disabled="true"' +
-        ' title="Removing is on hold while the delete design is agreed"' +
-        ' aria-label="Remove this task (disabled)">×</button>' +
+      /* The × is live again as of 18 October, on the agreed design: it soft
+         deletes behind two confirms, with an Undo toast and a restore list.
+         It was disabled on 13 October because it hard-deleted with no undo.
+         See docs/whattodo-delete-proposal.md. */
+      '<button class="edit rm" data-rm="' + esc(t.id) + '"' +
+        ' title="Remove this task" aria-label="Remove this task">×</button>' +
     '</div>' +
     '<span class="chip" style="background:color-mix(in srgb,var(--' + hue + ') 15%,transparent)">' +
       '<i style="background:var(--' + hue + ')"></i>' + type + '</span>';
@@ -1565,6 +1648,35 @@ function remindBar(){
     '</div>' +
   '</div>';
 }
+/* "Recently removed" - the same pattern as the done line, one step down.
+
+   Each row says when it was removed and what happens next, because those
+   are different answers for a finished task and an unfinished one: the
+   unfinished one is counting down to the sweep, the finished one is not
+   counting down at all and never will. Saying "kept" rather than a date is
+   the honest way to put that on screen. */
+function binHTML(){
+  const T = window.TodoCore, bin = T.removedTasks(REMOVED);
+  if (!bin.length) return '';
+  const now = Date.now();
+  if (!SHOWBIN)
+    return '<button class="doneline binline" id="showBin">' +
+      bin.length + ' removed · show</button>';
+  return '<button class="doneline binline" id="showBin">Hide removed</button>' +
+    '<div class="bin">' + bin.map(t => {
+      const left = T.purgeIn(t, now);
+      const fate = t.done
+        ? 'finished · kept'
+        : left === 0 ? 'due to be swept'
+        : Math.ceil(left / 86400000) + ' day' + (Math.ceil(left / 86400000) === 1 ? '' : 's') + ' left';
+      return '<div class="binrow">' +
+        '<span class="bt">' + esc(t.title) + '</span>' +
+        '<span class="bw">removed ' + esc(T.ago(t.deleted_at, now)) + ' · ' + fate + '</span>' +
+        '<button class="bre" data-restore="' + esc(t.id) + '">Restore</button>' +
+      '</div>';
+    }).join('') + '</div>';
+}
+
 function render(){
   /* a realtime redraw must not eat what is being typed */
   const ta = document.activeElement, taId = ta && ta.id;
@@ -1587,8 +1699,21 @@ function render(){
   /* null while the box is empty, so everything downstream can ask "searching?"
      with one test. Newest day first, because a search of a backlog that runs
      to 30 August otherwise opens on August. */
+  /* SEARCH REACHES THE ARCHIVE. TODOS already carries finished work - the
+     done-line only hides it from the day's list - so completed tasks are
+     searched without doing anything special. Removed ones are different:
+     they are not in TODOS at all, because listTodos filters them, so they
+     are appended only when they have been asked for.
+
+     Sorted by the day each result BELONGS to, and for a finished task that
+     is the day it was finished. A search that puts work you completed in
+     May under the day it was once scheduled for is answering a different
+     question from the one asked. */
+  const hitDay = m => m.done && m.doneAt ? dayKey(m.doneAt) : dayOf(m.t);
+  const pool = INCL_REMOVED ? TODOS.concat(REMOVED) : TODOS;
   const hits = Q.trim()
-    ? window.TodoCore.searchTasks(TODOS, Q).sort((a, b) => dayOf(a.t) < dayOf(b.t) ? 1 : -1)
+    ? window.TodoCore.searchTasks(pool, Q, { includeRemoved: INCL_REMOVED })
+        .sort((a, b) => hitDay(a) < hitDay(b) ? 1 : -1)
     : null;
 
   let h = starsHTML() + '<div class="liquid">' +
@@ -1602,8 +1727,13 @@ function render(){
       '<div class="colR">' + weekHTML() +
         '<div class="tk-h"><span class="t">' + (hits ? 'Results' : 'Tasks') + '</span>' +
           '<span class="n">' + (hits
-            ? hits.length + (hits.length === 1 ? ' match' : ' matches') + ' · all days'
+            ? hits.length + (hits.length === 1 ? ' match' : ' matches') + ' · all days' +
+              (hits.filter(m => m.done).length ? ' · ' + hits.filter(m => m.done).length + ' finished' : '')
             : dn + ' of ' + n + ' done') + '</span>' +
+          (hits ? '<button class="incl' + (INCL_REMOVED ? ' on' : '') + '" id="inclRemoved" ' +
+             'aria-pressed="' + (INCL_REMOVED ? 'true' : 'false') + '" ' +
+             'title="Removed tasks are left out of search unless you ask for them">' +
+             (INCL_REMOVED ? 'Removed included' : 'Include removed') + '</button>' : '') +
           '<span class="qw"><input id="q" class="q" type="search" autocomplete="off"' +
             ' placeholder="Search every day" value="' + esc(Q) + '">' +
             (Q ? '<button id="qx" title="Clear the search" aria-label="Clear the search">×</button>' : '') +
@@ -1622,7 +1752,8 @@ function render(){
               (SHOWDONE ? 'Hide ' + dn + ' finished' : dn + ' finished · show') +
               '</button>' : '') +
             (SHOWDONE ? done.map(t => taskHTML(t, false)).join('') : '') +
-            (n ? '' : '<div class="none">Nothing planned for this day.</div>')) +
+            (n ? '' : '<div class="none">Nothing planned for this day.</div>') +
+            binHTML()) +
       '</div>' +
     '</div>' +
     remindBar() +
@@ -1645,9 +1776,10 @@ function render(){
   document.querySelectorAll('[data-more]').forEach(b => b.onclick = () => {
     OPEN[b.dataset.more] = !OPEN[b.dataset.more]; render(); });
   document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openEdit(b.dataset.open));
-  /* no [data-rm] binding - see taskHTML. removeTask and DB.removeTodo are
-     left in place so the agreed design can switch them back on; nothing
-     reaches them from the page. */
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => removeTask(b.dataset.rm));
+  document.querySelectorAll('[data-restore]').forEach(b => b.onclick = () => restoreTask(b.dataset.restore));
+  const sb2 = $('showBin'); if (sb2) sb2.onclick = () => { SHOWBIN = !SHOWBIN; render(); };
+  const ir = $('inclRemoved'); if (ir) ir.onclick = () => { INCL_REMOVED = !INCL_REMOVED; render(); };
 
   const ei = $('editIn');
   if (ei){
@@ -1807,24 +1939,54 @@ async function addTask(title){
   } catch (err){ toast(err.message, 6000); }
 }
 
-/* Removing is the only thing in this tool with no undo, so it asks first.
-   The steps live in the note on the same row, so the row takes them with it
-   and nothing is left orphaned - which is what makes a hard delete safe.
-   If row-level security refuses it the row stays and the page says why;
-   the list is only redrawn after the database has agreed. */
+/* REMOVING: ASKED TWICE, THEN UNDOABLE.
+
+   Belt and braces on purpose, because the two guards catch different
+   mistakes. Ask.twice - the same box every other tool on the site uses
+   before anything is lost - catches the mis-click, and naming the task and
+   counting its steps in the second question is what makes asking again
+   worth anything. The Undo toast catches the decision regretted ten seconds
+   later. Neither one does the other's job.
+
+   Nothing is destroyed. removeTodo stamps deleted_at; the task leaves the
+   list and the counts immediately and sits in "Recently removed", where it
+   can be restored by hand long after the toast has gone.
+
+   If row-level security refuses the write the row stays and the page says
+   why - the list is only redrawn after the database has agreed. */
 async function removeTask(id){
   const t = TODOS.find(x => x.id === id); if (!t) return;
   const n = window.TodoCore.noteItems(t.note).length;
-  const warn = 'Remove “' + t.title + '”?' +
-    (n ? '\n\nIts ' + n + ' step' + (n === 1 ? '' : 's') + ' go with it.' : '') +
-    '\n\nThis cannot be undone.';
-  if (!confirm(warn)) return;
+  const keeps = t.done
+    ? 'It was finished, so it is kept indefinitely and never swept.'
+    : 'It can be restored for ' + window.TodoCore.REMOVE_DAYS + ' days, then it goes for good.';
+  const ok = await window.Ask.twice([
+    { title: 'Remove this task?',
+      body: 'It leaves the list and the counts straight away.',
+      no: 'Cancel', yes: 'Continue' },
+    { title: 'Remove “' + t.title + '”?',
+      body: (n ? 'Its ' + n + (n === 1 ? ' step goes' : ' steps go') + ' with it. ' : '') + keeps,
+      no: 'No, keep it', yes: 'Remove it' }
+  ]);
+  if (!ok) return;
   try {
     await window.AuthGate.require();
     await window.DB.removeTodo(id);
     await refresh();
-    toast('Removed');
-  } catch (err){ toast(err.message, 6000); }
+    toastDo('Removed “' + t.title + '”', 'Undo', () => restoreTask(id, true));
+  } catch (err){ toast(err.message, 7000); }
+}
+
+/* Putting one back. Also the Undo handler, which is why it is quiet when it
+   succeeds from the toast - saying "Restored" after you pressed Undo tells
+   you nothing you did not just do. */
+async function restoreTask(id, quiet){
+  try {
+    await window.AuthGate.require();
+    await window.DB.restoreTodo(id);
+    await refresh();
+    if (!quiet) toast('Restored');
+  } catch (err){ toast(err.message, 7000); }
 }
 
 /* The footer is gone. It said two things: that the list is shared across
@@ -1840,6 +2002,9 @@ async function removeTask(id){
   await refresh();
   weather.mount();
   if (REMIND) setRemind(true); else render();
+  /* after the first paint, never before it - the sweep is housekeeping and
+     must not delay the list appearing */
+  setTimeout(sweepRemoved, 2500);
   // someone ticked one off elsewhere - drop it here too
   window.DB.subscribeTodos(refresh);
 })();

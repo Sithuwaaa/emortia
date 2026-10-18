@@ -343,6 +343,58 @@ function addsOf(files, table) {
   await out.link('x.pdf', 300, 1718878);
   is('a non-string name is stringified', seen[3].opt, { download: '1718878' });
 
+  /* ---- the soft delete's three load-bearing clauses -----------------
+
+     These are read out of db.js as source, which is normally a poor way to
+     check anything - but what is being asserted here is the PRESENCE of a
+     clause in a query, and that is a property of the source. The behaviour
+     these clauses produce is tested as pure functions in
+     tools/whattodo/todo.test.js; this is the tripwire that catches someone
+     deleting the clause itself.
+
+     Each one, if it went missing, loses data silently:
+       1. no deleted_at filter on the read  -> removed tasks come back
+       2. a real delete in removeTodo       -> the undo is a lie
+       3. no done=false on the purge        -> the sweep eats the archive */
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'tools/_lib/db.js'), 'utf8');
+    const fn = name => {
+      const i = src.indexOf('function ' + name + '(');
+      if (i < 0) return '';
+      /* to the start of the next top-level function declaration */
+      const j = src.indexOf('\n  async function ', i + 10);
+      const k = src.indexOf('\n  function ', i + 10);
+      const end = Math.min(j < 0 ? src.length : j, k < 0 ? src.length : k);
+      return src.slice(i, end);
+    };
+
+    is('listTodos exists', fn('listTodos').length > 0, true);
+    is('THE READ FILTERS OUT REMOVED TASKS',
+       /\.is\(\s*'deleted_at'\s*,\s*null\s*\)/.test(fn('listTodos')), true);
+
+    const rm = fn('removeTodo');
+    is('removeTodo exists', rm.length > 0, true);
+    is('REMOVING IS AN UPDATE, NOT A DELETE',
+       /\.update\(/.test(rm) && !/\.delete\(/.test(rm), true);
+    is('and it stamps deleted_at',   /deleted_at:\s*new Date\(\)/.test(rm), true);
+    is('restoreTodo clears it',      /deleted_at:\s*null/.test(fn('restoreTodo')), true);
+
+    const pg = fn('purgeRemoved');
+    is('purgeRemoved exists', pg.length > 0, true);
+    is('THE SWEEP CAN NEVER TOUCH COMPLETED WORK',
+       /\.eq\(\s*'done'\s*,\s*false\s*\)/.test(pg), true);
+    is('it only takes rows that were removed',
+       /\.not\(\s*'deleted_at'\s*,\s*'is'\s*,\s*null\s*\)/.test(pg), true);
+    is('and only ones past the cutoff',
+       /\.lt\(\s*'deleted_at'\s*,\s*cutoff\s*\)/.test(pg), true);
+
+    /* migration 045 has to actually create what all of the above reads */
+    const m045 = fs.readFileSync(path.join(ROOT, 'supabase/045_todos_soft_delete.sql'), 'utf8');
+    is('045 adds the column',
+       /alter table todos add column if not exists deleted_at/i.test(m045), true);
+    is('045 is safe to run twice', /if not exists/i.test(m045), true);
+  }
+
   console.log(pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);
 })();

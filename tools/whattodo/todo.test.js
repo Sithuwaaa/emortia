@@ -191,6 +191,131 @@ console.log('\nsearching the whole backlog');
      T.searchTasks(BACKLOG, 'the').some(m => m.t.id === 'f'), false);
 }
 
+/* A BIN, with the ages that matter around the thirty-day line, and a
+   completed task at every one of them. NOW is fixed so the boundary
+   arithmetic is arithmetic and not a race with the clock. */
+const NOW = new Date('2026-10-16T12:00:00Z').getTime();
+const DAYS = n => new Date(NOW - n * 86400000).toISOString();
+const BIN = [
+  { id: 'live',      title: 'still on the list',        created_at: DAYS(3) },
+  { id: 'fresh',     title: 'removed an hour ago',      created_at: DAYS(9),
+    deleted_at: new Date(NOW - 3600000).toISOString() },
+  { id: 'day29',     title: 'removed 29 days ago',      created_at: DAYS(60), deleted_at: DAYS(29) },
+  { id: 'exactly30', title: 'removed exactly 30 days ago', created_at: DAYS(80), deleted_at: DAYS(30) },
+  { id: 'day31',     title: 'removed 31 days ago',      created_at: DAYS(90), deleted_at: DAYS(31) },
+  /* the same ages again, but finished - none of these may ever be purged */
+  { id: 'doneFresh', title: 'finished, removed today',  created_at: DAYS(5),
+    done: true, done_at: DAYS(4), deleted_at: new Date(NOW - 3600000).toISOString() },
+  { id: 'done31',    title: 'finished, removed 31 days ago', created_at: DAYS(99),
+    done: true, done_at: DAYS(95), deleted_at: DAYS(31) },
+  { id: 'doneAges',  title: 'finished, removed two years ago', created_at: DAYS(900),
+    done: true, done_at: DAYS(880), deleted_at: DAYS(730) }
+];
+
+console.log('\nremoving a task, reversibly');
+{
+  const ids = l => l.map(t => t.id);
+
+  is('the window is thirty days',   T.REMOVE_DAYS, 30);
+
+  /* the bin */
+  is('a live task is not in the bin',
+     T.removedTasks(BIN).some(t => t.id === 'live'), false);
+  is('everything removed is in it', T.removedTasks(BIN).length, 7);
+  is('newest removal first',        ids(T.removedTasks(BIN)).slice(0, 2).sort(),
+     ['doneFresh', 'fresh']);
+
+  /* THE BOUNDARY. Exclusive: thirty days old is still safe, and only past
+     it is purgeable. This is the off-by-one the whole test exists for. */
+  is('29 days is safe',              T.purgeable(BIN, NOW).some(t => t.id === 'day29'), false);
+  is('exactly 30 days is STILL SAFE',T.purgeable(BIN, NOW).some(t => t.id === 'exactly30'), false);
+  is('31 days is purgeable',         T.purgeable(BIN, NOW).some(t => t.id === 'day31'), true);
+  is('one second past thirty days tips it',
+     T.purgeable([{ id:'x', deleted_at:new Date(NOW - 30*86400000 - 1000).toISOString() }], NOW)
+       .length, 1);
+  is('one second short of it does not',
+     T.purgeable([{ id:'x', deleted_at:new Date(NOW - 30*86400000 + 1000).toISOString() }], NOW)
+       .length, 0);
+
+  /* THE RULE THAT MUST NEVER BREAK */
+  is('the sweep takes only the one unfinished, overdue task',
+     ids(T.purgeable(BIN, NOW)), ['day31']);
+  is('NO COMPLETED TASK IS EVER PURGED, at any age',
+     T.purgeable(BIN, NOW).some(t => t.done), false);
+  is('not even one removed two years ago',
+     T.purgeable(BIN, NOW).some(t => t.id === 'doneAges'), false);
+  /* and it stays true however far the clock is wound forward */
+  const TEN_YEARS = NOW + 3650 * 86400000;
+  is('still true ten years later',
+     T.purgeable(BIN, TEN_YEARS).some(t => t.done), false);
+  is('while the unfinished ones have all gone by then',
+     ids(T.purgeable(BIN, TEN_YEARS)).sort(), ['day29', 'day31', 'exactly30', 'fresh']);
+
+  is('a live task is never purgeable',  T.purgeable(BIN, NOW).some(t => t.id === 'live'), false);
+  is('an empty list purges nothing',    T.purgeable([], NOW), []);
+  is('and so does no list at all',      T.purgeable(null, NOW), []);
+
+  /* the countdown shown in the bin */
+  is('a day-29 task has about a day left',
+     Math.round(T.purgeIn(BIN.find(t => t.id === 'day29'), NOW) / 86400000), 1);
+  is('an overdue one has nothing left',
+     T.purgeIn(BIN.find(t => t.id === 'day31'), NOW), 0);
+  is('a completed one has no deadline at all',
+     T.purgeIn(BIN.find(t => t.id === 'done31'), NOW), null);
+  is('nor does a live task',
+     T.purgeIn(BIN.find(t => t.id === 'live'), NOW), null);
+}
+
+/* Months of finished work, which is the thing search has to reach. */
+const ARCHIVE = [
+  { id: 'a1', title: 'QQ-9001 tower rigging survey', created_at: DAYS(210),
+    done: true, done_at: DAYS(205), note: 'Book the climber\nCheck the anchor plates' },
+  { id: 'a2', title: 'ZZ-4120 generator service', created_at: DAYS(150),
+    done: true, done_at: DAYS(148), note: '[x] Order the filters\n[x] Drain the old oil' },
+  { id: 'a3', title: 'Antenna swap at the depot', created_at: DAYS(95),
+    done: true, done_at: DAYS(90), note: 'Lift plan\nNight crew\nBook the climber again' },
+  { id: 'a4', title: 'Open: chase the rigging quote', created_at: DAYS(6), note: 'Email the vendor' },
+  { id: 'a5', title: 'Removed: old rigging note', created_at: DAYS(40),
+    deleted_at: DAYS(2), note: 'climber paperwork' },
+  { id: 'a6', title: 'Removed and finished', created_at: DAYS(300),
+    done: true, done_at: DAYS(295), deleted_at: DAYS(100), note: 'rigging sign-off' }
+];
+
+console.log('\nsearch reaches the archive');
+{
+  const ids = r => r.map(m => m.t.id);
+
+  is('a finished task from seven months back is found',
+     ids(T.searchTasks(ARCHIVE, 'rigging')), ['a1', 'a4']);
+  is('open and done come back together',
+     ids(T.searchTasks(ARCHIVE, 'climber')), ['a1', 'a3']);
+  is('a done result is marked done',
+     T.searchTasks(ARCHIVE, 'generator')[0].done, true);
+  is('and carries the day it was FINISHED, not the day it was scheduled',
+     T.searchTasks(ARCHIVE, 'generator')[0].doneAt, DAYS(148));
+  is('an open result has no completion date',
+     T.searchTasks(ARCHIVE, 'chase')[0].doneAt, null);
+  is('a step inside a months-old finished task still matches',
+     T.searchTasks(ARCHIVE, 'anchor')[0].steps[0].text, 'Check the anchor plates');
+
+  /* removed stays out unless asked for */
+  is('a removed task is not in an ordinary search',
+     ids(T.searchTasks(ARCHIVE, 'climber paperwork')), []);
+  is('nor is a removed finished one',
+     ids(T.searchTasks(ARCHIVE, 'sign-off')), []);
+  is('but it is there when asked for',
+     ids(T.searchTasks(ARCHIVE, 'climber paperwork', { includeRemoved: true })), ['a5']);
+  is('and it is marked removed',
+     T.searchTasks(ARCHIVE, 'climber paperwork', { includeRemoved: true })[0].removed, true);
+  is('a live result is not marked removed',
+     T.searchTasks(ARCHIVE, 'chase')[0].removed, false);
+  is('including removed widens, never narrows',
+     T.searchTasks(ARCHIVE, 'rigging', { includeRemoved: true }).length >=
+     T.searchTasks(ARCHIVE, 'rigging').length, true);
+  is('with removed included, both extra ones appear',
+     ids(T.searchTasks(ARCHIVE, 'rigging', { includeRemoved: true })), ['a1','a4','a5','a6']);
+}
+
 console.log('\nthe weather');
 {
   is('the four steps, in order',  T.RAIN_STEPS, ['off', 'light', 'medium', 'heavy']);

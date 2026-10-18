@@ -144,20 +144,85 @@
      business - it has its own rule for that - so the caller labels and sorts.
      Returning no results for an empty query is deliberate: an empty box means
      "not searching", and the caller shows the day instead. */
-  function searchTasks(list, q) {
+  function searchTasks(list, q, opts) {
     const needle = String(q == null ? '' : q).trim().toLowerCase();
     if (!needle) return [];
+    const o = opts || {};
     const out = [];
     (list || []).forEach(t => {
-      const inTitle = String((t && t.title) || '').toLowerCase().indexOf(needle) >= 0;
+      if (!t) return;
+      /* REMOVED TASKS ARE OUT BY DEFAULT. They were removed, not hidden -
+         finding one in an ordinary search would make "remove" look like it
+         had not worked. includeRemoved is the deliberate way back in. */
+      const removed = !!(t.deleted_at || t.deletedAt);
+      if (removed && !o.includeRemoved) return;
+      const inTitle = String(t.title || '').toLowerCase().indexOf(needle) >= 0;
       const steps = [];
-      noteItems(t && t.note).forEach((it, k) => {
+      noteItems(t.note).forEach((it, k) => {
         if (it.text.toLowerCase().indexOf(needle) >= 0)
           steps.push({ k: k, text: it.text, done: it.done });
       });
-      if (inTitle || steps.length) out.push({ t: t, inTitle: inTitle, steps: steps });
+      if (!inTitle && !steps.length) return;
+      /* A FINISHED RESULT CARRIES THE DAY IT WAS FINISHED, not the day it was
+         scheduled. Searching for something done months ago and being shown
+         the date it was once planned for answers the wrong question. */
+      out.push({ t: t, inTitle: inTitle, steps: steps,
+                 done: !!t.done, doneAt: t.done ? (t.done_at || t.doneAt || null) : null,
+                 removed: removed });
     });
     return out;
+  }
+
+  /* ------------------------------------------------- removing, reversibly
+
+     The window and the exclusion live here rather than only in the SQL,
+     because an off-by-one on a boundary and a missing `done` clause are the
+     two ways this feature loses work, and both are testable in isolation. */
+  const REMOVE_DAYS = 30;
+
+  const removedAt = t => {
+    const d = asDate(t && (t.deleted_at || t.deletedAt));
+    return d ? d.getTime() : null;
+  };
+
+  /* Everything currently in the bin, newest removal first. */
+  function removedTasks(list) {
+    return (list || []).filter(t => removedAt(t) != null)
+      .sort((a, b) => removedAt(b) - removedAt(a));
+  }
+
+  /* WHAT THE SWEEP MAY DELETE FOR EVER.
+
+     Two conditions, and the second is the one that matters:
+
+       1. removed longer ago than `days`
+       2. NOT COMPLETED
+
+     A finished task that was removed is kept indefinitely. Completed work
+     is a permanent record - "what did I finish last August" is a question
+     worth answering next year - so the archive grows without bound, and
+     that is intended, not an oversight to be tidied away later.
+
+     The boundary is exclusive: at exactly `days` old a task is still safe,
+     and only passing it becomes purgeable. A task removed thirty days ago
+     to the second has not yet had its thirty days. */
+  function purgeable(list, now, days) {
+    const ms = (days == null ? REMOVE_DAYS : days) * 86400000;
+    const t0 = (now == null ? Date.now() : now) - ms;
+    return (list || []).filter(t => {
+      if (t && t.done) return false;          /* never completed work */
+      const at = removedAt(t);
+      return at != null && at < t0;
+    });
+  }
+
+  /* How long a removed task has left before the sweep can take it. null for
+     a completed one, which has no deadline at all. */
+  function purgeIn(t, now, days) {
+    if (!t || t.done) return null;
+    const at = removedAt(t); if (at == null) return null;
+    const ms = (days == null ? REMOVE_DAYS : days) * 86400000;
+    return Math.max(0, at + ms - (now == null ? Date.now() : now));
   }
 
   /* --------------------------------------------------------- the weather
@@ -216,6 +281,7 @@
     noteItems, writeNote, toggleItem, setAllItems,
     itemCount, doneCount, allItemsDone,
     shortDate, ago, dateLine, calendarDate, searchTasks,
-    RAIN_STEPS, rainProfile, dropCount, strikeDelay
+    RAIN_STEPS, rainProfile, dropCount, strikeDelay,
+    REMOVE_DAYS, removedTasks, purgeable, purgeIn
   };
 });

@@ -112,7 +112,91 @@ genuinely final.
 
 ---
 
-## 3. What I need from you
+## ANSWERED AND BUILT — 18 October 2026
+
+Everything below this line is the decision as taken. Where it differs from
+my recommendation above, the decision wins and the recommendation is left
+standing so the reasoning can be compared later.
+
+**B – soft delete with `deleted_at`.** Migration `045_todos_soft_delete.sql`.
+
+**The two-step confirm STAYS, and the Undo toast as well.** I had argued for
+dropping the dialog on the grounds that one you click through daily trains
+you to click through it. Overruled, on two grounds I accept: every other
+tool on the site asks twice before anything is lost, and consistency across
+the suite beats the fatigue argument when deleting a task is rare rather
+than daily.
+
+They are kept together deliberately, because **they catch different
+mistakes**: the confirm catches the mis-click, the undo catches the decision
+regretted ten seconds later. Neither does the other's job.
+
+**30-day sweep, BUT IT NEVER TOUCHES A COMPLETED TASK.**
+
+- The sweep purges only tasks that were never completed.
+- A done task that is removed stays soft-deleted and restorable
+  **indefinitely**. It is never purged, on any schedule, at any age.
+
+### The archive grows without bound, and that is intended
+
+Say it plainly, because the next person to read this will be tempted to
+"fix" it: **there is no retention limit on removed completed tasks, and
+adding one would be a regression, not a tidy-up.**
+
+Completed work is a permanent record. "What did I finish last August" is a
+question worth being able to answer next year, and a sweep that quietly ate
+the answer after thirty days would be destroying exactly the thing the
+archive is for. At a few hundred rows a year the growth costs nothing.
+
+This is enforced in three places so it cannot drift:
+
+| where | what holds it |
+| --- | --- |
+| `db.js` | `purgeRemoved` carries `.eq('done', false)` |
+| `todo.js` | `purgeable()` returns false for any `done` task |
+| tests | the sweep is asserted empty of completed rows at every age, including ten years on |
+
+**A removed task leaves the counts the moment it leaves the list.** No
+change – it is removed, not hidden, so "4 of 7 done" keeps matching what is
+on screen.
+
+### Search reaches the archive
+
+- Completed tasks are searched as well as open ones. They were always in
+  the list – the done-line only hides them from the day's view – so this
+  needed no special case.
+- **A finished result is marked `Done` and dated by when it was finished**,
+  not when it was scheduled. A search for work completed in May that showed
+  the day it was once planned for would be answering a different question.
+- **Removed tasks stay out by default**, with an "Include removed" switch in
+  the results header. They were removed, not hidden; finding one in an
+  ordinary search would make "remove" look as though it had not worked.
+- The fixture runs back **300 days** with completed and removed tasks at
+  several ages, not a week of open ones.
+
+### What is on screen
+
+- The **×** is live again, behind `Ask.twice` – the same box the rest of the
+  site uses. Step two names the task, counts its steps, and says what
+  happens next, which differs for finished and unfinished work.
+- **Undo** sits in the toast for 12 seconds.
+- **"N removed · show"** under the done line. Each row gives the age of the
+  removal and its fate: `28 days left` for an unfinished one, `finished ·
+  kept` for a completed one.
+- The sweep runs from the page, at most once a day, 2.5s after first paint.
+
+### One thing I could not exercise
+
+`removeTodo` translates a missing-column error into "run migration 045".
+Signed out, the auth check returns first, so that branch was not reached on
+the rendered page. Its presence is asserted in `db.schema.test.js`. The
+guarantee that actually matters – that it can never silently hard-delete –
+does not depend on it: `removeTodo` contains no `.delete(` at all, and the
+test asserts that too.
+
+---
+
+## 3. The questions this proposal asked
 
 - **B, A, or C?** (I recommend B.)
 - **30 days**, or a different window?
@@ -121,4 +205,4 @@ genuinely final.
   should leave the counts the moment it leaves the list, or "4 of 7 done"
   stops matching what is on screen.
 
-Nothing is built until you answer.
+Answered on 18 October - see the section above.
