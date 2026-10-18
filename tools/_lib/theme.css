@@ -77,9 +77,11 @@ main{position:relative;z-index:1;}
   background:linear-gradient(150deg,var(--accentB),var(--accentD)) !important;
   color:#f2fbfd !important;
   box-shadow:0 0 18px var(--glow) !important;
-  animation:tLogoFloat 4.5s ease-in-out infinite;
 }
-@keyframes tLogoFloat{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);} }
+/* tLogoFloat removed 18 Oct: the nav bar does not animate. This file is
+   the FOURTH place the bar was animated from - after _lib/motion.css,
+   skins/aurora.css and four tools inline. The mark keeps its glow, which
+   is a box-shadow, not motion. */
 .hdr h1{
   font-family:'Bricolage Grotesque','Hanken Grotesk',sans-serif;
   letter-spacing:-.01em;
@@ -93,9 +95,10 @@ main{position:relative;z-index:1;}
 }
 .pill::before{
   content:'';width:7px;height:7px;border-radius:50%;background:var(--accentB);
-  flex-shrink:0;animation:tLed 1.6s ease-in-out infinite;
+  flex-shrink:0;
 }
-@keyframes tLed{ 0%,100%{opacity:.35;} 50%{opacity:1;} }
+/* tLed removed 18 Oct. The dot stays, resting at full opacity - what you
+   see is the bright 50% frame frozen, not a dimmed state. */
 .pill b{color:var(--accentB) !important;}
 .theme{border-color:var(--line3) !important;transition:border-color .2s ease,transform .2s ease;}
 .theme:hover{border-color:var(--accentB) !important;transform:scale(1.06);}
