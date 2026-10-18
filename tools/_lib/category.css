@@ -164,3 +164,61 @@ html[data-cat] ::selection{background:var(--glow)}
 html[data-cat] header.hdr,html[data-cat] .hdr{background:var(--bar) !important;color:var(--barInk) !important;border-bottom:2px solid var(--barRule) !important;box-shadow:0 10px 30px -14px var(--barRule) !important}
 html[data-cat] .hdr h1,html[data-cat] .hdr .bname,html[data-cat] .brand{color:var(--barInk) !important}
 html[data-cat] .hdr .hsep{background:var(--barLine) !important}
+
+/* ===========================================================================
+   THE STATUS TEXT VARIANTS - hand written, 18 October 2026.
+
+   A STATUS COLOUR CANNOT BE BOTH A FILL AND A TEXT COLOUR.
+
+   --ok and friends are used two ways across the sixteen tools: as a FILL
+   with dark ink on top (a chip, a button, a progress bar), and as TEXT on a
+   card. The two pull in opposite directions in light mode. A green light
+   enough to carry #06200f ink is far too light to read as text on white -
+   #1f9a68 measures 3.07:1 on the palest row it lands on - and darkening it
+   to fix the text would drop the ink on every fill that uses it.
+
+   So the fills keep the original values and the TEXT usages read these.
+   This is the same split as --chk-ink / --stop-ink in What To Do: one token
+   could not serve two jobs, so there are two tokens.
+
+   DARKER ONLY, AND NEVER RE-HUED. Each T is its base colour with OKLab
+   lightness walked down until it clears 4.5:1, holding hue and chroma
+   exactly - so "ok" is still the same green. Rotating a hue at constant
+   HSL lightness is what cost the tools directory its brightness once.
+
+   Solved against EVERY light surface on the site (12 of them, palest
+   #FFFFFF, darkest #EEF5F6) and against each one again with the
+   rgba(0,0,0,.024) zebra stripe over it, because a striped row is slightly
+   darker and therefore slightly worse for dark ink, not better.
+
+        token      base       was    now
+        --okT      #1f9a68    3.07   4.50
+        --warnT    #c2542c    3.93   4.51
+        --badT     #c2405c    4.32   4.54
+        --infoT    #2f6fd0    4.19   4.53
+
+   IN DARK MODE EVERY BASE ALREADY PASSES - 4.53 to 7.37 against the darkest
+   card - so the dark variants are the base colours themselves. The split
+   exists for the light column only, and saying so here stops someone
+   "finishing the job" by inventing dark variants that are not needed.
+
+   Declared here because category.css loads last in all sixteen tools and
+   is !important throughout, so nothing in a tool's own stylesheet can
+   shadow these the way theme.css silently shadowed gin-extractor's --ok. */
+/* THE FALLBACKS ARE NOT DECORATION. Seven of the sixteen tools never
+   declare --ok, --bad or --info at all, and in those `var(--ok)` is invalid
+   at computed-value time - which does not leave the property alone, it
+   makes the whole declaration invalid and the element INHERITS instead.
+   A --okT that silently resolves to the parent's colour is exactly the
+   failure mode that is hardest to see, so every alias carries the dark
+   base as a literal fallback and --okT always has a value. */
+html[data-cat]{
+  --okT:var(--ok, #34c98b) !important;    --warnT:var(--warn, #f2a33a) !important;
+  --badT:var(--bad, #e2607a) !important;  --infoT:var(--info, #4f9bf0) !important;
+  --errT:var(--err, var(--warn, #f2a33a)) !important;
+}
+html[data-cat][data-theme="light"]{
+  --okT:#007D4D !important;      --warnT:#B74A21 !important;
+  --badT:#BE3C59 !important;     --infoT:#2969CA !important;
+  --errT:#B74A21 !important;
+}

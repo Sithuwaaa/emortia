@@ -120,7 +120,7 @@
   .btn.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
   .btn:disabled{opacity:.45;cursor:default;transform:none;border-color:var(--line)}
   .btn.sm{padding:5px 10px;font-size:12px}
-  .btn.del:hover{border-color:var(--bad);color:var(--bad)}
+  .btn.del:hover{border-color:var(--bad);color:var(--badT)}
   .bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 
   label.f{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.13em;
@@ -149,9 +149,9 @@
     border:1px solid var(--line3);color:var(--muted);line-height:1.5;
     max-width:100%;min-width:0;overflow-wrap:anywhere}
   .state.ready{border-color:var(--accentD);color:var(--accentB)}
-  .state.saved{border-color:var(--ok);color:var(--ok)}
-  .state.busy{border-color:var(--warn);color:var(--warn)}
-  .state.edit{border-color:var(--info);color:var(--info)}
+  .state.saved{border-color:var(--ok);color:var(--okT)}
+  .state.busy{border-color:var(--warn);color:var(--warnT)}
+  .state.edit{border-color:var(--info);color:var(--infoT)}
 
   /* correcting and removing, on a filed row */
   .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -160,7 +160,7 @@
     color:var(--muted);border-left:1px solid var(--line3);padding-left:6px}
   .acts .btn:hover em{color:var(--accentB)}
   /* the one that cannot be taken back looks like it */
-  .btn.del.owner{border-color:rgba(226,96,122,.45);color:var(--bad)}
+  .btn.del.owner{border-color:rgba(226,96,122,.45);color:var(--badT)}
   .btn.del.owner:hover{background:rgba(226,96,122,.12);border-color:var(--bad)}
 
   /* the three picture wells */
@@ -193,7 +193,7 @@
   @media(max-width:560px){.crow{grid-template-columns:1fr 1fr 38px}}
   .crow .x{border:1px solid var(--line);background:none;color:var(--muted);border-radius:9px;height:38px;
     cursor:pointer;font-size:15px;transition:border-color .16s ease,color .16s ease}
-  .crow .x:hover{border-color:var(--bad);color:var(--bad)}
+  .crow .x:hover{border-color:var(--bad);color:var(--badT)}
 
   .gridwrap{border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:64vh;background:var(--card)}
   table{border-collapse:collapse;width:100%;font-size:12.5px}

@@ -177,8 +177,8 @@
      just over 4.5 - lighten the card and it goes under, so measure before
      touching either. */
   .newspop .nhd b{font:700 14px 'Bricolage Grotesque',sans-serif}
-  .newspop.lv-warn .nhd b{color:var(--warn)}
-  .newspop.lv-bad .nhd b,.newspop.lv-never .nhd b{color:var(--bad)}
+  .newspop.lv-warn .nhd b{color:var(--warnT)}
+  .newspop.lv-bad .nhd b,.newspop.lv-never .nhd b{color:var(--badT)}
   .newspop .nhd span{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)}
   .newspop p{font-size:12.5px;line-height:1.5;color:var(--muted);margin-bottom:11px}
   .newspop dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12px;
@@ -221,8 +221,8 @@
      exception is a problem, which is the whole reason to look. */
   .newspop .ne .nwhat b{color:var(--text);font-weight:700}
   .newspop .ne.s-shortage .nwhat b,
-  .newspop .ne.s-rejected .nwhat b{color:var(--bad)}
-  .newspop .ne.s-collected .nwhat b{color:var(--ok)}
+  .newspop .ne.s-rejected .nwhat b{color:var(--badT)}
+  .newspop .ne.s-collected .nwhat b{color:var(--okT)}
   .newspop .nmore{background:none;border:0;padding:0;cursor:pointer;text-align:left;
     font:inherit;color:var(--accentB);text-decoration:underline;text-underline-offset:2px}
   .newspop .nempty{color:var(--muted);font-size:12px;padding:4px 0 2px}
@@ -262,7 +262,7 @@
   .tile .v{font:800 34px/1.05 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em}
   .tile .s{font-size:12.5px;color:var(--muted)}
   .tile.hero{background:linear-gradient(135deg,rgba(52,201,139,.16),var(--card) 70%);border-color:rgba(52,201,139,.45)}
-  .tile.hero .v{font-size:52px;color:var(--ok)}
+  .tile.hero .v{font-size:52px;color:var(--okT)}
   .tile.hero.none{background:var(--card);border-color:var(--line)}
   .tile.hero.none .v{color:var(--muted)}
   /* How old the number is, on the number. Not colour alone: each one says in
@@ -277,9 +277,9 @@
     background:linear-gradient(135deg,rgba(255,125,146,.15),var(--card) 70%)}
   .tile.hero.s-bad .v,.tile.hero.s-never .v{color:var(--err,#ff7d92)}
   .tile.hero .s b{color:var(--text)}
-  .tile.t-issuing .v{color:var(--warn)}
-  .tile.t-reserving .v{color:var(--info)}
-  .tile.t-problem .v{color:var(--bad)}
+  .tile.t-issuing .v{color:var(--warnT)}
+  .tile.t-reserving .v{color:var(--infoT)}
+  .tile.t-problem .v{color:var(--badT)}
   .tile.t-collected .v{color:var(--text)}
 
   /* ---- the pipeline: every ticket, as one bar, in the order they move ----
@@ -300,7 +300,7 @@
   .c-collected{background:var(--line3)} .c-shortage,.c-rejected{background:var(--bad)} .c-other{background:var(--muted)}
   .c-approved{background:var(--accentB)} .c-collected_un{background:var(--warn)} .c-check{background:var(--warn)}
   /* the group the tool cannot speak for, drawn so it is not scanned past */
-  #pkey button.needschk{border-color:var(--warn);color:var(--warn)}
+  #pkey button.needschk{border-color:var(--warn);color:var(--warnT)}
 
   /* ---- the two panels: what is waiting, and what to ask for ---- */
   .dash{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px}
@@ -319,9 +319,9 @@
   .age .tr{flex:1;height:6px;border-radius:3px;background:var(--card-2);overflow:hidden}
   .age .tr i{display:block;height:100%;border-radius:3px}
   .age b{font:800 15px 'Bricolage Grotesque',sans-serif;min-width:2ch;text-align:right}
-  .age.hot b{color:var(--bad)} .age.hot i{background:var(--bad)}
-  .age.warm b{color:var(--warn)} .age.warm i{background:var(--warn)}
-  .age.cool b{color:var(--ok)} .age.cool i{background:var(--ok)}
+  .age.hot b{color:var(--badT)} .age.hot i{background:var(--bad)}
+  .age.warm b{color:var(--warnT)} .age.warm i{background:var(--warn)}
+  .age.cool b{color:var(--okT)} .age.cool i{background:var(--ok)}
   @media (max-width:560px){.rdy{grid-template-columns:minmax(0,1fr) auto}.rdy .sid{grid-column:1}.rdy .meta{grid-column:1/-1;grid-row:2;white-space:normal}
     .rdy .age{grid-column:1;grid-row:3}.rdy .go{grid-column:2;grid-row:1}.pick col.cm{width:0}.pick .m{display:none}}
   /* ---- the pick list, folded ---- */
@@ -336,7 +336,7 @@
   .pick col.cq{width:74px} .pick col.cm{width:96px}
   .pick td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:top}
   .pick tr:first-child td{border-top:0}
-  .pick .q{font:700 15px 'Space Mono',monospace;text-align:right;white-space:nowrap;color:var(--ok)}
+  .pick .q{font:700 15px 'Space Mono',monospace;text-align:right;white-space:nowrap;color:var(--okT)}
   .pick .q small{font-size:11px;color:var(--muted);font-weight:400;margin-left:3px}
   .pick .d{min-width:0;overflow-wrap:anywhere}
   .pick .d div{font-size:11.5px;color:var(--muted)}
@@ -375,7 +375,7 @@
     padding:11px max(14px,env(safe-area-inset-left)) calc(11px + env(safe-area-inset-bottom));
     background:var(--card);border-top:1px solid var(--line3);box-shadow:0 -6px 22px rgba(0,0,0,.26);flex-wrap:wrap}
   .selbar .n{font-weight:700;margin-right:auto}
-  .selbar .n i{font-style:normal;font-weight:500;color:var(--warn)}
+  .selbar .n i{font-style:normal;font-weight:500;color:var(--warnT)}
   body.picking{padding-bottom:84px}
   .pickbox{display:flex;align-items:center;justify-content:center;cursor:pointer;padding:2px}
   .pickbox input{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;margin:0}
@@ -406,11 +406,11 @@
     .tk .who{grid-column:1/-1;grid-row:2;margin-top:2px}
     .tk .who .l2{white-space:normal;overflow:visible;line-height:1.5}}
   .badge{font:700 11px 'Space Mono',monospace;letter-spacing:.03em;padding:4px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
-  .badge.ready{color:var(--ok);background:rgba(52,201,139,.1)}
+  .badge.ready{color:var(--okT);background:rgba(52,201,139,.1)}
   .badge.collected{color:var(--muted)}
-  .badge.issuing{color:var(--warn)}
-  .badge.reserving{color:var(--info)}
-  .badge.shortage,.badge.rejected{color:var(--bad)}
+  .badge.issuing{color:var(--warnT)}
+  .badge.reserving{color:var(--infoT)}
+  .badge.shortage,.badge.rejected{color:var(--badT)}
   .badge.other{color:var(--muted)}
   .who{min-width:0}
   .who .l1{display:flex;align-items:baseline;gap:10px;min-width:0}
@@ -445,7 +445,7 @@
   .days{text-align:right;white-space:nowrap}
   .days b{font:800 22px 'Bricolage Grotesque',sans-serif}
   .days span{display:block;font-size:11.5px;color:var(--muted)}
-  .days.hot b{color:var(--bad)} .days.warm b{color:var(--warn)} .days.cool b{color:var(--ok)}
+  .days.hot b{color:var(--badT)} .days.warm b{color:var(--warnT)} .days.cool b{color:var(--okT)}
   .chev{color:var(--muted);transition:transform .2s ease}
   .tk[open] .chev{transform:rotate(90deg)}
 
@@ -491,13 +491,13 @@
   .sns span:hover{border-color:var(--accentB);color:var(--accentB)}
   /* ---- a row the tool cannot state confidently ---- */
   .cbadge{font:700 10px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
-    padding:3px 7px;border-radius:999px;flex:none;color:var(--warn);border:1px solid currentColor;cursor:help}
+    padding:3px 7px;border-radius:999px;flex:none;color:var(--warnT);border:1px solid currentColor;cursor:help}
   .nbadge{font:700 10px 'Space Mono',monospace;letter-spacing:.06em;padding:3px 7px;border-radius:999px;
     flex:none;color:var(--muted);border:1px solid var(--line3)}
   .tk.s-collected_un{border-left-color:var(--warn)}
   .needs{display:flex;flex-direction:column;gap:4px;background:rgba(245,186,22,.07);
     border:1px solid var(--warn);border-radius:12px;padding:10px 13px;margin-bottom:10px}
-  .needs b{font:700 11px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)}
+  .needs b{font:700 11px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--warnT)}
   .needs span{font-size:13.5px}
   .needs i{font-style:normal;font-size:13px;color:var(--muted)}
   /* the card title in full - wrapped, selectable, nothing cut off. The row
@@ -528,7 +528,7 @@
   /* struck off the card, not dropped from the page */
   tr.gone td{text-decoration:line-through;color:var(--muted);opacity:.72}
   tr.gone .chk.gone{text-decoration:none;color:var(--muted);border:1px solid var(--line3);border-radius:999px;padding:2px 7px}
-  .chk.Full{color:var(--ok)} .chk.Partial,.chk.Extra{color:var(--warn)} .chk.Not{color:var(--bad)}
+  .chk.Full{color:var(--okT)} .chk.Partial,.chk.Extra{color:var(--warnT)} .chk.Not{color:var(--badT)}
   .empty{color:var(--muted);font-size:14px;padding:28px;text-align:center;border:1px dashed var(--line3);border-radius:14px}
 
   /* ---- arriving from WorkHub ---- */

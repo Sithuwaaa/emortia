@@ -136,10 +136,10 @@
   .mod{border-left:3px solid var(--warn)}
   .modlist{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
   .modcard{background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:14px 15px}
-  .modcard .id{font-family:'Space Mono',monospace;font-weight:700;color:var(--warn);font-size:15px}
+  .modcard .id{font-family:'Space Mono',monospace;font-weight:700;color:var(--warnT);font-size:15px}
   .modcard .nm{font-weight:600;margin-top:2px}
   .modcard .perm{display:inline-block;margin-top:8px;font-size:11.5px;font-weight:700;border-radius:999px;
-    padding:3px 10px;border:1px solid var(--warn);color:var(--warn);background:color-mix(in oklab,var(--warn) 14%,transparent)}
+    padding:3px 10px;border:1px solid var(--warn);color:var(--warnT);background:color-mix(in oklab,var(--warn) 14%,transparent)}
   .modcard .serves{margin-top:10px;font-size:12.5px;color:var(--muted);line-height:1.6}
   .modcard .serves b{color:var(--text);font-family:'Space Mono',monospace;font-weight:700;font-size:12px}
   /* the tabs this site is written on */
@@ -643,7 +643,7 @@ function renderDashboard(){
        '<span class="tag">weighted by stage</span></h2>' +
        '<div class="barrow"><span class="lb">Progress</span><span class="bartrack" style="height:16px">' +
        '<span class="barfill" style="--w:' + wpct + '%;--b:linear-gradient(90deg,var(--accentD),var(--ok))"></span>' +
-       '</span><span class="n" style="color:var(--ok);font-weight:700">' + wpct + '%</span></div>' +
+       '</span><span class="n" style="color:var(--okT);font-weight:700">' + wpct + '%</span></div>' +
        '<div class="barrow" style="margin-top:9px"><span class="lb">On air</span>' +
        '<span class="bartrack"><span class="barfill" style="--w:' + pct + '%;--b:var(--ok)"></span></span>' +
        '<span class="n">' + pct + '%</span></div>' +

@@ -81,11 +81,16 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
           bf480bc9…  to 13 Oct   --bar at the design's 4% lift
           903071b2…  13 Oct      --bar on the v71 rung
           bf480bc9…  13 Oct      back to the 4%, asked for after seeing both
+          ad3ad8a0…  18 Oct      the status text variants added
 
-        The signature returning to its earlier value is the check that the
-        revert touched --bar and nothing else: a byte of drift anywhere in
-        the stylesheet would have produced a third hash instead. */
-     'bf480bc93d30ddbbddbb61547b9feaab608b549a8bdd472c393055201a3bb3ea');
+        The signature returning to its earlier value on 13 Oct was the check
+        that the revert touched --bar and nothing else: a byte of drift
+        anywhere else would have produced a third hash instead.
+
+        18 Oct adds --okT/--warnT/--badT/--infoT/--errT and moves no
+        existing colour. Nothing was subtracted, which the governed-token
+        assertions below still confirm independently of this hash. */
+     'ad3ad8a068eba1c57e2973b663b0c6122ec202014969a507d6887c2359544054');
 
   /* ---- THE BAR FLIPS WITH THE THEME ----
 
@@ -627,6 +632,47 @@ console.log('\n--- the directory carries the same five hues ---');
   is('all sixteen card bands are present', bands.length, 16);
   is('and not one of them is a lamp on the page',
      bands.filter(b => onPage(b) > 5).map(b => b + ' ' + onPage(b).toFixed(1)), []);
+}
+
+/* ---- THE STATUS FILL/TEXT SPLIT STAYS SPLIT -------------------------
+
+   Two ways this quietly comes undone, and both lose contrast silently:
+
+     1. a new `color:var(--ok)` is written instead of `var(--okT)`, and
+        reads 3.07:1 on a pale row in light mode;
+     2. a T variant is pointed at a FILL, where the dark ink printed on it
+        is sized for the lighter base colour.
+
+   The light T values are also pinned, because they were solved against
+   every light surface on the site including its zebra stripe, and a
+   "tidy-up" that rounds one is a contrast regression wearing a neat hex. */
+{
+  const catcss = NAV.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const T = { okT: '#007D4D', warnT: '#B74A21', badT: '#BE3C59', infoT: '#2969CA', errT: '#B74A21' };
+  for (const k of Object.keys(T))
+    is('light --' + k + ' is the solved value',
+       new RegExp('--' + k + ':\\s*' + T[k], 'i').test(catcss), true);
+  is('the dark aliases all carry a literal fallback',
+     ['ok', 'warn', 'bad', 'info'].every(k =>
+       new RegExp('--' + k + 'T:\\s*var\\(--' + k + ',\\s*#').test(catcss)), true);
+
+  const tools = fs.readdirSync(path.join(ROOT, 'tools'))
+    .filter(d => fs.existsSync(path.join(ROOT, 'tools', d, 'index.html')));
+  const strayText = [], strayFill = [];
+  for (const d of tools) {
+    const src = fs.readFileSync(path.join(ROOT, 'tools', d, 'index.html'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ');
+    for (const t of ['ok', 'warn', 'bad', 'err', 'info']) {
+      /* a bare colour: on a base token - should be the T variant */
+      if (new RegExp('(?<![a-z-])color\\s*:\\s*var\\(--' + t + '\\)').test(src))
+        strayText.push(d + ' --' + t);
+      /* a T variant used as a fill or a border - the wrong way round */
+      if (new RegExp('(background|border)[a-z-]*\\s*:[^;{}]*var\\(--' + t + 'T\\)').test(src))
+        strayFill.push(d + ' --' + t + 'T');
+    }
+  }
+  is('no text usage is left on a base status token', strayText, []);
+  is('and no T variant is used as a fill or border', strayFill, []);
 }
 
 console.log('\n--- the mapping ---');

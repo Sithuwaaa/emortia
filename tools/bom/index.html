@@ -118,7 +118,7 @@
   .btn.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
   .btn:disabled{opacity:.4;cursor:default;transform:none;border-color:var(--line)}
   .btn.sm{padding:4px 9px;font-size:11.5px}
-  .btn.del:hover{border-color:var(--bad);color:var(--bad)}
+  .btn.del:hover{border-color:var(--bad);color:var(--badT)}
 
   .bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
   select,input{background:var(--card-2);color:var(--text);border:1px solid var(--line);border-radius:9px;
@@ -149,12 +149,12 @@
   td.k1{font-family:'Space Mono',monospace;color:var(--accentB)}
   td.n{font-family:'Space Mono',monospace;text-align:right}
   td.wrap{white-space:normal;min-width:190px}
-  .warn{color:var(--warn)}
+  .warn{color:var(--warnT)}
   .chip{display:inline-block;padding:1px 6px;border:1px solid var(--line3);border-radius:5px;
     font-family:'Space Mono',monospace;font-size:10.5px;margin:1px 3px 1px 0;color:var(--muted)}
   .chip.ok{border-color:var(--accentD);color:var(--accentB)}
-  .chip.gap{border-color:var(--warn);color:var(--warn)}
-  .chip.mine{border-color:var(--info);color:var(--info)}
+  .chip.gap{border-color:var(--warn);color:var(--warnT)}
+  .chip.mine{border-color:var(--info);color:var(--infoT)}
 
   .cols{display:grid;grid-template-columns:280px 1fr;gap:20px}
   /* a grid child defaults to min-width:auto, which lets a wide table push the
@@ -179,7 +179,7 @@
   .lines td:first-child{color:var(--muted);font-family:'Space Mono',monospace;font-size:10.5px;
     letter-spacing:.05em;text-transform:uppercase}
   .lines input.q{width:74px;padding:4px 7px;font-size:12.5px;font-family:'Space Mono',monospace;text-align:right}
-  .lines input.q.mine{border-color:var(--info);color:var(--info)}
+  .lines input.q.mine{border-color:var(--info);color:var(--infoT)}
   .lines .why{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted)}
 
   /* the rule editor */
@@ -189,7 +189,7 @@
   .rule select{min-width:0;width:auto;padding:5px 7px;font-size:11.5px}
   .rule input.f{width:120px;padding:5px 8px;font-size:12px;font-family:'Space Mono',monospace}
   .rule input.f.n{width:52px;text-align:center}
-  .rule input.f.bad{border-color:var(--bad);color:var(--bad)}
+  .rule input.f.bad{border-color:var(--bad);color:var(--badT)}
   .rule .lab{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted)}
   .rule .grow{flex:1}
   .drawer{border-top:1px dashed var(--line3);margin-top:6px;padding-top:10px}

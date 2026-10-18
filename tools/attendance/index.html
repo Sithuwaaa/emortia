@@ -160,7 +160,7 @@
   .lg-who .nm i{font-style:normal;font-size:11.5px;color:var(--muted)}
   .lg-when{display:flex;align-items:center;gap:10px;min-width:0}
   .lg-when .t{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;width:48px;flex:none}
-  .lg-when .t.late{color:var(--warn)}
+  .lg-when .t.late{color:var(--warnT)}
   .lg-geo{display:flex;flex-direction:column;min-width:0;color:var(--text);text-decoration:none}
   .lg-geo .pl{font-size:13px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .lg-geo .pl i{font-style:normal;color:var(--muted)}
@@ -178,15 +178,15 @@
   .lg-ct.add{margin-left:auto;font-size:17px}
   .lg-row:hover .lg-ct,.lg-ct:focus-visible{opacity:1}
   .lg-ct:hover{border-color:var(--accent);color:var(--accentB)}
-  .lg-ct.off:hover{border-color:var(--bad);color:var(--bad)}
+  .lg-ct.off:hover{border-color:var(--bad);color:var(--badT)}
   @media (hover:none){ .lg-ct{opacity:.7} }
   .lg-h{font-family:'Space Mono',monospace;font-size:13px}
   .lg-st{justify-self:start;white-space:nowrap;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px}
-  .lg-st.ok{background:rgba(95,193,137,.14);color:var(--ok)}
-  .lg-st.lt{background:rgba(242,184,75,.14);color:var(--warn)}
-  .lg-st.os{background:rgba(95,193,137,.14);color:var(--ok)}
-  .lg-st.ab{background:rgba(226,96,122,.14);color:var(--bad)}
-  .lg-st.lv{background:rgba(226,96,122,.10);color:var(--bad)}
+  .lg-st.ok{background:rgba(95,193,137,.14);color:var(--okT)}
+  .lg-st.lt{background:rgba(242,184,75,.14);color:var(--warnT)}
+  .lg-st.os{background:rgba(95,193,137,.14);color:var(--okT)}
+  .lg-st.ab{background:rgba(226,96,122,.14);color:var(--badT)}
+  .lg-st.lv{background:rgba(226,96,122,.10);color:var(--badT)}
   .lg-ref{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)}
 
   /* ---- leave ---- */
@@ -227,15 +227,15 @@
   .lv-row{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line)}
   .lv-date{width:46px;flex:none;display:flex;flex-direction:column;align-items:center;border-radius:10px;
     border:1.5px solid var(--bad);background:repeating-linear-gradient(135deg,rgba(226,96,122,.18) 0 3px,transparent 3px 7px);padding:4px 0}
-  .lv-date .m{font-size:10px;color:var(--bad);letter-spacing:.06em}
+  .lv-date .m{font-size:10px;color:var(--badT);letter-spacing:.06em}
   .lv-date .d{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px;line-height:1.1}
   .lv-who{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
   .lv-who b{font-weight:600;font-size:14px}
   .lv-who i{font-style:normal;font-size:12.5px;color:var(--muted)}
-  .lv-n{font-family:'Space Mono',monospace;font-size:12px;color:var(--bad)}
+  .lv-n{font-family:'Space Mono',monospace;font-size:12px;color:var(--badT)}
   .lv-x{width:32px;height:32px;border-radius:8px;border:1px solid var(--line3);background:transparent;
     color:var(--muted);cursor:pointer;font-size:16px;flex:none}
-  .lv-x:hover{border-color:var(--bad);color:var(--bad)}
+  .lv-x:hover{border-color:var(--bad);color:var(--badT)}
 
   /* ---- team ---- */
   .tm-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
@@ -267,8 +267,8 @@
   .tm-bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;display:flex}
   .tm-nums{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
   .tm-nums b{color:var(--text)}
-  .tm-nums b.w{color:var(--warn)}
-  .tm-nums b.b{color:var(--bad)}
+  .tm-nums b.w{color:var(--warnT)}
+  .tm-nums b.b{color:var(--badT)}
   .tm-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .tm-rm{font-size:12.5px}
   .tm-foot .link{font-size:12.5px}
@@ -322,12 +322,12 @@
     border:1px solid var(--line3);background:transparent;color:var(--text);cursor:pointer;white-space:nowrap}
   .lk-btn.go{border-color:var(--accent);color:var(--accent)}
   .lk-btn.go:hover{background:rgba(var(--accentRGB,234,132,250),.10)}
-  .lk-btn.warn{border-color:rgba(226,96,122,.45);color:var(--bad)}
+  .lk-btn.warn{border-color:rgba(226,96,122,.45);color:var(--badT)}
   .lk-btn.warn:hover{background:rgba(226,96,122,.10);border-color:var(--bad)}
   .lk-note{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:4px;max-width:58ch}
   .lk-warn{margin-top:14px;border:1px solid rgba(242,184,75,.4);background:rgba(242,184,75,.06);
     border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.6;color:var(--muted)}
-  .lk-warn b{color:var(--warn);font-weight:700}
+  .lk-warn b{color:var(--warnT);font-weight:700}
   .lk-extras{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   .lk-ex{display:flex;align-items:center;gap:8px;background:var(--card-2);border:1px solid var(--line3);
     border-radius:999px;padding:6px 12px;font-size:12.5px;color:var(--text)}
@@ -385,7 +385,7 @@
      These come after the plain .dn rule on purpose. They used to sit above it
      and lost every time. */
   .dsh-dh.sat .wd,.dsh-dh.sat .dn{color:#8b8792}
-  .dsh-dh.sun .wd,.dsh-dh.sun .dn{color:var(--bad);opacity:.85}
+  .dsh-dh.sun .wd,.dsh-dh.sun .dn{color:var(--badT);opacity:.85}
   /* The dot says a holiday is here; its colour says which kind. Presence or
      absence of the dot is the signal that does not depend on seeing colour at
      all, which is why it is bigger than it was and has a dark ring round it so
@@ -487,7 +487,7 @@
   .tag{font-size:10.5px;font-family:'Space Mono',monospace;letter-spacing:.1em;
     text-transform:uppercase;border-radius:999px;padding:3px 9px;border:1px solid var(--line);color:var(--muted)}
   .tag-in{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-  .tag-ok{color:var(--ok);border-color:var(--ok)}
+  .tag-ok{color:var(--okT);border-color:var(--ok)}
   .tag-late{background:var(--bad);border-color:var(--bad);color:#fff}
   .tag-out{color:var(--muted)}
   .tag-leave{color:var(--accentB);border-color:var(--accentB)}
@@ -535,7 +535,7 @@
   .addt:hover{opacity:1;border-color:var(--accent);border-style:solid}
   .tw{margin-left:6px;font-size:11px;opacity:0;color:var(--muted)}
   tr:hover .tw{opacity:.55}
-  .tw:hover{opacity:1;color:var(--bad)}
+  .tw:hover{opacity:1;color:var(--badT)}
   .ask input[type=time]{font:inherit;font-size:19px;font-family:'Space Mono',monospace;
     color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:9px;
     padding:9px 11px;margin-top:12px;width:100%}
@@ -1006,8 +1006,8 @@ function viewDash(){
         '<span class="rate">' + (r.rate == null ? '—' : r.rate + '%') + '</span></div>' +
         '<div class="mini">' + pad + r.cells.map(c =>
           '<span title="' + esc(c.tip) + '" style="' + c.st.replace(/width:24px;height:24px/, 'width:100%;aspect-ratio:1;height:auto') + '">' + c.t + '</span>').join('') + '</div>' +
-        '<div class="ft"><span><b style="color:var(--ok)">' + r.p + '</b> present</span>' +
-        '<span><b style="color:var(--bad)">' + r.a + '</b> absent</span>' +
+        '<div class="ft"><span><b style="color:var(--okT)">' + r.p + '</b> present</span>' +
+        '<span><b style="color:var(--badT)">' + r.a + '</b> absent</span>' +
         '<span><b style="color:var(--accent)">' + r.lv + '</b> leave</span></div></div>';
     }).join('') + '</div></div>';
     return h;
@@ -1034,7 +1034,7 @@ function viewDash(){
         '<span class="av">' + esc(((r.who.name || '?').trim()[0] || '?').toUpperCase()) + '</span>' +
         '<span>' + esc(r.who.name) + '</span></div>' +
         r.cells.map(c => '<div class="dsh-c"><span title="' + esc(c.tip) + '" style="' + c.st + '">' + c.t + '</span></div>').join('') +
-        '<div class="dsh-tot"><span style="color:var(--ok)">' + r.p + '</span>' +
+        '<div class="dsh-tot"><span style="color:var(--okT)">' + r.p + '</span>' +
         '<span style="color:' + (r.a ? 'var(--bad)' : 'var(--muted)') + '">' + r.a + '</span>' +
         '<span style="color:' + (r.lv ? 'var(--accent)' : 'var(--muted)') + '">' + r.lv + '</span>' +
         '<b>' + (r.rate == null ? '—' : r.rate + '%') + '</b></div></div>';
@@ -1179,7 +1179,7 @@ function viewDayNew(sheet, day, st, late){
         timeCtl(r, 'in') + '</div>' +
       '<div class="lg-when"><span class="t">' + (esc(r.out) || '&#8212;') + '</span>' +
         (r.closed ? geoCell(r.outGeo, 'var(--accent)')
-         : '<span class="lg-geo"><span class="pl" style="color:var(--ok)">' + (on ? 'Still on site' : '&#8212;') + '</span>' +
+         : '<span class="lg-geo"><span class="pl" style="color:var(--okT)">' + (on ? 'Still on site' : '&#8212;') + '</span>' +
            '<span class="gg">' + (on ? 'No clock-out photo yet' : '') + '</span></span>') +
         timeCtl(r, 'out') + '</div>' +
       '<span class="lg-h">' + (r.hours === '—' ? '&#8212;' : esc(r.hours) + 'h') + '</span>' +
