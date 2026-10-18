@@ -83,31 +83,23 @@ main,footer{position:relative;z-index:1}
   border-bottom:2px solid var(--barRule);
   box-shadow:none;
   overflow:hidden}
-/* Blueprint's setting-out line, borrowed for the bar: a wedge of light
-   crossing it every few seconds. Behind the content, never over it. */
-.hdr::after{
-  content:'';position:absolute;top:0;bottom:0;left:-20%;width:18%;z-index:0;pointer-events:none;
-  background:linear-gradient(90deg,transparent,rgba(169,156,255,.22) 50%,transparent);
-  animation:auSweep 6.5s cubic-bezier(.5,0,.5,1) infinite;
-}
-@keyframes auSweep{ 0%{left:-20%} 70%,100%{left:120%} }
-/* a short bright length travelling the rule beneath the bar, left to right */
-.hdr::before{
-  content:'';position:absolute;bottom:0;left:0;width:34%;height:2px;z-index:1;pointer-events:none;
-  background:linear-gradient(90deg,transparent,var(--accentB),transparent);
-  animation:auRule 3.6s linear infinite;
-}
-@keyframes auRule{ from{transform:translateX(-110%)} to{transform:translateX(330%)} }
+/* ---- THE NAV BAR DOES NOT MOVE, 18 October 2026 ----
+
+   The same four as in _lib/motion.css, stopped the same way: the sweep and
+   the travelling rule removed outright, the status dot kept but still, the
+   mark no longer floating. This skin covers rf-jumper, site-access,
+   site-data and team, which is why both files had to change - the bar in
+   the screenshot that prompted this was an aurora one.
+
+   The mark keeps its glow: that is a box-shadow, not motion. */
+.hdr::after,.hdr::before{content:none}
 /* the status light: the tool is connected, and says so without a word */
 .hdr h1::after{
   content:'';display:inline-block;width:8px;height:8px;border-radius:50%;
   background:var(--accentB);margin-left:10px;vertical-align:middle;
-  animation:auLed 1.5s ease-in-out infinite;
 }
-@keyframes auLed{ 0%,100%{opacity:.25;box-shadow:none} 50%{opacity:1;box-shadow:0 0 10px var(--accentB)} }
 .hdr > *{position:relative;z-index:1}
-.hdr .logo{box-shadow:0 0 22px var(--glow);animation:auFloat 6s ease-in-out infinite}
-@keyframes auFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+.hdr .logo{box-shadow:0 0 22px var(--glow)}
 .hdr h1{font-weight:700;letter-spacing:-.01em}
 .pill{background:rgba(255,255,255,.06);backdrop-filter:blur(8px);border-radius:999px}
 .pill b{color:var(--accentB)}
@@ -142,5 +134,6 @@ main,footer{position:relative;z-index:1}
 .toast{border-radius:999px;background:rgba(26,21,54,.8);backdrop-filter:blur(14px)}
 
 @media (prefers-reduced-motion:reduce){
-  .aurora-layer i,.dust-layer *,.hdr::after,.hdr::before,.hdr h1::after,.hdr .logo,.rrow,.detail{animation:none !important}
+  /* header selectors dropped - the bar no longer animates */
+  .aurora-layer i,.dust-layer *,.rrow,.detail{animation:none !important}
 }

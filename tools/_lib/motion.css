@@ -11,33 +11,34 @@
 .hdr{overflow:hidden}
 .hdr > *{position:relative;z-index:1}
 
-/* a wedge of light crossing the bar every few seconds, behind the content */
-.hdr::after{
-  content:'';position:absolute;top:0;bottom:0;left:-20%;width:18%;z-index:0;pointer-events:none;
-  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--accentB) 24%,transparent) 50%,transparent);
-  animation:mSweep 6.5s cubic-bezier(.5,0,.5,1) infinite;
-}
-@keyframes mSweep{ 0%{left:-20%} 70%,100%{left:120%} }
+/* ---- THE NAV BAR DOES NOT MOVE, 18 October 2026 ----
 
-/* a short bright length travelling the rule beneath the bar */
-.hdr::before{
-  content:'';position:absolute;bottom:0;left:0;width:34%;height:2px;z-index:1;pointer-events:none;
-  background:linear-gradient(90deg,transparent,var(--accentB),transparent);
-  animation:mRule 3.6s linear infinite;
-}
-@keyframes mRule{ from{transform:translateX(-110%)} to{transform:translateX(330%)} }
+   Four things used to animate up here: a wedge of light sweeping across
+   the bar, a bright length running along the rule beneath it, a pulsing
+   status dot after the tool's name, and the mark floating up and down.
+   All stopped, in every tool, on request.
 
-/* the status light after the tool's name */
+   THE SWEEP AND THE RULE ARE REMOVED, NOT PAUSED. Both are pure motion:
+   stopped, the sweep freezes off-screen at left:-20% and the rule freezes
+   as a static bright stripe across the first third of the bar - a stray
+   line nobody asked for. An animation whose only purpose was the movement
+   has nothing left to show once the movement stops.
+
+   THE STATUS DOT STAYS, STILL. It carries meaning - it is the tool's name
+   marker - so only the pulse goes. Without the keyframes it rests at full
+   opacity with no glow, which is what the 50% frame used to look like.
+
+   The aurora skin has its own copy of all four, in skins/aurora.css, and
+   that one covers rf-jumper, site-access, site-data and team. Changing
+   only this file would have left those four moving - which is how an
+   earlier sweep silently missed two tools. */
+.hdr::after,.hdr::before{content:none}
+
+/* the status light after the tool's name - present, not pulsing */
 .hdr h1::after{
   content:'';display:inline-block;width:8px;height:8px;border-radius:50%;
   background:var(--accentB);margin-left:10px;vertical-align:middle;
-  animation:mLed 1.5s ease-in-out infinite;
 }
-@keyframes mLed{ 0%,100%{opacity:.25;box-shadow:none} 50%{opacity:1;box-shadow:0 0 10px var(--accentB)} }
-
-/* the mark, floating */
-.hdr .logo{animation:mFloat 6s ease-in-out infinite}
-@keyframes mFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
 
 /* the site's dust, rising behind everything (injected by motion.js) */
 .dust-layer{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
@@ -53,5 +54,7 @@
 main,footer{position:relative;z-index:1}
 
 @media (prefers-reduced-motion:reduce){
-  .hdr::after,.hdr::before,.hdr h1::after,.hdr .logo,.dust-layer *{animation:none !important}
+  /* the bar no longer animates at all, so only the dust is listed here -
+     naming the header selectors would imply motion that is gone */
+  .dust-layer *{animation:none !important}
 }
