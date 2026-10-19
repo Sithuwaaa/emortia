@@ -1,0 +1,145 @@
+/* node tools/project-update/palette.test.js
+
+   EVERY BUCKET COLOUR MUST SURVIVE BEING READ, IN BOTH THEMES.
+
+   The eleven status hues are used four ways: the KPI tile's 3px rule, its
+   34px/800 number, the By status bar fills, and the chips in the data
+   table. The chip is the strict one and the only one this file checks,
+   because clearing it clears the rest:
+
+       11.5px/700 text in the colour,
+       on background:color-mix(in oklab, <colour> 15%, transparent)
+       over --card,
+       which needs 4.5:1.
+
+   The tint is made FROM the colour, so as the ink darkens the fill darkens
+   with it and the gap closes more slowly than against a fixed background.
+   That is why eight of eleven failed in light mode before this existed.
+
+   WHY THIS TEST READS THE BUCKETS ARRAY RATHER THAN THE STYLESHEET.
+
+   The colour does not reach the element as a literal. BUCKETS[].c is
+   written into an inline style as --k or --c, and the CSS only ever says
+   color:var(--k). The site-wide guard in family.test.js looks for literal
+   token usages like color:var(--ok), so it cannot see a colour that
+   arrives through an inline custom property - which is exactly how this
+   tool's stat row was missed when the fill/text split went through.
+
+   So this file starts from the list of colours instead of from the usage,
+   and a twelfth bucket is checked the moment it is added. */
+const fs = require('fs');
+const path = require('path');
+
+const SRC = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+/* comments are not CSS and are not JavaScript - prose inside one has
+   matched a selector pattern before now and dragged the wrong values in */
+const BARE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ');
+
+let pass = 0, fail = 0;
+const is = (name, got, want) => {
+  const a = JSON.stringify(got), b = JSON.stringify(want);
+  if (a === b) { pass++; return; }
+  fail++; console.log('FAIL ' + name + '\n  got  ' + a + '\n  want ' + b);
+};
+
+/* ---- colour ---- */
+const h2 = h => { h = h.replace('#', '').trim();
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); };
+const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+const L = a => 0.2126 * lin(a[0]) + 0.7152 * lin(a[1]) + 0.0722 * lin(a[2]);
+const CR = (a, b) => { const x = L(a), y = L(b);
+  return +(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)).toFixed(2)); };
+/* the chip's own background: 15% of the colour over the card */
+const chip = (c, card) => CR(c, c.map((v, i) => 0.15 * v + 0.85 * card[i]));
+
+/* ---- the tokens, from BOTH places, in the order the browser resolves them
+
+   THIS IS THE PART THAT WAS WRONG FIRST TIME, and it is worth the words.
+   The tool declares --card and --muted in its own <style>, but
+   category.css loads last and redeclares them !important for the tool's
+   family. index.html alone gives --card #142428 and --muted #5f7b81; the
+   page actually paints #2D1406 and #776558. Measuring a chip against a
+   card the page never paints is worse than not measuring it at all.
+
+   So the tool's own block first, then category.css for this family over
+   the top - which is the cascade. The status hues are tool-local and
+   survive it; the surfaces and --muted come from category.css. */
+const CAT = fs.readFileSync(path.join(__dirname, '..', '_lib', 'category.css'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, ' ');
+const FAMILY = (/<html[^>]*data-cat="([a-z-]+)"/.exec(SRC) || [])[1];
+if (!FAMILY) throw new Error('no data-cat on <html> - cannot know which family governs');
+
+const declsOf = (src, re, what) => {
+  const m = re.exec(src);
+  if (!m) throw new Error('no ' + what + ' found');
+  const out = {};
+  for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) out[d[1]] = d[2];
+  return out;
+};
+
+function tokensOf(theme) {
+  /* this tool is dark-first: dark values on a bare :root, light under
+     html[data-theme="light"]. A wrong selector throws rather than quietly
+     reading an empty block, which is the point of throwing. */
+  const own = declsOf(BARE, theme === 'dark'
+      ? /:root\s*\{([\s\S]*?)\n\s*\}/
+      : /html\[data-theme="light"\]\s*\{([\s\S]*?)\n\s*\}/,
+    theme + ' block in index.html');
+  const cat = declsOf(CAT, theme === 'dark'
+      ? new RegExp('html\\[data-cat="' + FAMILY + '"\\]\\s*\\{([\\s\\S]*?)\\n\\}')
+      : new RegExp('html\\[data-cat="' + FAMILY + '"\\]\\[data-theme="light"\\]\\s*\\{([\\s\\S]*?)\\n\\}'),
+    theme + ' block for family "' + FAMILY + '" in category.css');
+  return Object.assign({}, own, cat);   /* category.css is !important, so it wins */
+}
+
+/* ---- the bucket list, read from the source of truth ---- */
+function buckets() {
+  const m = /const BUCKETS = \[([\s\S]*?)\n\];/.exec(BARE);
+  if (!m) throw new Error('BUCKETS array not found');
+  const rows = [];
+  for (const b of m[1].matchAll(/label:'([^']+)'[^}]*?c:'([^']+)'/g))
+    rows.push({ label: b[1], c: b[2] });
+  return rows;
+}
+
+const B = buckets();
+console.log('\nthe bucket list');
+is('all eleven buckets are read', B.length, 11);
+
+/* THE RULE THAT CAUSED ALL OF THIS */
+const literals = B.filter(b => /^#/.test(b.c));
+is('NO BUCKET COLOUR IS A HEX LITERAL - every one is a token',
+   literals.map(b => b.label + ' ' + b.c), []);
+is('and every one is a var()', B.every(b => /^var\(--[a-z0-9-]+\)$/.test(b.c)), true);
+
+for (const theme of ['dark', 'light']) {
+  const tok = tokensOf(theme);
+  const card = h2(tok['card']);
+  console.log('\n' + theme + '  card ' + tok['card']);
+  for (const b of B) {
+    const name = b.c.replace(/^var\(--|\)$/g, '');
+    const hex = tok[name];
+    is(theme + ' --' + name + ' is declared', !!hex, true);
+    if (!hex) continue;
+    const r = chip(h2(hex), card);
+    const ok = r >= 4.5;
+    if (!ok) console.log('      ' + b.label + '  ' + hex + '  chip ' + r);
+    is(theme + ' ' + b.label + ' clears 4.5 as a chip (' + hex + ' = ' + r + ')', ok, true);
+  }
+}
+
+/* the big number is large text at 3:1 - clearing the chip clears it, but
+   assert it rather than assume the relationship holds for a future hue */
+console.log('\nthe KPI number, 34px/800, needs only 3:1');
+for (const theme of ['dark', 'light']) {
+  const tok = tokensOf(theme), card = h2(tok['card']);
+  for (const b of B) {
+    const hex = tok[b.c.replace(/^var\(--|\)$/g, '')];
+    if (!hex) continue;
+    is(theme + ' ' + b.label + ' big number clears 3', CR(h2(hex), card) >= 3, true);
+  }
+}
+
+console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
+process.exit(fail ? 1 : 0);

@@ -297,7 +297,13 @@ console.log('\n--- no ungoverned chrome anywhere ---');
   /* Colours that MEAN something. They keep their own values on purpose:
      a status chip, a zebra stripe, the jumper chart's own fills, and the
      swatch outline that separates an arbitrary colour from the card. */
-  const STATUS = /^(ok|warn|bad|err|info|wip|idle|zebra|rowhover|swatchEdge|c-[a-z]+|holPoya|holPub|sa-(ok|okBg|warn|warnBg|shadow))$/;
+  /* partial/pending/dispute/dropped joined on 19 Oct. They are the four
+     project-update bucket colours that used to be hex literals in a
+     JavaScript array - which is precisely why they were the two worst
+     contrasts in the tool and why nothing caught them. Becoming tokens is
+     what makes them checkable; tools/project-update/palette.test.js
+     measures all eleven as chips in both themes. */
+  const STATUS = /^(ok|warn|bad|err|info|wip|idle|partial|pending|dispute|dropped|zebra|rowhover|swatchEdge|c-[a-z]+|holPoya|holPub|sa-(ok|okBg|warn|warnBg|shadow))$/;
   /* holPoya and holPub are the two dots on the attendance calendar: a Poya
      day and a public holiday. Which kind of holiday a day is is not something
      a category gets a say in, so they are status and keep their own colours.

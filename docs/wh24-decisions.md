@@ -815,3 +815,72 @@ bright foliage at one end and stayed dark at the other. **Both glows removed**
 – over a flat ground a hung shadow reads as lift; over a photograph it reads
 as a smear. A single crisp rule separates them. Scoped: the other fifteen
 tools keep their glow.
+
+---
+
+# Two more standing rules, 19 October
+
+## A line-oriented grep cannot see a CSS rule
+
+Asked to stop every nav-bar animation, I grepped for lines containing
+`animation` and kept the ones whose **same line** also named `hdr`, `logo`
+or `pill`. It found one source. Measuring `animationName` on the rendered
+page found **seven more, in a fourth file and eight tools**.
+
+Two ways the grep was structurally incapable of finding them, and both
+happened at once:
+
+- **A multi-line rule puts the selector and the animation on different
+  lines.** `.logo{ … \n animation:tLogoFloat … }` – the line carrying
+  `animation:` never mentions `.logo`, so no filter on that line can match
+  it. A grep sees lines; CSS is made of rules.
+- **An element nobody would think to name.** `field-config` animated
+  `#tally`. It is in the bar. It matches none of the words anyone would put
+  in a filter, because the filter is a guess about vocabulary.
+
+**The inventory of what a page does is the computed value, never the source
+text.** A grep is a hint about where to look. It is not an answer, and a
+clean grep is not evidence of absence – only of a filter that matched
+nothing.
+
+What this cost: a commit that said "three sources" and was wrong by seven
+animations, pushed before the measurement ran.
+
+## A hex that no token names is invisible to every guard
+
+The eleven project-update status hues: four were hex literals sitting in a
+JavaScript array, seven were tokens. **The two worst contrasts measured
+anywhere in the tool – 1.73 and 1.96 – were both literals.**
+
+That is not a coincidence, it is the mechanism. A literal has no theme
+pair, so nothing forces anyone to think about the other theme. It appears
+in no stylesheet a guard reads. It cannot be found by searching for token
+usages. The tokenised hues were merely poor and could be measured; the
+untokenised ones could not be checked at all.
+
+**Any new colour gets a token before it gets a usage.**
+
+### And a guard cannot see a colour that is set inline
+
+Worth stating plainly rather than leaving implied, because it is the gap
+that let this tool's stat row escape the fill/text split entirely.
+
+`family.test.js` finds text usages by looking for a literal
+`color:var(--ok)` in a stylesheet. project-update never writes that. The
+bucket colour goes into an inline `style="--k:…"` on the tile and
+`style="--c:…"` on the chip, and the CSS only ever says `color:var(--k)`.
+One indirection, and the colour is beyond the reach of a source-reading
+guard – so when 84 text usages were moved onto the T variants, this tool's
+eleven were not among them and nothing reported a miss.
+
+The fix is not a cleverer regex. It is a test that starts from the **list of
+colours** rather than from the usage: `tools/project-update/palette.test.js`
+reads the `BUCKETS` array and the theme blocks, resolves each colour the way
+the cascade does, and asserts all eleven clear 4.5:1 as a chip in both
+themes. A twelfth bucket is checked the moment it is added.
+
+That test also has to compose `category.css` over the tool's own block,
+because the tool declares `--card:#142428` and `--muted:#5f7b81` while the
+page actually paints `#2D1406` and `#776558`. Reading index.html alone
+measured chips against a card that does not exist – caught because the
+first run disagreed with the browser.

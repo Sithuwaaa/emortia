@@ -48,14 +48,46 @@
     --navy:#0f2126;--navy-2:#16323a;
     --bg:#0c1619;--card:#142428;--card-2:#0f1d21;--line:#1e363c;--line3:#2c4c54;
     --text:#e9f4f6;--muted:#8fa8ad;--zebra:rgba(255,255,255,.018);--rowhover:rgba(31,151,168,.10);
-    /* status hues, each clearly distinct from the teal chrome */
+    /* ---- the eleven status hues, each clearly distinct from the teal chrome
+
+       ALL ELEVEN ARE TOKENS NOW. Four used to be hex literals sitting in
+       the BUCKETS array - #a8c93f, #e8a13c, #e2596b, #5f6f75 - and a hex
+       that no token names is invisible to every guard. That is not a
+       theory: the two worst numbers measured on this page, 1.73 and 1.96,
+       were both hardcoded. The tokenised hues were merely poor; the
+       untokenised ones could not be checked at all.
+
+       Each value is solved for the CHIP, which is the strict rendering:
+       11.5px/700 text in the colour on a 15% tint of itself over the card,
+       needing 4.5:1. The KPI big number (3:1) and the bar fills follow
+       from it. Hue and chroma held in OKLab; lightness only.
+
+       Dark needed two moves, light eight. --partial keeps its lime here at
+       6.80 and only goes olive in light, which is the same
+       two-values-per-token shape --ok has always had. */
     --ok:#34c98b;--warn:#f2764a;--info:#4f9bf0;--wip:#9a8bf2;--idle:#7f979d;
+    --partial:#a8c93f;   /* chip 6.80 */
+    --pending:#e8a13c;   /* chip 5.96 */
+    --dispute:#f06576;   /* was #e2596b, chip 3.98 -> 4.51 */
+    --dropped:#85959c;   /* was #5f6f75, chip 2.90 -> 4.54 */
   }
   html[data-theme="light"]{
     --navy:#12262b;--navy-2:#16323a;
     --bg:#eef5f6;--card:#ffffff;--card-2:#f4fafb;--line:#d5e5e8;--line3:#bcd4d9;
     --text:#10262b;--muted:#5f7b81;--zebra:rgba(0,0,0,.022);--rowhover:rgba(20,125,141,.09);
-    --ok:#1f9a68;--warn:#c2542c;--info:#2f6fd0;--wip:#5a49c6;--idle:#5f7b81;
+    /* eight of the eleven moved here. Every one is its own colour taken
+       darker in OKLab until the chip clears 4.5 - nothing re-hued, so On
+       Air is still green, Dispute still red, Terminated still grey. */
+    --ok:#007748;        /* was #1f9a68, chip 3.01 -> 4.52 */
+    --warn:#b1441a;      /* was #c2542c, chip 3.75 -> 4.53 */
+    --info:#2565c5;      /* was #2f6fd0, chip 4.00 -> 4.53 */
+    --wip:#5a49c6;       /* chip 5.24, unchanged */
+    --idle:#516d72;      /* was #5f7b81, chip 3.78 -> 4.55 */
+    --partial:#567100;   /* was #a8c93f, chip 1.73 -> 4.55 - the lime is
+                            kept in dark, where it measures 6.80 */
+    --pending:#9a5800;   /* was #e8a13c, chip 1.96 -> 4.51 */
+    --dispute:#bb344b;   /* was #e2596b, chip 2.99 -> 4.53 */
+    --dropped:#5b6b71;   /* was #5f6f75, chip 4.30 -> 4.54 */
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);
@@ -434,17 +466,33 @@ function bucketOf(status){
   if (/mobili/.test(s)) return 'mobilize';
   return 'other';
 }
+/* EVERY COLOUR HERE IS A TOKEN, AND THAT IS THE POINT.
+
+   Four of these were hex literals - #a8c93f, #e8a13c, #e2596b, #5f6f75 -
+   and being literals is exactly why they were the worst on the page. A hex
+   that no token names cannot be checked by anything: it has no theme pair,
+   it never appears in a stylesheet a guard reads, and it cannot be found
+   by looking for token usages. The two lowest contrasts measured anywhere
+   in this tool, 1.73 and 1.96, were both of them.
+
+   One colour is one fact. These are read in three renderings - the KPI
+   tile's rule and big number, the By status bar fills, and the chips in
+   the data table - so a literal here is one fact in three places with
+   nothing holding them together.
+
+   project-update.test.js asserts all eleven clear 4.5 as a chip in both
+   themes, reading THIS array, so a twelfth bucket cannot skip the check. */
 const BUCKETS = [
   { k:'onAir', label:'On Air', sub:'live', c:'var(--ok)' },
-  { k:'partial', label:'Partially On Air', sub:'part live', c:'#a8c93f' },
-  { k:'airPending', label:'On Air Pending', sub:'nearly done', c:'#e8a13c' },
+  { k:'partial', label:'Partially On Air', sub:'part live', c:'var(--partial)' },
+  { k:'airPending', label:'On Air Pending', sub:'nearly done', c:'var(--pending)' },
   { k:'commissioning', label:'Commissioning', sub:'install done', c:'var(--info)' },
   { k:'wip', label:'TE WIP', sub:'in progress', c:'var(--wip)' },
   { k:'mobilize', label:'To be Mobilized', sub:'not started', c:'var(--idle)' },
   { k:'hold', label:'On Hold', sub:'blocked', c:'var(--warn)' },
   { k:'tx', label:'Tx Pending', sub:'tx blocked', c:'var(--warn)' },
-  { k:'dispute', label:'Dispute', sub:'blocked', c:'#e2596b' },
-  { k:'terminated', label:'Terminated', sub:'dropped', c:'#5f6f75' },
+  { k:'dispute', label:'Dispute', sub:'blocked', c:'var(--dispute)' },
+  { k:'terminated', label:'Terminated', sub:'dropped', c:'var(--dropped)' },
   { k:'other', label:'Unclassified', sub:'no status', c:'var(--muted)' }
 ];
 const statusColour = s => (BUCKETS.find(b => b.k === bucketOf(s)) || {}).c || 'var(--muted)';
