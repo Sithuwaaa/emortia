@@ -56,7 +56,7 @@
      current file, because it fetches it to build the link - refuses to
      publish anything a stale copy sent. BUMP THIS whenever a change alters
      WHAT is fetched rather than how. Adding a source counts. */
-  var BUILD = '2026-10-05.3src';
+  var BUILD = '2026-10-19.scan';
 
   var SOURCES = [
     { id: 'w8b6c7c686c', phase: 'PH1',  name: 'Material Reservation PH1' },
@@ -191,16 +191,53 @@
   /* every PDF attached anywhere on the card, with the field it hangs on -
      PH2 needs the field, because which field a note is attached to is what
      says which vendor stream it belongs to */
+  /* SCAN is how the sync tells "nothing to fetch" from "could not look".
+
+     filesOf finds attachments by shape: a string field that looks like a
+     JSON array mentioning contentId, holding entries of type 'pdf'. Every
+     one of those is an assumption about WorkHub's payload, and if any of
+     them stops being true this function returns [] - silently, and
+     indistinguishably from a card that genuinely has no documents.
+
+     That is the zero-byte-PDF shape: the step did not work, the code
+     carried on, and the number it printed looked like a real answer. So
+     the scan counts what it SAW, not just what it took, and run() refuses
+     to send anything when the counts say it never found an attachment
+     field at all. */
+  var SCAN;
+  function resetScan() {
+    SCAN = { cards: 0, withField: 0, entries: 0, pdfs: 0, types: {} };
+  }
+  resetScan();
+
   function filesOf(card, only) {
-    var out = [];
+    var out = [], sawField = false;
+    /* PH2 calls this three times per card - once per vendor stream with a
+       field filter, then once across the whole card. Only the unfiltered
+       pass is counted, so a PH2 card is one card in the figures and not
+       three, and a stream filter that matches nothing cannot look like a
+       missing attachment field. */
+    var count = !only;
+    if (count) SCAN.cards++;
     Object.keys(card).forEach(function (k) {
       if (only && only.indexOf(k) < 0) return;
       var v = card[k];
       if (typeof v !== 'string' || v.charAt(0) !== '[' || v.indexOf('contentId') < 0) return;
+      sawField = true;
       json(v, []).forEach(function (f) {
-        if (f && f.type === 'pdf' && f.contentId) out.push({ name: f.name, cid: f.contentId, at: k });
+        if (!f) return;
+        if (count) {
+          SCAN.entries++;
+          var ty = String(f.type === undefined ? '(no type)' : f.type);
+          SCAN.types[ty] = (SCAN.types[ty] || 0) + 1;
+        }
+        if (f.type === 'pdf' && f.contentId) {
+          if (count) SCAN.pdfs++;
+          out.push({ name: f.name, cid: f.contentId, at: k });
+        }
       });
     });
+    if (count && sawField) SCAN.withField++;
     return out;
   }
   var timelineOf = function (tasks) {
@@ -366,6 +403,7 @@
     var since = cfg.sinceIso || ((cfg.since || '2026-08-04') + 'T00:00:00Z');
     var known = cfg.known || {};          /* { ticketId: ['1772793.pdf', …] } */
     var tickets = [], pdfs = [], bufs = [], done = 0;
+    resetScan();
     /* One pass per source, one after another rather than at once, so the
        panel can say which app it is on and a failure names the app it was
        reading. With one source this is exactly what it did before. */
@@ -400,6 +438,36 @@
         });
       });
     }, Promise.resolve()).then(function () {
+      /* ---- REFUSE RATHER THAN REPORT A ZERO IT DID NOT EARN ----
+
+         "0 new GINs" has two causes that look identical on screen: every
+         document was already known, or the sync never recognised a
+         document field in the first place. The second is a broken sync
+         reporting success, and it is the shape that produced the zero-byte
+         PDFs - the step failed, the code carried on, and the number looked
+         like an answer.
+
+         So: if cards were read and NOT ONE carried a field shaped like an
+         attachment list, the payload is not what this file expects. Refuse,
+         say so, and send nothing - a partial write is worse than no write,
+         because the next run treats what landed as already known.
+
+         A fetch that fails is already loud: pool does not catch, and a
+         non-ok response throws with the filename and status. This covers
+         only the silent case. */
+      var why = null;
+      if (tickets.length && SCAN.cards && !SCAN.withField) {
+        why = 'Read ' + tickets.length + ' tickets but found no attachment field on any of them. ' +
+              'WorkHub’s card payload is not the shape this sync expects, so it cannot tell ' +
+              '“no new GINs” from “could not look”. Nothing was sent.';
+      } else if (tickets.length && SCAN.withField && SCAN.entries && !SCAN.pdfs) {
+        var seen = Object.keys(SCAN.types).map(function (k) { return k + '×' + SCAN.types[k]; }).join(', ');
+        why = 'Found ' + SCAN.entries + ' attachment entries across ' + SCAN.withField +
+              ' tickets but none of type “pdf” (saw: ' + seen + '). ' +
+              'The document type has changed, so no GIN could be read. Nothing was sent.';
+      }
+      if (why) { finish(why, true); return; }
+
       tickets.forEach(function (t) { t.files = t.files.map(function (f) { return f.name; }); });
       /* build and sources travel WITH the data, so the page can tell a sync
          that read everything from one that read a third of it and said
@@ -408,7 +476,13 @@
       win.postMessage({ type: 'wh24:data', since: cfg.since, at: new Date().toISOString(),
                         build: BUILD, sources: SOURCES.map(function (s) { return s.phase; }),
                         tickets: tickets, pdfs: pdfs }, EMORTIA, bufs);
-      finish('Sent ' + tickets.length + ' tickets and ' + pdfs.length + ' new GINs to the Emortia tab.');
+      /* A zero now says WHY it is a zero. "0 new GINs" on its own was the
+         thing that could not be read: this spells out that documents were
+         found and were already on file, which is a different sentence from
+         the refusal above. */
+      finish('Sent ' + tickets.length + ' tickets and ' + pdfs.length + ' new GINs to the Emortia tab. ' +
+             '(' + SCAN.pdfs + ' documents seen on ' + SCAN.withField + ' of ' + SCAN.cards + ' tickets' +
+             (pdfs.length ? '' : '; all of them already read') + '.)');
     });
   }
 
