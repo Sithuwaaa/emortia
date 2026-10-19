@@ -366,5 +366,60 @@ is('a rubbish stamp is treated as having seen nothing', W.newsUnseen(feed, 'not 
 is('a collapsed publish counts as the one line it draws, not its sixty rows',
    W.newsUnseen(NEWS(mass), nAt(24 * 7)), 13);
 
+/* ---- written, versus moved -------------------------------------------
+
+   The footer said "689 changed" while the feed said "689 re-synced,
+   nothing changed", one above the other, and both were counting the same
+   rows. sig() decides whether to WRITE and rightly includes WorkHub's own
+   wh_updated_at; sigReal() decides whether anything MOVED and must not.
+
+   Both live in the page rather than this module, so they are lifted out
+   and executed here - what is asserted is their behaviour, not their
+   text. If either is renamed this test fails loudly rather than silently
+   checking nothing. */
+{
+  const fs = require('fs'), path = require('path');
+  const page = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  /* Regex LITERALS, not strings handed to new RegExp: a string loses every
+     backslash to the string parser first, so \s becomes s and the pattern
+     quietly matches nothing. That failed loudly here only because lift
+     throws when it finds nothing - which is exactly why it throws. */
+  const lift = (name, re) => {
+    const m = re.exec(page);
+    if (!m) throw new Error(name + ' not found in index.html - was it renamed?');
+    return eval('(' + m[1] + ')');
+  };
+  const sig = lift('sig', /const sig = (t => JSON\.stringify\(\[[\s\S]*?\]\));/);
+  const sigReal = lift('sigReal', /const sigReal = (t => JSON\.stringify\(\[[\s\S]*?\]\));/);
+  const base = { site: 'QQ0248', site_name: 'Inv', wo: 'W', reservation: '1780194',
+    stage: 'System Issuance Done - ACE', team: 'T', status: 'S',
+    wh_created_at: '2026-10-13T00:00:00Z', wh_updated_at: '2026-10-19T08:08:00Z',
+    done_at: null, wh_collected_at: null, timeline: [{ n: 'A', s: 'DONE', c: '1', d: '2' }],
+    lines: [{ code: 'X' }], gins: [], phase: 'PH1', workflow: 'w' };
+  const copy = (f) => { const o = JSON.parse(JSON.stringify(base)); f(o); return o; };
+  const wrote = (b) => sig(base) !== sig(b);
+  const moved = (b) => sigReal(base) !== sigReal(b);
+
+  is('identical: neither',            [wrote(base), moved(base)], [false, false]);
+  /* the whole point: WorkHub bumps its stamp across the estate in bulk */
+  is('WorkHub stamp only: write, no move',
+     [wrote(copy(o => o.wh_updated_at = '2026-10-19T09:30:00Z')),
+      moved(copy(o => o.wh_updated_at = '2026-10-19T09:30:00Z'))], [true, false]);
+  is('timeline timestamps only: write, no move',
+     [wrote(copy(o => o.timeline[0].d = '3')),
+      moved(copy(o => o.timeline[0].d = '3'))], [true, false]);
+  /* and the things that must always count as a move */
+  is('a stage move counts',    moved(copy(o => o.stage = 'Material Shortage - ACE')), true);
+  is('documents arriving counts', moved(copy(o => o.gins = [{ gi: '1' }])), true);
+  is('a collection counts',    moved(copy(o => o.wh_collected_at = '2026-10-20T00:00:00Z')), true);
+  is('material lines count',   moved(copy(o => o.lines = [{ code: 'Y' }])), true);
+  is('a reservation appearing counts', moved(copy(o => o.reservation = '1780195')), true);
+  /* anything that moves must also be written - a move the writer misses
+     would never reach the database at all */
+  ['stage', 'reservation', 'site'].forEach(k => {
+    is('a changed ' + k + ' is also written', wrote(copy(o => o[k] = 'ZZZ')), true);
+  });
+}
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

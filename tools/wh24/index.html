@@ -430,6 +430,7 @@
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help}
 
   /* ---- where the search found it ---- */
+  .quiet{opacity:.5}
   .who .hit{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-top:5px;
     font:11.5px 'Space Mono',monospace;min-width:0}
   .who .hit .hl{flex:none;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
@@ -1755,7 +1756,32 @@ const sig = t => JSON.stringify([t.site, t.site_name, t.wo, t.reservation, t.sta
   t.wh_created_at, t.wh_updated_at, t.done_at, t.wh_collected_at, t.timeline, t.lines, t.gins,
   t.phase, t.workflow]);
 
+/* WHAT ACTUALLY MOVED, as against what was merely written.
+
+   sig() decides whether to WRITE, and it is right to include
+   wh_updated_at and timeline: if WorkHub's stamp advanced we want the
+   fresh value stored. But it is wrong to call that a CHANGE, and the two
+   questions had one answer.
+
+   WorkHub touches wh_updated_at across the estate in bulk - a run of
+   tickets all stamped 08:08, 08:09 - and every one of them then differs by
+   signature while its state, stage, lines and documents are identical. So
+   the footer said "689 changed" and the feed said "689 re-synced, nothing
+   changed", one above the other, and both were reporting the same rows.
+
+   sigReal is sig without the two fields that move on their own:
+   wh_updated_at, and the timeline whose task timestamps move with it. A
+   real stage move still shows, because `stage` is read off the timeline's
+   current node and is compared here. */
+const sigReal = t => JSON.stringify([t.site, t.site_name, t.wo, t.reservation, t.stage, t.team,
+  t.status, t.done_at, t.wh_collected_at, t.lines, t.gins, t.phase, t.workflow]);
+
 let PENDING = null;
+/* How many of PENDING actually moved, as against being rewritten because
+   WorkHub's own timestamp advanced. Carried beside PENDING because the
+   publish happens in a different handler from the comparison, and the
+   count recorded against the sync has to be the one a person can use. */
+let PENDING_MOVED = 0;
 /* Every row the last sync produced, changed or not, and the bytes it brought
    back. The upload pass needs both: a document can belong to a row that did
    not otherwise change, and uploading only what is in PENDING would leave
@@ -1772,7 +1798,7 @@ function dlg(msg, opts){
   if (opts.changes) $('syncChg').innerHTML = opts.changes;
   $('syncGo').hidden = !opts.go;
 }
-$('syncClose').onclick = () => { $('syncDlg').classList.remove('on'); PENDING = null; };
+$('syncClose').onclick = () => { $('syncDlg').classList.remove('on'); PENDING = null; PENDING_MOVED = 0; };
 
 async function receive(data){
   if (!OWNER){ dlg('Only Sithara can sync from WorkHub24.'); return; }
@@ -1924,7 +1950,7 @@ async function receive(data){
        Bulk come back as one, and for PH1 rowsFor IS record. */
     const rows = W.rowsFor(W.attachDocs(raw, docs));
     const ph = raw.phase || '?';
-    const p = acc.byPhase[ph] || (acc.byPhase[ph] = { cards: 0, rows: 0, fresh: 0, changed: 0, same: 0, none: 0 });
+    const p = acc.byPhase[ph] || (acc.byPhase[ph] = { cards: 0, rows: 0, fresh: 0, changed: 0, touched: 0, same: 0, none: 0 });
     p.cards++;
     acc.rows += rows.length; p.rows += rows.length;
     /* A card that becomes nothing is the single biggest piece of the gap, and
@@ -1941,7 +1967,12 @@ async function receive(data){
       produced.push(rec);
       const old = byKey[KEY(rec)];
       if (old && sig(old) === sig(rec)){ acc.same++; p.same++; return; }
-      if (old){ acc.changed++; p.changed++; } else { acc.fresh++; p.fresh++; }
+      /* written, but did anything move? A row whose only difference is
+         WorkHub's own stamp is counted apart, so the number on screen is
+         the number of tickets that did something. */
+      const moved = !old || sigReal(old) !== sigReal(rec);
+      if (old && !moved){ acc.touched++; p.touched = (p.touched || 0) + 1; }
+      else if (old){ acc.changed++; p.changed++; } else { acc.fresh++; p.fresh++; }
       const was = old ? W.state(old, mk(old)) : null, now = W.state(rec, mk(rec));
       /* WHAT IT WAS, written onto the row as it goes out.
          synced_at says the row was written; it does not say what moved - a
@@ -1954,7 +1985,14 @@ async function receive(data){
       rec.prev_state = old ? was : '';
       out.push(rec);
       const who = '#' + rec.id + (rec.stream ? ' ' + esc(rec.stream) : '');
-      lines.push(`<span>${who} ${esc(rec.site || '')} · ${old ? (was === now ? 'updated' : esc(stLabel(was)) + ' → <b>' + esc(stLabel(now)) + '</b>') : 'new · <b>' + esc(stLabel(now)) + '</b>'}</span>`);
+      /* "updated" was said for a row whose only difference was WorkHub's
+         own timestamp, which is how a list of 689 nothings came to look
+         like a list of 689 changes. A row that did not move says so. */
+      const what = !old ? 'new · <b>' + esc(stLabel(now)) + '</b>'
+                 : !moved ? '<i>re-synced, nothing changed</i>'
+                 : was === now ? 'updated'
+                 : esc(stLabel(was)) + ' → <b>' + esc(stLabel(now)) + '</b>';
+      lines.push(`<span${moved || !old ? '' : ' class="quiet"'}>${who} ${esc(rec.site || '')} · ${what}</span>`);
     });
   });
   /* Printed whether or not anything changed: the reason this exists is that
@@ -1963,10 +2001,15 @@ async function receive(data){
     const per = Object.keys(acc.byPhase).map(k => {
       const p = acc.byPhase[k];
       return `${esc(k)} ${p.cards} card${p.cards === 1 ? '' : 's'} → ${p.rows} row${p.rows === 1 ? '' : 's'}` +
+             (p.touched ? ` · ${p.touched} re-synced` : '') +
              (p.none ? ` (${p.none} produced none)` : '');
     }).join(' · ');
     return `<div class="tally"><b>${acc.cards} cards → ${acc.rows} rows</b> · ` +
-      `${acc.fresh} new · ${acc.changed} changed · ${acc.same} already matched` +
+      `${acc.fresh} new · ${acc.changed} changed` +
+      /* kept separate from "changed", and said in words: these rows WERE
+         written, so the sync did work - they simply did not move. */
+      (acc.touched ? ` · ${acc.touched} re-synced (WorkHub’s timestamp only)` : '') +
+      ` · ${acc.same} already matched` +
       (acc.none.length ? ` · ${acc.none.length} card${acc.none.length === 1 ? '' : 's'} produced no row` : '') +
       `<span>${per}</span>` +
       (acc.none.length ? `<span>No row: ${acc.none.slice(0, 12).map(n => '#' + n.id + ' ' + esc(n.why)).join(' · ')}` +
@@ -1995,10 +2038,22 @@ async function receive(data){
     return;
   }
   PENDING = out;
+  PENDING_MOVED = acc.fresh + acc.changed;
   PRODUCED = produced;
   const ready = out.filter(r => W.state(r, mk(r)) === 'ready').length;
-  dlg(`<b>${out.length}</b> row${out.length === 1 ? '' : 's'} to publish${ready ? ` – <b>${ready}</b> can be collected` : ''}.` +
-      pdfNote() + tally(),
+  /* LEADS WITH WHAT MOVED, not with how many rows get written. "689 rows to
+     publish" is a fact about the database; "2 tickets moved" is the fact
+     being asked for. The write count stays, as the smaller half of the
+     sentence, because it is still how you tell a sync that did work from
+     one that did not. */
+  const moved = acc.fresh + acc.changed;
+  const head = moved
+    ? `<b>${moved}</b> ticket${moved === 1 ? '' : 's'} moved${ready ? ` – <b>${ready}</b> can be collected` : ''}` +
+      (acc.touched ? `, and ${acc.touched} re-synced unchanged` : '') +
+      ` · ${out.length} row${out.length === 1 ? '' : 's'} to write.`
+    : `<b>Nothing moved.</b> ${out.length} row${out.length === 1 ? '' : 's'} will be rewritten ` +
+      `because WorkHub’s own timestamp advanced on them.`;
+  dlg(head + pdfNote() + tally(),
       { changes: lines.join(''), go: true });
 }
 $('syncGo').onclick = async () => {
@@ -2065,7 +2120,7 @@ $('syncGo').onclick = async () => {
     await window.DB.wh24Publish(PENDING, (n, of) => dlg(`Publishing ${n} of ${of}…`, { pct: n / of }));
     /* published:true moves BOTH times - this is the one case where checking
        and changing happened together */
-    await window.DB.wh24NoteCheck({ tickets: TICKETS.length, changed: PENDING.length,
+    await window.DB.wh24NoteCheck({ tickets: TICKETS.length, changed: PENDING_MOVED,
                                     by: ME || null, published: true }).catch(() => {});
     /* A SILENT NO-OP IS WHAT PUT US HERE. The first version reported nothing
        when it stored nothing, because both clauses were conditional on a
