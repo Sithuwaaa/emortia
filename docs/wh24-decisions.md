@@ -969,3 +969,119 @@ as in the rule above.
 
 **Write regex literals.** `/const sig = (t => JSON\.stringify\(\[[\s\S]*?\]\));/`
 cannot lose a backslash, because nothing parses it as a string first.
+
+---
+
+# The main site is settled, 19 October
+
+**The songs and the poems are finished work. `Emortia.html`, `media/` and
+the homepage are not where work happens.**
+
+Do not restructure them, do not remove files from them, and do not
+optimise them unless Sithara asks for that specific thing by name. The
+tools are where changes are made.
+
+## A file in media/ that nothing references is not therefore spare
+
+This is the rule that was missing, and it cost a commit that had to be
+reverted before it was pushed.
+
+I was asked about "44 MB of unreferenced originals" and I treated the PNGs
+and JPEGs in `media/audio/art/` and `media/poems/art/` as masters sitting
+beside their exports - redundant because `index.html` did not ask for
+them. They are not. Separate photos are kept for separate purposes, and
+**the reason is usually not in the repository at all.**
+
+The evidence was already in front of me and I read it as a near miss
+rather than as the finding it was: `lyric-video` was still loading seven
+of those PNGs directly, and removing them would have broken video
+rendering with no error. The homepage had been converted months earlier,
+so the folder looked finished. Seven of twenty-two were live for a reason
+that lived in a different tool. The other fifteen may be live for reasons
+that live nowhere in the code.
+
+**"Nothing links to it" is evidence about the code, not about the file.**
+If something in `media/` looks redundant, ask - do not remove it.
+
+## What was kept from that work
+
+Nothing of the removal. 22 files, 42.4 MB, all still tracked; `.gitignore`
+untouched; `lyric-video` back on the PNG masters it was always using.
+
+Two things are kept because they are true regardless:
+
+**The history is not purged** - see the decision below. That reasoning
+never depended on the masters being spare.
+
+**Measure the source before re-encoding.** I re-exported the `@2x` album
+art at 1920 to cover the video tool's largest output, then measured and
+found the masters are themselves only 1800px. There was nothing to gain
+and the re-encode would have cost quality for no extra detail. Reverted
+before it reached a commit.
+
+## And the clone stays slow, deliberately
+
+42 MB is slow, not dangerous. Clone speed is not worth touching the side
+of the site that is finished.
+
+---
+
+# The history is not purged, 19 October
+
+Recorded in its own right, because the reasoning holds whatever happens to
+the files themselves - it survived the revert above unchanged.
+
+The repository carries about 42 MB of image masters in its history and
+will keep carrying them. **The slow clone is accepted, deliberately.**
+
+Only a history rewrite removes a blob. That rewrite is what is being
+refused.
+
+## Why
+
+**A rewrite changes every SHA in the repository, and this file cites
+SHAs.** `8063524` is the commit explaining why `thissema@2x` exists at
+1800px rather than 900; other entries name other commits. After a purge
+those citations point at objects that do not exist, and the decision
+record becomes a document full of dead references - worth less than the
+clone time it bought.
+
+That is the whole reason. Not risk, not effort: **the record is the
+asset**, and a rewrite damages it.
+
+## The exception, which is not this
+
+**The two lookup datasets were purged**, and that was right. They held
+real Dialog site codes, equipment serials and people's names in a public
+repository. Leaving them was a data exposure, and an exposure outranks
+everything, including this record.
+
+**Bulk alone does not.** The question to ask of any future purge is not
+"how big is it" but "is it exposed". If the answer is no, the answer to
+the purge is no.
+
+---
+
+# If no ink clears the fill, the fill is wrong
+
+A small rule with a wide reach, from the feed's status glyphs.
+
+I needed an 11px glyph on a coloured chip. Filled with the light `--bad`
+(`#c2405c`), it needs 4.5:1 against that fill - and **even pure black
+reaches only 4.18**. There was no ink to find. I had been searching for
+one.
+
+**When no ink clears the contrast floor on a fill, the problem is the
+device, not the colour.** Stop looking for a darker ink and change what is
+being drawn: outlined instead of filled, text on the page's own ground
+instead of on a chip, a larger glyph that qualifies as large text.
+
+The glyphs are outlined now, which also puts each token back on the job it
+was solved for - the T variants are text colours, and they are being used
+as text.
+
+This is the same failure as using a token for a job it was not solved
+for, caught one step later. `family.test.js` refused the first attempt
+(T variants as fills) and measured the second (base tokens, 4.18). Both
+times the guard was right and my instinct was to keep adjusting the
+colour.
