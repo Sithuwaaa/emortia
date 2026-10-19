@@ -428,6 +428,19 @@
      hover and on the expanded ticket. */
   .who .l3{font:11.5px 'Space Mono',monospace;color:var(--muted);opacity:.85;margin-top:3px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help}
+
+  /* ---- where the search found it ---- */
+  .who .hit{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-top:5px;
+    font:11.5px 'Space Mono',monospace;min-width:0}
+  .who .hit .hl{flex:none;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--bg);background:var(--accentB);border-radius:4px;padding:1px 6px}
+  .who .hit .hv{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+  .who .hit .more{flex:none;color:var(--muted);font-size:10.5px}
+  /* the matched run itself. A background alone goes muddy on the row's own
+     tint, so it carries its own ink as well. */
+  .who .hit mark{background:var(--accentBg);color:var(--accent-ink,var(--text));
+    border-radius:3px;padding:0 2px;font-weight:700}
+  html[data-theme="dark"] .who .hit mark{background:var(--accentB);color:var(--bg)}
   /* Which WorkHub app the row came from. The three are different kinds of
      thing - a warehouse reservation, a site work task, a direct request - and
      what "collect" means is not identical across them, so the row says which
@@ -1101,7 +1114,30 @@ function workbook(list){
   return keys.map(k => ({ site: k, sheet: sheetName(used, k), aoa: W.sheet(by.get(k), MARKS, today()) }));
 }
 
-function card(t){
+/* WHERE THE SEARCH FOUND IT, on the row.
+
+   Searching a serial or a GI number used to return a ticket and leave you
+   to work out which of its fields carried the number - on a card with
+   three material lines and two serials that is a hunt, and it is the one
+   thing you came to the search to be told.
+
+   One chip under the title: the field's own name, the value, and the
+   matched run picked out inside it. Only the best hit is shown, with a
+   count when there are more, because six chips for one reservation
+   repeated down the lines is noise rather than an answer. */
+function hitChip(t, q){
+  if (!q || !q.trim()) return '';
+  const hits = W.matchesAt(t, q);
+  if (!hits.length) return '';
+  const h = hits[0];
+  const mark = esc(h.value.slice(0, h.at)) + '<mark>' +
+               esc(h.value.slice(h.at, h.at + h.len)) + '</mark>' +
+               esc(h.value.slice(h.at + h.len));
+  const more = hits.length > 1 ? `<span class="more">+${hits.length - 1} more</span>` : '';
+  return `<div class="hit"><span class="hl">${esc(h.label)}</span><span class="hv">${mark}</span>${more}</div>`;
+}
+
+function card(t, q){
   const s = stOf(t), st = STATES[s] || STATES.other;
   return `<details class="tk s-${s}${SEL.has(KEY(t)) ? ' picked' : ''}" data-key="${esc(KEY(t))}" data-id="${t.id}">
     <summary>
@@ -1119,7 +1155,7 @@ function card(t){
            looking for it in WorkHub, and a row that shows only a dash and a
            ticket number is a row you cannot act on. Truncated by CSS here,
            whole on the expanded ticket and on hover. */
-        t.title ? `<div class="l3" title="${esc(t.title)}">${esc(t.title)}</div>` : ''}</div>
+        t.title ? `<div class="l3" title="${esc(t.title)}">${esc(t.title)}</div>` : ''}${hitChip(t, q)}</div>
       <div class="wo">${esc(t.wo || '')}</div>
       ${daysCell(t)}
       <span class="chev">›</span>
@@ -1241,7 +1277,7 @@ function render(fresh){
     return;
   }
   const open = new Set([...el.querySelectorAll('details[open]')].map(d => d.dataset.key));
-  el.innerHTML = list.map(card).join('');
+  el.innerHTML = list.map(t => card(t, q)).join('');
   el.querySelectorAll('details').forEach(d => {
     const t = TICKETS.find(x => KEY(x) === d.dataset.key);
     d.addEventListener('toggle', () => { if (d.open && !d.dataset.filled){ fill(d, t); d.dataset.filled = 1; } });

@@ -978,16 +978,57 @@
 
   /* A ticket, a site, a name, a code, a reservation, a GI number or a serial:
      whatever is to hand at the warehouse counter finds the ticket. */
-  function matches(t, q) {
-    q = s(q).toUpperCase();
-    if (!q) return true;
-    var hay = [t.id, t.site, t.site_name, t.wo, t.reservation, t.stage,
-               t.stream, t.order_no, t.grn, t.phase];
-    (t.lines || []).forEach(function (l) {
-      hay.push(l.code, l.desc);
-      if (l.gin) { hay.push(l.gin.res, l.gin.gi); hay = hay.concat(l.gin.sn || []); }
+  /* WHERE it matched, not just whether.
+
+     A search at the warehouse counter is almost always one number off a
+     label - a serial, a reservation, a GI number - and the answer "this
+     ticket" is only half of it. Which of a ticket's thirty fields carried
+     that number is the other half, and on a card with three material lines
+     and two serials it is not obvious by eye.
+
+     So the search keeps the hit: the field's own name, the value it was
+     found in, and where in that value. matchesAt returns every hit, best
+     first; matches is the same question asked for a yes or no, kept
+     because three call sites only want the boolean. */
+  var FIELDS = [
+    ['id', 'Ticket'], ['reservation', 'Reservation'], ['wo', 'Indent / WO'],
+    ['site', 'Site'], ['site_name', 'Site name'], ['grn', 'GRN'],
+    ['order_no', 'Order'], ['stage', 'Stage'], ['stream', 'Stream'], ['phase', 'Source']
+  ];
+  function matchesAt(t, q) {
+    q = s(q).toUpperCase().trim();
+    if (!q || !t) return [];
+    var out = [];
+    var take = function (label, value, extra) {
+      var v = s(value); if (!v) return;
+      var at = v.toUpperCase().indexOf(q);
+      if (at < 0) return;
+      out.push({ label: label, value: v, at: at, len: q.length,
+                 line: extra && extra.line, code: extra && extra.code });
+    };
+    FIELDS.forEach(function (f) { take(f[1], t[f[0]]); });
+    (t.lines || []).forEach(function (l, i) {
+      var ctx = { line: i, code: s(l.code) };
+      take('Material code', l.code, ctx);
+      take('Description', l.desc, ctx);
+      if (l.gin) {
+        take('GIN reservation', l.gin.res, ctx);
+        take('GI number', l.gin.gi, ctx);
+        (l.gin.sn || []).forEach(function (sn) { take('Serial', sn, ctx); });
+      }
     });
-    return hay.some(function (v) { return s(v).toUpperCase().indexOf(q) >= 0; });
+    /* An exact whole-value hit beats one buried inside a longer string, and
+       a short field beats a long one - searching 25782 should say Ticket,
+       not Description, when both contain it. */
+    out.sort(function (a, b) {
+      var ea = a.value.length === q.length ? 0 : 1, eb = b.value.length === q.length ? 0 : 1;
+      return ea - eb || a.value.length - b.value.length;
+    });
+    return out;
+  }
+  function matches(t, q) {
+    if (!s(q).trim()) return true;
+    return matchesAt(t, q).length > 0;
   }
 
   /* ------------------------------------------------------- the dashboard
@@ -1429,7 +1470,7 @@
            isPdf: isPdf, PDF_MIN: PDF_MIN, docName: docName, docNames: docNames,
            match: match, record: record, localDay: localDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
-           issuing: issuing, issueCheck: issueCheck, matches: matches, sheet: sheet,
+           issuing: issuing, issueCheck: issueCheck, matches: matches, matchesAt: matchesAt, sheet: sheet,
            pipeline: pipeline, pickList: pickList,
            HEADERS: HEADERS };
 }));

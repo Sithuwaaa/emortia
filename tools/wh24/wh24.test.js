@@ -108,6 +108,33 @@ is('by gi', W.matches(F, '4932180605'), true);
 is('by site', W.matches(F, 'mr50'), true);
 is('miss', W.matches(F, 'KU0361'), false);
 
+/* ---- and WHERE it was found, which is the half the counter needs ----
+
+   A hit has to name the field, because "this ticket" does not tell you
+   which of three material lines carried the serial you typed. */
+const found = (q) => W.matchesAt(F, q);
+is('a serial says it is a serial',      found('ea8d945522')[0].label, 'Serial');
+is('and gives the value as stored',     found('ea8d945522')[0].value, 'EA8D945522');
+is('with the run it matched',           [found('ea8d945522')[0].at, found('ea8d945522')[0].len], [0, 10]);
+is('a GI number names itself',          found('4932180605')[0].label, 'GI number');
+is('a material code too',               found('1000026380')[0].label, 'Material code');
+is('a partial site hit keeps its offset', [found('5049')[0].label, found('5049')[0].at], ['Site', 2]);
+is('a description hit says so',         found('RADIO')[0].label, 'Description');
+is('a miss finds nowhere',              found('KU0361'), []);
+is('an empty query is not a search',    found(''), []);
+is('and the boolean still agrees with it',
+   [W.matches(F, 'RADIO'), W.matches(F, 'nope'), W.matches(F, '')], [true, false, true]);
+
+/* the shortest, most exact field wins: 25293 is the ticket, and it also
+   appears nowhere else - but when a value is in two places the exact one
+   must lead, or searching a reservation reports a Description */
+const Two = { id: 1772833, reservation: '1772833', lines: [
+  { code: 'X', desc: 'note for 1772833', gin: { res: '1772833', gi: '1', sn: [] } }] };
+is('exact whole-value hit leads', W.matchesAt(Two, '1772833')[0].label, 'Ticket');
+is('and the buried one is not first',
+   W.matchesAt(Two, '1772833').map(h => h.label).indexOf('Description') > 0, true);
+is('every place it occurs is kept', W.matchesAt(Two, '1772833').length, 4);
+
 /* ---- the sheet ---- */
 const sh = W.sheet([T, R], { '25490|': { collected_on: null } }, '2026-10-01');
 is('headers', sh[0].length, 29);
