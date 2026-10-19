@@ -421,5 +421,76 @@ is('a collapsed publish counts as the one line it draws, not its sixty rows',
   });
 }
 
+
+/* ---- the digest: what a person reads after a sync ---------------------
+
+   news() gives one entry per event, which after a maintenance run is six
+   hundred lines of "re-synced" with the two real changes buried in them.
+   newsDigest buckets per publish, groups by where each ticket LANDED, and
+   counts the quiet rows without listing them.
+
+   The quiet case matters most: a sync that ran and found nothing must not
+   look like a failure, because that is the glance that decides whether to
+   open the tool at all. */
+{
+  const NOW = '2026-10-19T12:00:00Z';
+  const ago = h => new Date(Date.parse(NOW) - h * 3600000).toISOString();
+  const RESERVING = 'Material Reservation - Infomate Team';
+  const mk = (id, stage, at) => ({ id: id, stream: '', site: 'QQ0' + id, site_name: 'Inv',
+    stage: stage, synced_at: at, timeline: [], lines: [], gins: [] });
+  const busy = ago(1), quietRun = ago(3);
+
+  /* two rejected and one brand new in the busy run, sixty rewritten in the
+     earlier one. prev_state is set from the state the row computes to, so
+     "quiet" means what it says rather than what the fixture asserts. */
+  const rows = [];
+  for (let i = 1; i <= 2; i++){ const t = mk(200 + i, 'Rejected', busy); t.prev_state = 'reserving'; rows.push(t); }
+  const fresh = mk(300, RESERVING, busy); fresh.prev_state = ''; rows.push(fresh);
+  for (let i = 1; i <= 60; i++){
+    const t = mk(400 + i, RESERVING, quietRun); t.prev_state = W.state(t, null); rows.push(t);
+  }
+  const d = W.newsDigest(W.news(rows, {}, { now: NOW, days: 7 }));
+
+  is('one bucket per publish',        d.syncs.length, 2);
+  is('newest publish first',          d.syncs[0].at, busy);
+  is('the busy run moved three',      d.syncs[0].moved, 3);
+  is('and it groups by where they landed',
+     d.syncs[0].groups.map(g => g.key + 'x' + g.n), ['rejectedx2', 'newx1']);
+  is('a new ticket is its own group, not folded into a state',
+     d.syncs[0].groups.filter(g => g.kind === 'new').length, 1);
+  is('every grouped ticket is still named',
+     d.syncs[0].groups[0].items.map(x => x.id).sort(), [201, 202]);
+
+  /* the maintenance run */
+  is('the quiet run moved nothing',   d.syncs[1].moved, 0);
+  is('and counted all sixty',         d.syncs[1].quiet, 60);
+  is('with no groups to draw',        d.syncs[1].groups.length, 0);
+
+  /* THE QUIET CASE ON ITS OWN - the shape the headline is written from */
+  const onlyQuiet = [];
+  for (let i = 1; i <= 689; i++){
+    const t = mk(500 + i, RESERVING, busy); t.prev_state = W.state(t, null); onlyQuiet.push(t);
+  }
+  const q = W.newsDigest(W.news(onlyQuiet, {}, { now: NOW, days: 7 }));
+  is('a sync where nothing moved is still a sync', q.syncs.length, 1);
+  is('nothing moved',                 q.syncs[0].moved, 0);
+  is('all of it is quiet',            q.syncs[0].quiet, 689);
+  is('and there is nothing to list',  q.syncs[0].groups.length, 0);
+
+  /* a row written before 044 says "unknown", which is NOT "unchanged" */
+  const old = mk(600, RESERVING, busy); old.prev_state = null;
+  const u = W.newsDigest(W.news([old], {}, { now: NOW, days: 7 }));
+  is('an unknown previous state is not counted as quiet', u.syncs[0].quiet, 0);
+  is('it is reported as having moved',  u.syncs[0].moved, 1);
+
+  /* a hand-typed collection date belongs to no sync */
+  const marked = mk(700, RESERVING, busy); marked.prev_state = W.state(marked, null);
+  const m = W.newsDigest(W.news([marked],
+    { '700|': { collected_on: '2026-10-19', updated_at: ago(0.5), collected_by: 'S' } },
+    { now: NOW, days: 7 }));
+  is('a mark is its own list, not bucketed into a publish', m.byHand.length, 1);
+  is('and does not inflate a sync bucket', m.syncs.length, 0);
+}
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

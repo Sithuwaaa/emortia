@@ -936,3 +936,36 @@ sign-in screen is a guess, not a specification. The same project's
 written by an author who said in the same breath that they could not see
 the result; measured, it would have stretched the calendar to three times
 the screen. Measuring beats a design note that was never rendered.
+
+## A test that does not change the assertion count is not running
+
+19 October. A block of eleven assertions was appended to `wh24.test.js`
+after the line that prints the summary. Every one of them executed; none of
+them was counted. The run said **131 passed, 0 failed** before and **131
+passed, 0 failed** after, and the only tell was that the number had not
+moved.
+
+**After adding assertions, check the count moved by roughly what was
+added.** 131 → 142 is the proof they ran. 131 → 131 means they did not,
+however green the output looks.
+
+This is the same family as the guard rule, and slightly worse. A relaxed
+guard reports success for code it did examine; a guard that never executes
+reports success for code nothing examined, and converts "unverified" into
+"verified" with no step in between where anyone could notice. A suite that
+passes without running its checks is more dangerous than no suite, because
+it is trusted.
+
+## A regex built from a string loses its backslashes
+
+The same day: `new RegExp('const ' + name + ' = (t => JSON\.stringify...')`
+written into a file through a shell heredoc arrived as `JSON\.stringify`,
+the string parser ate the single backslash, and the pattern became
+`JSON.stringify` with `\s` reduced to `s`. It matched nothing.
+
+It surfaced only because the helper throws when it finds nothing. Had it
+returned null and been skipped, the assertions would have vanished exactly
+as in the rule above.
+
+**Write regex literals.** `/const sig = (t => JSON\.stringify\(\[[\s\S]*?\]\));/`
+cannot lose a backslash, because nothing parses it as a string first.

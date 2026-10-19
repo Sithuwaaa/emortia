@@ -225,6 +225,41 @@
   .newspop .ne.s-collected .nwhat b{color:var(--okT)}
   .newspop .nmore{background:none;border:0;padding:0;cursor:pointer;text-align:left;
     font:inherit;color:var(--accentB);text-decoration:underline;text-underline-offset:2px}
+  /* ---- the digest ----
+     A block per sync: a heading, then one line per place tickets landed,
+     then the maintenance count in muted type at the bottom. */
+  .newspop .nhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    margin:10px 0 4px;padding-top:9px;border-top:1px solid var(--line)}
+  .newspop .nhead:first-child{margin-top:0;padding-top:0;border-top:0}
+  .newspop .nhead .nwho{font-family:'Space Mono',monospace;font-size:12px;font-weight:700}
+  .newspop .nhead .nwhen{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted)}
+  .newspop .ne .nicon{flex:none;width:17px;height:17px;border-radius:5px;display:inline-flex;
+    align-items:center;justify-content:center;font-size:11px;line-height:1;
+    background:var(--card-2);color:var(--muted)}
+  /* THE GLYPH IS TEXT, SO IT TAKES THE T VARIANT - outlined, not filled.
+
+     Filled was tried first and does not work. An 11px glyph on a filled
+     chip needs 4.5:1 against that fill, and on the light --bad (#c2405c)
+     even pure black reaches only 4.18. No ink clears it, so the device was
+     wrong rather than the colour.
+
+     Outlined uses each token for the job it was solved for: the T variant
+     is a text colour on the panel's own ground, which is exactly where it
+     sits, and the ring is the same colour at reduced strength. */
+  .newspop .ne .nicon{border:1px solid currentColor;background:transparent}
+  .newspop .ne.s-ready .nicon,.newspop .ne.k-new .nicon{color:var(--okT)}
+  .newspop .ne.s-rejected .nicon{color:var(--badT)}
+  .newspop .ne.s-shortage .nicon{color:var(--warnT)}
+  /* the group line is one row: icon, what happened, and the toggle */
+  .newspop .ne.k-new,.newspop .ne[class*="s-"]{align-items:center}
+  .newspop .nkids{padding:2px 0 6px 27px;display:block}
+  .newspop .ngo{background:var(--card-2);border:1px solid var(--line);border-radius:999px;
+    font:11px 'Space Mono',monospace;color:inherit;cursor:pointer;padding:2px 8px;margin:2px 4px 2px 0}
+  .newspop .ngo:hover{border-color:var(--accentB);color:var(--accentB)}
+  /* kept for honesty, never competing: a sync that ran and found nothing
+     must still be visible, and must not look like a failure */
+  .newspop .nquiet{opacity:.55}
+  .newspop .nquiet .nwho{font-weight:400}
   .newspop .nempty{color:var(--muted);font-size:12px;padding:4px 0 2px}
 
   /* the unread count. --accent is the family pastel and --accent-ink is the
@@ -1540,9 +1575,10 @@ function drawNews(f){
 const SEEN_KEY = 'wh24.newsSeen';
 const seenAt  = () => { try { return localStorage.getItem(SEEN_KEY); } catch(e){ return null; } };
 const markSeen = () => { try { localStorage.setItem(SEEN_KEY, new Date().toISOString()); } catch(e){} };
-let FEED = [], OPENED = {};
+let FEED = [], DIGEST = { syncs: [], byHand: [] }, OPENED = {};
 function drawFeed(){
   FEED = W.news(TICKETS, MARKS, {});
+  DIGEST = W.newsDigest(FEED);
   const unseen = W.newsUnseen(FEED, seenAt());
   const n = $('newsN');
   n.hidden = !unseen;
@@ -1560,43 +1596,101 @@ function drawFeed(){
       `<li class="nempty">Nothing has changed in the last ${W.NEWS_DAYS} days.</li>`;
     return;
   }
-  $('newsList').innerHTML = FEED.map(feedRow).join('');
+  $('newsList').innerHTML = digestHTML(DIGEST);
+}
+
+/* ---- the feed, read per sync rather than per row --------------------
+
+   One line per event is the right model and the wrong thing to read. A
+   maintenance run is six hundred "re-synced" lines with the two tickets
+   that moved somewhere inside them, which is how a feed that was working
+   exactly as built became unreadable.
+
+   So: a block per publish, newest first. Inside it, one line per PLACE
+   TICKETS LANDED - "3 can be collected" rather than three separate lines -
+   each naming its tickets and each clickable through to the row. The
+   maintenance count goes last, in muted type, as one line.
+
+   THE QUIET SYNC IS A SENTENCE, NOT A ROW OF ZEROES. "Nothing moved -
+   689 rows re-synced" says the sync ran and found nothing. The same fact
+   written as "0 moved, 0 collected, 0 rejected" reads as a failure, and
+   this panel is the glance that decides whether to open the tool at all. */
+const GICON = { ready: '✓', collected: '✓', rejected: '✕', shortage: '⚠',
+                reserving: '…', issuing: '…', approved: '✓', new: '+' };
+function groupSays(g){
+  const lab = esc(stLabel(g.state));
+  if (g.kind === 'new') return `<b>${g.n}</b> new ticket${g.n === 1 ? '' : 's'} · ${lab}`;
+  return `<b>${g.n}</b> ticket${g.n === 1 ? '' : 's'} → <b>${lab}</b>`;
+}
+function syncHTML(S){
+  const when = esc(niceT(S.at));
+  if (!S.moved){
+    /* the quiet case, said as a sentence */
+    return `<li class="ne nquiet">` +
+      `<span class="nwho">Nothing moved</span>` +
+      `<span class="nwhen">${when}</span>` +
+      `<span class="nwhat">${S.quiet} row${S.quiet === 1 ? '' : 's'} re-synced – WorkHub’s timestamp only.</span>` +
+      `</li>`;
+  }
+  const head = `<li class="nhead">` +
+    `<span class="nwho"><b>${S.moved}</b> ticket${S.moved === 1 ? '' : 's'} moved</span>` +
+    `<span class="nwhen">${when}</span></li>`;
+  const groups = S.groups.map(g => {
+    const open = !!OPENED[S.at + '|' + g.key];
+    return `<li class="ne k-${esc(g.key)} s-${esc(g.state)}">` +
+      `<span class="nicon">${GICON[g.key] || GICON[g.state] || '·'}</span>` +
+      `<span class="nwhat">${groupSays(g)}</span>` +
+      `<button class="nmore" data-g="${esc(S.at + '|' + g.key)}">${open ? 'hide' : 'show'}</button>` +
+      `</li>` +
+      (open ? `<li class="nkids"><span class="nwho"></span><span class="nwhat">` +
+        g.items.map(e => `<button class="ngo" data-go="${esc(String(e.id))}">${esc(feedWho(e))}</button>`).join('') +
+        `</span></li>` : '');
+  }).join('');
+  /* kept, muted, last - and never competing with the lines above it */
+  const quiet = S.quiet
+    ? `<li class="ne nquiet"><span class="nwhat">and ${S.quiet} re-synced unchanged</span></li>`
+    : '';
+  return head + groups + quiet;
+}
+function digestHTML(d){
+  const syncs = d.syncs.map(syncHTML).join('');
+  const hand = d.byHand.length
+    ? `<li class="nhead"><span class="nwho">Marked by hand</span></li>` +
+      d.byHand.map(e => `<li class="ne k-mark"><span class="nicon">✎</span>` +
+        `<span class="nwho"><button class="ngo" data-go="${esc(String(e.id))}">${esc(feedWho(e))}</button></span>` +
+        `<span class="nwhen">${esc(niceT(e.at))}</span>` +
+        `<span class="nwhat">marked <b>collected</b>${e.by ? ' by ' + esc(e.by) : ''}</span></li>`).join('')
+    : '';
+  return syncs + hand;
 }
 /* "#25307 ACE · ZZ0001" - the stream only when there is one, because it is
    PH2's two vendor rows that need telling apart and nothing else does. */
 const feedWho = e => '#' + e.id + (e.stream ? ' ' + e.stream : '') + (e.site ? ' · ' + e.site : '');
-function feedSays(e){
-  return e.kind === 'mark' ? `marked <b>collected</b>${e.by ? ' by ' + esc(e.by) : ''}`
-       : e.kind === 'new'  ? `new ticket · <b>${esc(stLabel(e.state))}</b>`
-       : e.kind === 'move' ? `${esc(stLabel(e.prev))} → <b>${esc(stLabel(e.state))}</b>`
-       /* NOT a state change. The row was written - a corrected title, a
-          document stored - and nothing records that it moved, so the line
-          does not say it did. */
-       : `updated · ${esc(stLabel(e.state))}`;
-}
-function feedRow(e){
-  if (e.kind === 'batch'){
-    const open = !!OPENED[e.at];
-    return `<li class="ne k-batch">` +
-      `<span class="nwho">${e.n} tickets re-synced</span>` +
-      `<span class="nwhen">${esc(niceT(e.at))}</span>` +
-      `<span class="nwhat">maintenance – everything was rewritten, not changed. ` +
-      `<button class="nmore" data-batch="${esc(e.at)}">${open ? 'hide' : 'show ' + e.n}</button></span>` +
-      `</li>` +
-      (open ? e.events.map(feedRow).join('') : '');
-  }
-  return `<li class="ne s-${esc(e.state)}">` +
-    `<span class="nwho">${esc(feedWho(e))}</span>` +
-    `<span class="nwhen">${esc(niceT(e.at))}</span>` +
-    `<span class="nwhat">${feedSays(e)}</span>` +
-    `</li>`;
-}
+/* feedSays and feedRow were the per-row renderer the digest replaced.
+   Removed rather than left: they referenced only each other, so they read
+   as live code while nothing could reach them. */
 /* Delegated, because the list is rewritten every minute and on every sync. */
 $('newsList').addEventListener('click', ev => {
-  const b = ev.target.closest('.nmore'); if (!b) return;
-  const k = b.dataset.batch;
-  OPENED[k] = !OPENED[k];
-  $('newsList').innerHTML = FEED.map(feedRow).join('');
+  const more = ev.target.closest('.nmore');
+  if (more){ OPENED[more.dataset.g] = !OPENED[more.dataset.g]; $('newsList').innerHTML = digestHTML(DIGEST); return; }
+  /* CLICK THROUGH TO THE ROW. The feed says three tickets became ready;
+     the next question is always which, and then where. Searching the
+     ticket number is what a person would do by hand, so the feed does it
+     for them: the panel closes, the filter widens so the row is not hidden
+     by whatever tab was open, and the search box carries the number -
+     which also lights the row's own match chip. */
+  const go = ev.target.closest('.ngo');
+  if (go){
+    const id = go.dataset.go;
+    $('newsPop').hidden = true;
+    FILTER = 'all';
+    document.querySelectorAll('[data-filter]').forEach(t => t.classList.toggle('on', t.dataset.filter === 'all'));
+    const box = $('find');
+    if (box){ box.value = id; box.dispatchEvent(new Event('input', { bubbles: true })); }
+    else render();
+    const card = document.querySelector('.tk');
+    if (card) card.scrollIntoView({ block: 'center' });
+  }
 });
 
 /* Placed against the button and against the window, the way the account menu

@@ -1417,6 +1417,11 @@
         at: at, ms: ms, state: st,
         prev: kind === 'move' ? prev : null,
         kind: kind,
+        /* KNOWN to have landed where it started. prev == null is a row
+           written before migration 044 - unknown, not unchanged - so it is
+           deliberately not folded in here. Only a row that recorded what it
+           was and matches it can be called quiet. */
+        same: !byMark && prev != null && prev === st,
         by: byMark ? ((mk && mk.collected_by) || null) : null,
         /* which publish wrote it, so the caller can see the grouping it was
            put in rather than having to trust it */
@@ -1446,6 +1451,71 @@
     Object.keys(batches).forEach(function (k) { batches[k].events.sort(byTime); });
     return out;
   }
+  /* ------------------------------------------------- the digest
+
+     news() gives one entry per thing that happened. That is the right
+     model and the wrong thing to read: after a maintenance sync it is six
+     hundred lines of "re-synced", with the two tickets that actually moved
+     somewhere in the middle of them.
+
+     The digest answers the question a person actually has - what happened
+     in that sync - by bucketing per publish and grouping by where each
+     ticket LANDED. Three tickets becoming ready is one line saying three,
+     not three lines saying one.
+
+     Two things are deliberately kept rather than dropped:
+
+       quiet   rows that recorded what they were and landed on it. They
+               are counted, never listed, and the caller shows them as one
+               muted line. Dropping them entirely would make a sync that
+               ran and found nothing look identical to a sync that never
+               ran, which is the distinction the whole tool turns on.
+
+       byHand  a collection date somebody typed is not part of any sync
+               and has no publish stamp, so it is not bucketed into one.
+               It is its own list. */
+  function newsDigest(entries) {
+    var flat = [];
+    (entries || []).forEach(function (e) {
+      if (!e) return;
+      if (e.kind === 'batch') { (e.events || []).forEach(function (x) { flat.push(x); }); return; }
+      flat.push(e);
+    });
+
+    var syncs = {}, order = [], byHand = [];
+    flat.forEach(function (e) {
+      if (e.kind === 'mark') { byHand.push(e); return; }
+      var k = e.batch || e.at;
+      if (!k) return;
+      var S = syncs[k];
+      if (!S) { S = syncs[k] = { at: k, ms: Date.parse(k), moved: 0, quiet: 0, g: {}, order: [] }; order.push(k); }
+      if (e.same) { S.quiet++; return; }
+      S.moved++;
+      /* grouped by where it LANDED, which is the thing being scanned for.
+         A new ticket is its own group - it did not land anywhere, it
+         arrived - and is not folded in with tickets that moved into the
+         same state. */
+      var gk = e.kind === 'new' ? 'new' : e.state;
+      var g = S.g[gk];
+      if (!g) { g = S.g[gk] = { key: gk, kind: e.kind === 'new' ? 'new' : 'move', state: e.state, n: 0, items: [] }; S.order.push(gk); }
+      g.n++; g.items.push(e);
+    });
+
+    var newest = function (a, b) { return b.ms - a.ms; };
+    var list = order.map(function (k) {
+      var S = syncs[k];
+      var groups = S.order.map(function (g) { return S.g[g]; });
+      /* biggest group first, then by name so two groups of equal size do
+         not swap places between renders */
+      groups.sort(function (a, b) { return b.n - a.n || (a.key < b.key ? -1 : 1); });
+      groups.forEach(function (g) { g.items.sort(newest); });
+      return { at: S.at, ms: S.ms, moved: S.moved, quiet: S.quiet, groups: groups };
+    }).filter(function (S) { return !isNaN(S.ms); }).sort(newest);
+
+    byHand.sort(newest);
+    return { syncs: list, byHand: byHand };
+  }
+
   /* How many of them are newer than the last time this person looked. A
      collapsed publish counts as the one line it draws, not as its 696 rows -
      a badge saying 696 after a maintenance sync is the same flood in a
@@ -1459,7 +1529,7 @@
   return { splitTask: splitTask, current: current, doneTimes: doneTimes, num: num, ginDate: ginDate,
            reservations: reservations,
            freshness: freshness, FRESH_WARN: FRESH_WARN, FRESH_BAD: FRESH_BAD,
-           news: news, newsUnseen: newsUnseen, NEWS_DAYS: NEWS_DAYS, NEWS_BULK: NEWS_BULK,
+           news: news, newsDigest: newsDigest, newsUnseen: newsUnseen, NEWS_DAYS: NEWS_DAYS, NEWS_BULK: NEWS_BULK,
            stem: stem, stems: stems, key: key, markOf: markOf,
            rowsFor: rowsFor, ph2Ready: ph2Ready, ph2Material: ph2Material, attachDocs: attachDocs,
            bulkApproved: bulkApproved, bulkState: bulkState, bulkStatus: bulkStatus,
