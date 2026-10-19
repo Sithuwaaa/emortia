@@ -189,6 +189,44 @@
   .colL{flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:20px}
   .colR{flex:1.4 1 360px;min-width:0;display:flex;flex-direction:column;gap:20px}
 
+  /* ---- dashboard across the top, tasks full width below ----
+     The calendar is a fixed six rows; the right side carries the week,
+     the day's progress and the counts. Below ~900px they stack, because
+     a seven-column calendar beside anything is already tight. */
+  /* BOTH SIDES END ON THE SAME LINE. align-items:start let the right column
+     stop wherever its content ran out, leaving a ragged step against the
+     calendar's bottom edge. Stretched, and the stat tiles take up the slack
+     so the last one lands level with the last row of dates. */
+  .dash{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);
+    gap:20px;align-items:stretch}
+  .dashL,.dashR{min-width:0;display:flex;flex-direction:column;gap:20px}
+  .dashR .stats{flex:1;justify-content:space-between}
+  .tasks{display:flex;flex-direction:column;gap:20px;margin-top:20px}
+  @media (max-width:900px){ .dash{grid-template-columns:minmax(0,1fr)} }
+
+  /* ---- Add task, fixed to the right edge ----
+     Vertically centred so it is in reach wherever you are on the page, and
+     lifted clear of the reminder bar. It sits over the content on purpose:
+     that is what makes it reachable at any scroll position. */
+  .fab{position:fixed;z-index:30;
+    right:max(16px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);
+    display:flex;align-items:center;gap:10px;cursor:pointer;
+    padding:10px 20px 10px 10px;border-radius:99px;font:inherit;font-size:15px;font-weight:500;
+    border:1px solid var(--glass-edge);background:color-mix(in srgb,var(--bar) 92%,transparent);
+    color:var(--ground-ink);box-shadow:var(--glass-shadow);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+  .fab i{width:30px;height:30px;border-radius:50%;flex:none;
+    background:var(--chk-on);color:var(--chk-ink);
+    display:flex;align-items:center;justify-content:center;font-size:20px;font-style:normal;line-height:1}
+  .fab:hover{border-color:var(--chk-on)}
+  /* narrow: it becomes the + alone and tucks above the reminder bar, where
+     a full pill would cover a whole task card */
+  @media (max-width:760px){
+    .fab{top:auto;bottom:calc(210px + env(safe-area-inset-bottom,0px));transform:none;
+      padding:10px;border-radius:50%}
+    .fab span{display:none}
+  }
+
   /* ---- the month ---- */
   /* 6px, not 14. With the weekday row's own top padding on top of it the
      month name floated nearly 40px above the grid, which read as a gap
@@ -823,9 +861,12 @@ let Q = '';
 const dayOf = t => dayKey(t.due || t.created_at || Date.now());
 const endOf = k => { const d = new Date(k + 'T23:59:00'); return d.toISOString(); };
 const shift = (k, n) => { const d = new Date(k + 'T12:00:00'); d.setDate(d.getDate() + n); return dayKey(d); };
+/* NEWEST FIRST. It was oldest first, so a task added just now appeared at
+   the bottom of the day - below everything already dealt with - and you
+   had to go looking for the thing you had this second typed in. */
 function forDay(k){
   return TODOS.filter(t => dayOf(t) === k)
-    .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 }
 const carried = () => TODOS.filter(t => !t.done && dayOf(t) < TODAY())
   .sort((a, b) => dayOf(a) < dayOf(b) ? -1 : 1);
@@ -1762,9 +1803,20 @@ function render(){
   h += '<div class="hd-row"><span class="lq-sub">' +
       esc(d.toLocaleDateString([], { weekday:'long', day:'numeric', month:'long' })) +
     '</span><span class="sp"></span>' + weatherHTML() + '</div>' +
-    '<div class="cols">' +
-      '<div class="colL">' + calHTML() + progHTML() + statsHTML() + '</div>' +
-      '<div class="colR">' + weekHTML() +
+    /* DASHBOARD ON TOP, TASKS BELOW.
+
+       It used to be two columns side by side, calendar on the left and the
+       whole task list on the right - which made the task column a narrow
+       channel down one half of a wide screen while the calendar sat beside
+       acres of nothing. The dashboard is a fixed amount of material and
+       the task list is not, so they are stacked: everything that summarises
+       the day across the top, and the list full width underneath where a
+       long title has room to be one line. */
+    '<div class="dash">' +
+      '<div class="dashL">' + calHTML() + '</div>' +
+      '<div class="dashR">' + weekHTML() + progHTML() + statsHTML() + '</div>' +
+    '</div>' +
+    '<div class="tasks">' +
         '<div class="tk-h"><span class="t">' + (hits ? 'Results' : 'Tasks') + '</span>' +
           '<span class="n">' + (hits
             ? hits.length + (hits.length === 1 ? ' match' : ' matches') + ' · all days' +
@@ -1778,24 +1830,40 @@ function render(){
             ' placeholder="Search every day" value="' + esc(Q) + '">' +
             (Q ? '<button id="qx" title="Clear the search" aria-label="Clear the search">×</button>' : '') +
           '</span>' +
-          '<button class="addbtn" id="openAdd"><i>+</i>Add task</button></div>' +
+        '</div>' +
         /* searching replaces the day's list rather than filtering it - the
            whole point is to leave the selected day behind */
         (hits
           ? (hits.length
               ? hits.map(m => taskHTML(m.t, false, m)).join('')
               : '<div class="none">Nothing matches “' + esc(Q.trim()) + '”.</div>')
+          /* TODAY'S OWN TASKS COME FIRST, CARRIED-OVER BELOW THEM.
+
+             forDay already sorts newest first, but the carried pile was
+             rendered above it - so with nine things carried over, a task
+             typed a second ago appeared tenth. It was at the top of its own
+             group and nowhere near the top of the page, which is not what
+             "latest on top" means to anyone looking at the screen.
+
+             Carried work keeps its place in the list rather than being
+             hidden: it is still the next thing after today's, where it
+             reads as a backlog rather than as the day's agenda. */
           : addHTML() +
-            carry.map(t => taskHTML(t, true)).join('') +
             open.map(t => taskHTML(t, false)).join('') +
+            carry.map(t => taskHTML(t, true)).join('') +
             (dn ? '<button class="doneline" id="showDone">' +
               (SHOWDONE ? 'Hide ' + dn + ' finished' : dn + ' finished · show') +
               '</button>' : '') +
             (SHOWDONE ? done.map(t => taskHTML(t, false)).join('') : '') +
             (n ? '' : '<div class="none">Nothing planned for this day.</div>') +
             binHTML()) +
-      '</div>' +
     '</div>' +
+    /* ADD TASK FOLLOWS YOU DOWN THE PAGE. In the header it scrolled away
+       with the header, and on a day with twenty tasks the control you want
+       most is the one you have to scroll back up to reach. Fixed to the
+       right edge, clear of the reminder bar. */
+    '<button class="fab" id="openAdd" title="Add a task">' +
+      '<i>+</i><span>Add task</span></button>' +
     remindBar() +
   '</div></div>';
   $('view').innerHTML = h;

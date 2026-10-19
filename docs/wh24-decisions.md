@@ -904,3 +904,35 @@ reports success.
 **A test that asserts anything about colour must compose the cascade or read
 the rendered value.** The token file is not the answer, in a guard any more
 than in a fix.
+
+## Screenshots are the channel for the Claude Design project
+
+Settled 19 October, after an instruction went missing for days.
+
+A rearrangement of What To Do - dashboard on top, tasks below, Add task
+always visible, newest task first - was written in the Claude Design
+project and never built, because **I could not see it**. Reading that
+project's conversation panel from the browser returns a truncated load:
+about 3,200 characters, ending at the most recent exchange, with older
+entries never fetched. The rearrangement sat above the entries I could
+read, so it was invisible while everything around it was legible.
+
+Worse, the panel mixes threads for different files in the project, so what
+looks like "the whattodo conversation" may be the project's, and there is
+no way from inside the page to tell which part is missing.
+
+**If something in that project is to be built, it comes as a screenshot.**
+
+And the rule that matters more than the mechanism: **do not read that panel
+and assume the thread is complete.** A design instruction that is half
+visible is worse than one that is not visible at all - the half that loads
+looks like the whole, so nothing prompts anyone to go looking for the rest.
+The file contents cannot be read either: the preview is a different origin,
+so only the prose is reachable, never the markup it describes.
+
+Related: a design note written against a preview that stopped at the
+sign-in screen is a guess, not a specification. The same project's
+"date rows grow to fill the card's height to match the right column" was
+written by an author who said in the same breath that they could not see
+the result; measured, it would have stretched the calendar to three times
+the screen. Measuring beats a design note that was never rendered.
