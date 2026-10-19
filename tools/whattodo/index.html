@@ -477,7 +477,7 @@
     background-position:center;background-size:cover;background-repeat:no-repeat}
   html[data-wtd-scene="on"]{
     --wtd-scene:image-set(url('img/scene-1280.webp') type('image/webp'));
-    --wtd-scene-tint:rgba(11,3,6,.46);
+    --wtd-scene-tint:rgba(11,3,6,.75);
   }
   /* ONE BACKGROUND, THE SAME IN BOTH THEMES. There is no light-mode veil:
      the photograph is not re-tinted when the theme flips, so it looks
@@ -492,44 +492,6 @@
   /* the readability tint, over the photo and under everything else */
   .scene::after{content:'';position:absolute;inset:0;
     background:var(--wtd-scene-tint,transparent)}
-
-  /* ============================================================
-     TEMPORARY - THE DARKNESS DIAL. REMOVE THIS WHOLE BLOCK.
-
-     Here so Sithara can drag the photo's dim level to the value they want
-     and tell me the number; then the value is hardcoded into
-     --wtd-scene-tint and every part of this goes. A temporary control left
-     in is how a debug tool becomes a feature nobody meant to ship, so all
-     three pieces carry the same marker: this CSS block, the #dimDial
-     markup, and the dimDial() function. Search TEMPORARY-DIM to find them.
-
-     Starts at 46%, which is the current darkness. Drag up to darken. */
-  .dimdial{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:60;
-    display:flex;flex-direction:column;align-items:center;gap:8px;
-    padding:14px 10px;border-radius:0 16px 16px 0;
-    background:color-mix(in srgb,var(--bar) 92%,transparent);
-    border:1px solid var(--glass-edge);border-left:0;
-    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
-  .dimdial .cap{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ground-dim)}
-  .dimdial output{font-family:'JetBrains Mono','Space Mono',monospace;font-size:13px;
-    font-weight:600;color:var(--ground-ink);font-variant-numeric:tabular-nums}
-  /* a vertical range: up is darker, which is the direction the hand expects */
-  .dimdial input[type=range]{writing-mode:vertical-lr;direction:rtl;
-    width:26px;height:150px;accent-color:var(--accent);cursor:ns-resize}
-  .dimdial button{cursor:pointer;font:inherit;font-size:10px;letter-spacing:.06em;
-    text-transform:uppercase;padding:3px 8px;border-radius:99px;
-    border:1px solid var(--glass-edge);background:transparent;color:var(--ground-dim)}
-  /* The page caps at 1340px, so above about 1372 the dial sits in the left
-     margin and covers nothing. Below that it lies over the calendar, which
-     is the one thing you need to see while judging the photo - so it goes
-     quiet until you reach for it. */
-  @media (max-width:1380px){
-    .dimdial{opacity:.5;transition:opacity .15s}
-    .dimdial:hover,.dimdial:focus-within{opacity:1}
-  }
-  @media (max-width:760px){ .dimdial{top:auto;bottom:120px;transform:none} }
-  /* ============================================================ */
-
   /* ---- glass, only once there is something to see through it ----
 
      The tiles already carried backdrop-filter:blur(40px) and an OPAQUE
@@ -767,14 +729,6 @@
      and fetched alongside everything else. The solid --bg under it means
      the page is never blank in the meantime. -->
 <div class="scene" aria-hidden="true"></div>
-<!-- TEMPORARY-DIM: remove this element with its CSS block and dimDial() -->
-<div class="dimdial" id="dimDial">
-  <span class="cap">Dark</span>
-  <output id="dimOut">46%</output>
-  <input type="range" id="dimRange" min="0" max="90" step="1" value="46"
-         aria-label="How dark the background photo is">
-  <button type="button" id="dimReset">Reset</button>
-</div>
 <header class="hdr">
   <a class="brand" href="../../" title="Emortia · back to the site" aria-label="Emortia · back to the site">
     <span class="logo"><i></i><i></i><i></i><i></i></span>
@@ -1281,6 +1235,38 @@ const weather = (() => {
   let cv = null, ctx = null, drops = [], w = 0, h = 0, dpr = 1;
   let raf = null, last = 0, nextStrike = 0, flash = 0, bolt = null, flicker = 0;
 
+  /* ---- THE PHOTOGRAPH LIFTS WHEN THE LIGHTNING DOES ----
+
+     The veil over the scene sits at 75%, which is a dark night. A strike
+     that only brightened the canvas would light the sky and leave the
+     promenade beneath it pitch black - the one moment the photo should be
+     visible is the moment it stayed hidden.
+
+     So the veil thins with the flash: 75% at rest, down to 34% at the peak
+     of a strike, following the same decaying value the sky glow uses, so
+     the double flicker reads on the ground as well as in the sky.
+
+     The property is set on the .scene ELEMENT, not the root: ::after
+     inherits it from its originating element, and writing one element's
+     custom property per frame is a far smaller invalidation than writing
+     the document's. It is written only while a flash is running, and
+     removed at the end so the stylesheet's own value takes over again -
+     no inline leftover to explain later. */
+  const REST = 0.75, PEAK = 0.34;
+  let lifted = false;
+  function lift(f){
+    const el = document.querySelector('.scene');
+    if (!el) return;
+    if (f <= 0){
+      el.style.removeProperty('--wtd-scene-tint');
+      lifted = false;
+      return;
+    }
+    const a = REST - (REST - PEAK) * Math.min(1, f);
+    el.style.setProperty('--wtd-scene-tint', 'rgba(11,3,6,' + a.toFixed(3) + ')');
+    lifted = true;
+  }
+
   const rnd = () => Math.random();
 
   function fit(){
@@ -1350,7 +1336,8 @@ const weather = (() => {
         g.addColorStop(1, 'rgba(255,246,236,0)');
         ctx.fillStyle = g; ctx.fillRect(0, 0, w, h * 0.5);
       }
-    }
+      lift(flash);
+    } else if (lifted) lift(0);
     if (bolt && now - bolt.born < 190){
       const k = 1 - (now - bolt.born) / 190;
       ctx.strokeStyle = 'rgba(255,250,242,' + (k * 0.85).toFixed(3) + ')';
@@ -1378,7 +1365,11 @@ const weather = (() => {
     }
   }
 
-  function stop(){ if (raf) cancelAnimationFrame(raf); raf = null; if (ctx) ctx.clearRect(0, 0, w, h); }
+  /* lift(0) as well: stopping mid-flash would otherwise leave the veil
+     thinned at whatever value the last frame wrote, and the photo would
+     sit permanently brighter with nothing on screen explaining why */
+  function stop(){ if (raf) cancelAnimationFrame(raf); raf = null;
+    if (ctx) ctx.clearRect(0, 0, w, h); flash = 0; flicker = 0; bolt = null; lift(0); }
 
   function start(){
     if (raf) return;
@@ -1423,39 +1414,6 @@ const weather = (() => {
   };
 })();
 
-/* ============================================================
-   TEMPORARY-DIM. REMOVE THIS FUNCTION, its CSS block and the #dimDial
-   markup together once the chosen darkness is hardcoded.
-
-   It writes --wtd-scene-tint on the root, which the .scene::after veil
-   reads, so the page updates as the slider moves. The chosen value
-   survives a reload so the comparison can be made over a day rather than
-   in one sitting. It does NOT touch the stylesheet: the committed default
-   stays 46% until a number is given. */
-const DIM_KEY = 'whattodo_dim_probe';
-function dimDial(){
-  const box = $('dimDial'), range = $('dimRange'), out = $('dimOut'), reset = $('dimReset');
-  if (!box || !range) return;
-  const apply = pct => {
-    document.documentElement.style.setProperty('--wtd-scene-tint',
-      'rgba(11,3,6,' + (pct / 100).toFixed(2) + ')');
-    out.textContent = pct + '%';
-    range.value = pct;
-  };
-  let start = 46;
-  try { const s = localStorage.getItem(DIM_KEY); if (s !== null) start = +s; } catch (e) {}
-  apply(start);
-  range.oninput = () => {
-    const v = +range.value;
-    apply(v);
-    try { localStorage.setItem(DIM_KEY, String(v)); } catch (e) {}
-  };
-  reset.onclick = () => {
-    apply(46);
-    try { localStorage.removeItem(DIM_KEY); } catch (e) {}
-  };
-}
-/* ============================================================ */
 
 function setRain(v){
   WX = v; try { localStorage.setItem(WX_KEY, v); } catch (e) {}
@@ -2082,7 +2040,6 @@ async function restoreTask(id, quiet){
   try { REMIND = localStorage.getItem(REMIND_KEY) === '1';
         SOUND  = localStorage.getItem(SOUND_KEY)  !== '0'; } catch(e){}
   await refresh();
-  dimDial();
   weather.mount();
   if (REMIND) setRemind(true); else render();
   /* after the first paint, never before it - the sweep is housekeeping and
