@@ -884,3 +884,23 @@ because the tool declares `--card:#142428` and `--muted:#5f7b81` while the
 page actually paints `#2D1406` and `#776558`. Reading index.html alone
 measured chips against a card that does not exist – caught because the
 first run disagreed with the browser.
+
+## A test that reads source is as blind as a fix that reads source
+
+Fourth instance, so it gets its own rule rather than another note.
+
+`palette.test.js`, on its first run, measured chips against
+`--card:#142428` and `--muted:#5f7b81`, read from the tool's own `<style>`.
+`category.css` paints `#2D1406` and `#776558` over them with `!important`.
+**The test was asserting things about a card that does not exist.** It would
+have passed or failed on fiction either way.
+
+The three earlier instances were all fixes reading source – `theme.css`
+beating `:root`, the CRLF logo revert, the `--ok` that rendered green while
+the source said otherwise. This one is the same mistake wearing a guard's
+clothes, which is worse: a wrong fix shows up on screen, a wrong guard
+reports success.
+
+**A test that asserts anything about colour must compose the cascade or read
+the rendered value.** The token file is not the answer, in a guard any more
+than in a fix.
