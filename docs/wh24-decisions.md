@@ -1441,3 +1441,34 @@ now throw when the sampled ground is uniformly black, and the probes assert
 **Both are the same lesson in different clothes: a measurement harness that
 cannot fail is a harness that will quietly agree with you.** Give it something
 it is allowed to refuse.
+
+### Green is off Save and on Add, and both are deliberate
+
+Two decisions about the same colour, pointing opposite ways. Recorded
+together so neither is later "tidied up" into agreeing with the other.
+
+**Save task is not green.** `.pri` was moved off `--chk-on` to the accent,
+because that green is the tick colour and on a task tile it reads as *done*
+rather than *save* — the button would have promised the thing was finished
+before it was written.
+
+**Add task is green.** The same token, on the floating button and on the
+pill inside the New Task tile.
+
+They are not in conflict because they are not the same claim:
+
+> **Add promises "start something". Save would promise "this is finished".
+> Different buttons, different claims.**
+
+The design that introduced the green Add button did not reverse the burgundy
+decision — it did not touch it. Save task is still the accent there, and
+measures 4.89 in light and 6.66 in dark on the built page.
+
+So: if someone finds green on one button and burgundy on another and reaches
+for consistency, this is the entry that says the inconsistency is the point.
+The colour is not decorating a button; it is naming what the button does.
+
+A practical consequence: the ink differs too, and for the same reason the
+palette already records. `--chk-ink` is sized for the green, `--iv-ink` for
+the accent, and each button carries the ink that belongs to the fill it sits
+on. Swapping one for the other is how `.pri` once measured 4.19.
