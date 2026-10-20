@@ -1130,3 +1130,59 @@ read `site_access` under its own RLS policy, what the lookup costs per
 record, and whether anything else depends on `attend_sites` being the only
 source. None of them were investigated, and the analysis stops here on
 purpose.
+
+---
+
+## A rule in this file did not stop the thing it was written about
+
+A pattern built as a string lost its escape: `\s` became `s`, so it matched
+the letter s and nothing else it was meant to. The fix came with a line in
+this document — *build regexes from literals, not from strings.*
+
+Two days later it happened again. `\d` became `d`, and `realDay()` rejected
+every date it was handed, including the real ones.
+
+The rule was right and it was written down and it did not work, because a
+rule in a document has to be remembered at the one moment it matters, by
+someone who is thinking about something else. So it is a test now:
+`tools/_lib/regex.test.js`, which fails the suite rather than asking to be
+recalled.
+
+**The second fault was not the one the rule described.** This matters more
+than the rule did:
+
+```
+new RegExp('\d{4}')        a pattern built from a string — the written rule
+/^(d{4})-(d{2})$/           a literal that already lost its backslashes
+```
+
+Nothing is doubled in the second. It is a regex literal, written correctly,
+damaged on its way into the file — and `d{4}` is *valid*, meaning four
+letter d's, so nothing complains. The rule as written does not describe it,
+which is precisely how it got through. The guard checks both, and the
+second is the one that would have caught the second fault.
+
+The guard is deliberately narrow in one place. `new RegExp` is flagged only
+when the pattern is **static** — when a literal was possible. Twenty-one
+regexes in this repository are assembled around a value:
+
+```js
+new RegExp('alter\s+table\s+' + table + '\s+add column', 'g')
+```
+
+Those have no literal form. A guard that failed them would be switched off
+inside a week, and then it would be guarding nothing.
+
+### Why both were caught: the assertion looked at the value
+
+Neither was found by reading. Both were found because the test decoded a
+real return value.
+
+A shape check passes with a regex that matches nothing. *Does it return an
+array* — yes, an empty one. *Does it return a string* — yes, the wrong one.
+`weekdayOf('2026-10-20')` returning `⚠` is only a failure if the test knows
+it should have said `Tue`.
+
+**Assert on the value, decoded, against a figure worked out independently.**
+A test that only confirms the shape of an answer agrees with every wrong
+answer of that shape.
