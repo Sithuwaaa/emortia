@@ -1486,8 +1486,21 @@ const weather = (() => {
   /* lift(0) as well: stopping mid-flash would otherwise leave the veil
      thinned at whatever value the last frame wrote, and the photo would
      sit permanently brighter with nothing on screen explaining why */
+  /* OFF HAS TO LOOK OFF. The clear used to be clearRect(0, 0, w, h) under the
+     dpr transform, which is correct only while w and h still describe the
+     canvas: they are set by fit(), so any path that stops between a viewport
+     change and the next fit() would clear the wrong rectangle and leave the
+     last frame standing. Clearing the backing store with the transform reset
+     needs neither to be true - it cannot miss.
+
+     (The residue that prompted this could not be reproduced: painting all
+     522,054 pixels and running the old clear left nothing behind. This is
+     the clear not depending on state it has no reason to depend on, not a
+     fix for a fault anybody has seen.) */
   function stop(){ if (raf) cancelAnimationFrame(raf); raf = null;
-    if (ctx) ctx.clearRect(0, 0, w, h); flash = 0; flicker = 0; bolt = null; lift(0); }
+    if (ctx){ ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.clearRect(0, 0, cv.width, cv.height); ctx.restore(); }
+    flash = 0; flicker = 0; bolt = null; lift(0); }
 
   function start(){
     if (raf) return;
