@@ -1186,3 +1186,73 @@ it should have said `Tue`.
 **Assert on the value, decoded, against a figure worked out independently.**
 A test that only confirms the shape of an answer agrees with every wrong
 answer of that shape.
+
+---
+
+## A single read near a transition is not a measurement
+
+Turning the rain off was reported as leaving 17 lit pixels on the canvas —
+a frozen last frame, "off that doesn't look off". On that number a fix was
+asked for and made.
+
+**The number was not real.** `stop()` already cleared, and `apply()` calls
+it. Painting all 522,054 pixels of the backing store and running the old
+clear left nothing behind, and off measures 0 immediately and stays 0
+across repeated samples. The 17 came from one `getImageData` taken too
+close to the transition.
+
+The same error, in the other direction, a few minutes later: heavy rain
+read as **0** lit pixels — a single sample that landed before the first
+frame painted. Sampled twelve times across a second instead, it holds about
+5,000, with lightning flashes to 225,728.
+
+So the rule:
+
+> **Sample across time, or do not quote a count.** Anything driven by a
+> frame loop is being read while it is moving. One read catches whatever
+> happened to be on screen at that instant, which is not the value — it is
+> a sample of size one from a distribution nobody looked at.
+
+Take a series. Report the maximum, or the steady state, and say which. A
+number quoted from one read is a guess wearing a decimal point.
+
+And the reason this is in this file rather than quietly fixed: **the change
+landed anyway**, for a smaller reason that does hold — a clear that cannot
+miss regardless of when `fit()` last ran. That the fix survived does not
+make the original reason right. A wrong number that happens to point at a
+defensible change is still a wrong number, and the next one may point
+somewhere worse.
+
+---
+
+## index.html and Emortia.html are byte-identical twins, mirrored by hand
+
+Both files are 447,785 bytes and identical to the byte. They have been
+identical for at least sixty commits, every change has touched both in the
+same commit, and **nothing enforces it** — no build step, no workflow, no
+script. `backup.yml` is the only workflow and it backs up the database.
+
+This is one fact in two places, which is the shape this repository has a
+test for elsewhere. The failure mode is specific and nasty: edit one, miss
+the other, and the site serves the old page from whichever path was not
+touched. It will not look like a mirroring mistake. It will look like a
+cache problem, and the first three things tried will be the service worker,
+a hard refresh, and `VERSION` in `sw.js` — none of which is wrong-looking
+enough to stop and none of which will help.
+
+`README.md` calls `Emortia.html` "the music and poetry side". That was true
+once. It is now a complete copy of the whole site, owner page included.
+
+**Not fixed, on purpose.** The main site is settled, and consolidating two
+entry points is exactly the kind of restructuring that rule exists to
+prevent. Recorded instead, so that:
+
+- anyone editing one edits the other, in the same commit;
+- `cmp -s index.html Emortia.html` is the check, and it is one line;
+- when a page change mysteriously fails to appear, this is read before the
+  service worker is blamed.
+
+If it is ever worth closing, the move is a guard in the suite — one
+assertion that the two files match — not a refactor. That catches the
+mistake at the moment it is made and changes nothing about how the site is
+served.
