@@ -670,19 +670,33 @@
      fixed height, and the binding case is the brightest pixel in the
      column a run sweeps, not the brightest behind it at rest.
 
-     0.60 of the design's own tint colour. 0.50 is the arithmetic minimum
-     and lands on 4.52, too close to the line once the feathered edge
-     takes a little off; 0.60 measures 6.02 at that worst pixel.
+     A FILLED SHAPE BEHIND THE TEXT WAS THE FIRST ATTEMPT AND IT LOOKED
+     LIKE A BAR. Even feathered, a 0.60 pill reads as a dark box sitting on
+     the photograph - the exact thing it was meant not to be, on the date
+     and worse on "0 of 3 done", where the short run made the ellipse
+     obvious. So the dark surround hugs the letterforms instead:
+     paint-order puts a stroke under the fill, every glyph carries its own
+     dark edge, and there is no shape around the text at all.
 
-     The ellipse is sized to 50% so its solid core reaches 85% of the box
-     and the fade happens inside the padding - a soft pill rather than a
-     bar, and never a hard edge on a photograph. */
+     It is also the more honest measurement. A pill asks what the sky is
+     doing somewhere near the text; a stroke makes the pixels IMMEDIATELY
+     around each letter the stroke colour, which is what the eye resolves
+     the glyph against.
+
+     EVERY run that sits on the ground, not the three that happened to be
+     in view. .doneline - "8 removed · show" - was invisible against the
+     bright water until it was added here, and it was missed because it
+     was not on screen when the others were measured. The list below is
+     the same list the colour rules use further down; if one gains a
+     member, so does this. */
   html[data-theme="light"][data-wtd-scene="on"] .lq-sub,
   html[data-theme="light"][data-wtd-scene="on"] .tk-h .t,
-  html[data-theme="light"][data-wtd-scene="on"] .tk-h .n{
-    padding:10px 26px;margin:-10px -26px;border-radius:999px;
-    background:radial-gradient(ellipse 50% 50% at 50% 50%,
-      rgba(40,10,20,.60) 0%,rgba(40,10,20,.60) 85%,rgba(40,10,20,0) 100%)}
+  html[data-theme="light"][data-wtd-scene="on"] .tk-h .n,
+  html[data-theme="light"][data-wtd-scene="on"] .doneline,
+  html[data-theme="light"][data-wtd-scene="on"] .none{
+    paint-order:stroke fill;
+    -webkit-text-stroke:2.5px rgba(40,10,20,.82);
+    text-stroke:2.5px rgba(40,10,20,.82)}
   /* the readability tint, over the photo and under everything else */
   .scene::after{content:'';position:absolute;inset:0;
     background:var(--wtd-scene-tint,transparent)}
