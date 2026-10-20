@@ -247,29 +247,68 @@
     .fab span,.fab.near span,.fab:hover span{max-width:0;opacity:0}
   }
 
-  /* ---- the new-task tile, opening from the button's side ----
+  /* ---- the new-task tile ----
 
-     It used to render inline at the top of the day's list, which pushed
-     every task down the moment you started typing. As a tile anchored to
-     the button it opens over the page and puts nothing out of place.
+     Rebuilt to the design after the first attempt came out as a 430px
+     strip pinned to the right edge: the day chips wrapped to two rows, the
+     title sat in a small boxed input, and there was no way out but Cancel.
 
-     Right of centre and clear of the button, flipping to the left edge of
-     it when there is no room - the same rule the account menu and the news
-     panel use. */
-  .addpop{position:fixed;z-index:31;width:min(430px,calc(100vw - 32px));
-    max-height:calc(100vh - 120px);overflow:auto;
-    border-radius:26px;padding:20px;
-    background:color-mix(in srgb,var(--bar) 96%,transparent);
-    border:1px solid var(--glass-edge);box-shadow:0 26px 70px -18px rgba(0,0,0,.6);
+     It is a wide centred panel now. The title is the page's own serif at
+     34px on a rule rather than in a box - it is the one thing being
+     written, and a form field made it look like the least important part
+     of its own dialog. */
+  /* the page dims behind it - the design shows the month showing through,
+     not hidden, so this is light and blurred rather than a black sheet */
+  .addscrim{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.42);
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  .addpop{position:fixed;z-index:31;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(900px,calc(100vw - 40px));max-height:calc(100vh - 110px);overflow:auto;
+    border-radius:30px;padding:30px 34px 26px;
+    background:color-mix(in srgb,var(--bar) 97%,transparent);
+    border:1px solid var(--glass-edge);box-shadow:0 34px 90px -20px rgba(0,0,0,.66);
     backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px)}
-  .addpop .hd{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+  .addpop .hd{display:flex;align-items:center;gap:14px;margin-bottom:22px}
   /* the matching disc, so the tile reads as having come out of the button */
-  .addpop .hd i{width:34px;height:34px;border-radius:50%;flex:none;
+  .addpop .hd i{width:40px;height:40px;border-radius:50%;flex:none;
     background:var(--accent);color:var(--iv-ink);
     display:flex;align-items:center;justify-content:center;
-    font-size:20px;font-style:normal;line-height:1}
-  .addpop .hd .t{font-size:17px;font-weight:600}
-  .addpop .hd .n{margin-left:auto;font-size:13px;color:var(--ground-dim)}
+    font-size:24px;font-style:normal;line-height:1}
+  .addpop .hd .t{font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+  .addpop .hd .n{font-size:13px;color:var(--muted)}
+  /* a way out that is not Cancel - the design has it and the first build
+     did not, which left the keyboard and the corner as the only exits */
+  .addpop .x{margin-left:auto;flex:none;width:34px;height:34px;border-radius:50%;cursor:pointer;
+    border:1px solid var(--glass-edge);background:transparent;color:var(--muted);
+    font:inherit;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .addpop .x:hover{color:inherit;border-color:currentColor}
+  /* the title: the thing being written, sized like it */
+  .addpop #dTitle{width:100%;background:transparent;border:0;border-bottom:1px solid var(--glass-edge);
+    border-radius:0;padding:6px 2px 14px;color:inherit;
+    font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;line-height:1.15}
+  .addpop #dTitle::placeholder{color:var(--muted);opacity:1}
+  .addpop #dTitle:focus{outline:none;border-bottom-color:var(--accent)}
+  /* one row of days, scrolling rather than wrapping */
+  /* nowrap is the whole point and it has to be said out loud: the generic
+     .days rule sets flex-wrap:wrap, and at 478px that beat overflow-x and
+     put Sat and Sun on a second row - the exact fault in the screenshot. */
+  .addpop .days{display:flex;flex-wrap:nowrap;align-items:center;gap:9px;margin-top:22px;
+    overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+  .addpop .days .cap{flex:none;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);margin-right:3px}
+  .addpop .days button{flex:none;cursor:pointer;white-space:nowrap;padding:9px 17px;border-radius:99px;
+    font:inherit;font-size:14px;border:1px solid var(--glass-edge);background:transparent;color:inherit}
+  .addpop .days button.on{background:var(--accent);color:var(--iv-ink);border-color:var(--accent);font-weight:600}
+  .addpop .drafts{margin-top:20px;display:flex;flex-direction:column;gap:8px}
+  .addpop .stepin{display:flex;align-items:center;gap:12px}
+  .addpop .stepin input{flex:1;min-width:0;background:transparent;border:0;color:inherit;
+    font:inherit;font-size:15px;padding:10px 0}
+  .addpop .stepin input::placeholder{color:var(--muted)}
+  .addpop .stepin input:focus{outline:none}
+  .addpop .acts{display:flex;justify-content:flex-end;gap:12px;margin-top:26px}
+  @media (max-width:760px){
+    .addpop{padding:22px 18px 18px;border-radius:24px}
+    .addpop #dTitle{font-size:26px}
+  }
 
   /* ---- the month ---- */  /* ---- the month ---- */
   /* 6px, not 14. With the weekday row's own top padding on top of it the
@@ -1731,10 +1770,13 @@ function addHTML(){
   const editing = !!DRAFT.id;
   const mon = shift(DRAFT.day || SEL, -((new Date((DRAFT.day || SEL) + 'T12:00:00').getDay() + 6) % 7));
   const days = Array.from({ length: 7 }, (_, i) => shift(mon, i));
-  return '<div class="addpop" id="addPop">' +
+  return '<div class="addscrim" id="addScrim"></div>' +
+    '<div class="addpop" id="addPop" role="dialog" aria-modal="true" aria-label="' +
+      (editing ? 'Edit task' : 'New task') + '">' +
     '<div class="hd"><i>' + (editing ? '✎' : '+') + '</i>' +
       '<span class="t">' + (editing ? 'Edit task' : 'New task') + '</span>' +
-      '<span class="n">' + (DRAFT.steps.length ? DRAFT.steps.length + ' sub-task' + (DRAFT.steps.length > 1 ? 's' : '') : '') + '</span></div>' +
+      '<span class="n">' + (DRAFT.steps.length ? DRAFT.steps.length + ' sub-task' + (DRAFT.steps.length > 1 ? 's' : '') : '') + '</span>' +
+      '<button class="x" id="dClose" aria-label="Close">×</button></div>' +
     '<input id="dTitle" maxlength="200" autocomplete="off" placeholder="Heading — e.g. NW-0425 · lamp-pole install" value="' + esc(DRAFT.title) + '">' +
     '<div class="days"><span class="cap">Due</span>' +
       days.map(k => '<button data-dday="' + k + '" class="' + (DRAFT.day === k ? 'on' : '') + '">' +
@@ -1808,23 +1850,9 @@ function binHTML(){
 }
 
 /* ---- the tile sits beside the button, and flips when there is no room ---- */
-function placeAddPop(){
-  const pop = $('addPop'), btn = $('openAdd');
-  if (!pop || !btn) return;
-  const b = btn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
-  /* left of the button by default - it lives on the right edge - and right
-     of it only if that somehow fits better. 14px of air either way. */
-  let left = b.left - w - 14;
-  if (left < 12) left = Math.min(b.right + 14, innerWidth - w - 12);
-  if (left < 12) left = 12;
-  /* centred on the button, then pulled inside the viewport */
-  let top = b.top + b.height / 2 - h / 2;
-  top = Math.max(12 + (parseInt(getComputedStyle(document.documentElement).paddingTop) || 0),
-                 Math.min(top, innerHeight - h - 12));
-  pop.style.left = Math.round(left) + 'px';
-  pop.style.top = Math.round(top) + 'px';
-}
-addEventListener('resize', placeAddPop, { passive: true });
+/* The tile used to be measured into place beside the button, which is what
+   squeezed it to 430px and wrapped the week onto two rows. It is centred by
+   the stylesheet now, so there is nothing left to compute. */
 
 /* ---- "when your pointer gets close", measured ----
 
@@ -2007,7 +2035,6 @@ function render(){
   $('openAdd').onclick = () => { Q = ''; ADDING = true;
     DRAFT = { id:null, title:'', day:SEL, steps:[], step:'' }; render(); };
   if (ADDING){
-    placeAddPop();
     const ti = $('dTitle'), si = $('dStep');
     ti.oninput = () => { DRAFT.title = ti.value; const s = $('dSave'); if (s) s.style.opacity = ti.value.trim() ? 1 : .45; };
     ti.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); si.focus(); } };
@@ -2017,7 +2044,16 @@ function render(){
     document.querySelectorAll('[data-dday]').forEach(b => b.onclick = () => { DRAFT.day = b.dataset.dday; render(); });
     document.querySelectorAll('[data-dstep]').forEach(b => b.onclick = () => {
       DRAFT.steps.splice(+b.dataset.dstep, 1); render(); });
-    $('dCancel').onclick = () => { ADDING = false; render(); };
+    /* three ways out, all the same way out: the ×, the scrim and Escape.
+       The first build had only Cancel. */
+    const shut = () => { ADDING = false; render(); };
+    $('dCancel').onclick = shut;
+    $('dClose').onclick = shut;
+    $('addScrim').onclick = shut;
+    /* on the tile, not on the document: render() rewires on every keystroke
+       and a document handler reassigned that often is a handler nobody owns.
+       Focus starts inside the tile, so the key reaches it by bubbling. */
+    $('addPop').onkeydown = e => { if (e.key === 'Escape'){ e.stopPropagation(); shut(); } };
     $('dSave').onclick = saveDraft;
     if (taId === 'dTitle' || taId === 'dStep'){
       const el = $(taId); if (el){ el.focus(); try { el.setSelectionRange(caret, caret); } catch(e){} }

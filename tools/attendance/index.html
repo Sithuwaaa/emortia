@@ -1107,11 +1107,16 @@ function geoCell(geo, colour){
      has written down – the sheet stores an em dash for the first, so the test
      is whether the string parses, not whether it is empty. */
   const at = A.parseGeo(geo);
+  /* "no site list yet", not "not a known site". attend_sites is empty and
+     no screen was ever built to fill it, so the tool has never checked this
+     coordinate against anything - saying it is not a known site asserts a
+     lookup that did not happen, on every record. See the decision in
+     docs/wh24-decisions.md. */
   const place = at ? A.placeOf(geo, SITES) : '', href = mapHref(geo);
   const pin = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + colour +
     '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11.5a7 7 0 0 1 14 0C19 15 12 21 12 21z M9.5 9.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0"></path></svg>';
   const inner = '<span class="pl">' + pin +
-      (place ? esc(place) : at ? '<i>not a known site</i>' : '<i>no location on the photo</i>') + '</span>' +
+      (place ? esc(place) : at ? '<i>no site list yet</i>' : '<i>no location on the photo</i>') + '</span>' +
     '<span class="gg">' + (at ? esc(geo) : '') + '</span>';
   return href ? '<a class="lg-geo" href="' + href + '" target="_blank" rel="noopener">' + inner + '</a>'
               : '<span class="lg-geo">' + inner + '</span>';

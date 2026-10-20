@@ -1085,3 +1085,48 @@ for, caught one step later. `family.test.js` refused the first attempt
 (T variants as fills) and measured the second (base tokens, 4.18). Both
 times the guard was right and my instinct was to keep adjusting the
 colour.
+
+## attend_sites is unused on purpose
+
+20 October. `attend_sites`, its RLS policy from migration 032 and its write
+API in `db.js` - `attendSiteSave`, `attendSiteRemove` - all exist and are
+all unused. **No screen was ever built to write to them, and we are leaving
+it that way deliberately.**
+
+The table names a coordinate: `placeOf` would turn `6.9271,79.8612` into a
+depot name on an attendance photo. With the table empty it returns `''`, so
+every photo shows its coordinates and its map link and no name. **The
+information is carried; only the label is missing, and the label was never
+asked for.**
+
+This came out of an audit of unused code rather than off anyone's list,
+which is the reason it is being closed rather than built.
+
+One thing was changed on the way out. The cell read *"not a known site"*,
+which asserts a lookup that never happened - the coordinate was not checked
+against a list and rejected, there is no list. It now reads **"no site list
+yet"**, which is true and costs nothing.
+
+### Seeding it from site_access was considered and set aside
+
+`site_access` holds `Site_ID`, `Site_Name`, `Depot`, `Latitude` and
+`Longitude` for **5,905 sites with usable coordinates** (5,940 rows, 35
+without coordinates, none with coordinates but no name). It would seed
+`attend_sites` completely.
+
+**That is exactly why it was not done.** Copying 5,905 rows into a second
+table is one fact in two places: a site renamed or moved in `site_access`
+would leave `attend_sites` stale, nothing would catch it, and the tool
+would name the wrong depot with full confidence. The same shape
+`family.test.js` exists to prevent, at a scale where nobody would notice
+the drift.
+
+If the names are ever wanted, the design to reach for is `placeOf` reading
+`site_access` directly, with `attend_sites` holding only what `site_access`
+does not know - the office, the stores, a yard. That keeps the estate in
+one place and makes the editor a handful of rows rather than a 5,905-row
+management screen. The open questions are whether the attendance tool can
+read `site_access` under its own RLS policy, what the lookup costs per
+record, and whether anything else depends on `attend_sites` being the only
+source. None of them were investigated, and the analysis stops here on
+purpose.
