@@ -261,8 +261,10 @@
      not hidden, so this is light and blurred rather than a black sheet */
   .addscrim{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.42);
     backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
-  .addpop{position:fixed;z-index:31;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:min(900px,calc(100vw - 40px));max-height:calc(100vh - 110px);overflow:auto;
+  /* anchored beside the button, so left/top/width are all measured - see
+     placeAddPop. 900px is the cap, not the width: it gets whatever the
+     button leaves and only stops growing there. */
+  .addpop{position:fixed;z-index:31;max-height:calc(100vh - 24px);overflow:auto;
     border-radius:30px;padding:30px 34px 26px;
     background:color-mix(in srgb,var(--bar) 97%,transparent);
     border:1px solid var(--glass-edge);box-shadow:0 34px 90px -20px rgba(0,0,0,.66);
@@ -1850,9 +1852,52 @@ function binHTML(){
 }
 
 /* ---- the tile sits beside the button, and flips when there is no room ---- */
-/* The tile used to be measured into place beside the button, which is what
-   squeezed it to 430px and wrapped the week onto two rows. It is centred by
-   the stylesheet now, so there is nothing left to compute. */
+/* Anchored to the button, and as wide as that leaves.
+
+   The first version of this fixed the width at 430px and then looked for
+   somewhere to put it. That is backwards: the space beside the button is
+   the budget, so measure the budget and spend all of it, up to 900px -
+   past that the line length stops being comfortable to read.
+
+   The button is not reliably at the middle of the screen. Under 760px it
+   moves to bottom:210px to clear the remind bar, which is why this reads
+   its rect rather than assuming top:50%. */
+function placeAddPop(){
+  const pop = $('addPop'), btn = $('openAdd');
+  if (!pop || !btn) return;
+  const GAP = 14, EDGE = 12;            // air to the button, air to the frame
+  const b = btn.getBoundingClientRect();
+
+  /* 760px is the button's own breakpoint, not a second opinion about it:
+     under that width the button leaves the middle of the right edge for
+     bottom:210px, so beside it stops being a sensible place to stand. The
+     budget to its left there is only 296px at 390px wide - narrower than
+     the cramped tile this rebuild set out to fix. Above it instead: full
+     width, and it still reads as opening from the button. */
+  if (innerWidth > 760){
+    const w = Math.min(900, Math.max(0, b.left - GAP - EDGE));
+    pop.style.width = Math.round(w) + 'px';
+    pop.style.left  = Math.round(b.left - GAP - w) + 'px';
+    pop.style.maxHeight = '';           // back to the stylesheet's cap
+    /* width first, then height: the text reflows at the new width, and
+       asking for offsetHeight before setting the width measures the box
+       the tile is about to stop being. */
+    const h = pop.offsetHeight;
+    pop.style.top = Math.round(
+      Math.min(Math.max(b.top + b.height / 2 - h / 2, EDGE), Math.max(EDGE, innerHeight - h - EDGE))
+    ) + 'px';
+    return;
+  }
+
+  pop.style.width = Math.round(innerWidth - EDGE * 2) + 'px';
+  pop.style.left  = EDGE + 'px';
+  /* never taller than the gap above the button, or it would grow down over
+     the thing it came from */
+  pop.style.maxHeight = Math.max(160, Math.round(b.top - GAP - EDGE)) + 'px';
+  const h = pop.offsetHeight;
+  pop.style.top = Math.round(Math.max(EDGE, b.top - GAP - h)) + 'px';
+}
+addEventListener('resize', placeAddPop, { passive: true });
 
 /* ---- "when your pointer gets close", measured ----
 
@@ -2035,6 +2080,7 @@ function render(){
   $('openAdd').onclick = () => { Q = ''; ADDING = true;
     DRAFT = { id:null, title:'', day:SEL, steps:[], step:'' }; render(); };
   if (ADDING){
+    placeAddPop();
     const ti = $('dTitle'), si = $('dStep');
     ti.oninput = () => { DRAFT.title = ti.value; const s = $('dSave'); if (s) s.style.opacity = ti.value.trim() ? 1 : .45; };
     ti.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); si.focus(); } };
