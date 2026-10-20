@@ -221,7 +221,7 @@
      "Near" is a real measurement - see fabProximity() - because the design
      says "when your pointer gets close", and hover alone means you have
      already found it. */
-  .fab{position:fixed;z-index:30;
+  .fab{position:fixed;z-index:32;
     right:max(16px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);
     display:flex;align-items:center;gap:0;cursor:pointer;overflow:hidden;
     padding:5px;border-radius:99px;font:inherit;font-size:15px;font-weight:600;
@@ -670,11 +670,6 @@
   html[data-wtd-scene="on"] .lq-sub,
   html[data-wtd-scene="on"] .tk-h .t{color:var(--ground-ink)}
   html[data-wtd-scene="on"] .tk-h .n,
-  html[data-wtd-scene="on"] .wxc .cap,
-  /* :not(.on) - the active chip sits on an opaque accent fill, not on the
-     ground, and giving it the ground's light ink put pale text on pink at
-     1.7:1. The ground's inks are for text on the ground. */
-  html[data-wtd-scene="on"] .wxc .seg button:not(.on),
   html[data-wtd-scene="on"] .doneline,
   html[data-wtd-scene="on"] .none{color:var(--ground-dim)}
   html[data-wtd-scene="on"] .doneline:hover{color:var(--ground-ink)}
@@ -711,22 +706,8 @@
   /* the control, beside the day heading rather than in the bottom bar: that
      bar was centred and signed off this morning and a fourth group would
      have pushed the intervals off the middle */
-  .wxc{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .wxc .cap{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-  .wxc .seg{display:flex;gap:3px;padding:3px;border-radius:99px;background:var(--lq-track)}
-  .wxc .seg button{cursor:pointer;border:0;border-radius:99px;padding:5px 12px;font:inherit;
-    font-size:13px;background:transparent;color:var(--wx-dim)}
-  .wxc .seg button.on{background:var(--accent);color:var(--iv-ink);font-weight:500}
-  .wxc .lt{cursor:pointer;display:flex;align-items:center;gap:8px;padding:5px 14px 5px 6px;
-    border-radius:99px;border:1px solid var(--glass-edge);background:var(--glass);
-    color:var(--muted);font:inherit;font-size:13px}
-  .wxc .lt i{width:34px;height:20px;border-radius:99px;background:var(--lq-track);
-    position:relative;transition:background .2s}
-  .wxc .lt i s{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
-    background:#FFFFFF;transition:transform .2s}
-  .wxc .lt.on{color:var(--text)}
-  .wxc .lt.on i{background:var(--mint)}
-  .wxc .lt.on i s{transform:translateX(14px)}
+  /* The rain controls that stood here are in the account menu now, so their
+     styling went with them. Nothing else used .wxc. */
   .hd-row{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
   .hd-row .sp{flex:1}
 
@@ -1357,9 +1338,15 @@ const starsHTML = () => '<div class="stars" aria-hidden="true">' + STARS.map(t =
    frame measures real elapsed time and multiplies; dt is capped at 50ms so
    a backgrounded tab does not teleport every drop to the bottom on return.
    ============================================================ */
-const WX_KEY = 'whattodo_rain', WX_LIT_KEY = 'whattodo_lightning';
-let WX = (() => { try { return localStorage.getItem(WX_KEY) || 'medium'; } catch (e) { return 'medium'; } })();
-let LIT = (() => { try { return localStorage.getItem(WX_LIT_KEY) !== '0'; } catch (e) { return true; } })();
+/* THE RAIN IS NOT THIS TOOL'S SETTING ANY MORE. It is a preference about
+   motion, so it lives in the account menu with the theme, and this page
+   reads it. access.js owns the keys and adopts the old whattodo_rain and
+   whattodo_lightning values, so a choice already made survives the move.
+
+   The fallbacks are for a page that somehow loads without access.js: the
+   scene should still rain rather than stand still. */
+let WX  = (window.Access && Access.anim) ? Access.anim() : 'medium';
+let LIT = (window.Access && Access.animLightning) ? Access.animLightning() : true;
 
 const weather = (() => {
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)');
@@ -1546,25 +1533,15 @@ const weather = (() => {
 })();
 
 
-function setRain(v){
-  WX = v; try { localStorage.setItem(WX_KEY, v); } catch (e) {}
-  weather.apply(); render();
-}
-function setLightning(on){
-  LIT = !!on; try { localStorage.setItem(WX_LIT_KEY, on ? '1' : '0'); } catch (e) {}
+/* The account menu is the only thing that writes it now; this just keeps up.
+   weather.apply() reads WX itself, so the order matters: set, then apply. */
+addEventListener('em:anim', e => {
+  const d = (e && e.detail) || {};
+  WX  = d.level || 'medium';
+  LIT = d.lightning !== false;
+  weather.apply();
   render();
-}
-function weatherHTML(){
-  return '<div class="wxc">' +
-    '<span class="cap">Rain</span>' +
-    '<span class="seg">' + window.TodoCore.RAIN_STEPS.map(s =>
-      '<button data-rain="' + s + '" class="' + (WX === s ? 'on' : '') + '">' +
-      s.charAt(0).toUpperCase() + s.slice(1) + '</button>').join('') + '</span>' +
-    '<button class="lt' + (LIT ? ' on' : '') + '" id="litBtn" ' +
-      'aria-pressed="' + (LIT ? 'true' : 'false') + '">' +
-      '<i><s></s></i>Lightning</button>' +
-  '</div>';
-}
+});
 
 /* The reminder interval is a choice now, not a fixed quarter of an hour. */
 const IVS = [5, 15, 30, 60];
@@ -1779,7 +1756,7 @@ function addHTML(){
       '<span class="t">' + (editing ? 'Edit task' : 'New task') + '</span>' +
       '<span class="n">' + (DRAFT.steps.length ? DRAFT.steps.length + ' sub-task' + (DRAFT.steps.length > 1 ? 's' : '') : '') + '</span>' +
       '<button class="x" id="dClose" aria-label="Close">×</button></div>' +
-    '<input id="dTitle" maxlength="200" autocomplete="off" placeholder="Heading — e.g. NW-0425 · lamp-pole install" value="' + esc(DRAFT.title) + '">' +
+    '<input id="dTitle" maxlength="200" autocomplete="off" placeholder="Heading – e.g. NW-0425 · lamp-pole install" value="' + esc(DRAFT.title) + '">' +
     '<div class="days"><span class="cap">Due</span>' +
       days.map(k => '<button data-dday="' + k + '" class="' + (DRAFT.day === k ? 'on' : '') + '">' +
         DOW[days.indexOf(k)] + ' ' + new Date(k + 'T12:00:00').getDate() + '</button>').join('') +
@@ -1964,7 +1941,7 @@ function render(){
   if (LOAD_ERR) h += '<div class="err"><b>The list could not be read.</b><br>' + esc(LOAD_ERR) + '</div>';
   h += '<div class="hd-row"><span class="lq-sub">' +
       esc(d.toLocaleDateString([], { weekday:'long', day:'numeric', month:'long' })) +
-    '</span><span class="sp"></span>' + weatherHTML() + '</div>' +
+    '</span><span class="sp"></span></div>' +
     /* DASHBOARD ON TOP, TASKS BELOW.
 
        It used to be two columns side by side, calendar on the left and the
@@ -2072,8 +2049,6 @@ function render(){
   }
   const qx = $('qx'); if (qx) qx.onclick = () => { Q = ''; render(); };
 
-  document.querySelectorAll('[data-rain]').forEach(b => b.onclick = () => setRain(b.dataset.rain));
-  const lb = $('litBtn'); if (lb) lb.onclick = () => setLightning(!LIT);
 
   /* adding leaves the search: the form draws on the day's list, which a
      search has replaced, and its fields would not be on the page to wire */
