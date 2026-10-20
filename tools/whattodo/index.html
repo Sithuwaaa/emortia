@@ -225,11 +225,29 @@
     right:max(16px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);
     display:flex;align-items:center;gap:0;cursor:pointer;overflow:hidden;
     padding:5px;border-radius:99px;font:inherit;font-size:15px;font-weight:600;
-    border:0;background:var(--accent);color:var(--iv-ink);
-    box-shadow:0 10px 30px -10px color-mix(in srgb,var(--accent) 60%,transparent);
+    /* ---- GREEN, AND NOT A REVERSAL OF THE BURGUNDY DECISION ----
+
+       .pri was moved OFF this green deliberately: "it was the green tick
+       colour, which on this tile reads as done rather than save". That
+       still holds and Save task is still burgundy. This is the ADD
+       button, where green is not claiming anything is finished - it is
+       the one affordance on the page that makes something new.
+
+       --chk-on is the design's own green, already in the palette, and
+       --chk-ink is the ink already sized for it. The note at the token
+       says white on #1F9E62 measures 3.43, so the ink goes dark rather
+       than the colour being altered - the same resolution as last time. */
+    border:0;background:var(--chk-on);color:var(--chk-ink);
+    box-shadow:0 10px 30px -10px color-mix(in srgb,var(--chk-on) 60%,transparent);
     transition:gap .22s ease,padding .22s ease,box-shadow .22s ease}
+  /* A LIGHT WASH, NOT A DARK ONE. The disc used to darken the fill beneath
+     it by 14% of the ink, which on the burgundy was fine and on the green
+     works against itself: a dark glyph on a darkened fill measured 3.89 in
+     light mode. Washing the disc lighter instead moves the glyph and its
+     ground apart - 5.84 - and the circle still reads as a circle. A white
+     glyph on the darkened disc was the other option and reached only 4.25. */
   .fab i{width:42px;height:42px;border-radius:50%;flex:none;
-    background:color-mix(in srgb,var(--iv-ink) 14%,transparent);color:var(--iv-ink);
+    background:color-mix(in srgb,#FFFFFF 16%,transparent);color:var(--chk-ink);
     display:flex;align-items:center;justify-content:center;
     font-size:24px;font-style:normal;line-height:1;transition:transform .22s ease}
   .fab span{max-width:0;overflow:hidden;white-space:nowrap;
@@ -607,14 +625,35 @@
     --wtd-scene:image-set(url('img/scene-1280.webp') type('image/webp'));
     --wtd-scene-tint:rgba(11,3,6,.75);
   }
-  /* ONE BACKGROUND, THE SAME IN BOTH THEMES. There is no light-mode veil:
-     the photograph is not re-tinted when the theme flips, so it looks
-     identical either way. That is a deliberate instruction, and it has a
-     consequence worth stating next to it - see "the ground is dark in both
-     themes" below. */
   @media (min-width:900px){
     html[data-wtd-scene="on"]{
       --wtd-scene:image-set(url('img/scene-1672.webp') type('image/webp'));
+    }
+  }
+
+  /* ---- A PHOTOGRAPH PER THEME ----
+
+     It used to be one background in both themes, never re-tinted, and the
+     note that stood here said so as a deliberate instruction. That has been
+     reversed: there is a light-mode photograph now, a different exposure of
+     the same promenade rather than the dark one lightened.
+
+     Encoded from the source at quality 0.56, chosen by measurement rather
+     than by eye - at that setting it differs from its own source by 2.49
+     mean channel levels, where the dark file already shipping differs from
+     its source by 2.54. Equal fidelity to what was already accepted, at
+     139,986 and 212,886 bytes against the dark pair's 140,732 and 200,664.
+
+     The tint is the other half of it. The dark ground wants a heavy veil to
+     carry light text; a light ground wants a pale one, and keeping the dark
+     tint here would have put the new photograph behind the old curtain. */
+  html[data-theme="light"][data-wtd-scene="on"]{
+    --wtd-scene:image-set(url('img/scene-light-1280.webp') type('image/webp'));
+    --wtd-scene-tint:rgba(247,241,232,.62);
+  }
+  @media (min-width:900px){
+    html[data-theme="light"][data-wtd-scene="on"]{
+      --wtd-scene:image-set(url('img/scene-light-1672.webp') type('image/webp'));
     }
   }
   /* the readability tint, over the photo and under everything else */
@@ -652,6 +691,26 @@
      because the thing they sit on is identical in both themes. This is not
      a theme override - it is the ground refusing to pretend it is light. */
   html[data-wtd-scene="on"]{ --ground-ink:#F7F1E8; --ground-dim:#D6C3C6; }
+  /* ---- AND THE GROUND IS NOT DARK IN BOTH THEMES ANY MORE ----
+
+     The note above says the two inks are identical in both themes "because
+     the thing they sit on is identical in both themes". That stopped being
+     true when light mode got its own photograph: the pale ground under
+     #F7F1E8 measured about 1.1:1 - cream on cream.
+
+     Solved against the DARKEST patch of the composited ground, which is the
+     binding case for dark ink, sampled 851 points across the frame after
+     the tint: luminance 0.304. Both are colours the palette already has
+     rather than new hex - #22060E is the ink used on accent fills, #3A2730
+     the line colour.
+
+         ink  #22060E   6.44:1      dim  #3A2730   4.68:1
+
+     The gap between them is the hierarchy, and it is real: a dim that only
+     just cleared would have been the same colour as the ink. */
+  html[data-theme="light"][data-wtd-scene="on"]{
+    --ground-ink:#22060E; --ground-dim:#3A2730;
+  }
   /* LIGHT MODE'S TILES ARE NEARLY OPAQUE, and this is the answer to "will
      light mode read over a dark photo".
 

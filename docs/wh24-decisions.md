@@ -1408,3 +1408,36 @@ And the reason this is the right amount of work: the silent zero was
 *invisible* — nothing on screen distinguished it from a real zero, which is
 why it earned a signal, two callers and twenty-eight assertions. Garbage in a
 quantity column announces itself. It needed a check, not an architecture.
+
+### A stopped dev server does not fail loudly
+
+The server had been down for 52 minutes and the page kept loading. The
+service worker is network-first with a cache fallback, which is exactly the
+behaviour this file argues for — offline, last known good beats nothing — and
+it means a measuring session against a dead server reads yesterday's bytes
+and reports them as today's. Nothing goes red. The page renders. The numbers
+are real numbers about the wrong build.
+
+It surfaced only because `fetch()` of a file that certainly exists returned
+"Failed to fetch" while the page around it looked fine.
+
+> **Check the server is up before a measuring session, not after.** One
+> `fetch` of a known file, before the first measurement, not after a result
+> looks wrong.
+
+The scoping is the useful part, and it is worth doing rather than retracting
+everything or nothing: name which measurements fell inside the window and
+which predate it. Here the Animations work predated the stop and stands; only
+the navigations after it were cache-served, and none of those numbers had been
+used for a decision.
+
+A second harness fault the same hour, caught the same way: the browser pane
+was collapsed, so `innerWidth` was **0**, every canvas built from it was 0×0,
+and a sampled ground came back as pure black in both themes — which would have
+made cream text on a cream photograph look like 18:1. The measuring helpers
+now throw when the sampled ground is uniformly black, and the probes assert
+`innerWidth` is non-zero before reading anything.
+
+**Both are the same lesson in different clothes: a measurement harness that
+cannot fail is a harness that will quietly agree with you.** Give it something
+it is allowed to refuse.
