@@ -474,9 +474,24 @@
   .who .hit .more{flex:none;color:var(--muted);font-size:10.5px}
   /* the matched run itself. A background alone goes muddy on the row's own
      tint, so it carries its own ink as well. */
-  .who .hit mark{background:var(--accentBg);color:var(--accent-ink,var(--text));
-    border-radius:3px;padding:0 2px;font-weight:700}
-  html[data-theme="dark"] .who .hit mark{background:var(--accentB);color:var(--bg)}
+  /* ---- the searched run, wherever it appears ----
+
+     On the row's chip and on the value itself inside the opened ticket, so
+     a serial you searched is lit in the serial column rather than left for
+     the eye to find among six material lines.
+
+     THE LIGHT RULE WAS THE BUG. It used --accentBg with --accent-ink, and
+     in light mode that is a pale tint carrying near-white ink: 1.25:1
+     against the card, invisible on a white table. The ink was never the
+     problem - it measures 8.9 either way - the mark simply did not stand
+     out from the paper. 45% of the accent is 1.86:1 against the card,
+     which is what a highlighter looks like, with --text on top at 8.9. */
+  .who .hit mark,.tkb mark{background:color-mix(in srgb,var(--accent) 45%,transparent);
+    color:var(--text);border-radius:3px;padding:0 2px;font-weight:700}
+  html[data-theme="dark"] .who .hit mark,html[data-theme="dark"] .tkb mark{
+    background:var(--accentB);color:var(--bg)}
+  /* a marked serial keeps its copy-chip shape rather than being boxed twice */
+  .tkb .sns span mark{padding:0 1px}
   /* Which WorkHub app the row came from. The three are different kinds of
      thing - a warehouse reservation, a site work task, a direct request - and
      what "collect" means is not identical across them, so the row says which
@@ -1010,16 +1025,42 @@ function daysCell(t){
   return `<div class="days"><span>${esc(niceT(t.wh_updated_at))}</span></div>`;
 }
 
+/* MARK THE SEARCHED RUN WHEREVER IT ACTUALLY IS.
+
+   The chip on the row says which field matched; this puts the highlight on
+   the value itself inside the opened ticket, so a serial you searched is
+   lit in the serial column rather than left for the eye to find among six
+   material lines.
+
+   Escapes first and marks second, in that order: marking first would put
+   the tags through esc() and print them. The query is matched
+   case-insensitively against the raw value, then the offsets are applied
+   to the escaped string - which is why the escape is done per slice rather
+   than over the whole thing. */
+function hl(value, q){
+  const v = String(value == null ? '' : value);
+  const needle = String(q || '').trim();
+  if (!needle) return esc(v);
+  const at = v.toUpperCase().indexOf(needle.toUpperCase());
+  if (at < 0) return esc(v);
+  return esc(v.slice(0, at)) + '<mark>' + esc(v.slice(at, at + needle.length)) +
+         '</mark>' + esc(v.slice(at + needle.length));
+}
+/* what is in the search box right now - the detail is drawn on expand,
+   which happens long after the list was rendered */
+const QNOW = () => { const b = $('find'); return b ? b.value : ''; };
+
 function linesTable(t){
   const issued = !!t.done_at;
   const rows = (t.lines || []).map(l => {
     const g = l.gin || {}, chk = issued ? W.issueCheck(l) : '';
-    const sn = (g.sn || []).map(x => `<span data-sn="${esc(x)}" title="Copy">${esc(x)}</span>`).join('');
+    const q = QNOW();
+    const sn = (g.sn || []).map(x => `<span data-sn="${esc(x)}" title="Copy">${hl(x, q)}</span>`).join('');
     return `<tr>
-      <td class="m">${esc(l.code)}</td><td>${esc(l.desc)}</td>
+      <td class="m">${hl(l.code, q)}</td><td>${hl(l.desc, q)}</td>
       <td class="num m">${l.qty == null ? '' : esc(l.qty)}</td><td class="m">${esc(l.uom)}</td>
       <td class="num m">${g.qty == null ? '' : esc(g.qty)}</td>
-      <td class="m">${esc(g.res || '')}</td><td class="m">${esc(g.gi || '')}</td><td class="m">${g.date ? nice(g.date) : ''}</td>
+      <td class="m">${hl(g.res || '', q)}</td><td class="m">${hl(g.gi || '', q)}</td><td class="m">${g.date ? nice(g.date) : ''}</td>
       <td class="sn"><div class="sns">${sn}</div></td>
       <td>${chk ? `<span class="chk ${chk.split(' ')[0]}">${esc(chk)}</span>` : ''}</td></tr>`;
   }).join('');
