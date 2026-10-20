@@ -42,22 +42,29 @@ not in a test, not in a commit message. Test fixtures use invented values only.
 ## Layout
 
 ```
-index.html              the directory — every tool, grouped and sorted
-Emortia.html            the music and poetry side
+index.html              the whole site — home, music, poetry, the tool
+                        directory, the dashboard and the owner page
+Emortia.html            a byte-identical copy of index.html, mirrored by
+                        hand — see docs/wh24-decisions.md
 sw.js                   the service worker  (bump VERSION on every deploy)
 pwa.js, manifest.json   home-screen install
 tools/                  the sixteen tools, one folder each
 tools/_lib/             everything shared
-supabase/               numbered SQL migrations, 002 → 044
+supabase/               numbered SQL migrations, 002 → 045 — 43 files,
+                        034 absent; whether it was renumbered or dropped
+                        is not recorded
 docs/                   decisions and proposals
 .github/workflows/      weekly database backup to R2
 ```
 
 ### `tools/_lib` — the shared half
 
+The main ones. This is not a file index and does not try to be — files land here
+without this table needing a line.
+
 | file | what it holds |
 |---|---|
-| `access.js` | the tool registry, the three tiers, who may open what |
+| `access.js` | the tool registry and the three tiers, who may open what, and the account chip and its menu — the shared theme switch and the animation setting live there too, with the cross-tab listener that carries a change to pages already open |
 | `db.js` | every Supabase call the tools make |
 | `category.css` | the five colour families, the single source for tool chrome |
 | `nav.css`, `theme.css` | the bar and the light/dark themes |
@@ -67,9 +74,11 @@ docs/                   decisions and proposals
 ### The sixteen tools
 
 Grouped the way the directory groups them. The group a tool belongs to is declared
-once, in `access.js`, and everything else follows from it.
+once, in `access.js`, and everything else follows from it — so this list matches what
+`access.js` returns, Poetry included. Poetry is a lockable feature rather than a tool
+with a folder of its own, which is why the count is sixteen and the list is seventeen.
 
-**Emortia** — Video & Artwork, What To Do
+**Emortia** — Poetry, Video & Artwork, What To Do
 **Design & materials** — BOM Builder, Design Extractor, GIN Extractor, Material Codes, WH24 Material Checker
 **Field operations** — Austin SWAP, ESN Sharing, Field Config, RF Jumper Codes
 **People & work** — Daily Attendance, Team Directory
@@ -108,8 +117,14 @@ Plain `node`, no test framework, no dependencies. Each file runs on its own:
 ```bash
 node tools/_lib/family.test.js      # colour families and tool groups agree
 node tools/_lib/db.schema.test.js   # every db.js call matches a migration
-node tools/wh24/wh24.test.js        # and so on, one per tool
+node tools/_lib/regex.test.js       # no regex has lost its backslashes
+node tools/wh24/wh24.test.js        # and so on
 ```
+
+**23 test files across 16 tools, and the cover is uneven.** Some tools have several —
+wh24 and design-extractor have three each. **Four have none at all: GIN Extractor,
+RF Jumper Codes, Site Access Lookup, Site Data Lookup.** Named here because a README
+that implies full coverage is worse than one that says where the holes are.
 
 `family.test.js` is the strictest and exists for a specific bug: tool pages used to each
 pick their own accent colour, so a tool showed one colour on the directory and opened in
@@ -151,8 +166,9 @@ Migrations are numbered and run in order against Supabase. They are additive —
 `alter table ... add column if not exists` runs twice without complaint, and the ones
 written before that was a rule are the ones that caused trouble.
 
-A GitHub Action dumps the database to Cloudflare R2 every Sunday evening, and on demand
-from the Actions tab. Three passes, in order: roles, schema, data. A schema-only dump
+A GitHub Action dumps the database to Cloudflare R2 every Sunday at **18:00 UTC**
+(`0 18 * * 0` — half past eleven on Sunday night in Colombo), and on demand from the
+Actions tab. Three passes, in order: roles, schema, data. A schema-only dump
 restores an empty database, which is the worst kind of backup — the kind that looks like
 it worked.
 
@@ -169,8 +185,12 @@ stays, with the date it stopped applying. The point is that the next person to l
 value finds the reasoning, not just the number, and does not "fix" something back to the
 way it was broken.
 
-`docs/whattodo-delete-proposal.md` is a proposal, not a shipped feature. Written to be
-read and argued with before anything is wired.
+`docs/whattodo-delete-proposal.md` was written to be read and argued with before
+anything was wired, and it was — **the feature shipped**. Migration 045 added
+`deleted_at`; `removeTodo` soft-deletes rather than destroying; restore, the bin and
+purge are all wired; removing takes a two-step confirm and can be undone; and a
+finished task is never swept, whatever its age. The document stays listed because it
+is now the record of how that was decided, which outlasts the decision.
 
 ---
 
