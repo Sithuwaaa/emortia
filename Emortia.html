@@ -3910,6 +3910,13 @@ class Component extends DCLogic {
     this.rollShuffle();
     this.shufTimer();
     this.watchSum();
+    /* The Animations card and the account menu are the same setting in two
+       places, which is only true while both are looking at it. The card
+       re-rendered on its own clicks and nothing else, so changing the level
+       from the menu left it showing the old one - two controls on screen
+       disagreeing about a value they share. It listens now. */
+    this._animChanged = () => { if (this.state.page === 'owner') this.setState({}); };
+    addEventListener('em:anim', this._animChanged);
     /* The account menu closes the way every menu is expected to: a click
        anywhere else, or Escape. Caught on the document rather than on a
        backdrop, so it also closes for a click on the page behind it without
@@ -4071,6 +4078,7 @@ class Component extends DCLogic {
   componentWillUnmount(){
     clearInterval(this._shufT);
     this.audio.pause();
+    if(this._animChanged) removeEventListener('em:anim', this._animChanged);
     if(this._onPpResize) window.removeEventListener('resize', this._onPpResize);
     if(this._ppRO) this._ppRO.disconnect();
     if(this._onGateIn) document.removeEventListener('emortia:signedin', this._onGateIn);
@@ -6065,7 +6073,71 @@ class Component extends DCLogic {
       card('The dashboard',
         'Who has been here, on what, which tools are actually opened, and every machine that has signed in – with the switch to sign one out.',
         btn('Open the dashboard', this.go('dash'), true)),
+      this.renderAnimCard(),
       this.renderLockPanel());
+  }
+
+  /* ---- animation, the second place the same switch is ------------------
+
+     It is in the account menu, which is on every page, and it is here too.
+     Those are not two settings: both read and write Access.anim, so they
+     cannot disagree. The menu is where you reach it in passing; this is
+     where you look when you have come to change something on purpose, and
+     a settings page that is silent about a site-wide preference sends you
+     hunting through a dropdown for it.
+
+     Lightning shows here even though this page has no scene to strike. That
+     is the opposite of the rule the account menu follows, and deliberately:
+     the menu sits on top of whatever you are doing, so a dead control there
+     is clutter, while a settings page is understood to be about elsewhere. */
+  renderAnimCard(){
+    const A = window.Access;
+    if(!(A && A.setAnim)) return null;          /* an older access.js */
+    const lv  = A.anim();
+    const lit = A.animLightning();
+    const off = lv === 'off';
+
+    const seg = React.createElement('div',{style:{display:'flex',gap:'3px',padding:'3px',
+        borderRadius:'10px',background:'var(--line2)'}},
+      (A.ANIM_STEPS||['off','light','medium','heavy']).map(step =>
+        React.createElement('button',{key:step,
+          onClick:()=>{ A.setAnim(step); this.setState({}); },
+          'aria-pressed': lv===step ? 'true' : 'false',
+          style:{flex:1,background: lv===step ? 'var(--accent)' : 'none',
+            color: lv===step ? '#fff' : 'var(--dim)',
+            border:'none',borderRadius:'8px',padding:'8px 4px',fontFamily:'inherit',
+            fontSize:'13px',fontWeight: lv===step ? 600 : 500,cursor:'pointer'}},
+          step.charAt(0).toUpperCase()+step.slice(1))));
+
+    const on = lit && !off;
+    const lrow = React.createElement('button',{
+        onClick:()=>{ A.setAnimLightning(!lit); this.setState({}); },
+        disabled: off, 'aria-checked': on ? 'true':'false', role:'switch',
+        style:{marginTop:'12px',width:'100%',display:'flex',alignItems:'center',gap:'10px',
+          background:'none',border:'1px solid var(--line3)',borderRadius:'10px',
+          padding:'9px 12px',color:'var(--text)',fontFamily:'inherit',fontSize:'13.5px',
+          cursor: off ? 'default' : 'pointer', opacity: off ? 0.45 : 1}},
+      React.createElement('span',{style:{flex:1,textAlign:'left'}},'Lightning'),
+      React.createElement('span',{style:{width:'38px',height:'21px',borderRadius:'999px',
+          flex:'none',position:'relative',transition:'background .18s ease',
+          background: on ? 'var(--accent)' : 'var(--line3)'}},
+        React.createElement('span',{style:{position:'absolute',top:'3px',left:'3px',
+          width:'15px',height:'15px',borderRadius:'50%',background:'#fff',
+          transition:'transform .18s ease',
+          transform: on ? 'translateX(17px)' : 'none'}})));
+
+    return React.createElement('div',{key:'anim',
+        style:{background:'var(--panelS)',border:'1px solid var(--line2)',
+          borderRadius:'14px',padding:'18px 20px'}},
+      React.createElement('div',{style:{fontFamily:"'Bricolage Grotesque',sans-serif",
+        fontWeight:700,fontSize:'17px',marginBottom:'6px'}}, 'Animations'),
+      React.createElement('p',{style:{color:'var(--dim)',fontSize:'13.5px',
+        lineHeight:1.6,margin:'0 0 14px'}},
+        'Rain and lightning, set once for the whole site rather than per tool. ' +
+        'What To Do reads it today; anything that grows an ambient scene later ' +
+        'reads the same answer. With the scale off there is nothing to strike ' +
+        'through, so the switch goes with it.'),
+      seg, lrow);
   }
 
   /* ---- what the team can reach ----
