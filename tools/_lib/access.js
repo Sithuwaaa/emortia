@@ -723,6 +723,57 @@
      stored theme is cleared ONCE - across every key shape the tools use,
      em-theme, *.theme and *_theme - and from then on a choice is a choice.
      The flag means this happens exactly once per browser, never again. */
+  /* ------------------------------------------------------------ animation
+
+     The rain and the lightning were What To Do's own controls, sitting in its
+     header where only that tool could reach them. They are a preference about
+     motion, not about today's tasks, so they belong in the one control that is
+     on every page - the same argument that moved the theme button here.
+
+     Shared keys, so a second tool that grows an ambient scene reads the choice
+     already made rather than starting its own. A tool listens for em:anim.
+
+     The old per-tool keys are ADOPTED, not ignored: somebody who turned the
+     rain down to light keeps light instead of being quietly reset to medium
+     the first time this runs. */
+  var ANIM_KEY = 'em-anim', ANIM_LIT_KEY = 'em-anim-lightning';
+  var ANIM_STEPS = ['off', 'light', 'medium', 'heavy'];
+
+  function animNow() {
+    try {
+      var v = localStorage.getItem(ANIM_KEY);
+      if (v && ANIM_STEPS.indexOf(v) >= 0) return v;
+      var old = localStorage.getItem('whattodo_rain');
+      if (old && ANIM_STEPS.indexOf(old) >= 0) { localStorage.setItem(ANIM_KEY, old); return old; }
+    } catch (e) {}
+    return 'medium';
+  }
+  function animLightning() {
+    try {
+      var v = localStorage.getItem(ANIM_LIT_KEY);
+      if (v !== null) return v !== '0';
+      var old = localStorage.getItem('whattodo_lightning');
+      if (old !== null) { localStorage.setItem(ANIM_LIT_KEY, old); return old !== '0'; }
+    } catch (e) {}
+    return true;
+  }
+  function fireAnim() {
+    try {
+      window.dispatchEvent(new CustomEvent('em:anim', {
+        detail: { level: animNow(), lightning: animLightning() }
+      }));
+    } catch (e) {}
+  }
+  function setAnim(v) {
+    if (ANIM_STEPS.indexOf(v) < 0) return;
+    try { localStorage.setItem(ANIM_KEY, v); } catch (e) {}
+    fireAnim();
+  }
+  function setAnimLightning(on) {
+    try { localStorage.setItem(ANIM_LIT_KEY, on ? '1' : '0'); } catch (e) {}
+    fireAnim();
+  }
+
   var THEME_RESET = 'em-theme-default-light';
   (function () {
     var done = true;
@@ -835,6 +886,26 @@
     '  background:#f7f1e8;transition:transform .18s ease}',
     '.acc-theme.on .acc-tog{background:#c4526d}',
     '.acc-theme.on .acc-tog i{transform:translateX(17px)}',
+    /* the same switch, for any setting that is on or off. The theme row got
+       its ".on" rules under its own name, so a second switch had nothing to
+       inherit and sat dark in the on state. */
+    '.acc-sw.on .acc-tog{background:#c4526d}',
+    '.acc-sw.on .acc-tog i{transform:translateX(17px)}',
+    '.acc-sw[disabled]{cursor:default}',
+    /* the motion scale. Four steps inside a 248px menu, so 11.5px and tight
+       padding is what keeps "Medium" from being clipped.
+
+       The selected chip is #bf4360, not the #c4526d used for the switches:
+       white on #c4526d measures 4.4:1 and this is 11.5px text, not a toggle
+       track with no writing on it. Same hue and same saturation, lightness
+       down from 54.5% to 51%, which clears 4.5 with room to spare. */
+    '.acc-seg{display:flex;gap:2px;padding:3px;margin:2px 10px 6px;border-radius:99px;',
+    '  background:#2a1620}',
+    '.acc-seg button{all:unset;flex:1;text-align:center;cursor:pointer;border-radius:99px;',
+    '  padding:5px 2px;font-family:inherit;font-size:11.5px;line-height:1.2;',
+    '  color:var(--muted,#a89886)}',
+    '.acc-seg button:hover,.acc-seg button:focus-visible{color:var(--text,#f7f1e8)}',
+    '.acc-seg button.on{background:#bf4360;color:#fff}',
     '@media (prefers-reduced-motion:reduce){.acc-tog,.acc-tog i{transition:none}}',
     '.acc-swatch{width:26px;height:26px;border-radius:8px;flex:none;',
     '  background:linear-gradient(160deg,var(--r1),var(--r2))}',
@@ -948,6 +1019,64 @@
     trow.onclick = function () { setTheme(themeNow() === 'light' ? 'dark' : 'light'); drawTheme(); };
     drawTheme();
     menu.appendChild(trow);
+
+    /* ---- animation, from the account rather than from one tool ----
+
+       The scale is always here: it is a statement about motion in general and
+       a tool that grows an ambient scene later reads the same answer. The
+       lightning switch is only drawn where there is a scene to strike, which
+       is the one thing in this menu that asks the page what it is - a control
+       that does nothing on the page you are looking at is worse than a
+       control you have to open the right tool to find. */
+    menu.appendChild(el('hr', 'acc-sep'));
+    var alb = el('div', 'acc-lbl'); alb.textContent = 'ANIMATIONS';
+    menu.appendChild(alb);
+
+    var seg = el('div', 'acc-seg');
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', 'Animation level');
+    var segBtns = ANIM_STEPS.map(function (step) {
+      var sb = el('button'); sb.type = 'button';
+      sb.textContent = step.charAt(0).toUpperCase() + step.slice(1);
+      sb.onclick = function () { setAnim(step); drawAnim(); };
+      seg.appendChild(sb);
+      return sb;
+    });
+    menu.appendChild(seg);
+
+    var lrow = null;
+    if (document.documentElement.hasAttribute('data-wtd-scene')) {
+      lrow = el('button', 'acc-row acc-sw acc-lit'); lrow.type = 'button';
+      lrow.setAttribute('role', 'menuitemcheckbox');
+      var lsw = el('span', 'acc-swatch');
+      lsw.style.setProperty('--r1', '#f6d879'); lsw.style.setProperty('--r2', '#c98a2b');
+      lrow.appendChild(lsw);
+      lrow.appendChild(document.createTextNode('Lightning'));
+      var ltog = el('span', 'acc-tog'); ltog.appendChild(el('i'));
+      lrow.appendChild(ltog);
+      lrow.onclick = function () { setAnimLightning(!animLightning()); drawAnim(); };
+      menu.appendChild(lrow);
+    }
+
+    function drawAnim() {
+      var lv = animNow();
+      segBtns.forEach(function (b, i) {
+        var on = ANIM_STEPS[i] === lv;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if (lrow) {
+        /* off means off: there is nothing for the lightning to strike through,
+           so the switch says so rather than sitting lit over a still page */
+        var can = lv !== 'off';
+        var on = can && animLightning();
+        lrow.classList.toggle('on', on);
+        lrow.setAttribute('aria-checked', on ? 'true' : 'false');
+        lrow.disabled = !can;
+        lrow.style.opacity = can ? '' : '.45';
+      }
+    }
+    drawAnim();
 
     var foot = el('div', 'acc-foot');
     var out = el('button', 'acc-out'); out.type = 'button'; out.setAttribute('role', 'menuitem');
@@ -1390,6 +1519,10 @@
     grouped: grouped, groupOf: groupOf, byName: byName,
     canSignUp: remote, applyOwner: applyOwner, chip: showChip,
     makeUserLine: makeUserLine, CSS: CSS, gateMarkup: gateMarkup, wire: wire,
+    /* the motion setting, for a tool with an ambient scene to read. It also
+       arrives on window as an em:anim event when it changes. */
+    ANIM_STEPS: ANIM_STEPS, anim: animNow, animLightning: animLightning,
+    setAnim: setAnim, setAnimLightning: setAnimLightning,
     /* the PBKDF2 pair, so a tool can put a password in front of something
        destructive without inventing its own crypto */
     derive: derive, randomSalt: randomSalt, sameSecret: same,
