@@ -122,9 +122,17 @@ node tools/wh24/wh24.test.js        # and so on
 ```
 
 **23 test files across 16 tools, and the cover is uneven.** Some tools have several —
-wh24 and design-extractor have three each. **Four have none at all: GIN Extractor,
+wh24 and design-extractor have three each. **Four tool folders have none: GIN Extractor,
 RF Jumper Codes, Site Access Lookup, Site Data Lookup.** Named here because a README
 that implies full coverage is worse than one that says where the holes are.
+
+GIN Extractor is the exception to its own line. The folder has no test file, but the
+parsing is not in the folder — both SAP documents are read by `tools/_lib/sapdocs.js`,
+shared with WH24, and that carries 76 assertions. What was untested there was not the
+parsing but the **refusal**: whether the reader can tell a note that issued nothing
+from a note whose table it no longer recognises. It could not, and `tableFound` is the
+answer; see the decisions file. The other three are UI over a Supabase read, which
+fails loudly.
 
 `family.test.js` is the strictest and exists for a specific bug: tool pages used to each
 pick their own accent colour, so a tool showed one colour on the directory and opened in

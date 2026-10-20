@@ -2011,7 +2011,12 @@ async function receive(data){
 
   const raws = Array.isArray(data.tickets) ? data.tickets : [], pdfs = Array.isArray(data.pdfs) ? data.pdfs : [];
   dlg(`Received ${raws.length} tickets and ${pdfs.length} new GIN${pdfs.length === 1 ? '' : 's'}. Reading the GINs…`, { pct: 0 });
-  const parsed = {}, failed = [], moves = [], refused = [];
+  /* unreadable is kept apart from failed on purpose: "could not be read"
+     and "was read, but its table is not one this reader knows" are different
+     sentences and they want different answers. The first is usually a broken
+     download; the second means SAP changed the paper and this reader needs
+     teaching. Telling them apart is the whole point of the signal. */
+  const parsed = {}, failed = [], moves = [], refused = [], unreadable = [];
   for (let i = 0; i < pdfs.length; i++){
     const p = pdfs[i];
     try {
@@ -2047,6 +2052,23 @@ async function receive(data){
          PH2 ACE stream with no note and therefore never ready. That line was
          written before anything consumed one and was not revisited when
          something did. */
+      /* A TABLE THAT WAS NOT RECOGNISED IS NOT A DOCUMENT WITH NO LINES.
+
+         r.gin is an object whenever the page was read at all, so a GIN
+         whose column header SAP had renamed arrived here looking like a
+         perfectly good note that happened to issue nothing. It would be
+         stored against the ticket with an empty lines list, the checker
+         would find nothing outstanding, and the ticket would read as
+         collected. That is the one failure on this page that ends with a
+         drive to the warehouse for materials nobody has issued.
+
+         tableFound is the parser saying whether it found a table at all.
+         False means its emptiness carries no information, so the file goes
+         to the refused pile with the rest and is named there. */
+      if (r.gin && r.gin.tableFound === false){
+        unreadable.push(p.file);
+        continue;
+      }
       if (r.gin){
         r.gin.file = p.file;
         /* THE BYTES GO BESIDE THE ROW, NOT ON IT. They used to be hung on the
@@ -2078,6 +2100,14 @@ async function receive(data){
        `${refused.length === 1 ? 'it was' : 'they were'} neither read nor stored: ` +
        `${esc(refused.join(', '))}.` : '') +
     (failed.length ? ` ${failed.length} GIN${failed.length === 1 ? '' : 's'} could not be read and ${failed.length === 1 ? 'was' : 'were'} left out: ${esc(failed.join(', '))}.` : '') +
+    /* NAMED, AND NAMED AS ITS OWN KIND OF FAILURE. A document whose table
+       this reader no longer recognises is the one that used to be stored as
+       a note issuing nothing - so it says plainly that the paper has changed
+       shape, rather than being folded in with broken downloads. */
+    (unreadable.length ? ` <b>${unreadable.length} document${unreadable.length === 1 ? '' : 's'} ` +
+       `${unreadable.length === 1 ? 'was' : 'were'} read but ${unreadable.length === 1 ? 'its' : 'their'} material table ` +
+       `was not recognised</b> – the form has probably changed, so ${unreadable.length === 1 ? 'it was' : 'they were'} ` +
+       `NOT stored as empty: ${esc(unreadable.join(', '))}.` : '') +
     (moves.length ? ` ${moves.length} of them ${moves.length === 1 ? 'is an' : 'are'} Activity Report${moves.length === 1 ? '' : 's'} – ACE's issuance document, read and used.` : '');
 
   const byKey = {}; TICKETS.forEach(t => byKey[KEY(t)] = t);

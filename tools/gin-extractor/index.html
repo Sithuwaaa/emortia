@@ -378,8 +378,11 @@ async function handleFiles(fileList) {
       const doc = await parsePDF(file);
 
       if (doc.kind === 'move') {
-        if (!doc.rep && doc.items.length === 0) {
-          setStatus(entry, 'an Activity Report, but no equipment found', 'err');
+        /* the same guess, on the other kind, with the same hole */
+        if (!doc.tableFound) {
+          setStatus(entry, doc.rep
+            ? `report ${doc.rep} read, but its equipment table was not recognised – nothing counted`
+            : 'an Activity Report, but no equipment table found', 'err');
           continue;
         }
         const dupR = doc.rep && seenRep.has(doc.rep);
@@ -405,8 +408,25 @@ async function handleFiles(fileList) {
         continue;
       }
 
-      if (!doc.giNumber && doc.items.length === 0) {
-        setStatus(entry, 'not a GIN or an Activity Report? no data found', 'err');
+      /* THE PARSER SAYS WHETHER IT RECOGNISED THE TABLE. It used to be
+         guessed from here, with `!doc.giNumber && items.length === 0`, and
+         the question mark in the old message was the code admitting it did
+         not know. The guess had a hole exactly where it mattered: a GIN
+         whose column header SAP had renamed still produced a GI number, so
+         it took this branch's other path and reported
+
+             ok  0 material(s) -> 0 row(s) - GI 4700001234
+
+         in green, with two materials sitting on the paper. A successful
+         zero, which is the third time that shape has cost us something.
+
+         tableFound is false only when no page carried a column header this
+         reader understands. Nothing is counted off a table that was never
+         found. */
+      if (!doc.tableFound) {
+        setStatus(entry, doc.giNumber
+          ? `GI ${doc.giNumber} read, but its material table was not recognised – nothing counted`
+          : 'not a GIN or an Activity Report – no table found', 'err');
         continue;
       }
       const dup = doc.giNumber && seenGIN.has(doc.giNumber);

@@ -1256,3 +1256,111 @@ If it is ever worth closing, the move is a guard in the suite — one
 assertion that the two files match — not a refactor. That catches the
 mistake at the moment it is made and changes nothing about how the site is
 served.
+
+---
+
+## A function that knows it failed must say so in what it returns
+
+Three times now, the same shape. Not three similar bugs — the same one, in
+three places, and it cost something every time.
+
+**1. `filesOf` returning `[]`.** A fetch that came back with nothing and a
+fetch that found nothing looked identical to the caller. The sync reported
+"0 new GINs" as a success.
+
+**2. The GIN document count.** One signature answering two questions, so
+"689 changed" and "689 re-synced, nothing changed" printed one above the
+other, both true of the same rows.
+
+**3. The SAP table parse.** `findHeader` returns `null` when it does not
+recognise a column header. `parsePageItems` passed that back as `cols: null`.
+`parseGIN` dropped it on the floor and returned the same object either way —
+so a Goods Issue Note that issued nothing and a note whose table could not be
+read were the same answer: `items: []`, and nothing to say which.
+
+### What they have in common
+
+In every one of them **the code knew recognition had failed, and discarded
+that knowledge before returning.** The information existed. It was computed,
+it was correct, and it was thrown away one or two frames below the caller
+who needed it.
+
+So the rule is not "parsers fail quietly", which is a complaint about
+parsers. It is:
+
+> **A function that knows it failed must say so in its return value.** Not in
+> a log line nobody reads, not in a `console.warn`, and not in a proxy the
+> caller is left to guess from. The caller cannot recover information the
+> callee had and dropped.
+
+### The proxy is the tell
+
+Each time, the caller had invented a substitute for the signal it was not
+given. The GIN Extractor guessed with:
+
+```js
+if (!doc.giNumber && doc.items.length === 0)   // "not a GIN? no data found"
+```
+
+The question mark in that message was the code admitting it did not know.
+And the guess had a hole precisely where it mattered: a real note whose
+column header SAP had renamed still yielded a GI number, so it missed this
+branch and reported
+
+```
+ok   0 material(s) → 0 row(s) · GI 4700001234
+```
+
+in green, with two materials sitting on the paper. **When you find a caller
+inferring a callee's state from the shape of its output, that is the bug.
+The fix belongs in the callee.**
+
+### What was done
+
+`parseGIN` and `parseMovement` now set `tableFound` — true only when some
+page carried a column header the reader understands. It is additive, so
+nothing that ignores it changed. `ginShape` and `moveShape` carry it through,
+because WH24 reads those shapes and not the documents behind them, and a
+signal the caller cannot reach is a log line by another name.
+
+Both callers were changed in the same pass, and the proxy was **removed**
+rather than left beside the signal:
+
+- **GIN Extractor** refuses on `!doc.tableFound`, and says which case it is:
+  a GI number read but no table recognised, or no table at all.
+- **WH24** keeps a separate `unreadable` pile. This mattered more. `r.gin` is
+  an object whenever the page was read at all, so a drifted note arrived
+  looking like a perfectly good one that happened to issue nothing — it would
+  be stored against the ticket with no lines, the checker would find nothing
+  outstanding, and the ticket would read as collected. That is the only
+  failure on that page that ends with a drive to the warehouse for materials
+  nobody has issued.
+
+`tableFound: false` does **not** mean the document is worthless; the header
+fields may be perfectly readable. It means the emptiness of `items` carries
+no information and must never be reported as a count.
+
+### Why the test is written the way it is
+
+`sapdocs.test.js` went from 48 assertions to 76, and the new ones are mostly
+about refusals rather than successes. The case that matters is a note with
+all its rows present and one column heading renamed: everything else about it
+is intact, **including its GI number**, which is exactly why the old proxy
+waved it through.
+
+The old proxy is kept in the suite as a test that it fails:
+
+```js
+const oldProxySaysBad = d => !d.giNumber && d.items.length === 0;
+is('the old proxy waved the drifted note through', oldProxySaysBad(driftDoc), false);
+is('the signal does not',                          driftDoc.tableFound,       false);
+```
+
+That is there so nobody reintroduces the guess believing it works.
+
+The first version of the movement fixtures invented column labels the reader
+never looks for — `Material Code` where SAP prints `Code`. They "passed" the
+drift assertion for the wrong reason, because *every* such fixture is
+unrecognised. Corrected to the real header, with one label renamed. A fixture
+that fails for a reason other than the one under test proves nothing, and a
+refusal test is especially easy to get accidentally right.

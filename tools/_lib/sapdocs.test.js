@@ -149,5 +149,145 @@ is('advantis date is month first', SAP.isoDate('08/07/2026'), '2026-08-07');
 is('junk date', SAP.isoDate('Cost Centre :'), '');
 is('nothing', SAP.isoDate(''), '');
 
+/* ============================================ DID IT RECOGNISE THE TABLE ===
+
+   The third time this shape cost something: filesOf returning [] on a fetch
+   that found nothing, the GIN document count, and this. In every one of them
+   the code KNEW recognition had failed and threw that away before returning,
+   so an empty result read exactly like a genuine zero.
+
+   What matters here is not that the good cases parse. It is that the bad
+   ones can be told apart from each other and from the honest empty:
+
+     a note it reads               items, and tableFound true
+     a note with no material rows  no items, and tableFound TRUE - correct,
+                                   and the emptiness means something
+     a renamed column header       no items, and tableFound FALSE - the rows
+                                   are on the paper and were not read
+     not one of these documents    no items, and tableFound false
+
+   The renamed-column case is the one that matters. Everything else about
+   that document is intact, including its GI number, which is exactly why
+   the old proxy waved it through as a successful zero.
+
+   Fixtures are invented throughout - no real material code, serial, site or
+   GI number. */
+
+const HDR_OK    = [[30,'#'],[50,'ITEM CODE'],[118,'DESCRIPTION'],[230,'UOM'],[270,'QTY'],[320,'S/N'],[430,'LOCATION']];
+/* one label renamed, the way SAP would rename it */
+const HDR_DRIFT = [[30,'#'],[50,'MATERIAL CODE'],[118,'DESCRIPTION'],[230,'UOM'],[270,'QTY'],[320,'S/N'],[430,'LOCATION']];
+
+const ginHead = y => [
+  [40, y + 100, 'GI Number :4930000777'],
+  [40, y + 90,  'Document Date :03.03.2026'],
+  [40, y + 80,  'Reservation number :1700777']
+].map(([x, yy, s]) => ({ x, y: yy, s }));
+
+const hdrRow = (hdr, y) => hdr.map(([x, s]) => ({ x, y, s }));
+const matRow = (y, cells) => cells.filter(c => c[1] !== '').map(([x, s]) => ({ x, y, s }));
+
+const ROW_1 = [[30,'1'],[50,'MAT-ALPHA-01'],[118,'Widget, blue, 2m'],[230,'EA'],[270,'2'],[320,'SNAAA111'],[430,'A01']];
+const ROW_2 = [[30,'2'],[50,'MAT-BETA-02'],[118,'Bracket, short'],[230,'EA'],[270,'5'],[430,'B07']];
+
+/* 1 - a note it reads */
+const okPages = [ginHead(600).concat(hdrRow(HDR_OK, 600), matRow(585, ROW_1), matRow(570, ROW_2))];
+/* 2 - the same note, issuing nothing. The table is there and it is empty. */
+const emptyPages = [ginHead(600).concat(hdrRow(HDR_OK, 600))];
+/* 3 - the rows are on the paper; SAP renamed one column heading */
+const driftPages = [ginHead(600).concat(hdrRow(HDR_DRIFT, 600), matRow(585, ROW_1), matRow(570, ROW_2))];
+/* 4 - not one of these documents at all */
+const letterPages = [[
+  { x: 40, y: 700, s: 'Dear colleague' },
+  { x: 40, y: 680, s: 'Please find enclosed the revised schedule.' },
+  { x: 40, y: 660, s: 'Kind regards' }
+]];
+/* 5 - a letter carrying the words, so the signal is not the header fields
+   wearing a new name */
+const decoyPages = [[
+  { x: 40, y: 700, s: 'Memo about stores paperwork' },
+  { x: 40, y: 680, s: 'GI Number :4930000777' },
+  { x: 40, y: 660, s: 'Please quote it on all correspondence.' }
+]];
+
+const okDoc     = SAP.parse(okPages);
+const emptyDoc  = SAP.parse(emptyPages);
+const driftDoc  = SAP.parse(driftPages);
+const letterDoc = SAP.parse(letterPages);
+const decoyDoc  = SAP.parse(decoyPages);
+
+is('a note it reads has its lines',       okDoc.items.length, 2);
+is('and says it found the table',         okDoc.tableFound, true);
+is('first code',                          okDoc.items[0].code, 'MAT-ALPHA-01');
+is('second code',                         okDoc.items[1].code, 'MAT-BETA-02');
+
+is('a note issuing nothing has no lines', emptyDoc.items.length, 0);
+is('but the table was there',             emptyDoc.tableFound, true);
+is('and its GI number was read',          emptyDoc.giNumber, '4930000777');
+
+is('a renamed column yields no lines',    driftDoc.items.length, 0);
+is('AND SAYS THE TABLE WAS NOT FOUND',    driftDoc.tableFound, false);
+is('though the GI number still reads',    driftDoc.giNumber, '4930000777');
+
+is('a letter has no lines',               letterDoc.items.length, 0);
+is('and no table',                        letterDoc.tableFound, false);
+is('a decoy letter has no table either',  decoyDoc.tableFound, false);
+
+/* The point of the exercise, as one assertion: the honest empty and the
+   unrecognised table are no longer the same answer. */
+is('the honest empty differs from the unreadable',
+   [emptyDoc.items.length, emptyDoc.tableFound, driftDoc.items.length, driftDoc.tableFound],
+   [0, true, 0, false]);
+
+/* THE OLD PROXY, SHOWN FAILING. !giNumber && items.length === 0 is what the
+   extractor guessed from. It calls the drifted note good, which is how two
+   materials on the paper were reported as a green zero. Kept so nobody
+   reintroduces it believing it works. */
+const oldProxySaysBad = d => !d.giNumber && d.items.length === 0;
+is('the old proxy waved the drifted note through', oldProxySaysBad(driftDoc), false);
+is('the signal does not',                          driftDoc.tableFound,       false);
+
+/* ---- the Activity Report: same hole, same fix ---- */
+/* the real column header, as the fixture at the top of this file has it -
+   the first attempt here invented labels the reader never looks for, which
+   made the "drifted" case pass for the wrong reason */
+const MH_OK    = [[28,'No.'],[51,'Equipment'],[150,'Code'],[200,'Material'],[260,'Mat. Desc.'],[414,'UoM'],[439,'Serial Number']];
+/* Code renamed, which is what moveHeader matches on with /^Code$/ */
+const MH_DRIFT = [[28,'No.'],[51,'Equipment'],[150,'Item Code'],[200,'Material'],[260,'Mat. Desc.'],[414,'UoM'],[439,'Serial Number']];
+const repHead = y => [
+  { x: 40, y: y + 100, s: 'Equipment / Asset Movement' },
+  { x: 40, y: y + 90,  s: 'Activity Report No.' },
+  { x: 240, y: y + 90, s: ': 900012345' }
+];
+const REP_ROW = [[28,'1'],[51,'EQ-0001'],[150,'MAT-GAMMA-03'],[200,'MATL-03'],[260,'Radio unit'],[414,'EA'],[439,'SNBBB221']];
+
+const repOk    = [repHead(600).concat(hdrRow(MH_OK, 600),    matRow(585, REP_ROW))];
+const repDrift = [repHead(600).concat(hdrRow(MH_DRIFT, 600), matRow(585, REP_ROW))];
+
+const repOkDoc    = SAP.parse(repOk);
+const repDriftDoc = SAP.parse(repDrift);
+
+is('the report is recognised as a movement', repOkDoc.kind, 'move');
+is('and it says it found the table',         repOkDoc.tableFound, true);
+is('a renamed column there reads nothing',   repDriftDoc.items.length, 0);
+is('AND SAYS SO',                            repDriftDoc.tableFound, false);
+is('while the report number still reads',    repDriftDoc.rep, '900012345');
+
+/* ---- the shapes WH24 actually receives carry it ---- */
+const anyOk    = SAP.readAny(okPages);
+const anyDrift = SAP.readAny(driftPages);
+const anyRep   = SAP.readAny(repDrift);
+is('readAny passes the signal on a gin',   anyOk.gin.tableFound, true);
+is('and on a drifted gin',                 anyDrift.gin.tableFound, false);
+is('and on a drifted report',              anyRep.gin.tableFound, false);
+is('a good gin shape still carries lines', anyOk.gin.items.length, 2);
+
+/* WH24's rule as WH24 applies it: a table that was not recognised is refused,
+   not stored as a note that issued nothing. */
+const wh24Keeps = r => !!(r.gin && r.gin.tableFound !== false);
+is('wh24 keeps a readable note',    wh24Keeps(anyOk),    true);
+is('wh24 refuses a drifted note',   wh24Keeps(anyDrift), false);
+is('wh24 refuses a drifted report', wh24Keeps(anyRep),   false);
+
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

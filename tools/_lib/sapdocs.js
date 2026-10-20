@@ -49,6 +49,24 @@
     const d = extractHeaderFields(allLines);
     d.kind = 'gin';
     d.items = allItems.map(finalizeItem);
+    /* ---- DID IT FIND A TABLE AT ALL ----
+
+       findHeader knows when it has not recognised the column header, and
+       that knowledge used to die here: it returned null, parsePageItems
+       passed back cols:null, and this loop dropped it on the floor. What
+       came back was the same object either way, so a document whose table
+       could not be read was indistinguishable from one that genuinely had
+       no material lines - items:[] in both cases, and nothing to tell a
+       caller which it was holding.
+
+       prevCols is only ever set from a header that was actually matched,
+       so this is exactly "some page had a column header I understood".
+
+       false does NOT mean the document is worthless - the header fields
+       may still have been read. It means the TABLE was not recognised, so
+       an empty items list carries no information and must not be reported
+       as a count. */
+    d.tableFound = prevCols !== null;
     return d;
   }
 
@@ -377,6 +395,13 @@
     if (open) items.push(open);
 
     d.items = items.map(finalizeMove);
+    /* The same signal, for the same reason. The Activity Report has its own
+       column header and its own way of not being recognised, and WH24 reads
+       both kinds - a renamed column here would show a ticket with no
+       materials just as surely as one on a GIN. Fixing one and leaving the
+       other would close the half of the hole nobody drives to the warehouse
+       on. */
+    d.tableFound = prevCols !== null;
     return d;
   }
 
@@ -447,6 +472,9 @@
     var ls = lines || [];
     var mv = field(ls, 'Movement Type');
     return {
+      /* carried through, because WH24 reads this shape and not the document
+         behind it. A signal the caller cannot reach is a log line. */
+      tableFound: doc.tableFound !== false,
       gi:   doc.giNumber || '',
       date: isoDate(doc.docDate),
       res:  doc.resNo || '',
@@ -503,6 +531,7 @@
     return {
       file: str(file),
       kind: 'move',
+      tableFound: doc.tableFound !== false,
       gi: '',                       /* a report has no GI number */
       rep: str(doc.rep),
       date: isoDate(doc.createdOn),
