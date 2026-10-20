@@ -492,5 +492,23 @@ is('a collapsed publish counts as the one line it draws, not its sixty rows',
   is('and does not inflate a sync bucket', m.syncs.length, 0);
 }
 
+/* ---- 31 September -----------------------------------------------------
+
+   localDay accepts any YYYY-MM-DD shape without asking the calendar, so an
+   impossible day travels intact. realDay is the question; the marking and
+   the warning live at nice() on the page. */
+is('realDay accepts a real day',       W.realDay('2026-10-20'), true);
+is('realDay rejects 31 September',     W.realDay('2026-09-31'), false);
+is('realDay rejects 31 November',      W.realDay('2026-11-31'), false);
+is('realDay rejects 31 April',         W.realDay('2026-04-31'), false);
+is('realDay rejects month 13',         W.realDay('2026-13-01'), false);
+is('realDay rejects day 00',           W.realDay('2026-10-00'), false);
+is('realDay rejects a loose shape',    W.realDay('2026-9-5'), false);
+is('realDay rejects a timestamp',      W.realDay('2026-10-20T08:00:00Z'), false);
+is('realDay rejects nothing at all',   W.realDay(''), false);
+is('29 Feb 2024 is a real day',        W.realDay('2024-02-29'), true);
+is('29 Feb 2026 is not',               W.realDay('2026-02-29'), false);
+is('localDay still lets it through',   W.localDay('2026-09-31'), '2026-09-31');
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

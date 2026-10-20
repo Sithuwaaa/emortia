@@ -497,5 +497,44 @@ console.log('\nleave marked in advance');
      A.placeOf('6.9163,79.8510', [{ id:'s2', name:'Kollupitiya', lat:6.9161, lng:79.8506, radius_m:10 }]), '');
 }
 
+/* ---- 31 September -----------------------------------------------------
+
+   A date that does not exist used to come back as an empty weekday, which
+   on a sheet reads as a gap rather than as a value that cannot be true.
+   It is marked now. It is NOT corrected - these assert that the bad day
+   survives, because a detector that quietly fixed things would hide the
+   one thing worth finding. */
+{
+  const warned = [];
+  const realWarn = console.warn;
+  console.warn = (...m) => warned.push(m.join(' '));
+
+  is('a real day still names its weekday', A.weekdayOf('2026-10-20'),
+     new Date('2026-10-20T12:00:00').toLocaleDateString(undefined, { weekday: 'short' }));
+  is('31 September is marked',             A.weekdayOf('2026-09-31', 'Nimal'), A.BAD_DAY);
+  is('31 November is marked',              A.weekdayOf('2026-11-31'), A.BAD_DAY);
+  is('29 February in a common year',       A.weekdayOf('2026-02-29'), A.BAD_DAY);
+  is('29 February in a leap year is real', A.weekdayOf('2024-02-29'),
+     new Date('2024-02-29T12:00:00').toLocaleDateString(undefined, { weekday: 'short' }));
+  is('no date is not a wrong date',        A.weekdayOf(''), '');
+  is('realDay rejects 31 September',       A.realDay('2026-09-31'), false);
+  is('realDay rejects 31 April',           A.realDay('2026-04-31'), false);
+  is('realDay rejects month 13',           A.realDay('2026-13-01'), false);
+  is('realDay rejects a loose shape',      A.realDay('2026-9-31'), false);
+  is('realDay accepts 29 Feb 2024',        A.realDay('2024-02-29'), true);
+
+  /* the warning carries the raw value AND which row it came from */
+  const sep = warned.find(w => w.indexOf('2026-09-31') >= 0) || '';
+  is('the warning quotes the raw value',   sep.indexOf('"2026-09-31"') >= 0, true);
+  is('the warning names the row',          sep.indexOf('Nimal') >= 0, true);
+  is('the warning says it did not fix it', /[Nn]ot corrected/.test(sep), true);
+
+  const before = warned.length;
+  A.weekdayOf('2026-09-31', 'Nimal');
+  is('one warning per distinct value',     warned.length, before);
+
+  console.warn = realWarn;
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);

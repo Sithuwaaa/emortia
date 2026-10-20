@@ -301,9 +301,55 @@
     return isNaN(d.getTime()) ? s(ym) :
       d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   }
-  function weekdayOf(date) {
+  /* ---- 31 September, and days like it ----------------------------------
+
+     A date that does not exist arrives as a perfectly ordinary string.
+     new Date('2026-09-31T12:00:00') is an Invalid Date, so this used to
+     return '' and the sheet printed a blank weekday beside a real-looking
+     date - the quietest possible failure, and one that reads as a cosmetic
+     gap rather than as data that cannot be true.
+
+     THIS IS A DETECTOR. It says so, loudly, in the console and on the page,
+     and it changes nothing. Correcting 31 Sep to 1 Oct would be inventing a
+     day somebody may or may not have worked, and the reason the string is
+     wrong is upstream of here. Finding that is the point. */
+  var DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+  function realDay(v) {
+    var m = DAY_RE.exec(s(v));
+    if (!m) return false;
+    var y = +m[1], mo = +m[2], dd = +m[3];
+    var d = new Date(Date.UTC(y, mo - 1, dd));
+    return d.getUTCFullYear() === y && d.getUTCMonth() === mo - 1 && d.getUTCDate() === dd;
+  }
+  /* one warning per distinct value: these run inside a .map over a month and
+     an unthrottled warn would bury the first one under thirty copies */
+  var SEEN_BAD = {};
+  function flagDay(v, where) {
+    var k = s(v) + '|' + s(where);
+    if (SEEN_BAD[k]) return;
+    SEEN_BAD[k] = 1;
+    try {
+      console.warn('[attendance] impossible date ' + JSON.stringify(v) +
+        (where ? ' on ' + where : '') + ' - that day does not exist. ' +
+        'Not corrected; the value is wrong where it was written.');
+    } catch (e) {}
+  }
+  /* The marker is a character, not a span: weekdayOf feeds spreadsheet cells
+     and plain-text labels as well as HTML, and markup in a .csv is a second
+     bug on top of the first. */
+  var BAD_MARK = '⚠';
+  function nameOf(p) {
+    if (!p) return '';
+    return s(p.name || p.staff || p.id || p);
+  }
+  function weekdayOf(date, where) {
+    /* no date at all is not a wrong date: a blank cell stays blank, the way
+       it did before there was a detector here */
+    if (!s(date)) return '';
+    if (!realDay(date)) { flagDay(date, where); return BAD_MARK; }
     var d = new Date(s(date) + 'T12:00:00');
-    return isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { weekday: 'short' });
+    if (isNaN(d.getTime())) { flagDay(date, where); return BAD_MARK; }
+    return d.toLocaleDateString(undefined, { weekday: 'short' });
   }
 
   /* One cell of a month grid. Short because there are thirty-one of them
@@ -349,7 +395,7 @@
   }
 
   function rangeLabel(from, to) {
-    if (from === to) return weekdayOf(from) + ' ' + from;
+    if (from === to) return weekdayOf(from, 'range label') + ' ' + from;
     return from + ' to ' + to;
   }
 
@@ -392,7 +438,8 @@
     var days = rangeSheets(people, records, leave, from, to, la, today, holidays);
     var head = ['Staff', 'Role']
       .concat(days.map(function (d) {
-        return weekdayOf(d.date).slice(0, 2) + ' ' + parseInt(d.date.slice(8), 10); }))
+        return weekdayOf(d.date, 'team sheet ' + from + '..' + to).slice(0, 2) +
+               ' ' + parseInt(d.date.slice(8), 10); }))
       .concat(['Present', 'Late', 'On leave', 'Absent', 'Holiday', 'Hours']);
     var rows = (people || []).map(function (p) {
       var t = blankTally();
@@ -423,7 +470,7 @@
     var rows = days.map(function (d) {
       var r = d.sheet[0] || null;
       tallyInto(t, r, d);
-      return [d.date, weekdayOf(d.date), r ? r.in : '—', r ? r.inGeo : '—',
+      return [d.date, weekdayOf(d.date, nameOf(person)), r ? r.in : '—', r ? r.inGeo : '—',
               r ? r.out : '—', r ? r.outGeo : '—', r ? r.hours : '—',
               d.fut ? 'Not yet' : (r ? r.status : ''),
               d.holiday || (r ? r.note : '')];
@@ -489,7 +536,7 @@
         else t.absent++;
         if (r.hours !== '—') t.hours += parseFloat(r.hours);
       }
-      return [d.date, weekdayOf(d.date), r ? r.in : '—', r ? r.inGeo : '—',
+      return [d.date, weekdayOf(d.date, nameOf(person)), r ? r.in : '—', r ? r.inGeo : '—',
               r ? r.out : '—', r ? r.outGeo : '—', r ? r.hours : '—',
               r ? r.status : '', r ? r.note : ''];
     });
@@ -611,7 +658,7 @@
     deviceState: deviceState, hoursBetween: hoursBetween,
     toggleMember: toggleMember, exportRows: exportRows,
     monthDays: monthDays, monthEnd: monthEnd, monthStart: monthStart,
-    monthLabel: monthLabel, weekdayOf: weekdayOf,
+    monthLabel: monthLabel, weekdayOf: weekdayOf, realDay: realDay, BAD_DAY: BAD_MARK,
     nextDay: nextDay, dayRange: dayRange, groupLeave: groupLeave,
     dayCode: dayCode, monthSheets: monthSheets,
     parseGeo: parseGeo, metresBetween: metresBetween, placeOf: placeOf,

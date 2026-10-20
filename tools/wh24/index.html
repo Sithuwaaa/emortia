@@ -778,7 +778,42 @@ function toast(t, ms){ const el = $('toast'); el.textContent = t; el.classList.a
 const pad = n => String(n).padStart(2, '0');
 const today = () => W.localDay(new Date().toISOString());
 const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const nice = d => { if (!d) return '–'; const [y, m, dd] = d.split('-'); return +dd + ' ' + MON[+m - 1] + (y !== today().slice(0, 4) ? ' ' + y : ''); };
+/* ---- 31 September, and days like it ----------------------------------
+
+   nice() takes a date apart with split('-') and never puts it back together,
+   so a day that does not exist prints as cleanly as one that does: feed it
+   '2026-09-31' and it returns "31 Sep", which looks like a date somebody
+   could have collected a cable on. WorkHub is where these strings come from
+   and this page is where they are read, so this is where it shows.
+
+   A DETECTOR, NOT A FIX. Rounding 31 Sep to 1 Oct would silently move a
+   collection a day and make the real fault - whatever wrote the string -
+   harder to find, not easier. It marks and warns; the value goes through
+   unchanged.
+
+   The marker is a character, not a span. nice() feeds toast text and table
+   cells alike, and the toast sets .textContent, so markup would be printed
+   literally to the person reading it. */
+const realDay = W.realDay;   /* in wh24.js, where the test suite can reach it */
+const BAD_DAY = '⚠';
+/* once per distinct value: nice() is called inside the row loop and render
+   runs on every keystroke in the search box */
+const seenBadDay = new Set();
+function flagDay(v, where){
+  const k = String(v) + '|' + String(where || '');
+  if (seenBadDay.has(k)) return;
+  seenBadDay.add(k);
+  console.warn('[wh24] impossible date ' + JSON.stringify(v) +
+    (where ? ' on ' + where : '') + ' - that day does not exist. ' +
+    'Shown as-is and marked ' + BAD_DAY + '; not corrected.');
+}
+const nice = (d, where) => {
+  if (!d) return '–';
+  const [y, m, dd] = d.split('-');
+  const out = +dd + ' ' + MON[+m - 1] + (y !== today().slice(0, 4) ? ' ' + y : '');
+  if (!realDay(d)) { flagDay(d, where); return out + ' ' + BAD_DAY; }
+  return out;
+};
 const niceT = v => { if (!v) return '–'; const d = new Date(v); return nice(W.localDay(v)) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
 const ago = v => {
   if (!v) return 'never';
@@ -1010,13 +1045,13 @@ function daysCell(t){
   }
   if (s === 'collected'){
     const d = W.waiting(t, m, T);
-    return `<div class="days"><b style="font-size:15px">${nice(W.collectedOn(t, m))}</b><span>${d == null ? 'collected' : 'after ' + d + ' ' + dayWord(d)}</span></div>`;
+    return `<div class="days"><b style="font-size:15px">${nice(W.collectedOn(t, m), t.gin || t.code || 'ticket')}</b><span>${d == null ? 'collected' : 'after ' + d + ' ' + dayWord(d)}</span></div>`;
   }
   /* Bulk, approved. The date is the approval's, and the cell says approved -
      not "waiting", which would be this tool claiming the material is on a
      shelf somewhere. */
   if (s === 'approved'){
-    return `<div class="days"><b style="font-size:15px">${nice(W.localDay(t.done_at))}</b><span>approved</span></div>`;
+    return `<div class="days"><b style="font-size:15px">${nice(W.localDay(t.done_at), t.gin || t.code || 'ticket')}</b><span>approved</span></div>`;
   }
   if (s === 'issuing'){
     const d = W.issuing(t, T);
@@ -1060,7 +1095,7 @@ function linesTable(t){
       <td class="m">${hl(l.code, q)}</td><td>${hl(l.desc, q)}</td>
       <td class="num m">${l.qty == null ? '' : esc(l.qty)}</td><td class="m">${esc(l.uom)}</td>
       <td class="num m">${g.qty == null ? '' : esc(g.qty)}</td>
-      <td class="m">${hl(g.res || '', q)}</td><td class="m">${hl(g.gi || '', q)}</td><td class="m">${g.date ? nice(g.date) : ''}</td>
+      <td class="m">${hl(g.res || '', q)}</td><td class="m">${hl(g.gi || '', q)}</td><td class="m">${g.date ? nice(g.date, g.gi || g.rep || g.res || 'GIN row') : ''}</td>
       <td class="sn"><div class="sns">${sn}</div></td>
       <td>${chk ? `<span class="chk ${chk.split(' ')[0]}">${esc(chk)}</span>` : ''}</td></tr>`;
   }).join('');
@@ -1274,7 +1309,7 @@ function docsBox(t){
       const num = g.gi || g.rep || '';
       return `<div class="doc"><span class="k">${kind}</span>` +
              `<span class="n mono">${esc(num || g.file)}</span>` +
-             (g.date ? `<span class="d">${esc(nice(g.date))}${g.date_field ? ' · ' + esc(g.date_field) : ''}</span>` : '') +
+             (g.date ? `<span class="d">${esc(nice(g.date, g.gi || g.rep || g.res || 'document'))}${g.date_field ? ' · ' + esc(g.date_field) : ''}</span>` : '') +
              /* A link only when the file is actually in the bucket. A button
                 that 404s is worse than no button - see rule 1. */
              /* data-name is what the FILE IS SAVED AS - this document's

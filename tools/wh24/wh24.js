@@ -725,6 +725,20 @@
     if (isNaN(d)) return '';
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   }
+  /* Is this a day that happened? localDay above accepts any YYYY-MM-DD shape
+     without asking whether the calendar agrees, so '2026-09-31' survives it
+     intact and reads as an ordinary date everywhere downstream.
+
+     This only answers the question. What to do about a no is the caller's -
+     see the detector at nice() in index.html, which marks and warns and
+     changes nothing. */
+  function realDay(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || ''));
+    if (!m) return false;
+    var y = +m[1], mo = +m[2], dd = +m[3];
+    var t = new Date(Date.UTC(y, mo - 1, dd));
+    return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === dd;
+  }
   function collectedOn(t, mark) {
     if (mark && mark.collected_on) return localDay(mark.collected_on);
     return localDay(t && t.wh_collected_at);
@@ -1538,7 +1552,7 @@
            needsCheck: needsCheck, collectedBracket: collectedBracket,
            siteFromTitle: siteFromTitle, KNOWN_STATES: KNOWN_STATES,
            isPdf: isPdf, PDF_MIN: PDF_MIN, docName: docName, docNames: docNames,
-           match: match, record: record, localDay: localDay,
+           match: match, record: record, localDay: localDay, realDay: realDay,
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, matchesAt: matchesAt, sheet: sheet,
            pipeline: pipeline, pickList: pickList,
