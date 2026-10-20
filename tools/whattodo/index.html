@@ -225,29 +225,11 @@
     right:max(16px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);
     display:flex;align-items:center;gap:0;cursor:pointer;overflow:hidden;
     padding:5px;border-radius:99px;font:inherit;font-size:15px;font-weight:600;
-    /* ---- GREEN, AND NOT A REVERSAL OF THE BURGUNDY DECISION ----
-
-       .pri was moved OFF this green deliberately: "it was the green tick
-       colour, which on this tile reads as done rather than save". That
-       still holds and Save task is still burgundy. This is the ADD
-       button, where green is not claiming anything is finished - it is
-       the one affordance on the page that makes something new.
-
-       --chk-on is the design's own green, already in the palette, and
-       --chk-ink is the ink already sized for it. The note at the token
-       says white on #1F9E62 measures 3.43, so the ink goes dark rather
-       than the colour being altered - the same resolution as last time. */
-    border:0;background:var(--chk-on);color:var(--chk-ink);
-    box-shadow:0 10px 30px -10px color-mix(in srgb,var(--chk-on) 60%,transparent);
+    border:0;background:var(--accent);color:var(--iv-ink);
+    box-shadow:0 10px 30px -10px color-mix(in srgb,var(--accent) 60%,transparent);
     transition:gap .22s ease,padding .22s ease,box-shadow .22s ease}
-  /* A LIGHT WASH, NOT A DARK ONE. The disc used to darken the fill beneath
-     it by 14% of the ink, which on the burgundy was fine and on the green
-     works against itself: a dark glyph on a darkened fill measured 3.89 in
-     light mode. Washing the disc lighter instead moves the glyph and its
-     ground apart - 5.84 - and the circle still reads as a circle. A white
-     glyph on the darkened disc was the other option and reached only 4.25. */
   .fab i{width:42px;height:42px;border-radius:50%;flex:none;
-    background:color-mix(in srgb,#FFFFFF 16%,transparent);color:var(--chk-ink);
+    background:color-mix(in srgb,var(--iv-ink) 14%,transparent);color:var(--iv-ink);
     display:flex;align-items:center;justify-content:center;
     font-size:24px;font-style:normal;line-height:1;transition:transform .22s ease}
   .fab span{max-width:0;overflow:hidden;white-space:nowrap;
@@ -257,6 +239,19 @@
   .fab.near span,.fab:hover span,.fab:focus-visible span{max-width:140px;opacity:1}
   .fab:hover i,.fab.near i{transform:rotate(90deg)}
   @media (prefers-reduced-motion:reduce){ .fab,.fab i,.fab span{transition:none} }
+  /* option 2c: clear glass pill, glossy green bead for the + */
+  html body .fab{background:rgba(255,255,255,.1);color:#F7F1E8;
+    border:1px solid rgba(255,255,255,.3);
+    backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 12px 28px -16px rgba(0,0,0,.6)}
+  html body .fab.near,html body .fab:hover,html body .fab:focus-visible{
+    background:rgba(255,255,255,.14);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 14px 32px -14px rgba(61,220,132,.55)}
+  html body .fab i{background:linear-gradient(160deg,#5CF09C,#1FA463);color:#06210F;
+    box-shadow:0 4px 14px -4px rgba(61,220,132,.9),inset 0 1px 0 rgba(255,255,255,.5)}
+  html body .fab span{color:#F7F1E8}
+  html[data-theme="light"] body .fab{background:rgba(43,30,26,.42);border-color:rgba(255,255,255,.5)}
+  html[data-theme="light"] body .fab.near,html[data-theme="light"] body .fab:hover{background:rgba(43,30,26,.55)}
   /* narrow: it stays a disc and tucks above the reminder bar, where a pill
      would cover a whole task card */
   @media (max-width:760px){
@@ -407,6 +402,11 @@
      button stays on the right. The clear × only exists while there is
      something to clear. */
   .qw{flex:1;min-width:170px;position:relative;display:flex;align-items:center}
+  /* search lives under the calendar now, filling the gap down to the stats */
+  .find{flex:1;padding:22px;display:flex;flex-direction:column;justify-content:center;gap:12px}
+  .find-h{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:30px}
+  .find .qw{flex:none;width:100%}
+  .find .q{padding:14px 42px 14px 20px;font-size:15px}
   .q{width:100%;padding:10px 38px 10px 16px;border-radius:99px;font:inherit;font-size:14px;
     border:1px solid var(--glass-edge);background:var(--glass);color:var(--text);
     -webkit-appearance:none;appearance:none}
@@ -625,37 +625,34 @@
     --wtd-scene:image-set(url('img/scene-1280.webp') type('image/webp'));
     --wtd-scene-tint:rgba(11,3,6,.75);
   }
+  /* ONE BACKGROUND, THE SAME IN BOTH THEMES. There is no light-mode veil:
+     the photograph is not re-tinted when the theme flips, so it looks
+     identical either way. That is a deliberate instruction, and it has a
+     consequence worth stating next to it - see "the ground is dark in both
+     themes" below. */
   @media (min-width:900px){
     html[data-wtd-scene="on"]{
       --wtd-scene:image-set(url('img/scene-1672.webp') type('image/webp'));
     }
-  }
-
-  /* ---- A PHOTOGRAPH PER THEME ----
-
-     It used to be one background in both themes, never re-tinted, and the
-     note that stood here said so as a deliberate instruction. That has been
-     reversed: there is a light-mode photograph now, a different exposure of
-     the same promenade rather than the dark one lightened.
-
-     Encoded from the source at quality 0.56, chosen by measurement rather
-     than by eye - at that setting it differs from its own source by 2.49
-     mean channel levels, where the dark file already shipping differs from
-     its source by 2.54. Equal fidelity to what was already accepted, at
-     139,986 and 212,886 bytes against the dark pair's 140,732 and 200,664.
-
-     The tint is the other half of it. The dark ground wants a heavy veil to
-     carry light text; a light ground wants a pale one, and keeping the dark
-     tint here would have put the new photograph behind the old curtain. */
-  html[data-theme="light"][data-wtd-scene="on"]{
-    --wtd-scene:image-set(url('img/scene-light-1280.webp') type('image/webp'));
-    --wtd-scene-tint:rgba(247,241,232,.62);
   }
   @media (min-width:900px){
     html[data-theme="light"][data-wtd-scene="on"]{
       --wtd-scene:image-set(url('img/scene-light-1672.webp') type('image/webp'));
     }
   }
+  /* light mode: its own sunset photo, lighter tint */
+  html[data-theme="light"][data-wtd-scene="on"]{
+    /* The design names img/scene-light.png. That file is the 2.8 MB source
+       in the gitignored media/backgroud; what ships is the WebP pair, the
+       same treatment the dark photograph already gets. Encoded at quality
+       0.56, which differs from its source by 2.49 mean channel levels where
+       the dark file already shipping differs by 2.54 - equal fidelity, at
+       213 KB instead of 2.8 MB. Only the container changed; the picture and
+       the tint over it are the design's. */
+    --wtd-scene:image-set(url('img/scene-light-1280.webp') type('image/webp'));
+    --wtd-scene-tint:rgba(40,10,20,.18);
+  }
+  html[data-theme="light"][data-wtd-scene="on"] .lq-sub{color:#FFF8F2;text-shadow:0 2px 14px rgba(56,12,24,.75),0 1px 2px rgba(56,12,24,.6)}
   /* the readability tint, over the photo and under everything else */
   .scene::after{content:'';position:absolute;inset:0;
     background:var(--wtd-scene-tint,transparent)}
@@ -691,26 +688,6 @@
      because the thing they sit on is identical in both themes. This is not
      a theme override - it is the ground refusing to pretend it is light. */
   html[data-wtd-scene="on"]{ --ground-ink:#F7F1E8; --ground-dim:#D6C3C6; }
-  /* ---- AND THE GROUND IS NOT DARK IN BOTH THEMES ANY MORE ----
-
-     The note above says the two inks are identical in both themes "because
-     the thing they sit on is identical in both themes". That stopped being
-     true when light mode got its own photograph: the pale ground under
-     #F7F1E8 measured about 1.1:1 - cream on cream.
-
-     Solved against the DARKEST patch of the composited ground, which is the
-     binding case for dark ink, sampled 851 points across the frame after
-     the tint: luminance 0.304. Both are colours the palette already has
-     rather than new hex - #22060E is the ink used on accent fills, #3A2730
-     the line colour.
-
-         ink  #22060E   6.44:1      dim  #3A2730   4.68:1
-
-     The gap between them is the hierarchy, and it is real: a dim that only
-     just cleared would have been the same colour as the ink. */
-  html[data-theme="light"][data-wtd-scene="on"]{
-    --ground-ink:#22060E; --ground-dim:#3A2730;
-  }
   /* LIGHT MODE'S TILES ARE NEARLY OPAQUE, and this is the answer to "will
      light mode read over a dark photo".
 
@@ -761,6 +738,47 @@
     backdrop-filter:blur(24px) saturate(1.15);
     -webkit-backdrop-filter:blur(24px) saturate(1.15);
     box-shadow:none !important}
+  /* no rule on either bar */
+  html[data-cat] body header.hdr,html[data-cat] body .hdr,html body header.hdr{border-bottom:0 !important}
+  html body .rbar,html body .rbar.on{border-top:0 !important}
+  /* clear glass tiles, like phone widgets: barely-there fill, light blur,
+     a soft white edge. Dark theme only - light mode's dark ink needs its
+     near-opaque tile to stay readable over the night photo. */
+  html:not([data-theme="light"])[data-wtd-scene="on"] .glass{
+    background:rgba(255,255,255,.06);
+    backdrop-filter:blur(14px) saturate(1.4);
+    -webkit-backdrop-filter:blur(14px) saturate(1.4);
+    border:1px solid rgba(255,255,255,.22);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 18px 40px -24px rgba(0,0,0,.5)}
+  /* selected day: solid dress-crimson fill, ivory ink (option 1b) - both themes */
+  html[data-wtd-scene="on"] .wd.sel{background:#DC1F55;border-color:#DC1F55;color:#FFF5F7;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+  html[data-wtd-scene="on"] .wd.sel .l{color:#FFF5F7;opacity:.85}
+  html[data-wtd-scene="on"] .wd.sel .c{color:#FFF5F7}
+  html[data-wtd-scene="on"] .cell.sel .n{background:#DC1F55;border-color:#DC1F55;color:#FFF5F7;box-shadow:none}
+  html:not([data-theme="light"])[data-wtd-scene="on"] .cell.sel .c{color:#FF6F93}
+  html[data-theme="light"][data-wtd-scene="on"] .cell.sel .c{color:#A3123E}
+  /* light frosted glass: darker inks so muted text reads on the pale wash */
+  html[data-theme="light"][data-wtd-scene="on"] .glass{--muted:#4A3438;color:#22060E}
+  html[data-theme="light"][data-wtd-scene="on"] .glass .cap,
+  html[data-theme="light"][data-wtd-scene="on"] .grid7 .dn,
+  html[data-theme="light"][data-wtd-scene="on"] .wd .l,
+  html[data-theme="light"][data-wtd-scene="on"] .prog .row span{color:#4A3438}
+  html[data-theme="light"][data-wtd-scene="on"] .prog .big{color:#22060E}
+  html[data-theme="light"][data-wtd-scene="on"] .segs i:not(.on){background:rgba(34,6,14,.12)}
+  html[data-theme="light"][data-wtd-scene="on"] .cell.out{opacity:.55}
+  /* clear glass lets the dark scene through, so the muted inks need lifting */
+  html:not([data-theme="light"])[data-wtd-scene="on"] .glass{--muted:#DCCBCE}
+  html:not([data-theme="light"])[data-wtd-scene="on"] .prog .big,
+  html:not([data-theme="light"])[data-wtd-scene="on"] .prog .row span{color:#F7F1E8}
+  html:not([data-theme="light"])[data-wtd-scene="on"] .segs i:not(.on){background:rgba(255,255,255,.16)}
+  /* light: frosted white glass - heavy blur + brightness so the photo turns
+     into a soft pale wash behind the dark ink, not a wall of white */
+  html[data-theme="light"][data-wtd-scene="on"] .glass{
+    background:rgba(255,255,255,.68);
+    backdrop-filter:blur(32px) saturate(1.3) brightness(1.8);
+    -webkit-backdrop-filter:blur(32px) saturate(1.3) brightness(1.8);
+    border:1px solid rgba(255,255,255,.7);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 18px 40px -24px rgba(0,0,0,.45)}
 
   /* the control, beside the day heading rather than in the bottom bar: that
      bar was centred and signed off this morning and a fourth group would
@@ -2024,7 +2042,20 @@ function render(){
        the day across the top, and the list full width underneath where a
        long title has room to be one line. */
     '<div class="dash">' +
-      '<div class="dashL">' + calHTML() + '</div>' +
+      '<div class="dashL">' + calHTML() +
+        '<div class="glass find">' +
+          '<div class="find-h"><span class="cap">Search</span>' +
+            (hits ? '<button class="incl' + (INCL_REMOVED ? ' on' : '') + '" id="inclRemoved" ' +
+               'aria-pressed="' + (INCL_REMOVED ? 'true' : 'false') + '" ' +
+               'title="Removed tasks are left out of search unless you ask for them">' +
+               (INCL_REMOVED ? 'Removed included' : 'Include removed') + '</button>' : '') +
+          '</div>' +
+          '<span class="qw"><input id="q" class="q" type="search" autocomplete="off"' +
+            ' placeholder="Search every day – a site, a step, a name" value="' + esc(Q) + '">' +
+            (Q ? '<button id="qx" title="Clear the search" aria-label="Clear the search">×</button>' : '') +
+          '</span>' +
+        '</div>' +
+      '</div>' +
       '<div class="dashR">' + weekHTML() + progHTML() + statsHTML() + '</div>' +
     '</div>' +
     '<div class="tasks">' +
@@ -2033,14 +2064,6 @@ function render(){
             ? hits.length + (hits.length === 1 ? ' match' : ' matches') + ' · all days' +
               (hits.filter(m => m.done).length ? ' · ' + hits.filter(m => m.done).length + ' finished' : '')
             : dn + ' of ' + n + ' done') + '</span>' +
-          (hits ? '<button class="incl' + (INCL_REMOVED ? ' on' : '') + '" id="inclRemoved" ' +
-             'aria-pressed="' + (INCL_REMOVED ? 'true' : 'false') + '" ' +
-             'title="Removed tasks are left out of search unless you ask for them">' +
-             (INCL_REMOVED ? 'Removed included' : 'Include removed') + '</button>' : '') +
-          '<span class="qw"><input id="q" class="q" type="search" autocomplete="off"' +
-            ' placeholder="Search every day" value="' + esc(Q) + '">' +
-            (Q ? '<button id="qx" title="Clear the search" aria-label="Clear the search">×</button>' : '') +
-          '</span>' +
         '</div>' +
         /* searching replaces the day's list rather than filtering it - the
            whole point is to leave the selected day behind */
