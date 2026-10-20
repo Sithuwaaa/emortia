@@ -653,6 +653,36 @@
     --wtd-scene-tint:rgba(40,10,20,.18);
   }
   html[data-theme="light"][data-wtd-scene="on"] .lq-sub{color:#FFF8F2;text-shadow:0 2px 14px rgba(56,12,24,.75),0 1px 2px rgba(56,12,24,.6)}
+  /* ---- AND A SCRIM UNDER THE TEXT, NOT OVER THE PICTURE ----
+
+     The ink and the photograph are the design's and are untouched. What
+     this adds is a deeper wash behind the glyphs only.
+
+     The reason is the phone, outdoors. #FFF8F2 over the brightest part of
+     that sky measures 1.41:1. The text-shadow carries it on a monitor
+     indoors, which is where the design was drawn, and carries nothing at
+     all in daylight. The shadow stays - it is doing real work on top of
+     this - but it cannot be the whole answer.
+
+     .scene is position:fixed, so the photograph does NOT scroll: text
+     slides over a stationary sky and any run can end up over the bright
+     patch. So the scrim travels with the text rather than sitting at a
+     fixed height, and the binding case is the brightest pixel in the
+     column a run sweeps, not the brightest behind it at rest.
+
+     0.60 of the design's own tint colour. 0.50 is the arithmetic minimum
+     and lands on 4.52, too close to the line once the feathered edge
+     takes a little off; 0.60 measures 6.02 at that worst pixel.
+
+     The ellipse is sized to 50% so its solid core reaches 85% of the box
+     and the fade happens inside the padding - a soft pill rather than a
+     bar, and never a hard edge on a photograph. */
+  html[data-theme="light"][data-wtd-scene="on"] .lq-sub,
+  html[data-theme="light"][data-wtd-scene="on"] .tk-h .t,
+  html[data-theme="light"][data-wtd-scene="on"] .tk-h .n{
+    padding:10px 26px;margin:-10px -26px;border-radius:999px;
+    background:radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(40,10,20,.60) 0%,rgba(40,10,20,.60) 85%,rgba(40,10,20,0) 100%)}
   /* the readability tint, over the photo and under everything else */
   .scene::after{content:'';position:absolute;inset:0;
     background:var(--wtd-scene-tint,transparent)}

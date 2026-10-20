@@ -1472,3 +1472,82 @@ A practical consequence: the ink differs too, and for the same reason the
 palette already records. `--chk-ink` is sized for the green, `--iv-ink` for
 the accent, and each button carries the ink that belongs to the fill it sits
 on. Swapping one for the other is how `.pri` once measured 4.19.
+
+---
+
+## Amended: screenshots are the channel for the THREAD, not for the FILE
+
+The earlier rule in this file says screenshots are the channel for the
+Claude Design project. That was set when the design conversation panel was
+loading truncated, and for the conversation it is still right.
+
+It was wrong as a general rule, and the cost was a whole build.
+
+The design **file** is readable through the design MCP — `get_file` on the
+project, by path. That was available and was not used. The tool was built
+from screenshots of the rendered design instead, and the result was wrong in
+almost every decision:
+
+| built from the screenshot | what the file said |
+|---|---|
+| a solid green pill | a **clear glass** pill, blurred and white-edged, with a glossy green **bead** for the + |
+| tint `rgba(247,241,232,.62)` | `rgba(40,10,20,.18)` |
+| dark ground ink, solved and measured | the **light** ink, carried on a text-shadow |
+| near-opaque tiles | 6% clear glass in dark; 68% frosted with blur and brightness in light |
+| search left where it was | moved under the calendar |
+
+"Green glass" became "make the button green", because **a screenshot of a
+glass pill with a green bead looks like a green pill.** The screenshot was
+not lying; it just cannot carry `backdrop-filter`, a gradient, or an alpha.
+
+So, amended:
+
+> **The conversation thread comes as screenshots. The design file is read
+> through the MCP, every time, before building.** A screenshot is evidence
+> that something looks wrong. It is not a specification.
+
+### And it is the same failure as all the others this month, one level up
+
+Every rule in this file from the past month is the same sentence with
+different nouns:
+
+- source edits are not evidence — **read the rendered page**
+- a token file is not the rendered page — **read the computed value**
+- a green suite is not a passing suite — **decode the return value**
+- a canvas that exists is not a canvas that is raining — **count the pixels**
+- a screenshot is not the design — **read the file**
+
+In each one there was a way to check the real thing and a cheaper proxy that
+looked like it. The proxy was taken every time, and every time it agreed
+with whatever was already believed — which is what proxies do, because they
+are missing exactly the information that would have disagreed.
+
+> **When there is a way to read the actual artefact, read the actual
+> artefact.** Not the thing that represents it, renders it, or describes it.
+> The gap between a proxy and the thing is never random: it is precisely
+> the part you cannot see, which is precisely where the mistake lives.
+
+### The one place the design was overridden, and why
+
+`#FFF8F2` over the brightest part of that sunset measures **1.41:1**. The
+design carries it on a text-shadow, which works on a monitor indoors — where
+the design was drawn — and does nothing on a phone in daylight, which is
+where this tool is used.
+
+The ink and the photograph are untouched. A scrim of the design's own tint
+colour at 0.60 sits behind the glyphs only, feathered so it reads as a soft
+pill rather than a bar, and the text-shadow stays on top of it.
+
+`.scene` is `position:fixed`, so the photograph does not scroll — text
+slides over a stationary sky. The scrim therefore travels with the text, and
+the binding case is the brightest pixel in the column a run sweeps, not the
+brightest behind it at rest.
+
+|  | swept brightest | at the glyph edge | median |
+|---|---|---|---|
+| `.lq-sub` | 0.659 | **5.02** | 16.73 |
+| `.tk-h .t` | 0.651 | **6.02** | 17.10 |
+| `.tk-h .n` | 0.659 | **6.02** | 15.61 |
+
+Overriding a design needs a reason that is about use rather than about
+rules, and this one is: 1.41:1 against a bright sky is invisible outdoors.
