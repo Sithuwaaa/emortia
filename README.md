@@ -128,7 +128,7 @@ that implies full coverage is worse than one that says where the holes are.
 
 GIN Extractor is the exception to its own line. The folder has no test file, but the
 parsing is not in the folder — both SAP documents are read by `tools/_lib/sapdocs.js`,
-shared with WH24, and that carries 76 assertions. What was untested there was not the
+shared with WH24, and that carries 97 assertions. What was untested there was not the
 parsing but the **refusal**: whether the reader can tell a note that issued nothing
 from a note whose table it no longer recognises. It could not, and `tableFound` is the
 answer; see the decisions file. The other three are UI over a Supabase read, which

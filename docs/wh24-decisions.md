@@ -1364,3 +1364,47 @@ drift assertion for the wrong reason, because *every* such fixture is
 unrecognised. Corrected to the real header, with one label renamed. A fixture
 that fails for a reason other than the one under test proves nothing, and a
 refusal test is especially easy to get accidentally right.
+
+### The shuffled column, closed with one assertion rather than a model
+
+`tableFound` catches a header this reader cannot recognise. It does not catch
+a header it *can* recognise whose columns have moved underneath it — values
+filed under the wrong keys, rows confidently wrong rather than absent. That is
+the worse failure of the two, because it produces numbers somebody acts on.
+
+It is not modelled and will not be. A description or a material code landing
+in the quantity column is not a number, and that is one check:
+
+```
+non-empty, and not a number  ->  this row was not read correctly
+```
+
+**Non-empty and non-numeric, not merely non-numeric.** Empty is legitimate:
+SAP sets the unit and the quantity too close to tell apart by x, both arrive
+in the uom cell, and `ginShape` splits them afterwards. Refusing on empty
+would refuse that repair before it ran.
+
+`parseFloat` alone is not the test either — `parseFloat('5 EA')` is `5`, and a
+quantity cell containing `5 EA` has not been read correctly even though a
+number can be prised out of it. The check is that the whole cell is a number.
+
+**A live bug had to be fixed before the check could exist.** The old line was
+
+```js
+qty: parseFloat(String(it.qty).replace(/,/g, '')) || it.qty,
+```
+
+`||` falls back on anything falsy, and `0` is falsy — so a genuine quantity of
+**zero came out as the string `"0"`** and never as a number at all. The new
+check would have refused it. The value was wrong, not the rule, which is the
+standing rule about guards applied in the direction it is usually not: the
+guard was right before it existed, and the data had to be corrected to meet
+it.
+
+Both callers refuse on `qtyUnread` exactly as they refuse `tableFound`. The
+cost is one `filter` per document and three lines in each caller.
+
+And the reason this is the right amount of work: the silent zero was
+*invisible* — nothing on screen distinguished it from a real zero, which is
+why it earned a signal, two callers and twenty-eight assertions. Garbage in a
+quantity column announces itself. It needed a check, not an architecture.

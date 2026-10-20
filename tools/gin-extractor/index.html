@@ -429,6 +429,16 @@ async function handleFiles(fileList) {
           : 'not a GIN or an Activity Report – no table found', 'err');
         continue;
       }
+      /* The header was recognised; the columns under it may still have moved.
+         A description or a material code in the quantity cell is not a
+         quantity, and a row read off the wrong columns is a row read wrong.
+         One check, and it refuses the same way the one above does. */
+      if (doc.qtyUnread) {
+        setStatus(entry,
+          `GI ${doc.giNumber || '—'} · ${doc.qtyUnread} row(s) have a quantity that is not a number – ` +
+          `the columns do not look like this reader expects, so nothing was counted`, 'err');
+        continue;
+      }
       const dup = doc.giNumber && seenGIN.has(doc.giNumber);
       if (doc.giNumber) seenGIN.add(doc.giNumber);
 

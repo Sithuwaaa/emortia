@@ -2069,6 +2069,14 @@ async function receive(data){
         unreadable.push(p.file);
         continue;
       }
+      /* The header was recognised; its columns may still have moved under it.
+         A quantity cell holding a description or a material code is the one
+         cheap tell, and a mis-mapped row here is worse than an unread one -
+         it is a number this page would act on. Same refusal. */
+      if (r.gin && r.gin.qtyUnread){
+        unreadable.push(p.file);
+        continue;
+      }
       if (r.gin){
         r.gin.file = p.file;
         /* THE BYTES GO BESIDE THE ROW, NOT ON IT. They used to be hung on the

@@ -289,5 +289,71 @@ is('wh24 refuses a drifted note',   wh24Keeps(anyDrift), false);
 is('wh24 refuses a drifted report', wh24Keeps(anyRep),   false);
 
 
+/* ------------------------------------ IS THAT CELL ACTUALLY A QUANTITY ---
+
+   tableFound catches a header this reader cannot recognise. It does not
+   catch a header it CAN recognise whose columns have moved underneath it:
+   values would be filed under the wrong keys and the rows would be
+   confidently wrong rather than absent, which is the worse failure because
+   it produces numbers somebody acts on.
+
+   That case is not modelled and does not need to be. A description or a
+   material code landing in the quantity column is not a number, and that is
+   one check.
+
+   NON-EMPTY AND NON-NUMERIC, not merely non-numeric. Empty is legitimate -
+   SAP merges the unit and the quantity into one cell and ginShape splits
+   them afterwards, so refusing on empty would refuse that repair before it
+   ran. These assert both halves. */
+
+const qtyPages = cells => [
+  [{ x: 40, y: 700, s: 'GI Number :4930000777' }]
+    .concat(HDR_OK.map(([x, s]) => ({ x, y: 600, s })))
+    .concat(cells.map(([x, s]) => ({ x, y: 585, s })))
+];
+const QBASE = [[30,'1'],[50,'MAT-ALPHA-01'],[118,'Widget'],[230,'EA']];
+const qtyDoc = q => SAP.parse(qtyPages(QBASE.concat(q === null ? [] : [[270, q]], [[430,'A01']])));
+
+/* the quantities that are real and must keep working */
+is('a plain quantity is a number',   qtyDoc('2').items[0].qty, 2);
+is('and is read',                    qtyDoc('2').items[0].qtyRead, true);
+is('a thousands separator is read',  qtyDoc('3,500.00').items[0].qty, 3500);
+is('a decimal is read',              qtyDoc('12.5').items[0].qty, 12.5);
+
+/* ZERO. The old line was parseFloat(...) || it.qty, so a genuine zero was
+   falsy and fell back to the raw string "0" - it never became a number at
+   all. That had to be fixed before this check could exist, because the
+   check would have refused it. The value was wrong, not the rule. */
+is('zero is the number zero',        qtyDoc('0').items[0].qty, 0);
+is('and zero is a quantity',         qtyDoc('0').items[0].qtyRead, true);
+is('zero is not an unread row',      qtyDoc('0').qtyUnread, 0);
+
+/* empty is not the shuffle signature */
+is('an empty cell is not a refusal', qtyDoc(null).items[0].qtyRead, true);
+is('and counts as nothing unread',   qtyDoc(null).qtyUnread, 0);
+
+/* the merged cell, which ginShape repairs afterwards */
+const merged = SAP.readAny(qtyPages([[30,'1'],[50,'MAT-ALPHA-01'],[118,'Cable'],[230,'M 3,500.00'],[430,'A01']]));
+is('the merged cell still splits',   merged.gin.items[0].qty, 3500);
+is('and the repaired row is read',   merged.gin.items[0].qtyRead, true);
+is('and the note is not refused',    merged.gin.qtyUnread, 0);
+
+/* and the shuffle itself, three ways it shows up */
+is('a description in the qty cell',  qtyDoc('Bracket').items[0].qtyRead, false);
+is('a material code in it',          qtyDoc('MAT-BETA-02').items[0].qtyRead, false);
+/* parseFloat('5 EA') is 5, which is not a quantity cell read correctly */
+is('a number with a unit after it',  qtyDoc('5 EA').items[0].qtyRead, false);
+is('the value is left as found',     qtyDoc('Bracket').items[0].qty, 'Bracket');
+is('and the document counts it',     qtyDoc('Bracket').qtyUnread, 1);
+
+/* what the callers do with it - both refuse, the way they refuse tableFound */
+const shuffled = SAP.readAny(qtyPages(QBASE.concat([[270,'Bracket'],[430,'A01']])));
+is('the shape carries the count',    shuffled.gin.qtyUnread, 1);
+is('its table WAS recognised',       shuffled.gin.tableFound, true);
+const wh24Keeps2 = r => !!(r.gin && r.gin.tableFound !== false && !r.gin.qtyUnread);
+is('wh24 refuses a shuffled note',   wh24Keeps2(shuffled), false);
+is('wh24 still keeps a good one',    wh24Keeps2(SAP.readAny(okPages)), true);
+
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -67,6 +67,10 @@
        an empty items list carries no information and must not be reported
        as a count. */
     d.tableFound = prevCols !== null;
+    /* How many rows carried something in the quantity cell that is not a
+       quantity. A column shuffle is never one row, so a caller treats any of
+       these the way it treats tableFound: refuse, do not count. */
+    d.qtyUnread = d.items.filter(function (it) { return it.qtyRead === false; }).length;
     return d;
   }
 
@@ -169,13 +173,45 @@
     return out.replace(/\s+/g, ' ').trim();
   }
 
+  /* ---- is that cell a quantity ----
+
+     tableFound catches a header this reader cannot recognise. It does not
+     catch a header it CAN recognise whose columns have since moved: values
+     would be filed under the wrong keys and the rows would be confidently
+     wrong rather than absent. That case is not modelled, and does not need
+     to be - a description or a material code landing in the quantity column
+     is not a number, and that is one check.
+
+     NON-EMPTY AND NON-NUMERIC, not merely non-numeric. Empty is a different
+     thing and a legitimate one: SAP sets the unit and the quantity too close
+     to tell apart by x, both arrive in the uom cell, and ginShape splits them
+     afterwards. Refusing on empty would refuse that repair before it ran.
+
+     The old line was `parseFloat(...) || it.qty`, which fell back to the raw
+     string whenever parseFloat returned something falsy - so a genuine
+     quantity of ZERO came out as the string "0" and never as the number 0.
+     That had to be fixed before this check could exist, because the check
+     would have refused it: the value was wrong, not the rule. */
+  function qtyOf(raw) {
+    var s = String(raw == null ? '' : raw).replace(/,/g, '').trim();
+    if (s === '') return { qty: raw, read: true, empty: true };
+    var n = parseFloat(s);
+    /* parseFloat('5 EA') is 5, which is not a quantity cell read correctly */
+    return isFinite(n) && /^[+-]?\d*\.?\d+$/.test(s)
+      ? { qty: n, read: true, empty: false }
+      : { qty: raw, read: false, empty: false };
+  }
+
   function finalizeItem(it) {
+    var q = qtyOf(it.qty);
     return {
       num:  it.num,
       code: it.code.replace(/\s+/g, ''),
       desc: joinDescLines(it.descLines),
       uom:  it.uom.toUpperCase(),
-      qty:  parseFloat(String(it.qty).replace(/,/g, '')) || it.qty,
+      qty:  q.qty,
+      /* false means this row was not read correctly - see qtyOf */
+      qtyRead: q.read,
       sns:  it.snToks.filter(Boolean),
       loc:  it.locFrags.join('').replace(/\s+/g, '').replace(/GIN:?\d*$/i, '')
     };
@@ -475,6 +511,7 @@
       /* carried through, because WH24 reads this shape and not the document
          behind it. A signal the caller cannot reach is a log line. */
       tableFound: doc.tableFound !== false,
+      qtyUnread: doc.qtyUnread || 0,
       gi:   doc.giNumber || '',
       date: isoDate(doc.docDate),
       res:  doc.resNo || '',
@@ -488,8 +525,12 @@
            split here. readGin's rule, and the reason it existed. */
         var uom = it.uom, qty = it.qty;
         var one = /^(\S+)\s+([\d,.]+)$/.exec(String(uom == null ? '' : uom));
-        if (one && (qty === '' || qty == null)) { uom = one[1]; qty = num(one[2]); }
-        return { code: it.code, desc: it.desc, uom: uom, qty: qty, sn: it.sns || [] };
+        var repaired = false;
+        if (one && (qty === '' || qty == null)) { uom = one[1]; qty = num(one[2]); repaired = true; }
+        /* the repair can turn an empty cell into a real quantity, so the
+           verdict is taken again here rather than carried from the document */
+        return { code: it.code, desc: it.desc, uom: uom, qty: qty, sn: it.sns || [],
+                 qtyRead: repaired ? qty != null : it.qtyRead !== false };
       })
     };
   }
