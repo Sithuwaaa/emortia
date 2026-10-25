@@ -2417,7 +2417,94 @@ window.addEventListener('message', e => {
   }
   await loadAll();
   hello();
-  try { window.DB.wh24Subscribe(() => { if (!BUSY) loadAll(); }); } catch(e){}
+  /* ================= LIVE UPDATES WITHOUT RE-READING THE TABLE =============
+
+     This was `wh24Subscribe(() => { if (!BUSY) loadAll(); })` - one full
+     table read per changed row. BUSY only guards the tab doing the syncing,
+     so every OTHER open tab re-read everything, once per row. 689 rows at
+     1.28 MB is 882 MB, which is the 1 GB day on the usage chart.
+
+     Three paths now, in order of preference:
+
+       PATCH     the payload carries the row, so the row is updated in
+                 memory. No egress beyond the realtime message.
+       REFETCH   when the payload cannot say what happened - a delete, or a
+                 row Realtime could not carry. Coalesced, so a burst costs
+                 one read rather than one per event.
+       RECONCILE a full read that is not triggered by an event at all.
+
+     WHY RECONCILE EXISTS, and why it cannot be dropped: both of the paths
+     above can be wrong without saying so. A coalesced refetch whose trailing
+     call is lost, a patch that misses an event, a channel that drops and
+     comes back - each leaves the tab looking live while being stale, which
+     is the failure this project keeps producing. So there is a path back to
+     truth that does not depend on any event arriving:
+
+       on becoming visible   a tab that was hidden missed everything, and
+                             postgres_changes does not replay. It tears the
+                             channel down on hide, so this is not optional:
+                             resubscribing without refetching would be
+                             precisely the lie.
+       on resubscribe        the channel reporting SUBSCRIBED after having
+                             been anything else means there was a gap.
+       every 15 minutes      the backstop for the case nobody thought of.
+                             It is cheap next to what it replaces: one read
+                             a quarter of an hour against one per row. */
+
+  let LIVE_OFF = null, REFETCH_T = null, LAST_STATUS = null, RECON_T = null;
+
+  const reconcile = async (why) => {
+    if (BUSY) return;
+    clearTimeout(REFETCH_T); REFETCH_T = null;
+    await loadAll();
+    if (why) console.info('[wh24] reconciled:', why);
+  };
+  /* trailing-edge, and deliberately short: long enough to swallow a sync's
+     burst, short enough that a single change still lands promptly */
+  const refetchSoon = () => {
+    if (BUSY) return;
+    clearTimeout(REFETCH_T);
+    REFETCH_T = setTimeout(() => { REFETCH_T = null; reconcile(); }, 1200);
+  };
+
+  const onEvent = (what, e) => {
+    if (BUSY) return;                       /* this tab is mid-sync; it will reload after */
+    if (what === 'status'){
+      if (e.status === 'SUBSCRIBED' && LAST_STATUS && LAST_STATUS !== 'SUBSCRIBED')
+        reconcile('channel came back after ' + LAST_STATUS);
+      LAST_STATUS = e.status;
+      return;
+    }
+    /* anything the payload cannot describe goes to the refetch, never to a
+       silent skip - including a delete, whose payload is only the id */
+    if (what !== 'tickets' || !e.usable || e.type === 'DELETE') return refetchSoon();
+    const row = e.row;
+    if (!row || row.id == null) return refetchSoon();
+    const k = KEY(row);
+    const at = TICKETS.findIndex(t => KEY(t) === k);
+    if (at < 0) return refetchSoon();       /* a row we have never seen: read properly */
+    TICKETS[at] = row;
+    render();
+  };
+
+  const live = async () => {
+    if (LIVE_OFF) return;
+    try { LIVE_OFF = await window.DB.wh24Subscribe(onEvent); } catch(e){}
+  };
+  const dark = () => { if (LIVE_OFF){ try { LIVE_OFF(); } catch(e){} LIVE_OFF = null; LAST_STATUS = null; } };
+
+  /* one interval, never stacked: every path clears before it sets, or a
+     tab toggled a dozen times ends up reconciling a dozen times an hour */
+  const backstop = (on) => {
+    clearInterval(RECON_T); RECON_T = null;
+    if (on) RECON_T = setInterval(() => reconcile('15 minute backstop'), 900000);
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden){ dark(); backstop(false); clearTimeout(REFETCH_T); REFETCH_T = null; }
+    else { live(); backstop(true); reconcile('tab became visible'); }
+  });
+  await live();
+  backstop(true);
   /* the day turns over while the page is open; the counts should too */
   setInterval(() => render(), 600000);
   /* A minute, for the status alone. The ten-minute tick above redraws the

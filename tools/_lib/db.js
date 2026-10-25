@@ -991,13 +991,55 @@
     return error ? null : (data ? data.signedUrl : null);
   }
 
+  /* ---- THE PAYLOAD, AND A WAY TO CLOSE THE CHANNEL ----
+
+     This used to hand the caller nothing but a table name, so the only
+     possible response was "something changed, read everything again". WH24
+     did exactly that: one full table read per changed row. A sync of 689
+     rows, with a second tab open, was 689 full reads - and at 1.28 MB each
+     that is the 1 GB day on the chart.
+
+     postgres_changes already carries the row. Passing the payload through
+     lets a caller patch one row in memory for no egress at all beyond the
+     realtime message, which is already paid for.
+
+     NARROWED ON THE WAY THROUGH. The page holds the narrow column set, and
+     the payload carries the whole row. Storing it raw would leave two
+     shapes in one array, and anything reading t.gins would then behave
+     differently depending on whether that row happened to have changed
+     recently - a bug that appears only under load and only for some rows.
+     wh24Narrow projects to the same list wh24Load selects, from the same
+     constant, so the two cannot drift.
+
+     Returns a teardown. A channel that is never closed is the other half of
+     the bill. */
+  function wh24Narrow(row){
+    if (!row) return row;
+    const out = {};
+    for (const k of WH24_LIST.split(',')) if (k in row) out[k] = row[k];
+    return out;
+  }
+
   async function wh24Subscribe(fn){
-    const c = await client(); if (!c) return;
-    c.channel('wh24_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: WH24T }, () => fn('tickets'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: WH24M }, () => fn('marks'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: WH24S }, () => fn('sync'))
-      .subscribe();
+    const c = await client(); if (!c) return null;
+    const hand = (what) => (p) => {
+      /* No `new` means the payload could not carry the row - Realtime drops
+         anything over its size cap. That is a REFETCH, never a skip: a row
+         quietly left at its old value is the failure this whole change is
+         about. */
+      const row = p && p.new && Object.keys(p.new).length ? wh24Narrow(p.new) : null;
+      fn(what, { type: p && p.eventType, row, id: p && p.old && p.old.id,
+                 whole: p && p.new ? p.new : null, usable: !!row });
+    };
+    const ch = c.channel('wh24_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: WH24T }, hand('tickets'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: WH24M }, hand('marks'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: WH24S }, hand('sync'))
+      /* The channel's own status. A resubscribe after an error or a timeout
+         means events were missed while it was down, and nothing replays
+         them - so the caller is told, and reconciles. */
+      .subscribe((status) => fn('status', { status }));
+    return () => { try { c.removeChannel(ch); } catch (e) {} };
   }
 
   /* ---------------------------------------------------- lyric video projects
@@ -2177,7 +2219,7 @@
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
-                WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY,
+                WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 wh24Load, wh24Publish, wh24Mark, wh24Subscribe, wh24Checked, wh24NoteCheck,
                 wh24PutDoc, wh24DocLink, wh24DocPath,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
