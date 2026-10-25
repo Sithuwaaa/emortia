@@ -1551,3 +1551,31 @@ brightest behind it at rest.
 
 Overriding a design needs a reason that is about use rather than about
 rules, and this one is: 1.41:1 against a bright sky is invisible outdoors.
+
+### Run the FULL suite after a design import, not the suites for the files touched
+
+`fab0f88` imported the design project's version of What To Do. The sapdocs
+and wh24 suites were run; `family.test.js` was not, because the commit did
+not touch anything it obviously owned.
+
+It owned the thing that mattered. The design brought `#DC1F55` with an ivory
+`#FFF5F7` on it, which renders at **4.498** — under the bar by two
+thousandths. That sat on main for four commits.
+
+> **A design import is exactly when the colour guard earns its keep, and
+> exactly when it is least likely to be run.** It brings values the guard has
+> never seen, chosen on someone else's screen, by someone who was not
+> thinking about the contrast bar. Run everything.
+
+The same applies to any import, regeneration or bulk replace: the suites to
+run are not the ones whose files changed, but the ones whose *assumptions*
+might have. A file-based heuristic picks the wrong set every time, because
+the point of a guard is that it watches something the changed file does not
+mention.
+
+And the fix had a direction worth recording. The instinct was to darken the
+near-white ink. The fill is dark — L=0.168 — so darkening the ink *closes*
+the gap: `#F7EDEF` measures 4.19. Lighter is the way out, `#FFFAFB` at
+4.649, and the design's fill is untouched. **Check which way the ratio moves
+before choosing a shade**; on a dark fill a lighter ink is the fix and on a
+pale one it is the opposite, and the word "darken" is not a direction.
