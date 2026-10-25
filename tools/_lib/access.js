@@ -1170,6 +1170,8 @@
       what:'The poems. Reading only – writing stays mine.' },
     { key:'tool:lyric-video', name:'Video & Artwork', since:'2026-08-19', tier:'mine', group:'Emortia',
       what:'The lyric video and the cover art tool.' },
+    { key:'tool:goals', name:'Year Goals', since:'2026-10-25', tier:'mine', group:'Emortia',
+      what:'The year ahead and what it costs. Kept in this browser, not on the server - so opening it lets somebody keep their own list, and never shows them mine.' },
     { key:'tool:whattodo', name:'What To Do', since:'2026-08-06', tier:'mine', group:'Emortia',
       what:'The job list. Whoever can open it can tick things off.' },
     { key:'tool:project-update', name:'Project Update', since:'2026-07-29', tier:'tooway', group:'Site intelligence',

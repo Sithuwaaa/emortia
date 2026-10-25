@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en" data-cat="emortia" data-wtd-scene="on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="The year's big plans - what to buy, where to go, and how close each one is.">
+<meta property="og:title" content="Year Goals · Emortia">
+<meta property="og:image" content="https://emortia.com/og/og-emortia.png">
+<meta name="theme-color" content="#190c11">
+<title>Year Goals</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b03a56'/%3E%3Cg fill='%23170d10'%3E%3Crect x='8' y='13' width='3' height='8' rx='1.5'/%3E%3Crect x='13' y='9' width='3' height='14' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23' y='8' width='3' height='15' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="/pwa.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=JetBrains+Mono:wght@400;500&family=Jost:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="../_lib/owner-config.js"></script>
+<script src="../_lib/owner.js"></script>
+<script src="../_lib/supabase-config.js"></script>
+<script src="../_lib/db.js"></script>
+<script src="../_lib/access-config.js"></script>
+<script src="../_lib/access.js"></script>
+<script>Access.protect({ owner: true, feature: 'tool:goals' });</script>
+<script src="../_lib/authgate.js"></script>
+<!-- the arithmetic and the storage boundary, both testable without a browser -->
+<script src="goals.js"></script>
+<script src="store.js"></script>
+<style>
+  :root{
+    --g-ink:#F7F1E8; --g-dim:#DCCBCE; --g-faint:rgba(255,255,255,.16);
+    --g-glass:rgba(255,255,255,.06); --g-edge:rgba(255,255,255,.22);
+    --g-blur:blur(14px) saturate(1.4);
+    --g-inset:inset 0 1px 0 rgba(255,255,255,.12);
+    --g-shadow:0 18px 40px -24px rgba(0,0,0,.5);
+    --g-field:rgba(255,255,255,.08);
+    --crimson:#DC1F55; --mint:#3DFFA4; --mint-ink:#06210F; --gold:#E8D5A8;
+    --g-chip:rgba(255,255,255,.1);
+    /* THE INK ON THE CRIMSON IS #FFFAFB, NOT #FFF5F7.
+
+       The design chose #DC1F55 and it is untouched. Its ivory ink renders
+       at 4.498 against that fill - under the bar by two thousandths, which
+       family.test.js reads every tool folder to catch and would have caught
+       the day this landed.
+
+       The direction is LIGHTER, not darker: the fill is dark (L=0.168) and
+       the ink near-white, so darkening closes the gap - #F7EDEF measures
+       4.19. #FFFAFB is one step toward white, 4.649, and indistinguishable
+       on screen. Solved on the 8-bit values a browser renders. */
+    --on-crimson:#FFFAFB;
+  }
+  html[data-theme="light"]{
+    --g-ink:#22060E; --g-dim:#4A3438; --g-faint:rgba(34,6,14,.12);
+    --g-glass:rgba(255,255,255,.68); --g-edge:rgba(255,255,255,.7);
+    --g-blur:blur(32px) saturate(1.3) brightness(1.8);
+    --g-inset:inset 0 1px 0 rgba(255,255,255,.8);
+    --g-shadow:0 18px 40px -24px rgba(0,0,0,.45);
+    --g-field:rgba(255,255,255,.7);
+    --mint:#1F9E62; --gold:#7A5E30; --g-chip:rgba(109,26,46,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  [hidden]{display:none !important}
+  html,body{background:var(--bg);color:var(--g-ink);
+    font:15px/1.55 Jost,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font:inherit;color:inherit}
+  a{color:var(--g-ink)} a:hover{color:var(--crimson)}
+
+  /* ---- the bar, same as every tool ---- */
+  .hdr{position:sticky;top:0;z-index:30;background:var(--navy);color:var(--barInk);display:flex;align-items:center;gap:10px;
+    padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;overflow:hidden}
+  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--barInk);flex-shrink:0}
+  .logo{width:30px;height:30px;border-radius:50%;background:linear-gradient(150deg,#d15873,#87213c);
+    display:flex;align-items:center;justify-content:center;gap:2.4px;box-shadow:0 0 22px rgba(176,58,86,.55)}
+  .logo i{width:2.6px;border-radius:2px;background:#170d10;display:block}
+  .logo i:nth-child(1){height:7px}.logo i:nth-child(2){height:12px}.logo i:nth-child(3){height:9px}.logo i:nth-child(4){height:13px}
+  .bname{font:700 16px 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;white-space:nowrap}
+  .hsep{width:1px;height:19px;background:var(--barLine);flex-shrink:0}
+  .hdr h1{font-size:18px;font-weight:700;margin-right:auto;white-space:nowrap;color:var(--barInk)}
+  .pill{font-family:'Space Mono',monospace;font-size:11.5px;background:var(--barFill);border:1px solid var(--barLine);
+    color:var(--barDim);border-radius:999px;padding:4px 11px;white-space:nowrap}
+  @media (max-width:900px){.bname,.hsep{display:none}}
+  @media (max-width:640px){.pill{display:none}}
+  .hdr::after,.hdr::before{content:none !important;display:none !important}
+  html[data-cat][data-wtd-scene="on"] header.hdr,html[data-cat][data-wtd-scene="on"] .hdr{
+    background:color-mix(in srgb,var(--bar) 93%,transparent) !important;
+    backdrop-filter:blur(24px) saturate(1.15);-webkit-backdrop-filter:blur(24px) saturate(1.15);
+    box-shadow:none !important;border-bottom:0 !important}
+
+  /* ---- the same photograph as What To Do ---- */
+  .scene{position:fixed;inset:0;pointer-events:none;z-index:0;background-color:var(--bg);
+    background-image:var(--scene,none);background-position:center;background-size:cover}
+  .scene::after{content:'';position:absolute;inset:0;background:var(--scene-tint,transparent)}
+  html{--scene:image-set(url('../whattodo/img/scene-1280.webp') type('image/webp'));--scene-tint:rgba(11,3,6,.75)}
+  html[data-theme="light"]{--scene:image-set(url('../whattodo/img/scene-light-1280.webp') type('image/webp'));--scene-tint:rgba(40,10,20,.18)}
+  @media (min-width:900px){
+    html{--scene:image-set(url('../whattodo/img/scene-1672.webp') type('image/webp'))}
+    html[data-theme="light"]{--scene:image-set(url('../whattodo/img/scene-light-1672.webp') type('image/webp'))}
+  }
+
+  main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:28px 16px 120px;display:flex;flex-direction:column;gap:20px}
+  .glass{position:relative;border-radius:34px;background:var(--g-glass);
+    backdrop-filter:var(--g-blur);-webkit-backdrop-filter:var(--g-blur);
+    border:1px solid var(--g-edge);box-shadow:var(--g-inset),var(--g-shadow)}
+  .cap{font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--g-dim)}
+  .mono{font-family:'JetBrains Mono','Space Mono',monospace}
+
+  /* ---- ground text: stroked over the bright sunset, same rule as What To Do ---- */
+  .hero{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;color:#F7F1E8}
+  .hero h2{font:500 46px/1.05 'Cormorant Garamond',Georgia,serif}
+  .hero h2 em{font-style:italic}
+  .hero p{color:#E6D6D9;font-size:15px;margin-top:4px}
+  .hero .sp{flex:1}
+  html[data-theme="light"] .hero h2,html[data-theme="light"] .hero p,html[data-theme="light"] .ground{
+    color:#FFF8F2;paint-order:stroke fill;-webkit-text-stroke:2.5px rgba(40,10,20,.82);
+    text-stroke:2.5px rgba(40,10,20,.82);
+    text-shadow:0 2px 14px rgba(56,12,24,.75)}
+  .yr{display:flex;align-items:center;gap:4px;padding:4px;border-radius:99px}
+  .yr button{width:36px;height:36px;border-radius:50%;border:0;background:transparent;cursor:pointer;font-size:18px;color:var(--g-ink)}
+  .yr button:hover{background:var(--g-chip)}
+  .yr b{font:500 15px 'JetBrains Mono',monospace;padding:0 8px;color:var(--g-ink)}
+
+  /* ---- summary ---- */
+  .sum{display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;padding:26px 30px;align-items:center}
+  .ring{--p:0;width:132px;height:132px;border-radius:50%;display:grid;place-items:center;
+    background:conic-gradient(var(--crimson) calc(var(--p)*1%),var(--g-faint) 0)}
+  .ring div{width:108px;height:108px;border-radius:50%;background:var(--g-glass);display:grid;place-items:center;text-align:center;
+    backdrop-filter:blur(8px)}
+  html:not([data-theme="light"]) .ring div{background:rgba(30,10,16,.55)}
+  .ring b{font:500 34px/1 'Cormorant Garamond',serif;display:block}
+  .ring span{font-size:11px;color:var(--g-dim);letter-spacing:.08em;text-transform:uppercase}
+  .sumR{display:flex;flex-direction:column;gap:18px;min-width:0}
+  .stats{display:flex;flex-wrap:wrap;gap:12px 34px}
+  .stat b{display:block;font:500 28px/1.1 'Cormorant Garamond',serif}
+  .stat span{font-size:13px;color:var(--g-dim)}
+  .months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px}
+  .mo{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 6px;border-radius:14px;cursor:pointer;border:1px solid transparent;background:transparent}
+  .mo:hover{background:var(--g-chip)}
+  .mo.now{border-color:var(--g-edge);background:var(--g-chip)}
+  .mo.on{background:var(--crimson);color:var(--on-crimson);border-color:var(--crimson)}
+  .mo.on .ml{color:var(--on-crimson)}
+  .ml{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--g-dim)}
+  .dots{display:flex;gap:3px;height:6px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:var(--g-dim);opacity:.7}
+  .dots i.ok{background:var(--mint);opacity:1}
+  .mo.on .dots i{background:var(--on-crimson)}
+
+  /* ---- toolbar ---- */
+  .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .seg{display:flex;gap:4px;padding:4px;border-radius:99px}
+  .seg button{border:0;background:transparent;cursor:pointer;padding:8px 16px;border-radius:99px;font-size:14px;font-weight:500;color:var(--g-ink);white-space:nowrap;flex-shrink:0}
+  .seg button.on{background:var(--crimson);color:var(--on-crimson)}
+  .bar .sp{flex:1}
+  .ground{font-size:14px;color:#E6D6D9}
+  .clr{border:0;background:none;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+  /* ---- where the data lives, said out loud ---- */
+  .where{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--g-dim);
+    padding:10px 16px;border-radius:99px;align-self:flex-start}
+  .where b{font-weight:500;color:var(--g-ink)}
+
+  /* ---- goals ---- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+  .goal{padding:22px 24px 20px;display:flex;flex-direction:column;gap:14px;transition:transform .2s ease}
+  .goal:hover{transform:translateY(-2px)}
+  .gtop{display:flex;align-items:flex-start;gap:12px}
+  .gtop .t{flex:1;min-width:0}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+    padding:4px 10px;border-radius:99px;background:var(--g-chip);color:var(--g-dim)}
+  .chip i{width:7px;height:7px;border-radius:50%;background:var(--c,#DC1F55)}
+  .goal h3{font:500 26px/1.15 'Cormorant Garamond',serif;margin-top:8px;text-wrap:pretty;overflow-wrap:anywhere}
+  .goal.done h3{text-decoration:line-through;text-decoration-thickness:1px;opacity:.75}
+  .menu{border:0;background:transparent;cursor:pointer;width:34px;height:34px;border-radius:50%;font-size:18px;color:var(--g-dim);flex-shrink:0}
+  .menu:hover{background:var(--g-chip);color:var(--g-ink)}
+  .money{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .money b{font:500 15px 'JetBrains Mono',monospace}
+  .money span{font-size:13px;color:var(--g-dim)}
+  .track{height:8px;border-radius:99px;background:var(--g-faint);overflow:hidden}
+  .track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#B23A56,var(--crimson))}
+  .goal.done .track i{background:var(--mint)}
+  .gfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .due{font-size:13px;color:var(--g-dim);margin-right:auto}
+  .due.late{color:#FF6F93} html[data-theme="light"] .due.late{color:#A3123E}
+  .btn{cursor:pointer;border-radius:99px;padding:8px 16px;font-size:13px;font-weight:500;border:1px solid var(--g-edge);background:var(--g-chip);color:var(--g-ink)}
+  .btn:hover{background:var(--g-faint)}
+  .btn.ok{background:var(--mint);border-color:transparent;color:var(--mint-ink)}
+  .btn.pri{background:var(--crimson);border-color:transparent;color:var(--on-crimson)}
+  .note{font-size:14px;color:var(--g-dim);text-wrap:pretty}
+  .stamp{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--mint)}
+  .empty{padding:40px 30px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .empty h3{font:500 30px 'Cormorant Garamond',serif}
+  .empty p{color:var(--g-dim);max-width:40ch}
+
+  /* ---- new goal: glass pill with the green bead, same as Add task ---- */
+  .fab{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:calc(22px + env(safe-area-inset-bottom));z-index:25;
+    display:flex;align-items:center;gap:10px;padding:7px 20px 7px 7px;border-radius:99px;cursor:pointer;
+    background:rgba(255,255,255,.1);color:#F7F1E8;border:1px solid rgba(255,255,255,.3);
+    backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 12px 28px -16px rgba(0,0,0,.6);font-weight:500;white-space:nowrap}
+  .fab span{white-space:nowrap}
+  .fab:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 14px 32px -14px rgba(61,220,132,.55)}
+  .fab i{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:22px;
+    background:linear-gradient(160deg,#5CF09C,#1FA463);color:#06210F;box-shadow:0 4px 14px -4px rgba(61,220,132,.9),inset 0 1px 0 rgba(255,255,255,.5)}
+  html[data-theme="light"] .fab{background:rgba(43,30,26,.42);border-color:rgba(255,255,255,.5)}
+
+  /* ---- sheet ---- */
+  .veil{position:fixed;inset:0;z-index:50;background:rgba(10,3,6,.45);display:grid;place-items:center;padding:16px;
+    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  .sheet{width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:26px 28px;display:flex;flex-direction:column;gap:16px}
+  html:not([data-theme="light"]) .sheet{background:rgba(40,14,22,.72)}
+  .sheet h3{font:500 30px 'Cormorant Garamond',serif}
+  .f{display:flex;flex-direction:column;gap:6px}
+  .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+  .f input,.f select,.f textarea{width:100%;border-radius:16px;border:1px solid var(--g-edge);background:var(--g-field);
+    padding:11px 14px;outline:none;color:var(--g-ink)}
+  .f select option{color:#22060E}
+  .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--crimson);box-shadow:0 0 0 3px rgba(220,31,85,.25)}
+  .cats{display:flex;flex-wrap:wrap;gap:8px}
+  .cats button{cursor:pointer;display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;font-size:13px;
+    border:1px solid var(--g-edge);background:var(--g-chip);color:var(--g-ink)}
+  .cats button i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+  .cats button.on{background:var(--crimson);border-color:var(--crimson);color:var(--on-crimson)}
+  .cats button.on i{background:var(--on-crimson)}
+  .acts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .acts .sp{flex:1}
+  .del{color:#FF6F93;border:0;background:none;cursor:pointer;font-size:14px}
+  html[data-theme="light"] .del{color:#A3123E}
+  .pop{position:absolute;right:16px;top:58px;z-index:5;min-width:170px;padding:6px;border-radius:18px;display:flex;flex-direction:column}
+  html:not([data-theme="light"]) .pop{background:rgba(40,14,22,.9)}
+  html[data-theme="light"] .pop{background:rgba(255,255,255,.95)}
+  .pop button{text-align:left;border:0;background:transparent;cursor:pointer;padding:9px 12px;border-radius:12px;font-size:14px}
+  .pop button:hover{background:var(--g-chip)}
+  .toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,160px);z-index:90;padding:11px 18px;border-radius:14px;
+    background:var(--card);border:1px solid var(--accent);color:var(--text);transition:transform .25s ease;font-size:14px}
+  .toast.show{transform:translate(-50%,0)}
+
+  @media (max-width:760px){
+    main{padding:18px 10px 110px}
+    .hero h2{font-size:32px}
+    .sum{grid-template-columns:minmax(0,1fr);justify-items:center;padding:22px 18px}
+    .sumR{width:100%}
+    .months{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .glass{border-radius:28px}
+    .row2{grid-template-columns:minmax(0,1fr)}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+<link rel="stylesheet" href="../_lib/nav.css?v=7">
+<link rel="stylesheet" href="../_lib/category.css?v=13">
+</head>
+<body>
+<div class="scene" aria-hidden="true"></div>
+<header class="hdr">
+  <a class="brand" href="../../" title="Emortia · back to the site">
+    <span class="logo"><i></i><i></i><i></i><i></i></span>
+    <span class="bname">Emortia</span>
+  </a>
+  <span class="hsep" aria-hidden="true"></span>
+  <h1>Year Goals</h1>
+  <span class="pill" id="pill">–</span>
+  <!-- NO THEME BUTTON. The account menu in the bar carries the one switch,
+       for every tool. A tool with its own is a setting that means two
+       different things depending on which page you changed it from. -->
+</header>
+<main id="view"></main>
+<button class="fab" id="fab" aria-label="New goal"><i>+</i><span>New goal</span></button>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const M = window.GoalMath, Store = window.GoalStore;
+const MON = M.MON;
+
+const CATS = [
+  { k:'vehicle', n:'Vehicle',  c:'#4DD8FF' },
+  { k:'home',    n:'Home',     c:'#E8D5A8' },
+  { k:'gadget',  n:'Gadget',   c:'#B45F72' },
+  { k:'travel',  n:'Travel',   c:'#3DFFA4' },
+  { k:'money',   n:'Savings',  c:'#FFD94A' },
+  { k:'self',    n:'Personal', c:'#FF5F8F' }
+];
+const cat = k => CATS.find(c => c.k === k) || CATS[5];
+
+/* EVERY read and write goes through Store. There is no localStorage call
+   anywhere else in this file, which is what makes putting these on a server
+   later a change to store.js rather than a change to this one. */
+let S = { cur:'Rs', goals:[] };
+const persist = async () => {
+  const ok = await Store.save(S);
+  /* A failed write is the user losing a year of planning without being
+     told. It is the one storage outcome that gets its own message. */
+  if (!ok) toast('Could not save - this browser is refusing to store more.');
+  return ok;
+};
+
+const now = new Date();
+let year = now.getFullYear(), filter = 'all', month = null, openMenu = null;
+const fmt = n => M.money(S.cur, n);
+
+let tt; function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2600); }
+
+function render(){
+  const all = S.goals.filter(g => g.year === year);
+  const s = M.summary(all);
+  $('pill').textContent = `${s.done}/${s.count} · ${year}`;
+
+  const list = Store.list(S, { year, month, filter });
+
+  const byMo = M.byMonth(all);
+  const months = MON.map((m, i) => {
+    const gs = byMo[i];
+    const isNow = year === now.getFullYear() && i === now.getMonth();
+    return `<button class="mo${isNow ? ' now' : ''}${month === i ? ' on' : ''}" data-mo="${i}" aria-label="${m}, ${gs.length} goals">
+      <span class="ml">${m}</span><span class="dots">${gs.slice(0, 4).map(g => `<i class="${g.done ? 'ok' : ''}"></i>`).join('')}</span></button>`;
+  }).join('');
+
+  const sub = !s.count ? 'Nothing planned yet - add the first thing you want this year.'
+    : s.open ? `${s.done} of ${s.count} achieved · ${s.open} still to go` : `All ${s.count} achieved. A good year.`;
+
+  $('view').innerHTML = `
+    <div class="hero">
+      <div><h2>The <em>${year}</em> plan</h2><p>${esc(sub)}</p></div>
+      <span class="sp"></span>
+      <div class="yr glass"><button id="yPrev" aria-label="Previous year">‹</button><b>${year}</b><button id="yNext" aria-label="Next year">›</button></div>
+    </div>
+    <section class="glass sum">
+      <div class="ring" style="--p:${s.pct}"><div><span><b>${s.pct}%</b>funded</span></div></div>
+      <div class="sumR">
+        <div class="stats">
+          <div class="stat"><b style="font-family:'Cormorant Garamond',serif">${fmt(s.saved)}</b><span>put aside</span></div>
+          <div class="stat"><b style="font-family:'Cormorant Garamond',serif">${fmt(s.remaining)}</b><span>still needed</span></div>
+          <div class="stat"><b>${s.done}<span style="font-size:18px;color:var(--g-dim)"> / ${s.count}</span></b><span>goals achieved</span></div>
+        </div>
+        <div class="months">${months}</div>
+      </div>
+    </section>
+    <div class="bar">
+      <div class="seg glass">
+        <button data-f="all" class="${filter === 'all' ? 'on' : ''}">All</button>
+        <button data-f="open" class="${filter === 'open' ? 'on' : ''}">In progress</button>
+        <button data-f="done" class="${filter === 'done' ? 'on' : ''}">Achieved</button>
+      </div>
+      <span class="sp"></span>
+      ${month !== null ? `<span class="ground">Showing ${MON[month]} · <button class="clr ground" id="clrMo">all months</button></span>` : ''}
+    </div>
+    ${list.length ? `<div class="grid">${list.map(card).join('')}</div>` : `
+      <section class="glass empty">
+        <h3>${s.count ? 'Nothing here' : 'Start the list'}</h3>
+        <p>${s.count ? 'No goals match this view.' : 'A car, a trip, a new phone - put down what this year is for, what it costs, and when you want it.'}</p>
+        ${s.count ? '' : '<button class="btn pri" id="emptyAdd">Add a goal</button>'}
+      </section>`}
+    <!-- SAID ON THE PAGE, NOT IN A COMMENT. A year of savings plans
+         disappearing because somebody cleared site data is a bad surprise,
+         and this is the sentence that means they were told. -->
+    <div class="glass where">
+      <span>🔒</span><span><b>Kept on this device only.</b> These goals are not synced and do not leave this browser - clearing its site data removes them.</span>
+    </div>`;
+}
+
+function card(g){
+  const c = cat(g.cat), p = M.pct(g), late = M.overdue(g, now), hasMoney = g.target > 0;
+  return `<article class="glass goal${g.done ? ' done' : ''}" data-id="${g.id}">
+    <div class="gtop">
+      <div class="t"><span class="chip" style="--c:${c.c}"><i></i>${c.n}</span><h3>${esc(g.name)}</h3></div>
+      <button class="menu" data-menu="${g.id}" aria-label="More">⋯</button>
+    </div>
+    ${openMenu === g.id ? `<div class="pop glass">
+      <button data-edit="${g.id}">Edit</button>
+      <button data-toggle="${g.id}">${g.done ? 'Mark not achieved' : 'Mark achieved'}</button>
+      <button data-dup="${g.id}">Move to ${year + 1}</button>
+    </div>` : ''}
+    ${g.note ? `<p class="note">${esc(g.note)}</p>` : ''}
+    ${hasMoney ? `<div class="money"><b>${fmt(M.funded(g))}</b><span>of ${fmt(g.target)} · ${p}%</span></div>
+      <div class="track"><i style="width:${p}%"></i></div>` : ''}
+    <div class="gfoot">
+      <span class="due${late ? ' late' : ''}">${esc(M.label(g, now))}</span>
+      ${g.done ? '<span class="stamp">✓ Achieved</span>' : `
+        ${hasMoney ? `<button class="btn" data-add="${g.id}">+ Add savings</button>` : ''}
+        <button class="btn ok" data-toggle="${g.id}">Done</button>`}
+    </div>
+  </article>`;
+}
+
+/* ---- the sheet, which is also how an amount is asked for ----
+
+   prompt() and confirm() are gone. Not style: prompt() is blocked outright
+   in some embedded contexts, so the savings box simply never appeared, and
+   the tool looked broken rather than refused. */
+function veil(html, ready){
+  const v = document.createElement('div'); v.className = 'veil';
+  v.innerHTML = html;
+  document.body.appendChild(v);
+  const close = () => v.remove();
+  v.addEventListener('mousedown', e => { if (e.target === v) close(); });
+  v.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  ready(v, close);
+  return v;
+}
+
+function sheet(g){
+  const isNew = !g;
+  g = g || { id:'', name:'', cat:'vehicle', target:'', saved:'', month:'', note:'', year };
+  let pick = g.cat;
+  veil(`<form class="glass sheet" autocomplete="off">
+    <h3>${isNew ? 'New goal' : 'Edit goal'}</h3>
+    <label class="f"><span class="cap">What</span><input name="name" required maxlength="80" placeholder="e.g. Buy a car" value="${esc(g.name)}"></label>
+    <div class="f"><span class="cap">Kind</span><div class="cats">${CATS.map(c => `<button type="button" data-c="${c.k}" style="--c:${c.c}" class="${c.k === pick ? 'on' : ''}"><i></i>${c.n}</button>`).join('')}</div></div>
+    <div class="row2">
+      <label class="f"><span class="cap">Cost (${esc(S.cur)})</span><input name="target" type="number" min="0" step="any" inputmode="decimal" placeholder="optional" value="${g.target || ''}"></label>
+      <label class="f"><span class="cap">Saved so far</span><input name="saved" type="number" min="0" step="any" inputmode="decimal" placeholder="0" value="${g.saved || ''}"></label>
+    </div>
+    <div class="row2">
+      <label class="f"><span class="cap">Target month</span><select name="month"><option value="">Any time</option>${MON.map((m, i) => `<option value="${i}"${String(g.month) === String(i) ? ' selected' : ''}>${m}</option>`).join('')}</select></label>
+      <label class="f"><span class="cap">Year</span><input name="year" type="number" min="2000" max="2100" value="${esc(g.year)}"></label>
+    </div>
+    <label class="f"><span class="cap">Note</span><textarea name="note" rows="2" maxlength="240" placeholder="optional">${esc(g.note)}</textarea></label>
+    <div class="acts">
+      ${isNew ? `<label class="f" style="flex-direction:row;align-items:center;gap:8px"><span class="cap">Currency</span><select name="cur" style="width:auto;padding:6px 10px">${['Rs','$','€','£','₹','AED'].map(c => `<option${c === S.cur ? ' selected' : ''}>${c}</option>`).join('')}</select></label>` : `<button type="button" class="del" id="delG">Delete</button>`}
+      <span class="sp"></span>
+      <button type="button" class="btn" id="cancel">Cancel</button>
+      <button type="submit" class="btn pri">${isNew ? 'Add goal' : 'Save'}</button>
+    </div>
+  </form>`, (v, close) => {
+    const f = v.querySelector('form'); f.name.focus();
+    v.querySelector('#cancel').onclick = close;
+    v.querySelectorAll('.cats button').forEach(b => b.onclick = () => {
+      pick = b.dataset.c; v.querySelectorAll('.cats button').forEach(x => x.classList.toggle('on', x === b)); });
+    const del = v.querySelector('#delG');
+    if (del) del.onclick = async () => {
+      const ok = await window.Ask.twice([
+        { title: 'Delete this goal?', body: 'It goes from the year and the totals straight away.',
+          no: 'Cancel', yes: 'Continue' },
+        { title: 'Delete “' + g.name + '”?',
+          body: 'This is kept on this device only, so there is no copy to restore it from.',
+          no: 'No, keep it', yes: 'Delete it' }
+      ]);
+      if (!ok) return;
+      S = Store.remove(S, g.id); await persist(); close(); render(); toast('Goal deleted');
+    };
+    f.onsubmit = async e => {
+      e.preventDefault();
+      if (f.cur) S = Store.currency(S, f.cur.value);
+      const o = { id: g.id, done: g.done || false, name:f.name.value.trim(), cat:pick,
+        target:f.target.value, saved:f.saved.value, month:f.month.value,
+        note:f.note.value.trim(), year:+f.year.value || year };
+      if (!o.name) return;
+      S = Store.upsert(S, o);
+      await persist(); close(); year = o.year; render(); toast(isNew ? 'Goal added' : 'Saved');
+    };
+  });
+}
+
+function addSavings(g){
+  veil(`<form class="glass sheet" autocomplete="off" style="width:min(400px,100%)">
+    <h3>Add savings</h3>
+    <p class="note">Towards <b>${esc(g.name)}</b> · ${esc(fmt(M.funded(g)))} of ${esc(fmt(g.target))} so far.</p>
+    <label class="f"><span class="cap">Amount (${esc(S.cur)})</span>
+      <input name="amt" type="number" min="0" step="any" inputmode="decimal" placeholder="0" required></label>
+    <div class="acts"><span class="sp"></span>
+      <button type="button" class="btn" id="cancel">Cancel</button>
+      <button type="submit" class="btn pri">Add</button></div>
+  </form>`, (v, close) => {
+    const f = v.querySelector('form'); f.amt.focus();
+    v.querySelector('#cancel').onclick = close;
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const n = parseFloat(f.amt.value);
+      if (!isFinite(n) || n <= 0) return;
+      S = Store.upsert(S, Object.assign({}, g, { saved: g.saved + n }));
+      await persist(); close(); render();
+      const after = S.goals.find(x => x.id === g.id);
+      if (after && after.target && after.saved >= after.target) toast('Fully funded - mark it done when it is yours');
+    };
+  });
+}
+
+document.addEventListener('click', async e => {
+  const t = e.target.closest('button');
+  if (!t) { if (openMenu) { openMenu = null; render(); } return; }
+  const find = k => S.goals.find(g => g.id === t.dataset[k]);
+  if (t.id === 'yPrev') { year--; month = null; render(); }
+  else if (t.id === 'yNext') { year++; month = null; render(); }
+  else if (t.id === 'fab' || t.closest('#fab') || t.id === 'emptyAdd') sheet();
+  else if (t.id === 'clrMo') { month = null; render(); }
+  else if (t.dataset.f) { filter = t.dataset.f; render(); }
+  else if (t.dataset.mo) { const m = +t.dataset.mo; month = month === m ? null : m; render(); }
+  else if (t.dataset.menu) { openMenu = openMenu === t.dataset.menu ? null : t.dataset.menu; render(); }
+  else if (t.dataset.edit) { const g = find('edit'); openMenu = null; render(); sheet(g); }
+  else if (t.dataset.toggle) { const g = find('toggle');
+    S = Store.upsert(S, Object.assign({}, g, { done: !g.done })); openMenu = null;
+    await persist(); render(); if (!g.done) toast('Achieved - well done'); }
+  else if (t.dataset.add) addSavings(find('add'));
+  else if (t.dataset.dup) { const g = find('dup');
+    S = Store.upsert(S, Object.assign({}, g, { year: year + 1 })); openMenu = null;
+    await persist(); render(); toast(`Moved to ${year + 1}`); }
+  else if (openMenu && !t.closest('.pop')) { openMenu = null; render(); }
+});
+
+(async function(){
+  S = await Store.load();
+  render();
+})();
+</script>
+<script src="../_lib/ask.js?v=1" defer></script>
+</body>
+</html>

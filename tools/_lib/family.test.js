@@ -47,7 +47,7 @@ const FEATURES = [];
   let m;
   while ((m = rx.exec(ACCESS))) FEATURES.push({ key: m[1], group: m[2] });
 }
-is('every tool in access.js was found', FEATURES.length, 16);
+is('every tool in access.js was found', FEATURES.length, 17);
 
 /* group name -> the family key used in CSS. The one place the two
    vocabularies meet, and it is five lines rather than sixteen. */
@@ -333,7 +333,17 @@ console.log('\n--- no ungoverned chrome anywhere ---');
                   rain chip, --wtd-scene-tint the readability veil that goes
                   over the background photograph when one is supplied. */
                'wx-dim','wtd-scene-tint','ground-ink','ground-dim',
-               'sky','mint','amber','coral','chk-on','chk-ink','chk-edge']
+               'sky','mint','amber','coral','chk-on','chk-ink','chk-edge'],
+    /* Year Goals names its surface system with a g- prefix so it cannot
+       collide with the chrome: g-ink, g-dim and the rest are ITS card and
+       its glass, not a redefinition of --text or --card. crimson and mint
+       are the design's two accents; on-crimson is the ink that sits on the
+       crimson fill and exists because the design's #FFF5F7 measured 4.498
+       on it. scene-tint is the veil over the photograph, the same job
+       whattodo's wtd-scene-tint does. */
+    goals:    ['g-ink','g-dim','g-faint','g-glass','g-edge','g-inset','g-shadow',
+               'g-field','g-chip','crimson','mint','mint-ink','gold',
+               'on-crimson','scene-tint']
   };
   for (const [tool, list] of Object.entries(DECLARED))
     for (const p of list)
@@ -376,7 +386,7 @@ console.log('\n--- no ungoverned chrome anywhere ---');
   /* A SCAN THAT READS NOTHING PASSES EVERYTHING. Assert it found the blocks
      before believing what it says about them. */
   is('the scan actually found theme blocks to read', scanned >= 20, true);
-  is('every colour token in all sixteen is governed or is status', left, []);
+  is('every colour token in every tool is governed or is status', left, []);
   /* And the rule has teeth: a name that is neither would be caught. */
   is('an invented chrome token would be caught',
      !GOVERNED.has('cardX') && !STATUS.test('cardX'), true);
