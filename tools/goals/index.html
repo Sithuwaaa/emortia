@@ -154,11 +154,6 @@
   .ground{font-size:14px;color:#E6D6D9}
   .clr{border:0;background:none;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 
-  /* ---- where the data lives, said out loud ---- */
-  .where{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--g-dim);
-    padding:10px 16px;border-radius:99px;align-self:flex-start}
-  .where b{font-weight:500;color:var(--g-ink)}
-
   /* ---- goals ---- */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
   .goal{padding:22px 24px 20px;display:flex;flex-direction:column;gap:14px;transition:transform .2s ease}
@@ -351,12 +346,7 @@ function render(){
         <p>${s.count ? 'No goals match this view.' : 'A car, a trip, a new phone - put down what this year is for, what it costs, and when you want it.'}</p>
         ${s.count ? '' : '<button class="btn pri" id="emptyAdd">Add a goal</button>'}
       </section>`}
-    <!-- SAID ON THE PAGE, NOT IN A COMMENT. A year of savings plans
-         disappearing because somebody cleared site data is a bad surprise,
-         and this is the sentence that means they were told. -->
-    <div class="glass where">
-      <span>🔒</span><span><b>Kept on this device only.</b> These goals are not synced and do not leave this browser - clearing its site data removes them.</span>
-    </div>`;
+`;
 }
 
 function card(g){
@@ -500,7 +490,22 @@ document.addEventListener('click', async e => {
 
 (async function(){
   S = await Store.load();
+  /* A read that fell back to the cached copy says so, rather than showing
+     last week's year as though it were this morning's. */
+  if (S.error) toast(S.error);
   render();
+
+  /* THE ONLY LINE THIS TOOL GAINED WHEN IT BECAME SYNCED. Channels,
+     payloads, teardown on hide, refetch on show and the backstop all live
+     inside store.js; from here it is "tell me when something changed". */
+  Store.watch(async change => {
+    if (change.patch){ S = Store.upsert(S, change.patch); render(); return; }
+    if (change.remove){ S = Store.remove(S, change.remove); render(); return; }
+    if (change.reload){
+      const fresh = await Store.load();
+      if (!fresh.error){ S = fresh; render(); }
+    }
+  });
 })();
 </script>
 <script src="../_lib/ask.js?v=1" defer></script>

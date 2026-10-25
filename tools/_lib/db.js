@@ -339,6 +339,99 @@
      page is usable, but the caller is told why - an empty list and a broken
      connection look identical on screen otherwise, and "nothing pending" is a
      bad way to find out the table was never created. */
+
+  /* ------------------------------------------------------------ year goals
+
+     Personal rows, not shared estate: the policy on `goals` is auth.uid() =
+     owner in both directions, so a read here returns one person's list and
+     can return nothing else. See migration 046.
+
+     The tool talks to tools/goals/store.js and never to these directly.
+     That boundary is why the tool needed no rewrite when it went from a
+     browser key to a table - store.js swapped its backend and nothing else
+     moved. */
+  const GOALS = 'goals', GPREFS = 'goal_prefs';
+  const GOAL_COLS = 'id,name,cat,target,saved,month,year,note,done';
+
+  async function goalsLoad(){
+    const c = await client();
+    if (!c) return { cur: null, goals: null, error: 'offline' };
+    const [{ data: gs, error: ge }, { data: pf, error: pe }] = await Promise.all([
+      c.from(GOALS).select(GOAL_COLS).order('year', { ascending: true }),
+      c.from(GPREFS).select('cur').maybeSingle()
+    ]);
+    if (ge) return { cur: null, goals: null, error: goalsWhy(ge.message) };
+    /* No prefs row yet is not an error - it is somebody who has never
+       changed the currency. A missing TABLE is, and they read differently. */
+    if (pe && !/no rows/i.test(pe.message || '')) return { cur: null, goals: null, error: goalsWhy(pe.message) };
+    return { cur: (pf && pf.cur) || null, goals: gs || [], error: null };
+  }
+
+  const goalsWhy = m =>
+      /could not find the table|relation .* does not exist/i.test(m)
+        ? 'Year Goals is not switched on yet - run supabase/046_goals.sql.'
+    : /jwt|not authenticated/i.test(m)
+        ? 'Your sign-in has run out. Reload the page and sign in again.'
+    : /fetch|network|failed to|timeout/i.test(m)
+        ? 'No connection just now - showing the copy kept on this device.'
+    : m;
+
+  /* Upsert rather than insert-or-update: the id comes from the browser, so
+     the same goal edited on two devices converges on one row instead of
+     becoming two. owner is left to the column default, which is auth.uid() -
+     a client that tried to set it would be refused by the policy anyway, and
+     that is the right way round. */
+  async function goalsSave(rows){
+    const c = await client(); if (!c) throw new Error('offline');
+    const list = (rows || []).map(g => ({
+      id: g.id, name: g.name, cat: g.cat,
+      target: g.target || 0, saved: g.saved || 0,
+      month: g.month == null ? null : g.month,
+      year: g.year, note: g.note || null, done: !!g.done,
+      updated_at: new Date().toISOString()
+    }));
+    if (!list.length) return true;
+    const { error } = await c.from(GOALS).upsert(list, { onConflict: 'id' });
+    if (error) throw new Error(goalsWhy(error.message));
+    return true;
+  }
+
+  async function goalsRemove(id){
+    const c = await client(); if (!c) throw new Error('offline');
+    const { error } = await c.from(GOALS).delete().eq('id', String(id));
+    if (error) throw new Error(goalsWhy(error.message));
+    return true;
+  }
+
+  async function goalsCurrency(cur){
+    const c = await client(); if (!c) throw new Error('offline');
+    const { error } = await c.from(GPREFS).upsert(
+      { cur: String(cur || 'Rs'), updated_at: new Date().toISOString() },
+      { onConflict: 'owner' });
+    if (error) throw new Error(goalsWhy(error.message));
+    return true;
+  }
+
+  /* The step-3 shape, from the first line rather than retrofitted.
+
+     The payload carries the row, so a caller can patch one goal in memory
+     for no egress at all. A DELETE carries only the id, which is all a
+     removal needs. Anything the payload cannot describe is handed over as
+     unusable, and the caller refetches rather than quietly skipping it.
+
+     Returns a teardown, because a channel nobody closes is half the bill. */
+  async function goalsSubscribe(fn){
+    const c = await client(); if (!c) return null;
+    const ch = c.channel('goals_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: GOALS }, p => {
+        const row = p && p.new && Object.keys(p.new).length ? p.new : null;
+        fn({ type: p && p.eventType, row: row,
+             id: (p && p.old && p.old.id) || (row && row.id), usable: !!row });
+      })
+      .subscribe(status => fn({ type: 'status', status: status }));
+    return () => { try { c.removeChannel(ch); } catch (e) {} };
+  }
+
   async function listTodos(){
     const cached = async () => (await cacheGet(TODO_CACHE)) || [];
     const c = await client();
@@ -2220,6 +2313,8 @@
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
+                goalsLoad: goalsLoad, goalsSave: goalsSave, goalsRemove: goalsRemove,
+                goalsCurrency: goalsCurrency, goalsSubscribe: goalsSubscribe,
                 wh24Load, wh24Publish, wh24Mark, wh24Subscribe, wh24Checked, wh24NoteCheck,
                 wh24PutDoc, wh24DocLink, wh24DocPath,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,

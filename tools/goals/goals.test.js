@@ -142,6 +142,91 @@ is('rubbish reads as zero',        M.money('Rs', 'later'), 'Rs 0');
     S.use({ read: () => null, write: () => false });
     is('a failed write says so',       await S.save({ cur: 'Rs', goals: [] }), false);
 
+    runSyncTests();
+  })();
+}
+
+/* ---- the sync backend ---------------------------------------------------
+
+   store.js was shaped so that going from a browser key to a table would be
+   a change to one file. These check the parts of that swap that are not
+   just "call the server instead".
+
+   The one that matters is DELETION. save() upserts what it is handed, and
+   an upsert can never remove: a goal taken out of the array simply stops
+   being mentioned, sits on the server for ever, and reappears on the next
+   device that loads. So the store remembers which ids it wrote and deletes
+   the difference - and the tool still just calls remove() then save(). */
+function runSyncTests(){
+  const calls = { saved: [], removed: [], cur: [] };
+  let server = { goals: [], cur: 'Rs' };
+  let failRead = null;
+
+  global.window = global.window || {};
+  global.document = global.document || { addEventListener(){}, removeEventListener(){}, hidden:false };
+  let localCopy = null;
+  global.localStorage = {
+    getItem: () => localCopy,
+    setItem: (k, v) => { localCopy = v; },
+    removeItem: () => { localCopy = null; }
+  };
+  window.DB = {
+    goalsLoad: async () => failRead ? { error: failRead, goals: null, cur: null }
+                                    : { goals: server.goals.slice(), cur: server.cur, error: null },
+    goalsSave: async rows => { calls.saved.push(rows.map(r => r.id));
+      rows.forEach(r => { const at = server.goals.findIndex(g => g.id === r.id);
+        if (at < 0) server.goals.push(r); else server.goals[at] = r; }); return true; },
+    goalsRemove: async id => { calls.removed.push(id);
+      server.goals = server.goals.filter(g => g.id !== id); return true; },
+    goalsCurrency: async c => { calls.cur.push(c); server.cur = c; return true; },
+    goalsSubscribe: async () => () => {}
+  };
+
+  /* re-require with window.DB present, so it picks the remote backend */
+  delete require.cache[require.resolve('./store.js')];
+  const R = require('./store.js');
+
+  (async () => {
+    is('it chose the synced backend', R.syncing(), true);
+
+    let st = await R.load();
+    is('an empty server opens empty', st.goals.length, 0);
+
+    st = R.upsert(st, { name: 'Car', cat: 'vehicle', target: 2000000, year: 2026, month: 8 });
+    st = R.upsert(st, { name: 'Ella', cat: 'travel', target: 120000, year: 2026, month: 2 });
+    await R.save(st);
+    is('both goals went up', server.goals.length, 2);
+
+    /* THE CASE UPSERT CANNOT HANDLE */
+    const gone = st.goals[0].id;
+    st = R.remove(st, gone);
+    await R.save(st);
+    is('a removed goal is deleted, not just unmentioned', server.goals.length, 1);
+    is('and it was deleted by id', calls.removed, [gone]);
+    is('the survivor is still there', server.goals[0].name, 'Ella');
+
+    /* a second save must not re-delete what is already gone */
+    const before = calls.removed.length;
+    await R.save(st);
+    is('a repeat save deletes nothing again', calls.removed.length, before);
+
+    st = R.currency(st, '$');
+    await R.save(st);
+    is('the currency goes up too', server.cur, '$');
+
+    /* OFFLINE: the year still opens, from the cached copy, and says why */
+    failRead = 'No connection just now - showing the copy kept on this device.';
+    const off = await R.load();
+    is('a failed read still returns goals', off.goals.length, 1);
+    is('and names the reason',             typeof off.error, 'string');
+    failRead = null;
+
+    /* after an offline read the store does not know the server's ids, so it
+       must not delete anything on the next save */
+    const n = calls.removed.length;
+    await R.save(off);
+    is('it deletes nothing while unsure', calls.removed.length, n);
+
     console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
     process.exit(fail ? 1 : 0);
   })();
