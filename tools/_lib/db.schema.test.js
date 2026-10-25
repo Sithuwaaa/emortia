@@ -395,6 +395,53 @@ function addsOf(files, table) {
     is('045 is safe to run twice', /if not exists/i.test(m045), true);
   }
 
+
+  /* ---- the narrow wh24_tickets read must account for every column ----
+
+     wh24Load selects an explicit list instead of '*', because '*' dragged
+     timeline, gins and site_lines into every page load and PostgREST is
+     ~97% of this project's egress.
+
+     An explicit list has one failure mode and it is this project's
+     favourite: a column added by a later migration that nobody adds to the
+     list arrives undefined and reads as absent. Nothing throws. So the two
+     lists in db.js - the narrow one and the deliberately-excluded heavy one
+     - must together account for every column the migrations create. A new
+     column fails this test until somebody decides which side it belongs on. */
+  {
+    const cols = new Set();
+    for (const f of fs.readdirSync(path.join(ROOT, 'supabase')).filter(f => f.endsWith('.sql'))) {
+      const s = fs.readFileSync(path.join(ROOT, 'supabase', f), 'utf8');
+      const create = /create table if not exists wh24_tickets\s*\(([\s\S]*?)\n\);/i.exec(s);
+      if (create) create[1].split('\n').forEach(l => {
+        const m = /^\s{2}([a-z_0-9]+)\s+\S/.exec(l);
+        if (m) cols.add(m[1]);
+      });
+      const re = /alter table wh24_tickets\s+add column if not exists ([a-z_0-9]+)/gi;
+      let m; while ((m = re.exec(s))) cols.add(m[1]);
+    }
+
+    const db = fs.readFileSync(path.join(ROOT, 'tools', '_lib', 'db.js'), 'utf8');
+    const listSrc = /const WH24_LIST = \[([\s\S]*?)\]\.join/.exec(db);
+    const heavySrc = /const WH24_HEAVY = \[([^\]]*)\]/.exec(db);
+    is('db.js declares the narrow wh24 column list', !!listSrc, true);
+    is('db.js declares the heavy wh24 column list', !!heavySrc, true);
+
+    const names = s => (s ? s[1].match(/'([a-z_0-9]+)'/g) || [] : []).map(x => x.replace(/'/g, ''));
+    const narrow = names(listSrc), heavy = names(heavySrc);
+
+    const accounted = new Set([...narrow, ...heavy]);
+    const missing = [...cols].filter(c => !accounted.has(c)).sort();
+    const phantom = [...accounted].filter(c => !cols.has(c)).sort();
+
+    is('every wh24_tickets column is in one list or the other', missing, []);
+    is('neither list names a column that does not exist', phantom, []);
+    is('the heavy columns are the three jsonb ones', heavy.slice().sort(),
+       ['gins', 'site_lines', 'timeline']);
+    is('lines is NOT heavy - the list counts items from it', heavy.indexOf('lines'), -1);
+    is('narrow + heavy accounts for the whole table', narrow.length + heavy.length, cols.size);
+  }
+
   console.log(pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);
 })();

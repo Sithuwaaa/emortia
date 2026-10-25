@@ -737,11 +737,46 @@
         ? 'No connection just now. Try again in a moment.'
     : m;
 
-  async function wh24Load(){
+  /* ---- WHAT THE LIST ACTUALLY NEEDS ----
+
+     select('*') pulled every row with timeline, lines, gins and site_lines
+     along for the ride, on every page load, and PostgREST is ~97% of this
+     project's egress.
+
+     Of the four jsonb columns the list reads ONE. `lines` gives the item
+     and serial counts on each waiting row, so it stays. timeline, gins and
+     site_lines are opened-ticket and sync material: nothing on the list
+     touches them.
+
+     THE DANGER IN AN EXPLICIT LIST is a column added later that nobody adds
+     here - it would arrive undefined and read as absent, which is this
+     project's whole catalogue of silent failures in one move. So
+     WH24_HEAVY is the list that is EXCLUDED, the narrow set is derived from
+     it, and db.schema.test.js fails if the table grows a column that is in
+     neither. A new column joins the narrow read by default; leaving it out
+     has to be deliberate. */
+  const WH24_HEAVY = ['timeline', 'gins', 'site_lines'];
+  const WH24_LIST = [
+    'confirmations','confirmed_on','docs_failed','done_at','grn','id',
+    'initiation_status','initiation_status_a','initiation_status_b','lines',
+    'notes','order_no','phase','prev_state','removed','reservation','site',
+    'site_name','stage','status','status_agree','status_from','stream',
+    'synced_at','team','title','unattributed','wh_collected_at',
+    'wh_created_at','wh_updated_at','wo','workflow'
+  ].join(',');
+
+  /* opts.full = every column, for the sync. The sync carries documents
+     forward from the rows already stored - `had` is built from t.gins - so
+     running it against the narrow read would quietly drop every attachment
+     the card still has. That has happened here before, from the other
+     direction, and the note at attachDocs records it. */
+  async function wh24Load(opts){
+    const full = !!(opts && opts.full);
+    const cols = full ? '*' : WH24_LIST;
     const c = await client(); if (!c) return { tickets: [], marks: {}, error: 'offline' };
     const PAGE = 500; let from = 0, tickets = [];
     for(;;){
-      const { data, error } = await c.from(WH24T).select('*')
+      const { data, error } = await c.from(WH24T).select(cols)
         .order('id', { ascending: false }).range(from, from + PAGE - 1);
       if (error) return { tickets: [], marks: {}, error: wh24Why(error.message) };
       tickets = tickets.concat(data || []);
@@ -2142,6 +2177,7 @@
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
+                WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY,
                 wh24Load, wh24Publish, wh24Mark, wh24Subscribe, wh24Checked, wh24NoteCheck,
                 wh24PutDoc, wh24DocLink, wh24DocPath,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,

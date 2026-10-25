@@ -2011,6 +2011,27 @@ async function receive(data){
 
   const raws = Array.isArray(data.tickets) ? data.tickets : [], pdfs = Array.isArray(data.pdfs) ? data.pdfs : [];
   dlg(`Received ${raws.length} tickets and ${pdfs.length} new GIN${pdfs.length === 1 ? '' : 's'}. Reading the GINs…`, { pct: 0 });
+
+  /* ---- THE SYNC NEEDS THE HEAVY COLUMNS; THE PAGE DOES NOT ----
+
+     The page load reads a narrow column set now - no timeline, no gins, no
+     site_lines - because the list touches none of them and that read runs on
+     every open of every tab.
+
+     The sync does touch them. `had` below is built from t.gins to carry
+     forward documents the card still holds, and the signature compares
+     timeline. Against the narrow rows those would be undefined, `had` would
+     be empty, and every stored attachment would quietly disappear on the
+     next publish. So the full rows are fetched here, once, at the start of
+     a sync a person has deliberately started - not on every page load. */
+  {
+    const fullRead = await window.DB.wh24Load({ full: true });
+    if (fullRead.error){
+      dlg(`Could not re-read the stored tickets: ${esc(fullRead.error)}. Nothing was changed.`, { bad: true });
+      return;
+    }
+    TICKETS = fullRead.tickets; MARKS = fullRead.marks;
+  }
   /* unreadable is kept apart from failed on purpose: "could not be read"
      and "was read, but its table is not one this reader knows" are different
      sentences and they want different answers. The first is usually a broken
