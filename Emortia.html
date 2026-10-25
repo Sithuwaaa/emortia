@@ -4583,7 +4583,7 @@ class Component extends DCLogic {
       'gin-extractor':'gin', 'wh24':'wh24', 'site-data':'data', 'site-access':'access',
       'project-update':'update', 'rf-jumper':'rf', 'esn':'esn',
       'field-config':'field', 'swap':'swap', 'whattodo':'todo',
-      'team':'team', 'attendance':'att', 'lyric-video':'lyric' })[dir] || '';
+      'team':'team', 'attendance':'att', 'lyric-video':'lyric', 'goals':'goals' })[dir] || '';
   }
   static toolGlyph(cls){
     const g = window.__TOOLICON && window.__TOOLICON[cls];
@@ -5772,7 +5772,7 @@ class Component extends DCLogic {
     if (!m) return null;
     return ({ 'design-extractor':'Design Extractor', 'materials':'Material Codes',
       'bom':'BOM Builder', 'lyric-video':'Video & Artwork', 'attendance':'Daily Attendance',
-      'esn':'ESN Sharing', 'whattodo':'What To Do', 'project-update':'Project Update',
+      'esn':'ESN Sharing', 'whattodo':'What To Do', 'goals':'Year Goals', 'project-update':'Project Update',
       'site-access':'Site Access Lookup', 'site-data':'Site Data Lookup',
       'gin-extractor':'GIN Extractor', 'wh24':'WH24 Material Checker', 'field-config':'Field Config',
       'team':'Team Directory', 'rf-jumper':'RF Jumper Codes' })[m[1].toLowerCase()] || m[1];
@@ -6688,6 +6688,8 @@ class Component extends DCLogic {
          desc:'The team files an ESN from the field: type a site ID and the name arrives on its own, paste the print screens straight out of the clipboard, list the card types and their serials. Tick Run O&M Script and the O&M IP slot opens. Everything lands in one place and comes out as Excel.'},
         {name:'What To Do', initial:'W', tag:'Jobs · reminders', href:'tools/whattodo/', feature:'tool:whattodo',
          desc:'The running list of what still needs doing, shared across every device. Add a job on one, tick it off on another, and it leaves both. Nudges every 15 minutes while the page is open.'},
+        {name:'Year Goals', initial:'Y', tag:'Personal · the year ahead', href:'tools/goals/', feature:'tool:goals',
+         desc:'What this year is for - a car, a trip, a new phone - with what each costs, what is put aside so far and the month it is wanted by. The ring shows how much of the year is funded; the month strip shows what lands when. Yours alone: nobody else sees them.'},
         {name:'Project Update', initial:'P', tag:'Dialog · lamp pole rollout', href:'tools/project-update/', feature:'tool:project-update',
          desc:'Live dashboard for the lamp-pole build – status, region, Tx plan, district and team breakdowns, with MOD-permission hubs flagged automatically from the Site Access list. Every sheet of the workbook is browsable and searchable.'},
         {name:'Site Access Lookup', initial:'S', tag:'Dialog · site list', href:'tools/site-access/', feature:'tool:site-access',
