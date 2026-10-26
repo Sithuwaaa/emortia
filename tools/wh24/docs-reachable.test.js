@@ -35,11 +35,19 @@
       returned '' would pass this file for ever.
 
    Fixtures are invented: no real GI number, reservation, site or filename.
+
+   THE SCAFFOLDING IS SHARED. tools/_lib/reachable.js holds the four steps
+   this file and its two siblings - tools/esn/photos-reachable.test.js and
+   tools/swap/photos-reachable.test.js - all needed: read the select out of
+   db.js, project a row through it, lift a renderer out of the page, and
+   refuse to trust a projection that does not project. The columns, the
+   renderer, the control and the empty case stay here, where they can be read.
 */
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..');
+const R = require(path.join(ROOT, 'tools', '_lib', 'reachable.js'));
 const W = require('./wh24.js');
 
 let pass = 0, fail = 0;
@@ -49,74 +57,29 @@ const is = (label, got, want) => {
   fail++; console.log('FAIL ' + label + '\n  got  ' + a + '\n  want ' + b);
 };
 
+/* ---- 0. the harness, before anything trusts it -------------------------
+   A projection that does not project is the whole reason this bug survived a
+   test suite once already, so it is asserted on known input first. */
+R.selfCheck(is);
+
 /* ---- 1. what the read actually asks for ---------------------------------
 
    Read out of db.js, not restated here. If somebody narrows wh24Load again,
    this test narrows with it - which is the only way it can notice. */
 const DB = fs.readFileSync(path.join(ROOT, 'tools', '_lib', 'db.js'), 'utf8');
+const COLS = R.selectOf(DB, 'wh24Load');
+is('wh24Load declares what it selects', typeof COLS === 'string' && COLS.length > 0, true);
 
-const colsExpr = (/async function wh24Load\([^)]*\)\s*\{[\s\S]{0,400}?const cols\s*=\s*([^;]+);/.exec(DB) || [])[1];
-is('wh24Load declares what it selects', typeof colsExpr === 'string', true);
-
-/* the expression is either '*' or one of the declared lists */
-function resolveCols(expr) {
-  if (!expr) return null;
-  const e = expr.trim();
-  if (/^['"]\*['"]$/.test(e)) return '*';
-  const lit = /^['"]([^'"]+)['"]$/.exec(e);
-  if (lit) return lit[1];
-  /* a named list, e.g. WH24_LIST or a ternary mentioning it */
-  const named = /WH24_LIST/.test(e);
-  if (named) {
-    const m = /const WH24_LIST = \[([\s\S]*?)\]\.join/.exec(DB);
-    if (m) return (m[1].match(/'([a-z_0-9]+)'/g) || []).map(x => x.replace(/'/g, '')).join(',');
-  }
-  if (/\*/.test(e)) return '*';     /* a ternary with '*' on one side */
-  return null;
-}
-const COLS = resolveCols(colsExpr);
-is('and the column list resolves', typeof COLS === 'string' && COLS.length > 0, true);
-
-/* ---- 2. a fake that honours the column list ---------------------------- */
-function project(row, cols) {
-  if (!cols || cols.trim() === '*') return Object.assign({}, row);
-  const keep = cols.split(',').map(s => s.trim()).filter(Boolean);
-  const out = {};
-  for (const k of keep) if (k in row) out[k] = row[k];
-  return out;
-}
-
-/* the harness guards itself, because a projection that does not project is
-   the whole reason this bug survived a test suite once already */
-{
-  const whole = { id: 1, gins: [{ file: 'a.pdf' }], lines: [] };
-  is('projection keeps what was asked for', Object.keys(project(whole, 'id,lines')).sort(), ['id', 'lines']);
-  is('projection drops what was not',       'gins' in project(whole, 'id,lines'), false);
-  is('and star keeps everything',           Object.keys(project(whole, '*')).sort(), ['gins', 'id', 'lines']);
-}
-
-/* ---- 3. the page's real docsBox ---------------------------------------- */
+/* ---- 2 and 3. the page's real docsBox ----------------------------------
+   esc is the page's own; nice only formats a date and is stubbed, because
+   this test is about whether a button arrives, not how a day reads. */
 const PAGE = fs.readFileSync(path.join(ROOT, 'tools', 'wh24', 'index.html'), 'utf8');
-
-function lift(name) {
-  const start = PAGE.indexOf('function ' + name + '(');
-  if (start < 0) return null;
-  let i = PAGE.indexOf('{', start), depth = 0;
-  for (; i < PAGE.length; i++) {
-    if (PAGE[i] === '{') depth++;
-    else if (PAGE[i] === '}') { depth--; if (!depth) return PAGE.slice(start, i + 1); }
-  }
-  return null;
-}
-const src = lift('docsBox');
+const src = R.lift(PAGE, 'docsBox');
 is('docsBox was lifted from the page', !!src, true);
 
-/* esc is the page's own; nice only formats a date and is stubbed, because
-   this test is about whether a button arrives, not how a day reads */
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
-  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const nice = d => String(d || '');
-const docsBox = new Function('W', 'esc', 'nice', src + '\nreturn docsBox;')(W, esc, nice);
+const docsBox = new Function('W', 'esc', 'nice', src + '\nreturn docsBox;')(
+  W, R.esc, d => String(d || ''));
+const project = R.project;
 
 /* ---- 4. the chain ------------------------------------------------------ */
 const ticket = {
