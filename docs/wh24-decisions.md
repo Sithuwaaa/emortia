@@ -1712,3 +1712,59 @@ surprise:** ~1.28 MB a page load. The realtime change removed the 882 MB
 multiplier — one full table read per changed row, per open tab — and that
 was the cost that mattered. The remaining per-load figure is not worth a
 feature.
+
+---
+
+## Third instance: the words and the facts came apart again
+
+"0 new GINs" when the fetch had returned nothing. "not a known site" when
+there was no site list at all. And now **"Updated from another device" on
+every tab focus and every fifteen minutes**, when nothing had happened.
+
+The same shape three times, and the tell is sharper each time:
+
+> **The caller was handed the information it needed to be accurate, and
+> dropped it on the floor.**
+
+`liveChannel` calls its reload for four reasons and passes the reason in:
+`undefined` for a real `postgres_changes` event, and a string for each of
+the three reconciliation paths — becoming visible, the fifteen-minute
+backstop, and the channel returning after a drop. Every caller wrote
+`async () => {…}`, ignored the argument, and said the same sentence for all
+four.
+
+The reload is right to run in all four cases; that *is* the reconciliation
+and it stays. Only the sentence was wrong. One parameter, already being
+passed, already correct, discarded at the receiving end.
+
+### What that costs
+
+A tool that announces a change when nothing changed teaches you to stop
+reading it. The first two instances cost a wrong number and a misleading
+phrase; this one costs the credibility of every toast in the suite, because
+after the third false "updated" nobody believes the true one either.
+
+### And it was shared code again
+
+Second time in three days. `liveChannel` went into `db.js` and reached ten
+tools; four of them showed the false toast — materials, project update, and
+both lookups through `lookup.js`. The other six were silent only because
+their reloads happen to toast nothing.
+
+Found by opening four tools by hand. **The shared-code rule at the top of
+this file is exactly the check that should have found it**, and it was not
+run: the change named no callers, said nothing about what each would show if
+it were wrong, and nobody opened them afterwards.
+
+### Why there is no further check for "did anything actually change"
+
+Worth recording so it is not revisited. With the reason gated, a real event
+on these channels already means this tool's own data moved: `ds-` and `bk-`
+are filtered to one key, and materials shows every row of its table. So the
+sentence is true whenever it is now said.
+
+Comparing the fetched payload against what is on screen would add a second
+way to be silently wrong — a comparison that says "nothing changed" when
+something did is the original failure with the sign flipped — to guard a
+case that the filter has already removed. The gate is the fix; equality
+checking is not.

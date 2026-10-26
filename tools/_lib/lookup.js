@@ -85,9 +85,19 @@ async function loadData(){
     applyDataset(fresh); toast('Updated from another device');
   });
   applyDataset(ds);
-  window.DB.subscribe(C.syncKey, async ()=>{
+    /* ONLY ON A REAL EVENT. liveChannel calls this for four reasons and
+       hands the reason in: undefined for an actual postgres_changes
+       event, and a string for the three reconciliation paths - becoming
+       visible, the 15 minute backstop, and the channel coming back. The
+       reload runs for all four, because that is the reconciliation and
+       it is the point. The SENTENCE is only true for the first.
+
+       It said "Updated from another device" on every tab focus and every
+       quarter of an hour, when nothing had happened. The caller was
+       handed what it needed to be accurate and dropped it. */
+  window.DB.subscribe(C.syncKey, async (why)=>{
     const fresh=await window.DB.load(C.syncKey);
-    applyDataset(fresh); toast('Updated from another device');
+    applyDataset(fresh); if (!why) toast('Updated from another device');
   });
 }
 /* ================= narrowing, mapping, measuring =================
