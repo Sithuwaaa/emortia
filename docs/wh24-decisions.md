@@ -4,6 +4,60 @@ Settled, with reasons. Written down so neither of us re-argues them, and so
 that the next person to open this file does not "fix" something that is the way
 it is on purpose.
 
+---
+
+# Standing rules — read these first
+
+## A tool is finalised when Sithara says so
+
+After that, **its own files are not touched unless that tool is the subject
+of the request.** Not to tidy something noticed in passing, not to apply a
+pattern that has just been agreed elsewhere, not because a guard would be
+greener. Raise it and wait.
+
+A finished tool is finished because it works and it has been used, and the
+cost of being wrong in it is paid by somebody standing at a warehouse
+counter rather than by the person who made the change.
+
+## A change to `db.js` or anything in `tools/_lib/` is a change to all seventeen tools
+
+This is the rule the one above does not cover, and it is the one that has
+actually broken things. Both of 26 October's breakages came from shared
+code while every tool file sat untouched: a narrowed read took the Download
+button off every opened WH24 ticket, and a duplicated class map painted the
+Year Goals card in another tool's colours.
+
+Before a change to shared code ships:
+
+1. **Name every tool that calls the thing being changed.** Not "the tools
+   that use db.js" — the specific functions, and who calls them.
+2. **Say what each one would show if the change were wrong.** Out loud, in
+   the commit or the report. "The Download button would not render" is the
+   sentence that was never written, and writing it would have been enough.
+3. **After it deploys, open each named tool on emortia.com, signed in, and
+   look at it.** Not localhost. Not the fixture. Not the test suite.
+
+> **If that list is long enough to be tedious, that is the signal the change
+> is bigger than it looks — not a reason to skip the list.**
+
+The tedium is the information. A shared-code change whose blast radius is
+one tool is a small change; one whose radius is eleven is an architectural
+decision wearing a small diff, and the length of the list is the only thing
+that says which it is before it ships.
+
+### Why the suite does not discharge this
+
+Every guard in this repository was written after something went wrong, and
+therefore watches a thing that has already gone wrong once. A shared-code
+change can be green across two thousand assertions and still remove a
+feature, because no test asserted the feature was reachable — which is
+precisely what happened. `tools/wh24/docs-reachable.test.js` exists for
+that one chain now. The other sixteen tools have no equivalent.
+
+So the suite tells you that what was checked still holds. It cannot tell
+you that what you removed was unused.
+
+
 Each of these was paid for by a bug. The reason matters more than the rule —
 a rule without its reason gets tidied away by the next person who finds it
 inconvenient.
