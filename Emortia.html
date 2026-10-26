@@ -1637,6 +1637,7 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 .tool-wh24{--tc:#3f783b;--tcB:#5bca53;--tcGrid:rgba(63,120,59,.10);--tcLine:#1e351d;--tcBg:#070e07;--tcOn:#f3e7ea;--tcRGB:63,120,59;}
 .tool-lyric{--tc:#9e2e3a;--tcB:#f47783;--tcGrid:rgba(158,46,58,.10);--tcLine:#351d1f;--tcBg:#230b0e;--tcOn:#f3e7ea;--tcRGB:158,46,58;}
 .tool-todo{--tc:#a6303c;--tcB:#f4808c;--tcGrid:rgba(166,48,60,.10);--tcLine:#351d1f;--tcBg:#230b0e;--tcOn:#f3e7ea;--tcRGB:166,48,60;}
+.tool-goals{--tc:#b03348;--tcB:#f58597;--tcGrid:rgba(176,51,72,.10);--tcLine:#351d1f;--tcBg:#230b0e;--tcOn:#f3e7ea;--tcRGB:176,51,72;}
 .tool-field{--tc:#365496;--tcB:#759beb;--tcGrid:rgba(54,84,150,.10);--tcLine:#222b3f;--tcBg:#080d16;--tcOn:#f3e7ea;--tcRGB:54,84,150;}
 .tool-swap{--tc:#38599e;--tcB:#7ea1ec;--tcGrid:rgba(56,89,158,.10);--tcLine:#222b3f;--tcBg:#080d16;--tcOn:#f3e7ea;--tcRGB:56,89,158;}
 .tool-esn{--tc:#3c5faa;--tcB:#88a8ed;--tcGrid:rgba(60,95,170,.10);--tcLine:#222b3f;--tcBg:#080d16;--tcOn:#f3e7ea;--tcRGB:60,95,170;}
@@ -6578,6 +6579,10 @@ class Component extends DCLogic {
     /* the glyph map is also read by the front page, for the latest-tool
        stack, so it is hung where that can reach it rather than copied */
     const TOOLICON = window.__TOOLICON = {
+          "goals": [
+                "YG",
+                "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 7.5a4.5 4.5 0 1 0 0 9a4.5 4.5 0 1 0 0-9 M12 11.1a.9.9 0 1 0 0 1.8a.9.9 0 1 0 0-1.8"
+          ],
           "design": [
                 "DX",
                 "M6 3h8l4 4v14H6z M14 3v4h4 M9 11h6 M9 14.5h6 M9 18h3"
@@ -6710,7 +6715,7 @@ class Component extends DCLogic {
          whether it is drawn. Each page checks again on its way in - a card
          that is not drawn is not a lock, only a tidy list. */
       ].filter(t=>!t.feature || may(t.feature))
-       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap','wh24':'wh24'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
+       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap','wh24':'wh24','goals':'goals'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
                   group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}))
        .map(t=>{
          const ic = TOOLICON[t.cls.replace('tool-','')];

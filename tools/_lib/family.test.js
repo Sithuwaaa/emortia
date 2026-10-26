@@ -645,7 +645,7 @@ console.log('\n--- the directory carries the same five hues ---');
     return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2]; };
   const onPage = h => (Math.max(lum(h), lum('#170d10')) + 0.05) / (Math.min(lum(h), lum('#170d10')) + 0.05);
   const bands = [...INDEX.matchAll(/^\.tool-[a-z0-9]+\{--tc:(#[0-9a-fA-F]{6})/gm)].map(m => m[1]);
-  is('all sixteen card bands are present', bands.length, 16);
+  is('a card band exists for every tool', bands.length, FEATURES.length);
   is('and not one of them is a lamp on the page',
      bands.filter(b => onPage(b) > 5).map(b => b + ' ' + onPage(b).toFixed(1)), []);
 }
@@ -692,6 +692,113 @@ console.log('\n--- the directory carries the same five hues ---');
 }
 
 console.log('\n--- the mapping ---');
+
+/* ---- THE DIRECTORY CARD, which this file did not look at -----------------
+
+   This test ties the group in access.js to the data-cat on the page to the
+   block in category.css. It never looked at the CARD - the tile on the front
+   of the site - and the card is a fourth place the same fact is written.
+
+   So Year Goals could sit in the Emortia group, open in Emortia crimson, and
+   paint an amber Site Access tile on the directory with a SA corner and a map
+   pin, with every suite green. The count was 16 cards against 17 features and
+   nothing said so.
+
+   Three ties, because there were three symptoms and one cause:
+
+     1. a card for every feature, and a feature for every card
+     2. a card's colour family agrees with its tool's group
+     3. the two copies of the class map agree with each other
+
+   The third is the actual bug. clsOf() is the real mapper and a second copy
+   of it is inlined in the card builder; the inline one had no goals entry, so
+   it fell through to 'access' and took that tool's colour, corner and icon in
+   one go. Two places, one fact. */
+{
+  const SITE = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+
+  /* every card declared in the directory */
+  const cards = [...SITE.matchAll(/\{name:'([^']+)',\s*initial:'[^']*',\s*tag:'[^']*',\s*href:'tools\/([^']+)\/',\s*feature:'([^']+)'/g)]
+    .map(m => ({ name: m[1], dir: m[2], feature: m[3] }));
+
+  is('the directory declares some cards', cards.length > 0, true);
+
+  const featureKeys = FEATURES.map(f => f.key);
+  const cardKeys = cards.map(c => c.feature.replace(/^tool:/, ''));
+
+  const noCard = featureKeys.filter(k => !cardKeys.includes(k)).sort();
+  const noFeature = cardKeys.filter(k => !featureKeys.includes(k)).sort();
+  is('every feature has a card on the directory', noCard, []);
+  is('every card has a feature behind it', noFeature, []);
+
+  /* ---- the two class maps must agree ---- */
+  const mapOf = (src, re) => {
+    const m = re.exec(src);
+    if (!m) return null;
+    const out = {};
+    for (const p of m[1].matchAll(/'([a-z0-9-]+)'\s*:\s*'([a-z0-9-]*)'/g)) out[p[1]] = p[2];
+    return out;
+  };
+  const real = mapOf(SITE, /static clsOf\(featureKey\)[\s\S]*?return \(\{([\s\S]*?)\}\)\[dir\]/);
+  const inline = mapOf(SITE, /cls:'tool-'\+\(\{([^}]*)\}/);
+  is('clsOf declares a class map', !!real, true);
+  is('the card builder declares one too', !!inline, true);
+
+  if (real && inline) {
+    const keys = [...new Set([...Object.keys(real), ...Object.keys(inline)])].sort();
+    const differ = keys.filter(k => real[k] !== inline[k])
+      .map(k => k + ': clsOf=' + (real[k] || 'absent') + ' card=' + (inline[k] || 'absent'));
+    is('the two copies of the tool class map agree', differ, []);
+  }
+
+  /* ---- a card's colour belongs to its tool's group ----
+
+     The families are read off the stylesheet rather than listed here, so a
+     new family does not need this test editing - only a tool whose colour
+     disagrees with its neighbours does. */
+  const famOf = {};
+  for (const m of SITE.matchAll(/\.tool-([a-z0-9-]+)\{--tc:(#[0-9a-f]{6})/gi)) famOf[m[1]] = m[2].toLowerCase();
+
+  const groupOfFeature = {};
+  FEATURES.forEach(f => { groupOfFeature[f.key] = f.group; });
+
+  /* hue, in degrees, is what "the same family" means to the eye */
+  const hueOf = hex => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (!d) return 0;
+    let h = mx === r ? ((g - b) / d + (g < b ? 6 : 0)) : mx === g ? ((b - r) / d + 2) : ((r - g) / d + 4);
+    return Math.round(h * 60);
+  };
+
+  const byGroup = {};
+  for (const c of cards) {
+    const cls = inline ? inline[c.dir] : null;
+    const hex = cls ? famOf[cls] : null;
+    if (!hex) continue;
+    const grp = groupOfFeature[c.feature.replace(/^tool:/, '')] || '?';
+    (byGroup[grp] = byGroup[grp] || []).push({ name: c.name, cls, hex, hue: hueOf(hex) });
+  }
+
+  const strays = [];
+  for (const [grp, members] of Object.entries(byGroup)) {
+    if (members.length < 2) continue;
+    const hues = members.map(m => m.hue).sort((a, b) => a - b);
+    const mid = hues[Math.floor(hues.length / 2)];
+    for (const m of members) {
+      /* 20 DEGREES, AND THE FIRST NUMBER HERE WAS WRONG. 40 looked safe
+         and was not: amber is hue 28, crimson 354, and the short way round
+         the wheel that is 34 - inside the threshold. The guard would have
+         passed the very card it was written for. Shades of one family sit
+         4 degrees apart here, so 20 separates a family from a stranger with
+         room to spare. */
+      const off = Math.min(Math.abs(m.hue - mid), 360 - Math.abs(m.hue - mid));
+      if (off > 20) strays.push(grp + ' · ' + m.name + ' ' + m.hex + ' (hue ' + m.hue + ' vs ' + mid + ')');
+    }
+  }
+  is('no card paints in a colour its group does not use', strays, []);
+}
+
 for (const r of mapping) console.log('  ' + r.tool.padEnd(17) + r.group.padEnd(21) + r.family);
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
