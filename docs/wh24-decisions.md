@@ -27,15 +27,54 @@ code while every tool file sat untouched: a narrowed read took the Download
 button off every opened WH24 ticket, and a duplicated class map painted the
 Year Goals card in another tool's colours.
 
-Before a change to shared code ships:
+Before a change to shared code ships, it has **two halves, and they belong
+to different people.** Saying "I checked it" without naming which half was
+done is how the same sentence came to mean two different things.
+
+### Claude's half — the code-level pass
 
 1. **Name every tool that calls the thing being changed.** Not "the tools
    that use db.js" — the specific functions, and who calls them.
 2. **Say what each one would show if the change were wrong.** Out loud, in
    the commit or the report. "The Download button would not render" is the
    sentence that was never written, and writing it would have been enough.
-3. **After it deploys, open each named tool on emortia.com, signed in, and
-   look at it.** Not localhost. Not the fixture. Not the test suite.
+3. **Read every callback**, not only the ones that look relevant. The false
+   toast was in three call sites; four tools were named as affected and the
+   other six were cleared only by reading what their reloads actually did.
+4. **Report a before/after table, one row per tool.**
+
+This half is exhaustive and mechanical, and it is good at what it is good
+at: it found all three toast sites and all ten `liveChannel` callers.
+
+### Sithara's half — the signed-in pass
+
+He opens the named tools on **emortia.com, signed in**, and looks.
+
+**Claude cannot do this and must not try.** The browser pane is not signed
+in to his account and must not be. A fixture, a localhost page and a green
+suite are all the same thing here: they prove the code does what it was
+written to do, not that the tool still does what it is for.
+
+### The handover is the last section of the report, every time
+
+Not a courtesy at the end of a good report — the required final section.
+It names:
+
+- **which tools** to open,
+- **what to do on each** (leave it backgrounded and come back, change a row
+  from another device, open a ticket),
+- **what he should see**, and what would mean it is wrong.
+
+### And the change is not verified until that half is done
+
+Say so plainly rather than letting a push read as completion. Two shared-code
+breakages in three days were caught at exactly that step — the Download
+button, and the false toast — and in both cases the code-level pass had
+already come back clean and the suite had already come back green.
+
+**That is not the rule failing. That is the rule working.** But it only
+works if the handover is expected rather than remembered, which is why it
+is a required section and not a habit.
 
 > **If that list is long enough to be tedious, that is the signal the change
 > is bigger than it looks — not a reason to skip the list.**
