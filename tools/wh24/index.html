@@ -2012,18 +2012,18 @@ async function receive(data){
   const raws = Array.isArray(data.tickets) ? data.tickets : [], pdfs = Array.isArray(data.pdfs) ? data.pdfs : [];
   dlg(`Received ${raws.length} tickets and ${pdfs.length} new GIN${pdfs.length === 1 ? '' : 's'}. Reading the GINs…`, { pct: 0 });
 
-  /* ---- THE SYNC NEEDS THE HEAVY COLUMNS; THE PAGE DOES NOT ----
+  /* ---- THE SYNC READS THE STORED ROWS AGAIN, DELIBERATELY ----
 
-     The page load reads a narrow column set now - no timeline, no gins, no
-     site_lines - because the list touches none of them and that read runs on
-     every open of every tab.
+     `had` below is built from t.gins to carry forward documents the card
+     still holds, and the signature compares timeline. Against rows missing
+     those columns `had` would be empty and every stored attachment would
+     quietly disappear on the next publish.
 
-     The sync does touch them. `had` below is built from t.gins to carry
-     forward documents the card still holds, and the signature compares
-     timeline. Against the narrow rows those would be undefined, `had` would
-     be empty, and every stored attachment would quietly disappear on the
-     next publish. So the full rows are fetched here, once, at the start of
-     a sync a person has deliberately started - not on every page load. */
+     26 October: the page load reads every column again, so this read is no
+     longer the only place the heavy columns arrive - see wh24Load in db.js
+     for why the narrow read was withdrawn. It stays, because the sync must
+     compare against what is in the database at the moment it runs, not
+     against rows this tab read when it was opened. */
   {
     const fullRead = await window.DB.wh24Load({ full: true });
     if (fullRead.error){

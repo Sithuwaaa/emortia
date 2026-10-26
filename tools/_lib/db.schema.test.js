@@ -396,18 +396,26 @@ function addsOf(files, table) {
   }
 
 
-  /* ---- the narrow wh24_tickets read must account for every column ----
+  /* ---- the wh24_tickets column split must account for every column ----
 
-     wh24Load selects an explicit list instead of '*', because '*' dragged
-     timeline, gins and site_lines into every page load and PostgREST is
-     ~97% of this project's egress.
-
-     An explicit list has one failure mode and it is this project's
+     An explicit column list has one failure mode and it is this project's
      favourite: a column added by a later migration that nobody adds to the
      list arrives undefined and reads as absent. Nothing throws. So the two
      lists in db.js - the narrow one and the deliberately-excluded heavy one
      - must together account for every column the migrations create. A new
-     column fails this test until somebody decides which side it belongs on. */
+     column fails this test until somebody decides which side it belongs on.
+
+     26 OCTOBER: wh24Load reads '*' again, so neither list is currently in
+     the query path - the narrow read took `gins` off the page and with it
+     every Download button. The lists and this guard are kept deliberately:
+     they are the groundwork for the opened-ticket fetch, and this is where
+     the heavy/light decision for a new column gets forced. The assertions
+     below are unchanged; only this note moved.
+
+     What this guard does NOT check, and what let f725036 through: that a
+     column the page needs actually reaches the page. Accounting for a
+     column is not the same as proving the feature that reads it still
+     works. See docs/wh24-decisions.md, 26 October. */
   {
     const cols = new Set();
     for (const f of fs.readdirSync(path.join(ROOT, 'supabase')).filter(f => f.endsWith('.sql'))) {

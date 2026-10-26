@@ -1579,3 +1579,82 @@ the gap: `#F7EDEF` measures 4.19. Lighter is the way out, `#FFFAFB` at
 4.649, and the design's fill is untouched. **Check which way the ratio moves
 before choosing a shade**; on a dark fill a lighter ink is the fix and on a
 pale one it is the opposite, and the word "darken" is not a direction.
+
+---
+
+# A standing rule, 26 October
+
+## An optimisation that removes data from a page is proved against the feature that uses it, before it ships
+
+`f725036` narrowed the WH24 page load from `select('*')` to an explicit
+column list, excluding `timeline`, `gins` and `site_lines`, on the plan that
+`gins` would be fetched when a ticket was opened. **That fetch was never
+built.** `gins` carries the stored document paths, so from that commit on
+every opened ticket rendered its material lines, its GIN reservation and its
+GI number with **no Download button at all**, while 617 verified PDFs sat in
+the bucket. Two days on main.
+
+The optimisation was not wrong about the egress. It was wrong to ship the
+half of the plan that takes the data away without the half that gives it
+back, and nothing anywhere said so:
+
+| layer | what it reported |
+|---|---|
+| the read | 451 rows, no error |
+| the row | every column the list asked for |
+| `docsBox` | `(t.gins \|\| [])` → `[]` → `''` |
+| the page | a ticket that opens and looks complete |
+| the suite | green |
+
+`|| []` is the tell. A defensive default turns an **absent column** into an
+**absent feature**, and the two are indistinguishable downstream — the same
+shape as the zero-byte uploads and the silent no-op, one level up again.
+
+**Nothing in the suite noticed, and this is the gap worth naming:** the
+document work is thoroughly tested, but every one of those tests asserts
+that a document was *stored* — the bytes verified, the path deterministic,
+`upsert` on, the download name resolved. **Nothing asserts that a stored
+document is reachable from the page.** The chain from a column in the read
+to a button under an opened ticket had no guard on it anywhere, so removing
+a link from that chain broke nothing any test could see.
+
+So:
+
+> **Removing data from a page is a change to every feature that reads it.
+> Before it ships, name those features and exercise each one against the
+> narrowed read — not the narrowed read on its own.** If the replacement
+> fetch is part of the plan, it ships in the same commit or the narrowing
+> does not ship.
+
+And the test that was missing is the one to write: not "was it stored", but
+**"does a stored document still arrive at a button"**, driven end to end
+from what the read returns. Two notes on building it, both learned writing
+today's throwaway version:
+
+- **A fake that does not project passes either way.** A stand-in client
+  returning every column whatever the `select` asked for reports a healthy
+  row under the narrow read too. It has to honour the column list, or it is
+  the `200 []` from an empty table again.
+- **Assert the empty case in the same breath.** `docsBox` returning `''`
+  for a row with no `gins` is what proves the check can see the bug; without
+  it the test passes for ever on a page that renders nothing.
+
+**Withdrawn, not reverted.** `wh24Load` reads `'*'` again on every call;
+`f725036` was left in place because later commits sit on it. `WH24_LIST` and
+`WH24_HEAVY` stay, with their accounting guard in `db.schema.test.js` — they
+are the groundwork for the opened-ticket fetch whenever it is built, and the
+guard still forces a decision about any column a later migration adds.
+
+`wh24Narrow` had to come back with it, and that is the part a one-line fix
+would have missed. It projected realtime payloads to the same narrow list,
+so a row updated while the page was open would have had its `gins` stripped
+on the way in — the Download button would have reappeared on load and then
+vanished from any ticket that changed under it. **A read and the projection
+that normalises it are one decision in two places.** Narrowing a realtime
+payload saves nothing in any case: those bytes have already arrived.
+
+**The egress is accepted, and recorded here so it is not re-optimised by
+surprise:** ~1.28 MB a page load. The realtime change removed the 882 MB
+multiplier — one full table read per changed row, per open tab — and that
+was the cost that mattered. The remaining per-load figure is not worth a
+feature.

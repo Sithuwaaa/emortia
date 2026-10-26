@@ -942,14 +942,34 @@
     'wh_created_at','wh_updated_at','wo','workflow'
   ].join(',');
 
-  /* opts.full = every column, for the sync. The sync carries documents
-     forward from the rows already stored - `had` is built from t.gins - so
-     running it against the narrow read would quietly drop every attachment
-     the card still has. That has happened here before, from the other
-     direction, and the note at attachDocs records it. */
+  /* EVERY COLUMN, ON EVERY READ - withdrawn narrow read, 26 October.
+
+     The narrow list above shipped on the plan that `gins` would be fetched
+     when a ticket was opened. That fetch was never built, and `gins` is
+     where the stored document paths live: docsBox reads `t.gins`, finds
+     undefined, falls through `|| []` and returns an empty string. So every
+     opened ticket rendered its material lines, its GIN reservation and its
+     GI number with NO Download button, while 617 verified PDFs sat in the
+     bucket. Silent, and the same shape as every other failure in this file:
+     an absent column reading as an absent feature.
+
+     The egress is accepted: ~1.28 MB a load. The realtime change removed
+     the 882 MB multiplier, and that was the cost that mattered.
+
+     opts.full is still accepted and still means what it meant - the sync
+     carries documents forward from the rows already stored, `had` is built
+     from t.gins, and running the sync against a narrow read would quietly
+     drop every attachment the card still has. It no longer changes the
+     read, because the page needs those columns too.
+
+     WH24_LIST and WH24_HEAVY are kept, with their guard in
+     db.schema.test.js: the heavy/light split is the groundwork for the
+     opened-ticket fetch whenever it is built, and the guard still forces a
+     decision about any column a later migration adds. Do not reinstate the
+     narrow read here without the fetch that feeds the documents - that is
+     the whole bug. */
   async function wh24Load(opts){
-    const full = !!(opts && opts.full);
-    const cols = full ? '*' : WH24_LIST;
+    const cols = '*';
     const c = await client(); if (!c) return { tickets: [], marks: {}, error: 'offline' };
     const PAGE = 500; let from = 0, tickets = [];
     for(;;){
@@ -1180,21 +1200,24 @@
      lets a caller patch one row in memory for no egress at all beyond the
      realtime message, which is already paid for.
 
-     NARROWED ON THE WAY THROUGH. The page holds the narrow column set, and
-     the payload carries the whole row. Storing it raw would leave two
-     shapes in one array, and anything reading t.gins would then behave
-     differently depending on whether that row happened to have changed
-     recently - a bug that appears only under load and only for some rows.
-     wh24Narrow projects to the same list wh24Load selects, from the same
-     constant, so the two cannot drift.
+     ONE SHAPE IN THE ARRAY, whatever that shape is. The page holds what
+     wh24Load selects and the payload carries the whole row; storing the two
+     differently would leave anything reading t.gins behaving differently
+     depending on whether that row happened to have changed recently - a bug
+     that appears only under load and only for some rows. So this projection
+     and wh24Load's column list change TOGETHER, always.
+
+     26 October: wh24Load reads '*', so the matching projection is the whole
+     row. While the page read was narrow this stripped the heavy columns -
+     which meant a realtime update also took `gins` off any row it touched,
+     so a Download button would have vanished mid-session even once the page
+     read was fixed. Narrowing a payload saves nothing anyway: those bytes
+     have already arrived and been paid for.
 
      Returns a teardown. A channel that is never closed is the other half of
      the bill. */
   function wh24Narrow(row){
-    if (!row) return row;
-    const out = {};
-    for (const k of WH24_LIST.split(',')) if (k in row) out[k] = row[k];
-    return out;
+    return row;
   }
 
   async function wh24Subscribe(fn){
