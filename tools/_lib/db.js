@@ -31,11 +31,13 @@
   const CDN = 'https://esm.sh/@supabase/supabase-js@2';
 
   let clientPromise = null;
+  /* the resolved client, so a channel can be closed without awaiting again */
+  let clientSync = null;
   function client(){
     if (!CFG.url || !CFG.anonKey) return Promise.resolve(null);
     if (!clientPromise){
       clientPromise = import(CDN)
-        .then(m => m.createClient(CFG.url, CFG.anonKey, {
+        .then(m => clientSync = m.createClient(CFG.url, CFG.anonKey, {
           auth: { persistSession: true, autoRefreshToken: true }
         }))
         .catch(e => { console.warn('Supabase client unavailable:', e.message); return null; });
@@ -246,12 +248,87 @@
   }
 
   /* Another device published; refresh without a reload. */
+  /* ---- ONE LIVE CHANNEL, DONE THE SAME WAY EVERY TIME ----
+
+     Five subscriptions here were written the same wrong way: create the
+     channel, call the caller's reload on every event, never close it. That
+     is the shape that cost WH24 882 MB in a day - one full read per changed
+     row, in every tab that happened to be open.
+
+     This wraps all five. The callers did not change: they still hand in a
+     reload function and get called when something moves. What they get for
+     free is
+
+       COALESCED   a burst of events becomes one reload. A sync writing
+                   hundreds of rows is one read, not hundreds. This is the
+                   whole saving, and it needs nothing from the caller -
+                   which is why it is here and not in five tools.
+       CLOSED      the channel is torn down when the tab is hidden. An idle
+                   background tab held an open subscription and received
+                   rows it would never draw.
+       REOPENED    and on becoming visible it resubscribes AND reloads,
+                   because postgres_changes does not replay what was missed
+                   while it was gone. Resubscribing without reloading is a
+                   tab that looks live and is stale, which is the failure
+                   this project keeps producing.
+       BACKSTOP    a slow reconcile that depends on no event arriving, for
+                   the case none of the above covers.
+
+     Patching from the payload - the other half of what wh24 does - is NOT
+     here, because it cannot be: only the caller knows how to put one row
+     into its own model. Coalescing is what can be shared, and it is most of
+     the money. */
+  function liveChannel(make, reload, opts){
+    opts = opts || {};
+    const wait = opts.wait == null ? 1200 : opts.wait;
+    const every = opts.every == null ? 900000 : opts.every;
+    let ch = null, soon = null, beat = null, lastStatus = null, dead = false;
+
+    const fire = (why) => { clearTimeout(soon); soon = null; try { reload(why); } catch (e) {} };
+    const soonish = () => { if (soon) return; soon = setTimeout(() => { soon = null; fire(); }, wait); };
+
+    const up = () => {
+      if (ch || dead) return;
+      ch = make(
+        () => soonish(),
+        (status) => {
+          if (status === 'SUBSCRIBED' && lastStatus && lastStatus !== 'SUBSCRIBED')
+            fire('channel returned after ' + lastStatus);
+          lastStatus = status;
+        });
+    };
+    const down = () => {
+      if (!ch) return;
+      try { clientSync && clientSync.removeChannel(ch); } catch (e) {}
+      ch = null; lastStatus = null;
+    };
+    const pulse = (on) => {
+      clearInterval(beat); beat = null;
+      if (on) beat = setInterval(() => fire('periodic reconcile'), every);
+    };
+    const vis = () => {
+      if (document.hidden) { down(); pulse(false); clearTimeout(soon); soon = null; }
+      else { up(); pulse(true); fire('tab became visible'); }
+    };
+
+    if (typeof document !== 'undefined' && document.addEventListener)
+      document.addEventListener('visibilitychange', vis);
+    up(); pulse(true);
+
+    return function off(){
+      dead = true; down(); pulse(false); clearTimeout(soon);
+      if (typeof document !== 'undefined' && document.removeEventListener)
+        document.removeEventListener('visibilitychange', vis);
+    };
+  }
+
   async function subscribe(key, fn){
     const c = await client(); if (!c) return;
-    c.channel('ds-' + key)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'datasets', filter: 'key=eq.' + key },
-          () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('ds-' + key)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'datasets', filter: 'key=eq.' + key }, hit)
+        .subscribe(status),
+      fn);
   }
 
   /* ------------------------------------------------------------- workbooks
@@ -323,10 +400,11 @@
 
   async function subscribeBook(key, fn){
     const c = await client(); if (!c) return;
-    c.channel('bk-' + key)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'books', filter: 'key=eq.' + key },
-          () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('bk-' + key)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'books', filter: 'key=eq.' + key }, hit)
+        .subscribe(status),
+      fn);
   }
 
   /* ----------------------------------------------------------------- todos
@@ -608,9 +686,11 @@
 
   async function subscribeTodos(fn){
     const c = await client(); if (!c) return;
-    c.channel('todos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('todos')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, hit)
+        .subscribe(status),
+      fn);
   }
 
   /* ------------------------------------------------------------------ ESN
@@ -688,9 +768,11 @@
 
   async function esnSubscribe(fn){
     const c = await client(); if (!c) return;
-    c.channel('esn_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: ESN }, () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('esn_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: ESN }, hit)
+        .subscribe(status),
+      fn);
   }
 
   /* ------------------------------------------------- Austin SWAP materials
@@ -784,9 +866,11 @@
 
   async function swapSubscribe(fn){
     const c = await client(); if (!c) return;
-    c.channel('swap_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: SWAP }, () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('swap_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: SWAP }, hit)
+        .subscribe(status),
+      fn);
   }
 
   /* ------------------------------------------------ WH24 Material Checker
@@ -1307,9 +1391,11 @@
 
   async function designSubscribe(fn){
     const c = await client(); if (!c) return;
-    c.channel('design_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: DSITES }, () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('design_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: DSITES }, hit)
+        .subscribe(status),
+      fn);
   }
 
   /* ------------------------------------------------------- feature locks
@@ -1378,9 +1464,11 @@
 
   async function onFeatureLocks(fn){
     const c = await client(); if (!c) return;
-    c.channel('locks_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'feature_locks' }, () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('locks_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'feature_locks' }, hit)
+        .subscribe(status),
+      fn);
   }
 
   /* ---------------------------------------------------- the team directory
@@ -1587,10 +1675,15 @@
 
   async function teamSubscribe(fn){
     const c = await client(); if (!c) return;
-    const ch = c.channel('team_live');
-    [TGROUPS, TPEOPLE, TVEHICLES].forEach(t =>
-      ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, () => fn()));
-    ch.subscribe();
+    return liveChannel(
+      (hit, status) => {
+        const ch = c.channel('team_live');
+        [TGROUPS, TPEOPLE, TVEHICLES].forEach(t =>
+          ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, hit));
+        ch.subscribe(status);
+        return ch;
+      },
+      fn);
   }
 
   /* --------------------------------------------------------------- insight
@@ -2179,6 +2272,16 @@
      page has to be able to tell the two apart. */
   async function attendSubscribe(fn){
     const c = await client(); if (!c) return;
+    /* ATTENDANCE IS LEFT ALONE, DELIBERATELY. It is the one channel here
+       that already does the right thing: p => fn(p) hands the payload on,
+       and the tool patches the record it names instead of re-reading the
+       month. Putting it through liveChannel would COALESCE those events -
+       and a coalesced payload is a discarded payload, because only one of
+       a burst could survive. It would take the tool that already patches
+       and make it refetch.
+
+       What it is missing is only the teardown, which is a smaller change
+       to a tool nobody has asked me to open. Noted rather than done. */
     c.channel('attend_live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attend_records' }, p => fn(p))
       .subscribe();
@@ -2246,9 +2349,11 @@
 
   async function materialsSubscribe(fn){
     const c = await client(); if (!c) return;
-    c.channel('materials_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('materials_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'materials' }, hit)
+        .subscribe(status),
+      fn);
   }
 
   /* ------------------------------------------------- the field reference
@@ -2283,9 +2388,11 @@
 
   async function fieldConfigSubscribe(fn){
     const c = await client(); if (!c) return;
-    c.channel('field_config_live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'field_config' }, () => fn())
-      .subscribe();
+    return liveChannel(
+      (hit, status) => c.channel('field_config_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'field_config' }, hit)
+        .subscribe(status),
+      fn);
   }
 
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
