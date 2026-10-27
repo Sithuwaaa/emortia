@@ -356,10 +356,16 @@ console.log('\n--- no ungoverned chrome anywhere ---');
        than restated, because this tool just moved family and a restated
        accent is exactly how the Year Goals card ended up painted in
        another group's colours. p-ink, p-dim and p-acc2 are the design's
-       own and do not match any governed value, so they are declared. */
+       own and do not match any governed value, so they are declared.
+
+       chip-under is not a colour anything is painted in. It is the
+       measured answer to "what is behind a status chip now", recorded so
+       palette.test.js can measure against it: the panels became glass over
+       a photograph, so --card stopped being the backdrop and a flat token
+       had to take its place. */
     'project-update':
               ['p-ink','p-dim','p-acc2','p-glass','p-edge','p-faint','p-chip',
-               'p-field','p-solid','p-inset','p-shadow','tint','scene']
+               'p-field','p-solid','p-inset','p-shadow','tint','scene','chip-under']
   };
   for (const [tool, list] of Object.entries(DECLARED))
     for (const p of list)

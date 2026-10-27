@@ -7,9 +7,10 @@
    table. The chip is the strict one and the only one this file checks,
    because clearing it clears the rest:
 
-       11.5px/700 text in the colour,
-       on background:color-mix(in oklab, <colour> 15%, transparent)
-       over --card,
+       12px/600 text in the colour,
+       on background:color-mix(in srgb, <colour> 10%, transparent)
+       over the PANEL - which is --p-solid composited over the
+       photograph now, not the flat --card it used to be,
        which needs 4.5:1.
 
    The tint is made FROM the colour, so as the ink darkens the fill darkens
@@ -50,8 +51,31 @@ const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.0
 const L = a => 0.2126 * lin(a[0]) + 0.7152 * lin(a[1]) + 0.0722 * lin(a[2]);
 const CR = (a, b) => { const x = L(a), y = L(b);
   return +(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)).toFixed(2)); };
-/* the chip's own background: 15% of the colour over the card */
-const chip = (c, card) => CR(c, c.map((v, i) => 0.15 * v + 0.85 * card[i]));
+/* The chip is 10% of the colour over whatever is behind it. Both halves of
+   that sentence changed when the panels became glass: the tint dropped from
+   15%, and "behind it" stopped being --card.
+
+   This lerp is a MODEL of what the browser paints. It was checked against
+   the real thing - chips built from this stylesheet, read back through a
+   1x1 canvas so the serialisation cannot be misread, and composited by the
+   engine - and it agrees to within 0.03.
+
+   AND THE PERCENTAGE IS READ OUT OF THE RULE, not restated here. It was
+   written as a literal 0.10 for about ten minutes, and in those ten
+   minutes putting the tint back to 15% left this file green - because the
+   model no longer had anything to do with the stylesheet. The same shape
+   as every other near miss in this repository: the test agreed with
+   itself. There are two .chip rules in the sheet now, the original and
+   the restyle, so the LAST one is the one that wins and the one read. */
+const chipRules = [...BARE.matchAll(
+  /\.chip\s*\{[^}]*?background:\s*color-mix\(in\s+([a-z]+)\s*,\s*var\(--c\)\s*([\d.]+)%/g)];
+if (!chipRules.length) throw new Error('no .chip background mix found - cannot model the chip');
+const MIXSPACE = chipRules[chipRules.length - 1][1];
+const MIX = parseFloat(chipRules[chipRules.length - 1][2]) / 100;
+if (!(MIX > 0 && MIX < 1)) throw new Error('nonsense mix percentage: ' + MIX);
+console.log('the chip, as the stylesheet declares it: color-mix(in ' + MIXSPACE +
+            ', <colour> ' + (MIX * 100) + '%, transparent)');
+const chip = (c, card) => CR(c, c.map((v, i) => MIX * v + (1 - MIX) * card[i]));
 
 /* ---- the tokens, from BOTH places, in the order the browser resolves them
 
@@ -70,11 +94,33 @@ const CAT = fs.readFileSync(path.join(__dirname, '..', '_lib', 'category.css'), 
 const FAMILY = (/<html[^>]*data-cat="([a-z-]+)"/.exec(SRC) || [])[1];
 if (!FAMILY) throw new Error('no data-cat on <html> - cannot know which family governs');
 
+/* EVERY matching block, in source order, later ones winning - which is the
+   cascade. This read only the first one until 27 October, and that was a
+   blind spot rather than a simplification: --chip-under is declared in a
+   second :root block further down the sheet, and a test that stops at the
+   first block reports a token as missing when the browser can see it
+   perfectly well.
+
+   AND THE BLOCK IS FOUND BY WALKING BRACES, not by looking for a closing
+   brace at the start of a line. The old terminator was /\n\s*\}/, which
+   depends on how the author happened to format the sheet: a block that
+   closes with `--chip-under:#0b182c}` on one line does not match, so the
+   scan ran on into the NEXT block and read the light value while claiming
+   to report the dark one. It printed eleven confident failures that were
+   not real. A brace walk cannot do that. */
 const declsOf = (src, re, what) => {
-  const m = re.exec(src);
-  if (!m) throw new Error('no ' + what + ' found');
+  const starts = [...src.matchAll(new RegExp(re.source.replace(/\\\{[\s\S]*$/, '') + '\\s*\\{', 'g'))];
+  if (!starts.length) throw new Error('no ' + what + ' found');
   const out = {};
-  for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) out[d[1]] = d[2];
+  for (const m of starts) {
+    let i = m.index + m[0].length, depth = 1;
+    for (; i < src.length && depth; i++) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}') depth--;
+    }
+    const body = src.slice(m.index + m[0].length, i - 1);
+    for (const d of body.matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) out[d[1]] = d[2];
+  }
   return out;
 };
 
@@ -115,8 +161,11 @@ is('and every one is a var()', B.every(b => /^var\(--[a-z0-9-]+\)$/.test(b.c)), 
 
 for (const theme of ['dark', 'light']) {
   const tok = tokensOf(theme);
-  const card = h2(tok['card']);
-  console.log('\n' + theme + '  card ' + tok['card']);
+  /* NOT --card any more. A panel is --p-solid composited over the
+     photograph, so --chip-under carries the binding end of the range that
+     was measured across the whole scene on the rendered page. */
+  const card = h2(tok['chip-under']);
+  console.log('\n' + theme + '  behind a chip: ' + tok['chip-under']);
   for (const b of B) {
     const name = b.c.replace(/^var\(--|\)$/g, '');
     const hex = tok[name];
@@ -133,7 +182,7 @@ for (const theme of ['dark', 'light']) {
    assert it rather than assume the relationship holds for a future hue */
 console.log('\nthe KPI number, 34px/800, needs only 3:1');
 for (const theme of ['dark', 'light']) {
-  const tok = tokensOf(theme), card = h2(tok['card']);
+  const tok = tokensOf(theme), card = h2(tok['chip-under']);
   for (const b of B) {
     const hex = tok[b.c.replace(/^var\(--|\)$/g, '')];
     if (!hex) continue;

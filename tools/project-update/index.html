@@ -326,24 +326,13 @@
      Names are prefixed in the script too - XDB, xParseSheet, xLoad -
      because the dashboard already has a DB, a parseSheet and a load, and
      silently shadowing any of them would break the half that works. */
+  /* the surface tokens are declared once, at :root, further down - both
+     halves wear them now, so a second copy here would be a second place to
+     change them and a second place to forget */
   #xl{
-    --p-ink:#E2E6EE; --p-dim:#B4BCCC; --p-acc2:#A5C3FF;
-    /* these two ARE the family accents - taken, not restated */
-    --p-acc:var(--accent); --p-accInk:var(--accent-ink);
-    --p-glass:rgba(136,174,255,.07); --p-edge:rgba(165,195,255,.24); --p-faint:rgba(165,195,255,.14);
-    --p-chip:rgba(165,195,255,.1); --p-field:rgba(9,28,49,.55); --p-solid:rgba(9,22,42,.9);
-    --p-blur:blur(14px) saturate(1.4); --p-inset:inset 0 1px 0 rgba(255,255,255,.1);
-    --p-shadow:0 18px 40px -24px rgba(0,0,0,.6);
     --c-iss:var(--p-acc);--c-stk:var(--ok);--c-pen:var(--pending);
     color:var(--p-ink);font-family:Jost,'Hanken Grotesk',-apple-system,sans-serif;
     display:flex;flex-direction:column;gap:20px;max-width:1240px;margin:0 auto}
-  html[data-theme="light"] #xl{
-    --p-ink:#141A2A; --p-dim:#3F475A; --p-acc2:#1B2A8C;
-    --p-acc:var(--accent); --p-accInk:var(--accent-ink);
-    --p-glass:rgba(255,255,255,.7); --p-edge:rgba(255,255,255,.75); --p-faint:rgba(3,4,94,.1);
-    --p-chip:rgba(3,4,94,.07); --p-field:rgba(255,255,255,.75); --p-solid:rgba(255,255,255,.96);
-    --p-blur:blur(32px) saturate(1.3) brightness(1.8); --p-inset:inset 0 1px 0 rgba(255,255,255,.85);
-    --p-shadow:0 18px 40px -24px rgba(10,20,60,.45)}
   #xl *{box-sizing:border-box;margin:0;padding:0}
   #xl [hidden]{display:none !important}
   #xl button,#xl input{font:inherit;color:inherit}
@@ -383,7 +372,11 @@
   #xl .pt{flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px}
   #xl .pt h2{font:500 48px/1 'Cormorant Garamond',Georgia,serif;overflow-wrap:anywhere}
   #xl .pm{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13.5px;color:var(--p-dim)}
-  #xl .pm span{white-space:nowrap;line-height:1.5}
+  /* flex:none and width:auto are the design's own fix, and dropping them
+     was my error: without them "13 sheets" and the "Updated …" date split
+     across lines and overlapped on a narrow screen. Each item stays on one
+     line and moves to the next row whole. */
+  #xl .pm span{white-space:nowrap;flex:none;width:auto;line-height:1.5}
   #xl .pact{display:flex;padding:4px;border-radius:99px;background:var(--p-solid);border:1px solid var(--p-edge)}
   html[data-theme="light"] #xl .pact{background:rgba(3,4,94,.07);border-color:rgba(3,4,94,.14)}
   #xl .pact button{border:0;border-radius:99px;padding:9px 18px;background:transparent;color:var(--p-ink);
@@ -605,6 +598,256 @@
     #xl .strip{border-radius:18px}
     #xl .strip .nav{display:none}
     #xl .mdash{padding:18px}
+  }
+
+  /* ---------- THE DASHBOARD, IN THE DESIGN'S LANGUAGE -------------------
+
+     The rollout dashboard was drawn before there was a photograph behind
+     it: flat cards with 1px lines and 14px corners, which read as boxes
+     sitting on top of a picture rather than anything belonging to it. The
+     Excel browser half was drawn for the photograph and looked it, and the
+     two halves did not look like one tool.
+
+     Everything below is LOOK ONLY. This block is appended after the
+     dashboard's original rules and overrides them; not one line of markup,
+     not one render function and not one read changed, which is why no
+     figure on the page can move. The stat buckets, the MOD section, the
+     tabs, the books read and the sync are all exactly as they were.
+
+     The values come from the design project's own file, read through the
+     MCP: .glass for a panel, .mk for a stat, .tile for an inner card,
+     .ftab for a tab, .track for a bar, its table for the grid, and
+     Cormorant Garamond at 500 for anything that is a heading.
+
+     WHY THE DATA PANELS USE --p-solid AND NOT --p-glass.
+     The design has two surface levels and uses both: --p-glass for a card
+     you look at, --p-solid for one you read off - its sticky sheet strip
+     and its table headers are --p-solid. That distinction matters more
+     here than it does there, because eleven status colours are measured
+     against whatever sits behind them. At --p-glass the backdrop is the
+     photograph, and a chip's contrast would then depend on which part of
+     a city skyline happened to be behind it. At --p-solid the photograph
+     contributes 10% in dark and 4% in light, which is a backdrop that can
+     be bounded and therefore guarded. palette.test.js measures against
+     that bound now, and says so. */
+
+  /* the tokens, out of #xl so both halves can use them */
+  :root{
+    --p-ink:#E2E6EE; --p-dim:#B4BCCC; --p-acc2:#A5C3FF;
+    --p-acc:var(--accent); --p-accInk:var(--accent-ink);
+    --p-glass:rgba(136,174,255,.07); --p-edge:rgba(165,195,255,.24);
+    --p-faint:rgba(165,195,255,.14); --p-chip:rgba(165,195,255,.1);
+    --p-field:rgba(9,28,49,.55); --p-solid:rgba(9,22,42,.9);
+    --p-blur:blur(14px) saturate(1.4); --p-inset:inset 0 1px 0 rgba(255,255,255,.1);
+    --p-shadow:0 18px 40px -24px rgba(0,0,0,.6);
+    /* WHAT IS ACTUALLY BEHIND A STATUS CHIP, which is no longer --card.
+       A panel is --p-solid composited over the blurred, tinted photograph,
+       so its colour varies with the picture. Measured on the rendered page
+       across the whole scene, that variation is small because --p-solid is
+       90% opaque in dark and 96% in light: #081529..#0b182c in dark,
+       #faf9f8..#ffffff in light. The value below is the BINDING end of
+       each range - the lightest panel in dark, the darkest in light, since
+       those are the ones that cost a chip the most contrast.
+       palette.test.js measures the eleven against this. */
+    --chip-under:#0b182c;
+  }
+  html[data-theme="light"]{
+    --chip-under:#faf9f8;
+    --p-ink:#141A2A; --p-dim:#3F475A; --p-acc2:#1B2A8C;
+    --p-glass:rgba(255,255,255,.7); --p-edge:rgba(255,255,255,.75);
+    --p-faint:rgba(3,4,94,.1); --p-chip:rgba(3,4,94,.07);
+    --p-field:rgba(255,255,255,.75); --p-solid:rgba(255,255,255,.96);
+    --p-blur:blur(32px) saturate(1.3) brightness(1.8);
+    --p-inset:inset 0 1px 0 rgba(255,255,255,.85);
+    --p-shadow:0 18px 40px -24px rgba(10,20,60,.45);
+  }
+
+  body{font-family:Jost,'Hanken Grotesk',-apple-system,'Segoe UI',sans-serif}
+
+  /* ---- the two bars above the page ---- */
+  /* They were opaque strips of --bg with a hairline under them, which cut
+     the photograph in two. They become glass rails that sit on it. */
+  .dsbar{background:transparent;border-bottom:0;padding:14px 16px 6px;gap:10px}
+  /* --p-solid, for the same reason .kpi is: the design's equivalents sit
+     inside a glass container and these sit on the bare photograph. At
+     --p-glass the dataset switcher and the tab rail were a 7% wash over a
+     city skyline. */
+  .dsbtn{font-family:Jost,sans-serif;font-weight:500;font-size:14px;border-radius:22px;
+    padding:13px 18px;background:var(--p-solid);border:1px solid var(--p-edge);
+    color:var(--p-ink);backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur);
+    box-shadow:var(--p-inset),var(--p-shadow)}
+  .dsbtn em{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0;color:var(--p-dim)}
+  .dsbtn:hover{transform:none;background:var(--p-faint);border-color:var(--p-acc);color:var(--p-ink)}
+  .dsbtn.on{background:var(--p-acc);color:var(--p-accInk);border-color:transparent;box-shadow:var(--p-shadow)}
+  .dsbtn.on em{color:var(--p-accInk);opacity:.8}
+
+  .tabs{background:transparent;border-bottom:0;padding:6px 16px 12px;gap:6px}
+  .tab{font-family:Jost,sans-serif;font-weight:500;font-size:14px;border-radius:99px;
+    padding:9px 16px;background:var(--p-solid);border:1px solid var(--p-edge);color:var(--p-ink);
+    backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur)}
+  .tab:hover{transform:none;background:var(--p-solid);border-color:var(--p-acc);color:var(--p-ink)}
+  .tab.on{background:var(--p-acc);color:var(--p-accInk);border-color:transparent;box-shadow:none}
+
+  main{max-width:1240px;padding:10px 16px calc(env(safe-area-inset-bottom) + 110px)}
+
+  /* ---- a stat, which is the design's .mk ---- */
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+  /* --p-solid, not --p-chip, and this one was wrong on the first pass.
+     In the design a stat is .mk and sits INSIDE a .glass section, so a 7%
+     chip tint is all it needs - there is already glass under it. Here the
+     stat row is top-level, directly on main, so --p-chip put a 7% wash
+     over a bare photograph: in light mode the cards all but disappeared
+     and the numbers were unreadable over a bright sky. It also made the
+     measurement wrong, because palette.test.js checks those numbers
+     against --chip-under and they were not on that surface at all.
+     They are now. */
+  .kpi{background:var(--p-solid);border:1px solid var(--p-edge);border-radius:16px;
+    padding:14px 16px;overflow:visible;
+    backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur);
+    box-shadow:var(--p-inset),var(--p-shadow)}
+  /* the 3px left rule was the old card's way of carrying the bucket colour;
+     the design carries it in the number, which is where it already was */
+  .kpi::after{display:none}
+  .kpi .k{font-family:Jost,sans-serif;font-size:11px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--p-dim)}
+  .kpi .v{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:34px;
+    line-height:1.05;margin-top:2px}
+  .kpi .s{font-size:12px;color:var(--p-dim);margin-top:2px}
+
+  /* ---- a panel, which is the design's .glass ---- */
+  .panel{background:var(--p-solid);border:1px solid var(--p-edge);border-radius:30px;
+    padding:22px 26px;margin-bottom:20px;
+    backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur);
+    box-shadow:var(--p-inset),var(--p-shadow)}
+  .panel h2{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:26px;
+    line-height:1.1;margin-bottom:16px;color:var(--p-ink)}
+  .panel h2 .dot{background:var(--p-acc)}
+  .panel h2 .tag{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--p-dim)}
+  .cols2{gap:18px}
+
+  /* ---- a bar, which is the design's .track ---- */
+  .bars{gap:10px}
+  .barrow{font-size:13.5px}
+  .barrow .lb{color:var(--p-dim)}
+  .bartrack{height:8px;border-radius:99px;background:var(--p-faint);border:0}
+  .barrow .n{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--p-ink)}
+
+  /* ---- the MOD permission cards, which are the design's .tile ---- */
+  .mod{border-left:0}
+  .modlist{gap:12px}
+  .modcard{background:var(--p-chip);border:1px solid var(--p-edge);border-radius:18px;padding:15px 17px}
+  .modcard .id{font-family:'JetBrains Mono',monospace;font-weight:500;font-size:15px}
+  .modcard .nm{font-family:Jost,sans-serif;font-weight:500;font-size:15px;margin-top:3px;color:var(--p-ink)}
+  .modcard .perm{border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600}
+  .modcard .serves{font-size:12.5px;color:var(--p-dim)}
+  .modcard .serves b{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--p-ink)}
+  .tabchip{font-family:'JetBrains Mono',monospace;font-size:11px;border-radius:99px;
+    padding:3px 9px;border:1px solid var(--p-edge);color:var(--p-dim)}
+
+  /* ---- the export rows, which are the design's .tile ---- */
+  .exlist{gap:10px}
+  .exrow{background:var(--p-chip);border:1px solid var(--p-edge);border-radius:18px;padding:13px 16px}
+  .exrow.whole{border-color:var(--p-acc);background:var(--p-faint)}
+  .exname{font-family:Jost,sans-serif;font-weight:500;font-size:15px}
+  .exmeta{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--p-dim)}
+  .note{color:var(--p-dim)}
+
+  /* ---- the toolbar, which is the design's .tools ---- */
+  .toolbar{gap:10px;margin-bottom:14px}
+  .search input{font-family:Jost,sans-serif;font-size:14px;border-radius:99px;
+    padding:10px 16px 10px 36px;background:var(--p-field);border:1px solid var(--p-edge);color:var(--p-ink)}
+  .search input:focus{border-color:var(--p-acc);box-shadow:0 0 0 3px var(--p-faint)}
+  .search .ic{color:var(--p-dim)}
+  .btn{font-family:Jost,sans-serif;font-size:13px;font-weight:500;border-radius:99px;
+    padding:8px 16px;background:var(--p-chip);border:1px solid var(--p-edge);color:var(--p-ink)}
+  .btn:hover{transform:none;background:var(--p-faint);border-color:var(--p-edge)}
+  .btn.on{background:var(--p-acc);color:var(--p-accInk);border-color:transparent}
+  .count{font-family:Jost,sans-serif;font-size:11px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--p-dim)}
+
+  /* ---- the grid, which is the design's .tbl ---- */
+  .gridwrap{border:1px solid var(--p-edge);border-radius:24px;background:var(--p-solid);
+    backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur);
+    box-shadow:var(--p-inset),var(--p-shadow)}
+  table{font-size:13.5px}
+  thead th{background:var(--p-solid);color:var(--p-dim);font-family:Jost,sans-serif;
+    font-size:11.5px;font-weight:500;letter-spacing:.08em;padding:11px 14px;
+    border-bottom:1px solid var(--p-faint);border-right:0}
+  tbody td{padding:9px 14px;border-bottom:1px solid var(--p-faint);border-right:0}
+  /* the design's table has no zebra; the hover is what finds a row */
+  tbody tr:nth-child(even){background:transparent}
+  tbody tr:hover{background:var(--p-chip)}
+  th.rn,td.rn{background:var(--p-solid);color:var(--p-dim);
+    font-family:'JetBrains Mono',monospace;font-size:11.5px}
+  tbody td.k1{background:var(--p-solid);font-family:'JetBrains Mono',monospace;font-weight:500}
+
+  /* ---- a status chip, which is the design's .xtag carrying --c ----
+
+     THE TINT DROPS FROM 15% TO 10%, and this is the third time these
+     eleven colours have had to be re-solved, so it is worth saying why
+     the knob moved instead of the colours.
+
+     A chip is its own colour on a tint of itself over the panel, so the
+     panel's lightness sets every one of the eleven ratios. The panel used
+     to be --card, a flat value out of category.css: #FFFFFF in light. It
+     is now --p-solid over the blurred photograph, whose darkest point in
+     light mode measures #faf9f8. That is a very small move and it broke
+     TEN of the eleven - 4.51..4.55 became 4.31..4.34 - because the last
+     solve landed every value within 0.05 of the line and left no margin.
+
+     Two ways back: darken ten inks, or lighten the fill they sit on. The
+     fill is made FROM the ink, so lowering the mix moves it toward the
+     panel and lifts the ratio without touching a single hue. It also
+     lifts DARK, which was passing, from 4.71 to 5.11 - darkening the inks
+     would have done nothing there. And one of the ten is --muted, which
+     is governed chrome in category.css and shared with four other Field
+     Operations tools; this tool has no business re-solving it.
+
+     MEASURED OFF REAL ELEMENTS, through a 1x1 canvas so that whatever the
+     computed value serialises as - rgb(), color(srgb …), oklab() - comes
+     back as 8-bit channels and the engine does the compositing:
+
+       light, flat #FFFFFF card, 15%   worst 4.52   (what it was)
+       light, glass #faf9f8,    15%    worst 4.31   10 of 11 fail
+       light, glass #faf9f8,    12%    worst 4.45   10 of 11 fail
+       light, glass #faf9f8,    10%    worst 4.58   all clear
+       dark,  glass #0b182c,    10%    worst 5.16   all clear, was 4.73
+
+     The tint is the only thing that fixes it. The mix space does NOT:
+     oklab and srgb measure 4.31 alike on the new panel. It is written
+     `in srgb` here only because the design's own .tag is, so the two
+     halves say the same thing; it changed no ratio and is not a fix.
+
+     The 45% border keeps it reading as a pill at the lighter fill. */
+  .chip{font-family:Jost,sans-serif;font-size:12px;font-weight:600;border-radius:99px;
+    padding:3px 10px;background:color-mix(in srgb,var(--c) 10%,transparent);
+    border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+  .dim{color:var(--p-dim)}
+
+  /* ---- what is left ---- */
+  .empty{color:var(--p-dim);padding:56px 20px}
+  .empty .big{font-size:42px}
+  .err{border-radius:24px;padding:20px 22px;border:1px solid var(--p-edge);
+    background:var(--p-solid);color:var(--p-ink);
+    backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur)}
+  .err code{font-family:'JetBrains Mono',monospace;background:var(--p-chip)}
+  .toast{font-family:Jost,sans-serif;font-size:14px;border-radius:14px;padding:11px 18px;
+    background:var(--p-solid);border:1px solid var(--p-acc);color:var(--p-ink);
+    box-shadow:var(--p-shadow)}
+  /* the footer is the last thing standing directly on the photograph, and
+     11.5px is too small to carry a stroke without closing its counters -
+     so it gets a plate of its own rather than an outline */
+  footer{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--p-dim);
+    max-width:1240px;margin:0 auto 28px;padding:16px 22px;border-radius:22px;
+    background:var(--p-solid);border:1px solid var(--p-edge);
+    backdrop-filter:var(--p-blur);-webkit-backdrop-filter:var(--p-blur)}
+  footer a{color:var(--p-acc2)}
+  html[data-theme="light"] footer a{color:var(--p-acc)}
+
+  @media (max-width:640px){
+    .panel{padding:18px;border-radius:24px}
+    .gridwrap{border-radius:20px}
+    .dsbtn{border-radius:18px}
   }
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
