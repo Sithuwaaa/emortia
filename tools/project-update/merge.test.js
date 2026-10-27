@@ -41,21 +41,73 @@ const is = (label, got, want) => {
   fail++; console.log('FAIL ' + label + '\n  got  ' + a + '\n  want ' + b);
 };
 
-/* ---- 1. both halves are offered, and the dashboard is still first ------ */
+/* ---- 1. which half the tool opens on --------------------------------
+
+   THIS INVARIANT WAS DELIBERATELY REVERSED on 27 October and the old
+   assertion is kept below rather than deleted, because the reversal is
+   the interesting part.
+
+   It used to read "the tool still opens on the dashboard". The redraw
+   pinned ACTIVE to the Excel browser and hid the tab strip, this file
+   went red on exactly that line, and the change was confirmed rather
+   than assumed. The browser is the tool now; the dashboard's code stays
+   in the page, wired and routable, but nothing routes to it.
+
+   So what is asserted now is the SHAPE OF THE DECISION: the browser is
+   the landing view, and the dashboard has not been deleted on the way
+   past. If somebody wants the dashboard back it is three lines, and this
+   file says which three. */
 const tabLine = (/const all = (\[[^;]+);/.exec(SRC) || [])[1];
 is('the tab list was found in the source', typeof tabLine === 'string', true);
-is('the dashboard is still the first tab', /^\['Dashboard'\]/.test(String(tabLine)), true);
-is('and the Excel browser is offered',     /EXCEL_TAB/.test(String(tabLine)), true);
+is('the dashboard is still in the tab list', /^\['Dashboard'\]/.test(String(tabLine)), true);
+is('and the Excel browser is offered',       /EXCEL_TAB/.test(String(tabLine)), true);
 
 /* the landing view, which is what ACTIVE starts as */
-const initial = (/let ACTIVE = '([^']+)'/.exec(SRC) || [])[1];
-is('the tool still opens on the dashboard', initial, 'Dashboard');
+is('the tool opens on the Excel browser', /let ACTIVE = EXCEL_TAB\b/.test(SRC), true);
+is('and buildTabs holds it there',        /\n\s*ACTIVE = EXCEL_TAB;/.test(SRC), true);
 
-/* and render() actually routes to each half */
-is('render routes the dashboard', /ACTIVE === 'Dashboard' \? renderDashboard\(\)/.test(SRC), true);
-is('render routes the browser',   /ACTIVE === EXCEL_TAB\s+\? renderExcel\(\)/.test(SRC), true);
+/* the three lines that would give the dashboard back, named so the way
+   back is written down rather than rediscovered */
+is('the dataset switcher is hidden, not removed',
+   /<div class="dsbar" id="dsbar" style="display:none">/.test(SRC), true);
+is('the tab strip is hidden, not removed',
+   /<div class="tabs" id="tabs" style="display:none">/.test(SRC), true);
+
+/* and render() still routes to each half, so neither has been orphaned */
+is('render still routes the dashboard', /ACTIVE === 'Dashboard' \? renderDashboard\(\)/.test(SRC), true);
+is('render routes the browser',         /ACTIVE === EXCEL_TAB\s+\? renderExcel\(\)/.test(SRC), true);
 is('renderExcel exists to be routed to', /function renderExcel\(\)/.test(SRC), true);
 is('renderDashboard exists too',         /function renderDashboard\(\)/.test(SRC), true);
+
+/* ---- 1b. the MOD panel moved rather than went ------------------------
+   It was the dashboard's, and the dashboard is no longer on screen. It is
+   the browser half's now, reading the uploaded project's own sheets. */
+is('the browser half has a MOD panel',   /function xModPanel\(\)/.test(SRC), true);
+is('and the overview actually calls it', /'<\/div><\/section>' \+ xModPanel\(\)/.test(SRC), true);
+is('it reads whatever book it is handed', /function modSites\(book = BOOK\)/.test(SRC), true);
+is('and so does the site harvest',        /function harvestSites\(book = BOOK\)/.test(SRC), true);
+
+/* ---- 1c. publishing the rollout workbook is still reachable ----------
+   THIS IS A REGRESSION THAT ALREADY HAPPENED ONCE, which is why it has an
+   assertion. The redraw dropped the only link that clicked #file. The
+   input and its change handler were both still in the page, so nothing
+   was obviously missing - there was simply no way to publish a workbook
+   any more, and no error to notice. */
+is('the published-workbook input is still there', /<input type="file" id="file"/.test(SRC), true);
+is('its change handler is still wired',  /\$\('file'\)\.addEventListener\('change'/.test(SRC), true);
+is('AND SOMETHING IN THE PAGE CLICKS IT', /\$\('file'\)\.click\(\)/.test(SRC), true);
+is('both datasets can be published, not just the current one',
+   /DATASETS\.map\(d =>[\s\S]{0,200}data-up="/.test(SRC), true);
+
+/* and the links are wired by the same attribute they are drawn with.
+   Without this, pointing the selector at an attribute nothing carries
+   leaves the links on screen doing nothing - the same regression as
+   above with one more step in it, and the first version of this file
+   did not catch that. */
+const drawnAttr = (/<a href="#" data-([a-z-]+)="' \+ esc\(d\.key\)/.exec(SRC) || [])[1];
+const boundAttr = (/querySelectorAll\('\[data-([a-z-]+)\]'\)\.forEach\(a => a\.onclick/.exec(SRC) || [])[1];
+is('the publish links are drawn with an attribute', typeof drawnAttr === 'string', true);
+is('something binds a click to that same attribute', boundAttr, drawnAttr);
 
 /* ---- 2. the dashboard half still reads the published workbook ---------- */
 is('it still loads the book', /window\.DB\.loadBook\(bookKey\(\)/.test(SRC), true);

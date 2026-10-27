@@ -334,6 +334,17 @@
     color:var(--p-ink);font-family:Jost,'Hanken Grotesk',-apple-system,sans-serif;
     display:flex;flex-direction:column;gap:20px;max-width:1240px;margin:0 auto}
   #xl *{box-sizing:border-box;margin:0;padding:0}
+  /* the reset above outranks every shared class by ID, so the shared pieces
+     used inside the browser get their spacing back here, at the same rank */
+  #xl .kpi{background:none;border:0;border-radius:0;padding:0;box-shadow:none;
+    backdrop-filter:none;-webkit-backdrop-filter:none;animation:none}
+  #xl .modcard{padding:15px 17px}
+  #xl .modcard .nm{margin-top:3px}
+  #xl .modcard .perm{display:inline-block;margin-top:8px;white-space:nowrap}
+  #xl .modcard .perm{padding:3px 10px}
+  #xl .modcard .serves,#xl .modcard .where{margin-top:10px}
+  #xl .tabchip{padding:3px 9px}
+  #xl .pill{padding:4px 11px}
   #xl [hidden]{display:none !important}
   #xl button,#xl input{font:inherit;color:inherit}
   #xl .glass{position:relative;border-radius:30px;background:var(--p-glass);
@@ -865,11 +876,11 @@
   </a>
   <span class="hsep" aria-hidden="true"></span>
   <h1>Project Update</h1>
-  <span class="pill" id="pill">loading…</span>
+  <span class="pill" id="pill" style="display:none">loading…</span>
   <button class="theme" id="themeBtn" aria-label="Toggle theme">☾</button>
 </header>
-<div class="dsbar" id="dsbar"></div>
-<div class="tabs" id="tabs"></div>
+<div class="dsbar" id="dsbar" style="display:none"></div>
+<div class="tabs" id="tabs" style="display:none"></div>
 <main id="view"><div class="empty"><div class="big">📊</div>Reading the workbook…</div></main>
 <div class="toast" id="toast"></div>
 <input type="file" id="file" accept=".xlsm,.xlsx,.xls">
@@ -909,7 +920,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let BOOK = null, ORDER = [], SAVED = '', ORIGIN = '';
 let SITEACCESS = null;             // {cols, rows} from the Site Access tool
-let ACTIVE = 'Dashboard', QUERY = '', WRAP = false;
+let ACTIVE = EXCEL_TAB, QUERY = '', WRAP = false;
 
 /* ---------- theme (shared key with the other tools) ---------- */
 const THEME_KEY = 'office_tool_theme';
@@ -981,13 +992,9 @@ async function load(){
     toast('Updated from another device', 3600);
   });
   if (!b){
-    $('view').innerHTML = '<div class="err"><b>No “' + esc(ds().label) + '” workbook yet.</b><br>' +
-      'This page reads the database and nothing else — there is no copy of the ' +
-      'workbook in the site any more.<br>' +
-      (window.IS_OWNER ? 'Upload one with the link at the bottom of this page.'
-                       : 'Ask Sithara to upload it.') + '</div>';
     $('pill').innerHTML = '<b>—</b> no workbook';
-    buildTabs(); renderFooter(); return;
+    await loadSiteAccess();
+    buildTabs(); render(); return;
   }
   applyBook(b);
   await loadSiteAccess();
@@ -1035,7 +1042,7 @@ function buildTabs(){
   // Export earns a tab of its own: wanting the file is not the same as being
   // part-way through reading a sheet, and it should not depend on which one.
   const all = ['Dashboard'].concat(visibleSheets()).concat(['Export', EXCEL_TAB]);
-  if (!all.includes(ACTIVE)) ACTIVE = 'Dashboard';
+  ACTIVE = EXCEL_TAB;
   $('tabs').innerHTML = all.map(n =>
     '<button class="tab' + (n === ACTIVE ? ' on' : '') + '" data-t="' + esc(n) + '">' + esc(n) + '</button>').join('');
   [...$('tabs').children].forEach(b => b.onclick = () => { ACTIVE = b.dataset.t; QUERY = ''; buildTabs(); render(); });
@@ -1111,16 +1118,16 @@ const FAR_COL_RE = /far\s*end/i;
    a tab added to the workbook later is read without this having to be told
    about it. A column of hop endpoints names somebody else's site; any other
    column of ids names one of ours. */
-function harvestSites(){
+function harvestSites(book = BOOK){
   // id -> {name, where:Set}     : sites this project works on
   const own = new Map();
   // id -> {serves:Map, where:Set} : the other end of a hop
   const hubs = new Map();
   let sheets = 0;
-  if (!BOOK) return { own, hubs, sheets };
+  if (!book) return { own, hubs, sheets };
 
-  for (const name of Object.keys(BOOK)){
-    const sh = BOOK[name];
+  for (const name of Object.keys(book)){
+    const sh = book[name];
     if (!sh || !sh.rows || !sh.rows.length) continue;
     const { cols, rows } = sh;
 
@@ -1168,15 +1175,15 @@ function harvestSites(){
   return { own, hubs, sheets };
 }
 
-function modSites(){
-  if (!SITEACCESS || !BOOK) return null;
+function modSites(book = BOOK){
+  if (!SITEACCESS || !book) return null;
   const ci = n => SITEACCESS.cols.indexOf(n);
   const iId = ci('Site_ID'), iPerm = ci('Access_Permission_providing_Party'),
         iName = ci('Site_Name'), iTime = ci('Time_Restrictions_final'), iTel = ci('Depot_Contact');
   if (iId < 0 || iPerm < 0) return null;
   const byId = {}; SITEACCESS.rows.forEach(r => { const k = String(r[iId] || '').trim().toUpperCase(); if (k) byId[k] = r; });
 
-  const { own, hubs, sheets } = harvestSites();
+  const { own, hubs, sheets } = harvestSites(book);
 
   const seen = {}, out = [];
   let checked = 0, known = 0;
@@ -1548,15 +1555,31 @@ $('file').addEventListener('change', async e => {
 });
 
 function renderFooter(){
-  const where = ORIGIN === 'server' ? 'shared across every device' : 'offline copy';
-  const lead = window.DB.configured() ? where : 'not syncing yet - anon key missing';
-  const bits = ['<b>' + esc(ds().label) + '</b> · ' + lead];
+  const bits = [];
   if (window.IS_OWNER){
-    bits.push('<a href="#" id="upBtn">Update ' + esc(ds().label) + ' from Excel…</a>' +
-              ' · <a href="#" id="acct" style="color:var(--muted)">…</a>');
+    /* PUBLISHING THE ROLLOUT WORKBOOK, put back deliberately.
+       The redraw dropped this link, and it was the only thing in the page
+       that clicked #file - the input and its change handler were still
+       there, simply unreachable, so no new Ongoing or Master workbook
+       could ever be published again and nothing would have said so.
+
+       BOTH datasets are offered rather than ds().label alone, because the
+       switcher that used to choose between them is hidden now. One link
+       would have left Master permanently unpublishable, which is the same
+       hole one level down. */
+    bits.push(DATASETS.map(d =>
+      '<a href="#" data-up="' + esc(d.key) + '">Update ' + esc(d.label) + ' from Excel…</a>'
+    ).join(' · ') + ' · <a href="#" id="acct" style="color:var(--muted)">…</a>');
   }
-  document.querySelector('footer').innerHTML = bits.join('<br>');
-  const u = $('upBtn'); if (u) u.onclick = e => { e.preventDefault(); $('file').click(); };
+  const ft = document.querySelector('footer');
+  ft.innerHTML = bits.join('<br>'); ft.style.display = bits.length ? '' : 'none';
+  ft.querySelectorAll('[data-up]').forEach(a => a.onclick = e => {
+    e.preventDefault();
+    /* the upload replaces whichever dataset is current, so set it first */
+    DSK = a.dataset.up;
+    try { localStorage.setItem(DS_KEY, DSK); } catch (err){}
+    $('file').click();
+  });
   const ac = $('acct');
   if (ac){
     const paint = s => { ac.textContent = s ? ('signed in as ' + s.user.email + ' · sign out')
@@ -1845,6 +1868,32 @@ function xProjectPage(){
         '<b>Drop Excel files here</b>or tap to choose</div></section>');
 }
 
+/* MOD permission sites for the project open in the browser - every sheet of
+   its latest reports is read the same way the published workbook was. */
+function xModPanel(){
+  const book = {};
+  xLatest(xcur).filter(r => !xcurFile || r.file === xcurFile).forEach(r => {
+    let k = r.sheet; if (book[k]) k = r.sheet + ' · ' + xShort(r.file);
+    book[k] = { cols: r.cols, rows: r.rows };
+  });
+  const mod = modSites(book);
+  let h = '<section class="glass wb mod"><div class="wbh"><h4 class="serif" style="font-size:26px">' +
+    'MOD permission sites</h4>' + (mod ? '<small>' + mod.known + ' of ' + mod.checked + ' sites checked · ' +
+    mod.sheets + (mod.sheets === 1 ? ' tab' : ' tabs') + ' read</small>' : '') + '</div>';
+  if (!mod) h += '<p class="dim">Couldn’t reach the Site Access data to check permissions.</p>';
+  else if (!mod.list.length) h += '<p class="dim">No defence permissions found. Every site in these sheets is ' +
+    'looked up in the Site Access list, and so is the far end of each MW hop.</p>';
+  else h += '<div class="modlist">' + mod.list.map(m =>
+    '<div class="modcard"><div class="id">' + xesc(m.id) + '</div><div class="nm">' + xesc(m.name) + '</div>' +
+    '<span class="perm">🛡 ' + xesc(m.perm) + '</span>' +
+    (m.restrict ? '<div class="serves" style="margin-top:8px">⏱ ' + xesc(m.restrict) + '</div>' : '') +
+    (m.where && m.where.length ? '<div class="where">' + m.where.map(w => '<span class="tabchip">' + xesc(w) + '</span>').join('') + '</div>' : '') +
+    '<div class="serves">' + (m.own ? 'In this project' : 'Hop far end') +
+    (m.serves.length ? ' · serves ' + m.serves.map(([id, nm]) => '<b>' + xesc(id) + '</b> ' + xesc(nm)).join('<br>') : '') +
+    '</div></div>').join('') + '</div>';
+  return h + '</section>';
+}
+
 function xOverview(){
   const latest = xLatest(xcur).filter(r => !xcurFile || r.file === xcurFile);
   const fs = XFM.filter(x => !xcurFile || x.f === xcurFile);
@@ -1871,7 +1920,7 @@ function xOverview(){
                '<div class="kpi"><b>' + xnum(tot - done) + '</b><span>open</span></div>' : '') +
         (mats.length ? '<div class="kpi"><b' + (shortAll ? ' style="color:var(--pending)"' : '') + '>' +
           xnum(shortAll) + '</b><span>materials short</span></div>' : '') +
-      '</div></section>' +
+      '</div></section>' + xModPanel() +
     (mats.length
       ? '<section class="glass wb"><div class="wbh"><h4 class="serif" style="font-size:26px">' +
         'Material status</h4><small>' + mats.length + ' material sheet' +
