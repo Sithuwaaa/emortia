@@ -343,7 +343,23 @@ console.log('\n--- no ungoverned chrome anywhere ---');
        whattodo's wtd-scene-tint does. */
     goals:    ['g-ink','g-dim','g-faint','g-glass','g-edge','g-inset','g-shadow',
                'g-field','g-chip','crimson','mint','mint-ink','gold',
-               'on-crimson','scene-tint']
+               'on-crimson','scene-tint'],
+    /* Project Update's Excel-browser half names its surface system with a
+       p- prefix, the same shape goals uses, and every one of them is a
+       SURFACE: the glass fill, its edge, the faint hover, the chip, the
+       field inside an input, the near-opaque card behind a sticky strip,
+       and the two shadows. tint and scene are the veil and the image
+       behind both halves, the job whattodo's wtd-scene-tint does.
+
+       --p-acc and --p-accInk are deliberately NOT here: they are
+       var(--accent) and var(--accent-ink), taken from category.css rather
+       than restated, because this tool just moved family and a restated
+       accent is exactly how the Year Goals card ended up painted in
+       another group's colours. p-ink, p-dim and p-acc2 are the design's
+       own and do not match any governed value, so they are declared. */
+    'project-update':
+              ['p-ink','p-dim','p-acc2','p-glass','p-edge','p-faint','p-chip',
+               'p-field','p-solid','p-inset','p-shadow','tint','scene']
   };
   for (const [tool, list] of Object.entries(DECLARED))
     for (const p of list)
