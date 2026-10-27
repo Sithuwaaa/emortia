@@ -43,14 +43,15 @@ const is = (name, got, want) => {
   fail++; console.log('FAIL ' + name + '\n  got  ' + a + '\n  want ' + b);
 };
 
-/* ---- colour ---- */
-const h2 = h => { h = h.replace('#', '').trim();
-  if (h.length === 3) h = h.split('').map(c => c + c).join('');
-  return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); };
-const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-const L = a => 0.2126 * lin(a[0]) + 0.7152 * lin(a[1]) + 0.0722 * lin(a[2]);
-const CR = (a, b) => { const x = L(a), y = L(b);
-  return +(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)).toFixed(2)); };
+/* ---- colour, from the shared harness --------------------------------
+   This file used to carry its own hex reader and its own ratio. So did
+   every ad-hoc measurement in the browser, and one of those read
+   color(srgb 0.93 0.44 0.49) as a 0-to-255 triple twice in three weeks.
+   There is one implementation now, it refuses what it cannot normalise,
+   and tools/_lib/contrast.test.js proves it refuses. */
+const C = require(path.join(__dirname, '..', '_lib', 'contrast.js'));
+const h2 = h => C.parse(h).rgb;
+const CR = C.ratio;
 /* The chip is 10% of the colour over whatever is behind it. Both halves of
    that sentence changed when the panels became glass: the tint dropped from
    15%, and "behind it" stopped being --card.
@@ -75,7 +76,7 @@ const MIX = parseFloat(chipRules[chipRules.length - 1][2]) / 100;
 if (!(MIX > 0 && MIX < 1)) throw new Error('nonsense mix percentage: ' + MIX);
 console.log('the chip, as the stylesheet declares it: color-mix(in ' + MIXSPACE +
             ', <colour> ' + (MIX * 100) + '%, transparent)');
-const chip = (c, card) => CR(c, c.map((v, i) => MIX * v + (1 - MIX) * card[i]));
+const chip = (c, card) => CR(c, C.over(c, MIX, card));
 
 /* ---- the tokens, from BOTH places, in the order the browser resolves them
 

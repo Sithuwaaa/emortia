@@ -1807,3 +1807,85 @@ way to be silently wrong — a comparison that says "nothing changed" when
 something did is the original failure with the sign flipped — to guard a
 case that the filter has already removed. The gate is the fix; equality
 checking is not.
+
+---
+
+## Second instance: a measurement note did not survive being written down
+
+27 October. This is the companion to *"A rule in this file did not stop the
+thing it was written about"*, and it is the same lesson twice in one month:
+**a rule that depends on somebody remembering it is not a rule. Make the
+check refuse.**
+
+### What happened, twice
+
+A CSS colour can serialise as `color(srgb 0.93 0.44 0.49 / 0.55)` — channels
+from 0 to 1, not 0 to 255. Read as a 0-to-255 triple it becomes near-black,
+and a colour three quarters of the way to white measures as almost nothing.
+
+- **~6 October**, the day-pill edge. The figure came out **1.15** when the
+  truth was **2.72**. A colour change was nearly made on the strength of it.
+- **27 October**, the Project Update status chips. Same serialisation, same
+  misread. It produced a confident claim that **ten of eleven colours had
+  never cleared 4.5 on a rendered page, through two previous solves**. They
+  always had: 4.52. The claim was stated plainly, in a report, before it was
+  checked — and withdrawn an hour later.
+
+After the first one, a note was written: *normalise through a canvas*. The
+note was in memory, where it was read at the start of the session. It did not
+stop the second one.
+
+### This is the regex shape
+
+The date regex was broken twice with a comment above it saying not to break
+it. It stopped being broken when `regex.test.js` started asserting on it.
+Nothing about the comment was wrong; comments do not run.
+
+So the note becomes `tools/_lib/contrast.js`, with
+`tools/_lib/contrast.test.js` asserting its refusals. **A contrast harness
+that can be handed `color(srgb …)` and hand back something it treats as
+0-to-255 is the bug.** This one normalises that form, and refuses by name
+anything it cannot normalise — `oklab()`, `oklch()`, `lab()`,
+`color(display-p3 …)` — rather than half-reading it.
+
+The guard that would have caught both: 0-to-255 channels are whole numbers,
+0-to-1 channels are not, so a triple carrying fractions is refused outright
+with the message naming this exact mistake.
+
+`palette.test.js` carried its own hex reader and its own ratio; it uses the
+harness now. There is one implementation.
+
+### The two harness faults belong here too
+
+Both are the measurement equivalent of the collapsed pane that sampled pure
+black: **the harness answers, and the answer is about the wrong thing.**
+
+1. **A shared canvas kept its previous `fillStyle`.** Assigning an
+   unparseable colour to `ctx.fillStyle` is a silent no-op — the old colour
+   stays — so a rejected value came back as whatever was measured last.
+   White-on-navy measured **1.08**. The probe takes a fresh context per call
+   and asserts the assignment was accepted.
+
+2. **A run read computed styles across a theme switch.** It set
+   `data-theme` and read before the style recalculation landed, so it
+   reported dark's accent in light and light's in dark — the values were
+   *swapped*, which is what gave it away. `withTheme()` flushes, waits two
+   frames, and then requires a witness value to have changed; a theme that
+   did not take is refused instead of measured.
+
+Proved by breaking, five times: unscaled `color(srgb …)`; fractional
+channels accepted; a refused `fillStyle` unnoticed; a theme that never
+landed accepted; unknown serialisations given a silent default. Each caught
+by the assertions written for it.
+
+### The standing rule
+
+**No ad-hoc contrast arithmetic.** Not in a test, not in a `javascript_tool`
+call, not in a one-off probe. If a number is going to be quoted in a report
+or used to justify changing a colour, it comes from the harness — because
+the harness refuses, and a person reading a note does not.
+
+And the smaller discipline underneath it, which is what actually failed:
+**a measurement is not a finding until the harness that produced it has been
+checked against a case whose answer is already known.** Black on white is 21.
+If that does not come back 21, nothing else from that harness counts.
