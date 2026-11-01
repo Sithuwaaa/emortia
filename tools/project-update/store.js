@@ -130,6 +130,7 @@
              uploaded: r.uploaded, n_rows: r.rows ? r.rows.length : (r.n_rows || 0),
              n_cols: r.cols ? r.cols.length : (r.n_cols || 0),
              kind: r.kind || 'list', pct: r.pct == null ? null : r.pct,
+             n_done: r.n_done == null ? null : r.n_done,
              items: r.items == null ? null : r.items,
              short: r.short == null ? null : r.short };
   }
@@ -196,7 +197,8 @@
       return (r.rows || []).map(function (row) {
         return { id: row.id, project_id: row.project_id, file: row.file, sheet: row.sheet,
                  uploaded: +new Date(row.uploaded), n_rows: row.n_rows, n_cols: row.n_cols,
-                 kind: row.kind, pct: row.pct, items: row.items, short: row.short };
+                 kind: row.kind, pct: row.pct, n_done: row.n_done,
+                 items: row.items, short: row.short };
       });
     });
   }
@@ -258,7 +260,7 @@
         if (!p) return false;
         p.reports = (p.reports || []).filter(function (x) { return x.id !== r.id; });
         p.reports.push({ id: r.id, file: r.file, sheet: r.sheet, uploaded: r.uploaded,
-          kind: r.kind, pct: r.pct, items: r.items, short: r.short,
+          kind: r.kind, pct: r.pct, n_done: r.n_done, items: r.items, short: r.short,
           cols: (r.payload && r.payload.cols) || [], rows: (r.payload && r.payload.rows) || [] });
         p.updated = Date.now();
         return local.put(p).then(function () { return true; });
@@ -271,6 +273,28 @@
     if (!remoteReady()) return local.del(id).then(function () { return true; })
       .catch(function () { return false; });
     return window.DB.puDeleteProject(id).then(function () { return true; });
+  }
+
+  /* Removing sheets - a whole file's worth, or one. This exists because
+     the tool was calling window.DB.puDeleteReports directly for a while,
+     which is a hole straight through the boundary this file is: the one
+     thing nothing outside here is supposed to do is know that a database
+     is involved. merge.test.js caught it. */
+  function removeReports(ids) {
+    var keep = (ids || []).filter(Boolean);
+    if (!keep.length) return Promise.resolve(true);
+    if (!remoteReady()) {
+      return local.all().then(function (rows) {
+        var touched = [];
+        (rows || []).forEach(function (p) {
+          var before = (p.reports || []).length;
+          p.reports = (p.reports || []).filter(function (r) { return keep.indexOf(r.id) < 0; });
+          if (p.reports.length !== before) { p.updated = Date.now(); touched.push(p); }
+        });
+        return Promise.all(touched.map(function (p) { return local.put(p); }));
+      }).then(function () { return true; }).catch(function () { return false; });
+    }
+    return window.DB.puDeleteReports(keep).then(function () { return true; });
   }
 
   /* ---- the prune, written and not running ----------------------------
@@ -334,6 +358,7 @@
     use: use, syncing: syncing,
     list: list, reports: reports, payload: payload, sites: sites,
     saveProject: saveProject, saveReport: saveReport, removeProject: removeProject,
+    removeReports: removeReports,
     latestOf: latestOf, previousOf: previousOf, cardOf: cardOf, metaOf: metaOf,
     stale: stale, sweep: sweep, watch: watch,
     KEEP_VERSIONS: KEEP_VERSIONS

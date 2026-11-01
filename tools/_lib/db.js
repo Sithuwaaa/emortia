@@ -537,7 +537,7 @@
   /* A project page: which sheets exist and what their tiles say. Still no
      payload - and `sites` only when the MOD panel asks for it. */
   const PU_REP_META  = ['id','project_id','file','sheet','uploaded',
-                        'n_rows','n_cols','kind','pct','items','short'].join(',');
+                        'n_rows','n_cols','kind','pct','n_done','items','short'].join(',');
 
   async function puProjects(){
     const c = await client(); if (!c) return { rows: [], error: 'offline' };
@@ -605,6 +605,7 @@
       n_rows: r.n_rows | 0, n_cols: r.n_cols | 0,
       kind: r.kind || 'list',
       pct: r.pct == null ? null : (r.pct | 0),
+      n_done: r.n_done == null ? null : (r.n_done | 0),
       items: r.items == null ? null : (r.items | 0),
       short: r.short == null ? null : (r.short | 0),
       payload: r.payload || {}

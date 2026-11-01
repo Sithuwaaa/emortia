@@ -57,12 +57,26 @@ create table if not exists public.pu_reports (
   n_cols      integer not null default 0,
   kind        text    not null default 'list',   -- mat | trk | list
   pct         integer,
+  -- THE EXACT DONE COUNT, not re-derived from pct.
+  -- The overview and the tracker tile both print "N done / N open", and
+  -- round(pct * n_rows / 100) is not that number: at 2,627 rows a
+  -- percentage rounded to a whole number is worth 13 rows of slack, so
+  -- the count came back one or two different from the one the sheet
+  -- actually has. A displayed figure that drifts because it was
+  -- reconstituted from a rounded one is a bug, so the count is stored.
+  n_done      integer,
   items       integer,
   short       integer,
   -- THE ONLY BIG COLUMN IN EITHER TABLE. { cols: [...], rows: [[...]] }.
   -- Selected by id, when a sheet is opened, and at no other time.
   payload     jsonb not null default '{}'::jsonb
 );
+
+-- n_done was added to this file after it was written and before it was
+-- first run, so a table created by the earlier version would not have it
+-- and `create table if not exists` above would not add it. Re-running
+-- this migration fixes that case.
+alter table public.pu_reports add column if not exists n_done integer;
 
 create index if not exists pu_reports_project_idx on public.pu_reports (project_id);
 create index if not exists pu_reports_latest_idx  on public.pu_reports (project_id, file, sheet, uploaded desc);

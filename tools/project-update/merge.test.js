@@ -84,8 +84,27 @@ is('renderDashboard exists too',         /function renderDashboard\(\)/.test(SRC
    the browser half's now, reading the uploaded project's own sheets. */
 is('the browser half has a MOD panel',   /function xModPanel\(\)/.test(SRC), true);
 is('and the overview actually calls it', /'<\/div><\/section>' \+ xModPanel\(\)/.test(SRC), true);
-is('it reads whatever book it is handed', /function modSites\(book = BOOK\)/.test(SRC), true);
+is('it reads whatever book it is handed',
+   /function modSites\(book = BOOK, harvest = null\)/.test(SRC), true);
 is('and so does the site harvest',        /function harvestSites\(book = BOOK\)/.test(SRC), true);
+/* and the browser half hands it a stored harvest rather than a book of
+   rows, which is what keeps opening a project off the payloads */
+is('the browser half passes a harvest, not rows', /modSites\(null, xsites\)/.test(SRC), true);
+is('the harvest is computed at upload',   /function xHarvestOf\(/.test(SRC), true);
+is('and rebuilt into the Maps modSites wants', /function xHarvestBack\(/.test(SRC), true);
+
+/* ---- 1d. a displayed count is stored, not reconstituted --------------
+   The overview and the tracker tile both print "N done / N open". The
+   first version of the narrowing recovered that count from the stored
+   percentage - round(pct * n_rows / 100) - which at 2,627 rows is worth
+   about 13 rows of slack, so the figure came back one or two different
+   from the one the sheet has. A number that drifts because it was
+   rebuilt from a rounded one is a bug, and this is the shape of it. */
+is('the exact done count is stored', /n_done/.test(SRC), true);
+is('and nothing rebuilds a count out of a percentage',
+   /Math\.round\(\s*(m\.)?pct\s*\*\s*m\.n_rows\s*\/\s*100\s*\)/.test(SRC), false);
+is('the column exists in the migration',
+   /n_done\s+integer/.test(fs.readFileSync(path.join(ROOT, 'supabase', '047_project_update_projects.sql'), 'utf8')), true);
 
 /* ---- 1c. publishing the rollout workbook is still reachable ----------
    THIS IS A REGRESSION THAT ALREADY HAPPENED ONCE, which is why it has an
@@ -117,23 +136,43 @@ is('and the toast is still gated on a real event',
 is('the tool is still shared with the team',
    /tool:project-update'[^}]*tier:'tooway'/.test(ACCESS), true);
 
-/* ---- 3. the browser half is local, and stays local --------------------
-   The decision, asserted rather than written down and forgotten: a workbook
-   dropped into the browser half goes to IndexedDB on that device. If this
-   ever has to change it is a deliberate call with an egress bill attached,
-   and this assertion is where that call gets made. */
+/* ---- 3. the browser half reaches storage through ONE door ------------
+
+   THIS ASSERTION WAS REVERSED ON 1 NOVEMBER, and the old wording is kept
+   here rather than deleted because the reversal is the point.
+
+   It used to read "the browser half never goes through the database",
+   and that was the right thing to assert while the projects were local:
+   it was a decision with an egress bill attached, and the bill had just
+   been paid once. The projects are synced now - a project made on the
+   laptop has to exist on the phone - so the question changed.
+
+   What replaces it is narrower and harder to get wrong by accident. The
+   browser half must reach storage ONLY through PUStore. Not window.DB,
+   not indexedDB, not localStorage. That boundary is why Year Goals went
+   local-to-table without a rewrite, and it is the thing that makes the
+   NEXT change cheap.
+
+   It caught a real hole the hour it was written: the two delete paths
+   were calling window.DB.puDeleteReports directly.
+
+   What stops the sync becoming last month's bill is not here. It is
+   tools/project-update/lazy.test.js, which watches what each read ASKS
+   the server for and fails if opening the list names a payload. */
 const xlStart = SRC.indexOf('THE EXCEL BROWSER - the second half');
 is('the browser half was found', xlStart > 0, true);
 const xlSrc = SRC.slice(xlStart, SRC.indexOf('/* ---------- render ---------- */'));
 is('it is substantial enough to be the real thing', xlSrc.length > 8000, true);
-is('the browser half never goes through the database',
-   (xlSrc.match(/window\.DB\./g) || []), []);
-is('it keeps its workbooks in IndexedDB',
-   /indexedDB\.open\('emortia_project_update'/.test(xlSrc), true);
+is('THE BROWSER HALF TALKS TO NOTHING BUT PUStore',
+   (xlSrc.match(/window\.DB\.|indexedDB\.|localStorage\./g) || []), []);
+is('and it does talk to PUStore',  /PUStore\./.test(xlSrc), true);
+is('store.js is loaded by the page', /<script src="store\.js"><\/script>/.test(SRC), true);
+is('the local fallback moved into the store rather than vanishing',
+   /indexedDB\.open\(DB_NAME/.test(fs.readFileSync(path.join(__dirname, 'store.js'), 'utf8')), true);
 
 /* and its names cannot shadow the dashboard's, which is the other way one
    half silently breaks the other */
-for (const [mine, theirs] of [['XDB', 'DB'], ['xParseSheet', 'parseSheet'], ['xLoad', 'load']]) {
+for (const [mine, theirs] of [['xParseSheet', 'parseSheet'], ['xLoad', 'load']]) {
   is('the browser half declares ' + mine + ', not a second ' + theirs,
      new RegExp('(const|function)\\s+' + mine + '\\b').test(xlSrc), true);
   is('and does not redeclare ' + theirs,

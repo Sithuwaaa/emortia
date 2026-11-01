@@ -42,6 +42,7 @@
 <script src="../_lib/access.js"></script>
 <script>Access.protect({ owner: true, feature: 'tool:project-update' });</script>
 <script src="../_lib/authgate.js"></script>
+<script src="store.js"></script>
 <style>
   :root{
     /* teal - the site's Tools colour; this is the flagship tool */
@@ -1175,15 +1176,25 @@ function harvestSites(book = BOOK){
   return { own, hubs, sheets };
 }
 
-function modSites(book = BOOK){
-  if (!SITEACCESS || !book) return null;
+/* A SECOND WAY IN, for a caller that has the harvest but not the rows.
+
+   harvestSites reads every row of every sheet to find site ids. The
+   dashboard can afford that - its workbook is already in memory. The
+   Excel browser cannot: its sheets live in pu_reports.payload, and
+   pulling them back to draw a permission panel is the select('*') shape.
+
+   So the browser half computes the harvest once at upload time, stores
+   it on the project row (2.7 kB against 30 kB of rows), and hands it in
+   here. `book` is then unused and may be null; pass one or the other. */
+function modSites(book = BOOK, harvest = null){
+  if (!SITEACCESS || !(book || harvest)) return null;
   const ci = n => SITEACCESS.cols.indexOf(n);
   const iId = ci('Site_ID'), iPerm = ci('Access_Permission_providing_Party'),
         iName = ci('Site_Name'), iTime = ci('Time_Restrictions_final'), iTel = ci('Depot_Contact');
   if (iId < 0 || iPerm < 0) return null;
   const byId = {}; SITEACCESS.rows.forEach(r => { const k = String(r[iId] || '').trim().toUpperCase(); if (k) byId[k] = r; });
 
-  const { own, hubs, sheets } = harvestSites(book);
+  const { own, hubs, sheets } = harvest || harvestSites(book);
 
   const seen = {}, out = [];
   let checked = 0, known = 0;
@@ -1624,18 +1635,11 @@ function renderFooter(){
    IndexedDB database name), a parseSheet and a load; shadowing any of them
    would break the half that works, and it would break it silently.
    ============================================================ */
-const XDB = (() => {
-  let p; const open = () => p || (p = new Promise((res, rej) => {
-    const r = indexedDB.open('emortia_project_update', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('projects', { keyPath:'id' });
-    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
-  }));
-  const tx = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => {
-    const t = db.transaction('projects', mode), s = t.objectStore('projects'); const out = fn(s);
-    t.oncomplete = () => res(out && out.result); t.onerror = () => rej(t.error); }); };
-  return { all: () => tx('readonly', s => s.getAll()), put: v => tx('readwrite', s => s.put(v)),
-           del: id => tx('readwrite', s => s.delete(id)) };
-})();
+/* The IndexedDB wrapper that used to live here has moved into store.js,
+   where it is the offline fallback rather than the only option. Nothing
+   in this page talks to storage directly any more - that is the whole
+   point of the boundary, and it is why swapping local for a table was
+   one file rather than every call site. */
 
 /* the dashboard's esc leaves the apostrophe alone, which is fine for its own
    markup; this half writes values into single-quoted contexts too */
@@ -1646,6 +1650,9 @@ const xwhen = t => new Date(t).toLocaleDateString('en-GB', { day:'numeric', mont
 const xuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 let XP = [], xcur = null, xrep = null, xcurFile = null, xready = false;
+/* the sheet one version back, fetched beside the open one, and the
+   project site harvest rebuilt from its stored form */
+let xrepPrev = null, xsites = null;
 const XV = { q:'', filters:[], sort:null, dir:1, limit:150 };
 
 const XDONE = /\b(done|complete[d]?|finish(ed)?|on[\s-]?air|closed|integrated|accepted|ready|handed[\s-]?over|commissioned|pat\s?ok|yes|ok)\b/i;
@@ -1765,11 +1772,70 @@ function xMatCalc(r){
 const xKindOf = r => xMatInfo(r) ? 'mat' : xStatusOf(xprof(r)) ? 'trk' : 'list';
 const XKIND = { mat:'Material', trk:'Tracker', list:'List' };
 
+/* THE CARD'S NUMBERS, READ RATHER THAN COMPUTED.
+
+   This used to profile every row of every sheet of a project to print
+   "30% done" on a tile the size of a postcard. With the projects local
+   that was merely wasteful; synced it is the select('*') shape - 88 kB
+   fetched to draw 278 B, and widening every month because the tool keeps
+   all history and the cards never do.
+
+   The three numbers are columns now, written once at upload time by
+   xSummarise below. A card costs one row of pu_projects and no payload
+   at all, which tools/project-update/lazy.test.js asserts by watching
+   what the client is ASKED for. */
 function xProjStats(p){
-  const latest = xLatest(p); let done = 0, tot = 0;
-  latest.forEach(r => { const st = xStatusOf(xProfile(r)); if (st){ done += xDoneCount(st); tot += r.rows.length; } });
-  return { reports: latest.length, files: new Set(p.reports.map(r => r.file)).size,
-           pct: tot ? Math.round(done / tot * 100) : null };
+  return { reports: p.n_sheets | 0, files: p.n_files | 0,
+           pct: p.pct == null ? null : p.pct };
+}
+
+/* What a sheet's tile shows, worked out once from the rows while they are
+   in memory at upload, so nothing has to fetch them again to draw it.
+
+   pct means "the percentage this sheet shows": delivered for a material
+   sheet, done for a tracker, null for a plain list - which is exactly
+   how xReportView already chose between them.
+
+   `short` covers both the material tile's branches. When deliv is null
+   there is no req+rec pair, so xMatCalc's o.short falls through to
+   o.out and shortN and outN are the same number. The one case where
+   they part is a required column that sums to zero, which would show
+   "0 short" instead of "n out of stock". Noted rather than carried into
+   a column nobody else needs. */
+function xSummarise(r){
+  const mc = xMatCalc(r);
+  if (mc) return { kind:'mat', pct: mc.deliv, n_done: null, items: mc.items.length, short: mc.shortN };
+  const st = xStatusOf(xProfile(r));
+  if (st){ const done = xDoneCount(st);
+    return { kind:'trk', n_done: done,
+             pct: r.rows.length ? Math.round(done / r.rows.length * 100) : null,
+             items: null, short: null }; }
+  return { kind:'list', n_done: null, pct: null, items: null, short: null };
+}
+
+/* The harvest, stored instead of the rows it was read from. Maps and Sets
+   do not survive JSON, so they are written as pairs and rebuilt on the
+   way back - and rebuilt into exactly the shapes modSites expects, which
+   is the only contract that matters here. */
+function xHarvestOf(reports){
+  const book = {};
+  reports.forEach(r => { let k = r.sheet; if (book[k]) k = r.sheet + ' · ' + xShort(r.file);
+    book[k] = { cols: r.cols, rows: r.rows }; });
+  const h = harvestSites(book);
+  return {
+    sheets: h.sheets,
+    own: [...h.own].map(([id, o]) => [id, { n: o.name, w: [...o.where] }]),
+    hubs: [...h.hubs].map(([id, o]) => [id, { s: [...o.serves], w: [...o.where] }])
+  };
+}
+function xHarvestBack(stored){
+  if (!stored || !stored.own) return null;
+  return {
+    sheets: stored.sheets | 0,
+    own: new Map((stored.own || []).map(([id, o]) => [id, { name: o.n, where: new Set(o.w || []) }])),
+    hubs: new Map((stored.hubs || []).map(([id, o]) =>
+      [id, { serves: new Map(o.s || []), where: new Set(o.w || []) }]))
+  };
 }
 
 /* ---- importing ---- */
@@ -1780,6 +1846,10 @@ async function xImport(files){
   busy.innerHTML = '<div>Reading workbook…</div>'; document.body.appendChild(busy);
   let added = 0, firstId = null;
   try {
+    /* THE ONE MOMENT THE ROWS ARE IN MEMORY FOR FREE. Every number any
+       later view needs is worked out here, so no view ever has to fetch
+       a sheet back to draw a tile. */
+    const fresh = [];
     for (const f of files){
       const wb = XLSX.read(await f.arrayBuffer(), { type:'array', cellDates:true });
       for (const sn of wb.SheetNames){
@@ -1787,10 +1857,40 @@ async function xImport(files){
           { header:1, raw:false, defval:'', dateNF:'yyyy-mm-dd', blankrows:false });
         const R = xParseSheet(aoa); if (!R || !R.rows.length) continue;
         const r = { id: xuid(), file: f.name, sheet: sn, uploaded: Date.now(), cols: R.cols, rows: R.rows };
-        xcur.reports.push(r); added++; firstId = firstId || r.id;
+        const s = xSummarise(r);
+        Object.assign(r, s);
+        fresh.push(r); added++; firstId = firstId || r.id;
+        await PUStore.saveReport({ id: r.id, project_id: xcur.id, file: r.file, sheet: r.sheet,
+          uploaded: r.uploaded, n_rows: r.rows.length, n_cols: r.cols.length,
+          kind: s.kind, pct: s.pct, n_done: s.n_done, items: s.items, short: s.short,
+          payload: { cols: r.cols, rows: r.rows } });
       }
     }
-    xcur.updated = Date.now(); await XDB.put(xcur);
+    if (added){
+      /* the metadata the views run on, with the new sheets folded in */
+      xcur.reports = (xcur.reports || []).concat(fresh.map(r => ({
+        id: r.id, project_id: xcur.id, file: r.file, sheet: r.sheet, uploaded: r.uploaded,
+        n_rows: r.rows.length, n_cols: r.cols.length,
+        kind: r.kind, pct: r.pct, n_done: r.n_done, items: r.items, short: r.short })));
+
+      /* the harvest is over the WHOLE project, so any sheet already
+         stored has to come back for it - the one place the browser half
+         fetches payloads it is not showing, and it happens on upload
+         rather than on open */
+      const latest = xLatest(xcur);
+      const withRows = [];
+      for (const m of latest){
+        const have = fresh.find(r => r.id === m.id);
+        if (have){ withRows.push(have); continue; }
+        const pay = await PUStore.payload(m.id);
+        if (pay) withRows.push({ file: m.file, sheet: m.sheet, cols: pay.cols, rows: pay.rows });
+      }
+      xcur.sites = xHarvestOf(withRows);
+      xsites = xHarvestBack(xcur.sites);
+
+      xcur.updated = Date.now();
+      await PUStore.saveProject(xProjectRow(xcur));
+    }
   } catch(e){ console.error(e); toast('Could not read that file'); }
   busy.remove();
   if (added){
@@ -1802,8 +1902,42 @@ async function xImport(files){
   } else toast('No data sheets found in that file');
 }
 
+/* the project row as the store wants it - the card's numbers recomputed
+   from the metadata, never from rows */
+function xProjectRow(p){
+  const latest = xLatest(p);
+  let done = 0, tot = 0;
+  latest.forEach(m => { if (m.kind === 'trk' && m.n_done != null){
+    done += m.n_done; tot += m.n_rows; } });
+  return { id: p.id, name: p.name, client: p.client || '', created_at: p.created_at,
+    n_files: [...new Set((p.reports || []).map(r => r.file))].length,
+    n_sheets: latest.length,
+    n_rows: latest.reduce((a, m) => a + (m.n_rows | 0), 0),
+    pct: tot ? Math.round(done / tot * 100) : null,
+    sites: p.sites || {} };
+}
+
 /* ---- the views, each returning markup for #view ---- */
-async function xLoad(){ XP = (await XDB.all()).sort((a, b) => (b.updated || 0) - (a.updated || 0)); xready = true; }
+
+/* OPENING THE TOOL. Cards and nothing else - no project's sheets, no
+   sheet's rows. The whole list is 278 B on the wire where fetching
+   everything would be 88 kB. */
+async function xLoad(){
+  try { XP = await PUStore.list(); }
+  catch (e){ console.error(e); XP = []; }
+  xready = true;
+}
+
+/* OPENING A PROJECT. Its sheets' metadata and its stored site harvest,
+   still no rows. */
+async function xOpenProjectData(id){
+  const card = XP.find(p => p.id === id);
+  if (!card) return null;
+  const [reports, stored] = await Promise.all([PUStore.reports(id), PUStore.sites(id)]);
+  const p = Object.assign({}, card, { reports: reports || [], sites: stored || {} });
+  xsites = xHarvestBack(stored);
+  return p;
+}
 
 function xHome(){
   return '<div class="hero"><div><h2>Ongoing <em>Projects</em></h2>' +
@@ -1871,12 +2005,12 @@ function xProjectPage(){
 /* MOD permission sites for the project open in the browser - every sheet of
    its latest reports is read the same way the published workbook was. */
 function xModPanel(){
-  const book = {};
-  xLatest(xcur).filter(r => !xcurFile || r.file === xcurFile).forEach(r => {
-    let k = r.sheet; if (book[k]) k = r.sheet + ' · ' + xShort(r.file);
-    book[k] = { cols: r.cols, rows: r.rows };
-  });
-  const mod = modSites(book);
+  /* The harvest was computed at upload and stored on the project row.
+     This used to rebuild a book of every sheet's rows to find site ids,
+     which is 30 kB of payload fetched to draw a permission list that is
+     2.7 kB. The panel is whole-project, so the per-file filter no longer
+     applies to it - the harvest covers every sheet either way. */
+  const mod = modSites(null, xsites);
   let h = '<section class="glass wb mod"><div class="wbh"><h4 class="serif" style="font-size:26px">' +
     'MOD permission sites</h4>' + (mod ? '<small>' + mod.known + ' of ' + mod.checked + ' sites checked · ' +
     mod.sheets + (mod.sheets === 1 ? ' tab' : ' tabs') + ' read</small>' : '') + '</div>';
@@ -1897,12 +2031,15 @@ function xModPanel(){
 function xOverview(){
   const latest = xLatest(xcur).filter(r => !xcurFile || r.file === xcurFile);
   const fs = XFM.filter(x => !xcurFile || x.f === xcurFile);
+  /* every one of these came off a column, not a row. Profiling the
+     sheets here is what made opening a project cost its whole payload. */
   let done = 0, tot = 0, rows = 0;
-  latest.forEach(r => { rows += r.rows.length; const st = xStatusOf(xprof(r));
-    if (st){ done += xDoneCount(st); tot += r.rows.length; } });
+  latest.forEach(m => { rows += m.n_rows | 0;
+    if (m.kind === 'trk' && m.n_done != null){
+      done += m.n_done; tot += m.n_rows | 0; } });
   const pct = tot ? Math.round(done / tot * 100) : null;
-  const mats = latest.map(r => ({ r, c: xMatCalc(r) })).filter(x => x.c);
-  const shortAll = mats.reduce((a, x) => a + x.c.shortN, 0);
+  const mats = latest.filter(m => m.kind === 'mat');
+  const shortAll = mats.reduce((a, m) => a + (m.short | 0), 0);
   return '<div class="content">' +
     '<section class="glass head">' +
       (pct !== null ? '<div class="ring" style="--p:' + pct + '"><div><span><b>' + pct +
@@ -1925,15 +2062,15 @@ function xOverview(){
       ? '<section class="glass wb"><div class="wbh"><h4 class="serif" style="font-size:26px">' +
         'Material status</h4><small>' + mats.length + ' material sheet' +
         (mats.length > 1 ? 's' : '') + '</small></div><div class="tiles">' +
-        mats.map(({ r, c }) => '<button class="tile hue" style="--h:' + xfmeta(r.file).h +
-          '" data-xrep="' + xesc(r.id) + '"><span class="tr"><i class="code">' + xCodeOf(r) + '</i>' +
-          (c.shortN ? '<span class="xtag w">' + c.shortN + ' short</span>'
-                    : '<span class="xtag ok">all in</span>') + '</span><b>' + xesc(r.sheet) + '</b>' +
-          (c.deliv !== null
-            ? '<div class="track"><i style="width:' + c.deliv + '%"></i></div><small>' + c.deliv +
-              '% delivered · ' + xnum(c.items.length) + ' items</small>'
-            : '<small>' + xnum(c.items.length) + ' items' +
-              (c.outN ? ' · ' + c.outN + ' out of stock' : '') + '</small>') +
+        mats.map(m => '<button class="tile hue" style="--h:' + xfmeta(m.file).h +
+          '" data-xrep="' + xesc(m.id) + '"><span class="tr"><i class="code">' + xCodeOf(m) + '</i>' +
+          (m.short ? '<span class="xtag w">' + m.short + ' short</span>'
+                   : '<span class="xtag ok">all in</span>') + '</span><b>' + xesc(m.sheet) + '</b>' +
+          (m.pct !== null
+            ? '<div class="track"><i style="width:' + m.pct + '%"></i></div><small>' + m.pct +
+              '% delivered · ' + xnum(m.items) + ' items</small>'
+            : '<small>' + xnum(m.items) + ' items' +
+              (m.short ? ' · ' + m.short + ' out of stock' : '') + '</small>') +
           '</button>').join('') + '</div></section>'
       : '') +
     fs.map(x => { const rs = xSheetsOf(x.f);
@@ -1945,19 +2082,22 @@ function xOverview(){
           (rs.length > 8 ? '<label class="finder"><span aria-hidden="true">⌕</span>' +
             '<input data-xfind placeholder="Find a sheet"></label>' : '') +
           '<button class="btn sm ghost" data-xdelf="' + xesc(x.f) + '">Remove file</button></div>' +
-        '<div class="tiles">' + rs.map((r, i) => {
-          const k = xKindOf(r), st = k === 'trk' ? xStatusOf(xprof(r)) : null;
-          const d = st ? xDoneCount(st) : 0, p = st ? Math.round(d / r.rows.length * 100) : null;
-          const mc = k === 'mat' ? xMatCalc(r) : null;
-          return '<button class="tile" data-xrep="' + xesc(r.id) + '" data-xname="' +
-            xesc(r.sheet.toLowerCase()) + '"><span class="tr"><i class="code">' + x.L + '·' +
+        '<div class="tiles">' + rs.map((m, i) => {
+          /* kind, pct, items and short are columns on the report row now.
+             Working them out here meant xKindOf and xStatusOf profiling
+             every sheet of the project just to label its tile. */
+          const k = m.kind || 'list';
+          const p = k === 'trk' ? m.pct : null;
+          const d = m.n_done == null ? 0 : m.n_done;
+          return '<button class="tile" data-xrep="' + xesc(m.id) + '" data-xname="' +
+            xesc(m.sheet.toLowerCase()) + '"><span class="tr"><i class="code">' + x.L + '·' +
             xpad(i + 1) + '</i><span class="kind ' + k + '">' + XKIND[k] + '</span></span>' +
-            '<b>' + xesc(r.sheet) + '</b>' +
-            (p !== null ? '<div class="track"><i style="width:' + p + '%"></i></div>' : '') +
-            '<small>' + xnum(r.rows.length) + ' rows' +
-              (p !== null ? ' · ' + p + '% done · ' + xnum(r.rows.length - d) + ' open'
-               : mc ? ' · ' + xnum(mc.items.length) + ' items' + (mc.shortN ? ' · ' + mc.shortN + ' short' : '')
-               : ' · ' + r.cols.length + ' columns') + '</small></button>'; }).join('') +
+            '<b>' + xesc(m.sheet) + '</b>' +
+            (p != null ? '<div class="track"><i style="width:' + p + '%"></i></div>' : '') +
+            '<small>' + xnum(m.n_rows) + ' rows' +
+              (p != null ? ' · ' + p + '% done · ' + xnum(m.n_rows - d) + ' open'
+               : k === 'mat' ? ' · ' + xnum(m.items) + ' items' + (m.short ? ' · ' + m.short + ' short' : '')
+               : ' · ' + m.n_cols + ' columns') + '</small></button>'; }).join('') +
         '</div></section>'; }).join('') +
     '<div class="drop" data-xdrop="1"><b>Add more Excel files</b>' +
       'Drop one or several here, or tap to choose</div></div>';
@@ -2053,9 +2193,16 @@ function xMatDash(c){
 }
 
 function xReportView(){
+  /* xrep carries its payload by the time this runs - xOpenReport fetched
+     it. This is the one view that needs rows, and it needs exactly one
+     sheet's worth: 10.2 kB for the biggest sheet measured. */
   const P_ = xprof(xrep), st = xStatusOf(P_), n = xrep.rows.length, mc = xMatCalc(xrep);
   const done = xDoneCount(st), pct = st ? Math.round(done / n * 100) : null;
-  const prev = xPrevOf(xrep), pst = prev && xStatusOf(xProfile(prev));
+  /* the previous version, for "+3 done since". xrepPrev was fetched
+     alongside, and only when a previous version of this sheet exists -
+     a second payload on a sheet open, never on a list or a project. */
+  const prev = xPrevOf(xrep);
+  const pst = xrepPrev && xrepPrev.rows ? xStatusOf(xProfile(xrepPrev)) : null;
   const pd = pst ? done - xDoneCount(pst) : null;
   const numsK = P_.filter(c => c.isNum && !c.isId && !/^(no|#|s\.?no|sr)/i.test(c.name)).slice(0, 2);
   const rows = xFiltered();
@@ -2121,10 +2268,32 @@ function renderExcel(){
 }
 
 function xResetV(){ XV.q = ''; XV.filters = []; XV.sort = null; XV.dir = 1; XV.limit = 150; }
-function xOpenProject(id){ xcur = XP.find(p => p.id === id); xcurFile = null; xrep = null; xResetV(); render(); }
-function xOpenReport(id){ xrep = xcur.reports.find(r => r.id === id);
-  if (xrep && new Set(xcur.reports.map(r => r.file)).size > 1) xcurFile = xrep.file;
-  xResetV(); render(); window.scrollTo({ top: 0 }); }
+/* Both of these are async now, and that is the lazy fetch. Opening a
+   project pulls metadata; opening a sheet pulls one payload. Neither
+   pulls anything the view it is about to draw does not show. */
+async function xOpenProject(id){
+  xcurFile = null; xrep = null; xrepPrev = null; xResetV();
+  xcur = await xOpenProjectData(id);
+  render();
+}
+async function xOpenReport(id){
+  const meta = (xcur.reports || []).find(r => r.id === id);
+  if (!meta) return;
+  if (new Set(xcur.reports.map(r => r.file)).size > 1) xcurFile = meta.file;
+  xResetV();
+  const pay = await PUStore.payload(id);
+  if (!pay){ toast('That sheet could not be read back'); return; }
+  xrep = Object.assign({}, meta, { cols: pay.cols || [], rows: pay.rows || [] });
+  /* one version back, and only if there is one - the "+N done since"
+     line is the only thing in the tool that reads past the latest */
+  const prevMeta = xPrevOf(xrep);
+  xrepPrev = null;
+  if (prevMeta){
+    const pp = await PUStore.payload(prevMeta.id);
+    if (pp) xrepPrev = Object.assign({}, prevMeta, { cols: pp.cols || [], rows: pp.rows || [] });
+  }
+  render(); window.scrollTo({ top: 0 });
+}
 function xStep(d){ if (!xrep) return; const s = xSheetsOf(xrep.file);
   const i = s.findIndex(r => r.sheet.toLowerCase() === xrep.sheet.toLowerCase());
   const nx = s[i + d]; if (nx) xOpenReport(nx.id); }
@@ -2150,12 +2319,17 @@ function xSheetEditor(p){
   const d = v.querySelector('[data-xdelp]');
   if (d) d.onclick = async () => {
     if (!confirm('Delete “' + p.name + '” and all its reports?')) return;
-    await XDB.del(p.id); await xLoad(); close(); xcur = null; xrep = null; render(); toast('Project deleted'); };
+    await PUStore.removeProject(p.id); await xLoad(); close();
+    xcur = null; xrep = null; xrepPrev = null; xsites = null; render(); toast('Project deleted'); };
   f.onsubmit = async e => { e.preventDefault(); const name = f.name.value.trim(); if (!name) return;
     if (isNew){ const np = { id: xuid(), name, client: f.client.value.trim(),
         created: Date.now(), updated: Date.now(), reports: [] };
-      await XDB.put(np); await xLoad(); close(); xOpenProject(np.id); }
-    else { p.name = name; p.client = f.client.value.trim(); await XDB.put(p); await xLoad();
+      await PUStore.saveProject({ id: np.id, name: np.name, client: np.client,
+        created_at: new Date(np.created).toISOString(), n_files: 0, n_sheets: 0, n_rows: 0,
+        pct: null, sites: {} });
+      await xLoad(); close(); xOpenProject(np.id); }
+    else { p.name = name; p.client = f.client.value.trim();
+      await PUStore.saveProject(xProjectRow(p)); await xLoad();
       xcur = XP.find(x => x.id === p.id); xrep = xrep && xcur.reports.find(r => r.id === xrep.id);
       close(); render(); } };
 }
@@ -2229,7 +2403,10 @@ document.addEventListener('click', async e => {
     XV.filters = XV.filters.filter(f => f.j !== j);
     if (!had) XV.filters.push({ j, val:d.xmi }); XV.limit = 150; render(); }
   else if (d.xdelf){ if (!confirm('Remove ' + d.xdelf + ' and its sheets?')) return;
-    xcur.reports = xcur.reports.filter(r => r.file !== d.xdelf); await XDB.put(xcur);
+    const goneF = xcur.reports.filter(r => r.file === d.xdelf).map(r => r.id);
+    xcur.reports = xcur.reports.filter(r => r.file !== d.xdelf);
+    await PUStore.removeReports(goneF);
+    await PUStore.saveProject(xProjectRow(xcur));
     xrep = null; xcurFile = null; render(); toast('File removed'); }
   else if (d.xfj){ const j = +d.xfj, val = d.xfv;
     const k = XV.filters.findIndex(f => f.j === j && f.val === val);
@@ -2243,7 +2420,10 @@ document.addEventListener('click', async e => {
   else if (d.xmore){ XV.limit += 300; render(); }
   else if (d.xexp) xExportView();
   else if (d.xdelr){ if (!confirm('Remove “' + xrep.sheet + '” from ' + xcur.name + '?')) return;
-    xcur.reports = xcur.reports.filter(r => r.id !== xrep.id); await XDB.put(xcur);
+    const goneR = xrep.id;
+    xcur.reports = xcur.reports.filter(r => r.id !== goneR);
+    await PUStore.removeReports([goneR]);
+    await PUStore.saveProject(xProjectRow(xcur));
     xrep = null; xResetV(); render(); }
 });
 document.addEventListener('keydown', e => {
@@ -2288,6 +2468,21 @@ function render(){
   renderFooter();
 }
 load();
+/* WHICH BACKEND. Remote when the database is configured and reachable;
+   the IndexedDB copy otherwise, which is what a warehouse counter with
+   no signal gets. store.js is the only thing that knows the difference. */
+PUStore.use(window.DB && window.DB.configured && window.DB.configured() ? 'remote' : 'local');
+
+/* STEP 3, ON pu_projects ONLY. A pu_reports row carries the payload and
+   oversized realtime payloads are dropped silently. When a project row
+   moves, refetch the list - and the open project's metadata with it -
+   but never a payload. */
+PUStore.watch(async (e) => {
+  await xLoad();
+  if (xcur){ const again = await xOpenProjectData(xcur.id); if (again) xcur = again; }
+  if (ACTIVE === EXCEL_TAB) render();
+  if (e && e.real) toast('Projects updated from another device', 3600);
+});
 /* Read what is on this device alongside the published workbook, and repaint
    only if the browser tab is the one being looked at. A failed read leaves
    xready true so the tab says what it found rather than spinning. */
