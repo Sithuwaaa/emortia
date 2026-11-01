@@ -115,7 +115,14 @@
       api.delete = () => { st.op = 'delete'; return self(); };
 
       function run() {
-        const b = budget({ table, op: st.op || 'select', filters: st.filters.slice() });
+        /* cols is recorded, and still deliberately NOT applied - a fake that
+           filtered columns would hide the bug reachable.js exists for. What
+           it lets a test ask is the other question: not "did the row come
+           back whole" but "WHAT DID THIS CALL ASK FOR". A list view that
+           asks for a megabyte-wide payload column is the wh24 select('*')
+           shape, and it is invisible unless the request is recorded. */
+        const b = budget({ table, op: st.op || 'select', cols: st.cols,
+                           filters: st.filters.slice() });
         if (b.kind === 'timeout') return stall();
         if (b.kind === 'fail') {
           if (b.thrown) return Promise.reject(new Error(b.message));

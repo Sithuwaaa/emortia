@@ -510,6 +510,141 @@
     return () => { try { c.removeChannel(ch); } catch (e) {} };
   }
 
+
+  /* ------------------------------------------- Project Update: projects
+
+     The Excel browser's projects, synced. Two tables and three reads, and
+     the whole point of the shape is WHICH READ RUNS WHEN.
+
+     Measured on four real workbooks before any of this existed:
+
+       every sheet of every project     776 kB      88 kB on the wire
+       one card on the project list     165 B      141 B on the wire
+
+     So puProjects() - the list - must never name the payload column, and
+     puPayload() is the only function in this file that does. The gap
+     between those two reads is 325x today and grows every month, because
+     the tool keeps every upload as history and the cards never do.
+
+     wh24Load used to say select('*') and it cost a gigabyte in a day. The
+     column lists below are not an optimisation; they are the feature. */
+  const PU_PROJ = 'pu_projects', PU_REP = 'pu_reports';
+
+  /* Everything a project card draws, and nothing else. No join to reports:
+     the counts and the percentage are columns, written at upload time. */
+  const PU_PROJ_COLS = ['id','name','client','created_at','updated_at',
+                        'n_files','n_sheets','n_rows','pct'].join(',');
+  /* A project page: which sheets exist and what their tiles say. Still no
+     payload - and `sites` only when the MOD panel asks for it. */
+  const PU_REP_META  = ['id','project_id','file','sheet','uploaded',
+                        'n_rows','n_cols','kind','pct','items','short'].join(',');
+
+  async function puProjects(){
+    const c = await client(); if (!c) return { rows: [], error: 'offline' };
+    const { data, error } = await c.from(PU_PROJ).select(PU_PROJ_COLS)
+      .order('updated_at', { ascending: false });
+    if (error) return { rows: [], error:
+      /does not exist|schema cache|could not find the table/i.test(error.message)
+        ? 'Projects are not switched on yet – run migration 047.'
+      : error.message };
+    return { rows: data || [], error: null };
+  }
+
+  /* The report list for one project. Metadata only; opening a SHEET is a
+     separate call, because one sheet measured 141 kB on its own. */
+  async function puReports(projectId){
+    const c = await client(); if (!c) return { rows: [], error: 'offline' };
+    const { data, error } = await c.from(PU_REP).select(PU_REP_META)
+      .eq('project_id', projectId)
+      .order('uploaded', { ascending: false });
+    if (error) return { rows: [], error: error.message };
+    return { rows: data || [], error: null };
+  }
+
+  /* THE LAZY FETCH. The only read in db.js that names `payload`, by one id
+     at a time. If a caller ever needs many at once, it still comes through
+     here and the cost is visible at the call site rather than hidden in a
+     list. */
+  async function puPayload(reportId){
+    const c = await client(); if (!c) return { payload: null, error: 'offline' };
+    const { data, error } = await c.from(PU_REP).select('id,payload')
+      .eq('id', reportId).maybeSingle();
+    if (error) return { payload: null, error: error.message };
+    return { payload: data ? data.payload : null, error: null };
+  }
+
+  /* The site harvest the MOD panel reads - its own call, because it is
+     2.7 kB and the project page is 428 B without it. */
+  async function puSites(projectId){
+    const c = await client(); if (!c) return { sites: null, error: 'offline' };
+    const { data, error } = await c.from(PU_PROJ).select('id,sites')
+      .eq('id', projectId).maybeSingle();
+    if (error) return { sites: null, error: error.message };
+    return { sites: data ? data.sites : null, error: null };
+  }
+
+  async function puSaveProject(p){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const row = { id: p.id, name: p.name, client: p.client || '',
+      updated_at: new Date().toISOString(), created_by: s.user.id,
+      n_files: p.n_files | 0, n_sheets: p.n_sheets | 0, n_rows: p.n_rows | 0,
+      pct: p.pct == null ? null : (p.pct | 0), sites: p.sites || {} };
+    if (p.created_at) row.created_at = p.created_at;
+    const { error } = await c.from(PU_PROJ).upsert(row, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  async function puSaveReport(r){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const { error } = await c.from(PU_REP).upsert({
+      id: r.id, project_id: r.project_id, file: r.file, sheet: r.sheet,
+      uploaded: new Date(r.uploaded || Date.now()).toISOString(),
+      n_rows: r.n_rows | 0, n_cols: r.n_cols | 0,
+      kind: r.kind || 'list',
+      pct: r.pct == null ? null : (r.pct | 0),
+      items: r.items == null ? null : (r.items | 0),
+      short: r.short == null ? null : (r.short | 0),
+      payload: r.payload || {}
+    }, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  async function puDeleteProject(id){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    /* pu_reports cascades on the foreign key, so the sheets go with it */
+    const { error } = await c.from(PU_PROJ).delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  async function puDeleteReports(ids){
+    const c = await client(); if (!c) throw new Error('Not connected.');
+    const keep = (ids || []).filter(Boolean);
+    if (!keep.length) return true;
+    const { error } = await c.from(PU_REP).delete().in('id', keep);
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  /* pu_projects ONLY. Never pu_reports - a report row carries the payload,
+     postgres_changes ships the whole row, and Supabase drops oversized
+     payloads without telling anybody. A subscription that silently stops
+     delivering is worse than no subscription, because the tool looks like
+     it is listening. Migration 047 says the same thing beside the
+     publication. */
+  async function puSubscribe(fn){
+    const c = await client(); if (!c) return null;
+    return liveChannel(
+      (hit, status) => c.channel('pu_projects_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: PU_PROJ }, hit)
+        .subscribe(status),
+      fn);
+  }
+
   async function listTodos(){
     const cached = async () => (await cacheGet(TODO_CACHE)) || [];
     const c = await client();
@@ -2445,6 +2580,9 @@
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 goalsLoad: goalsLoad, goalsSave: goalsSave, goalsRemove: goalsRemove,
                 goalsCurrency: goalsCurrency, goalsSubscribe: goalsSubscribe,
+                puProjects, puReports, puPayload, puSites,
+                puSaveProject, puSaveReport, puDeleteProject, puDeleteReports, puSubscribe,
+                PU_PROJ_COLS: PU_PROJ_COLS, PU_REP_META: PU_REP_META,
                 wh24Load, wh24Publish, wh24Mark, wh24Subscribe, wh24Checked, wh24NoteCheck,
                 wh24PutDoc, wh24DocLink, wh24DocPath,
                 lyricList, lyricGet, lyricSave, lyricDelete, lyricUpload, lyricLink, LYRIC_MAX,
