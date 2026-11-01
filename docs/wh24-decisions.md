@@ -1889,3 +1889,105 @@ And the smaller discipline underneath it, which is what actually failed:
 **a measurement is not a finding until the harness that produced it has been
 checked against a case whose answer is already known.** Black on white is 21.
 If that does not come back 21, nothing else from that harness counts.
+
+## A derived figure rendered as a measured one
+
+1 November. This is a third shape, and it is worth separating from the two
+already in this file because the failure is in neither of their places.
+
+- *"A function that knows it failed must say so in what it returns"* is
+  about **information discarded**: the code knew, and dropped it.
+- *"Second instance: a measurement note did not survive being written
+  down"* is about **a check that could not fail**: the harness answered,
+  and the answer was about the wrong thing.
+
+This one is about **output that does not admit what it is**. Nothing was
+discarded and nothing was measured wrongly. A number was *reconstituted*
+from a rounded one and then printed in the same typeface, to the same
+precision, with the same confidence as the real thing.
+
+### What happened
+
+Moving the Excel browser's project list off row data meant the overview
+could no longer count done rows — it has three columns and no rows. The
+first version recovered the count from the stored percentage:
+
+```js
+const done = Math.round(pct * n_rows / 100);
+```
+
+`pct` is a whole-number column. At 2,627 rows one percentage point is
+~26 rows, so the rounding carries about 13 rows of slack. A sheet with
+exactly 1,000 done rows rendered:
+
+```
+998 done / 1,629 open          (the truth: 1,000 / 1,627)
+```
+
+Two off, in a figure nobody has any way to check from the page. The
+tracker tile and the overview both print it. There is no asterisk, no
+"~", no rounding note — **998 was printed exactly as confidently as
+1,000 would have been**, and the only reason it was caught is that the
+true count happened to be a round number and the rendered one was not.
+
+### Why the fix was a stored count and not a wider pct
+
+The obvious repair is a more precise percentage: make `pct` numeric,
+carry two decimals, and the error drops to a fraction of a row.
+
+**That is the worse fix, and it is worse for the reason that matters.**
+A wider `pct` does not remove the drift; it shrinks it until it stops
+being visible. At one decimal place a 2,627-row sheet is out by one row
+at the margins instead of two — still wrong, still printed as exact, and
+now with nothing round-numbered left to notice it against. The bug would
+have survived as a permanent ±1 that reads as a data-entry error rather
+than an arithmetic one.
+
+So `pu_reports` carries `n_done integer` — the count the sheet actually
+has, written at upload time by the same pass that computes `pct`. Nothing
+is derived. Migration 047 gained the column and an idempotent
+`add column if not exists`, because the file had been written and
+circulated before it was first run.
+
+Measured on the rendered page afterwards with the same 2,627-row tracker:
+**1,000 and 1,627, exactly.**
+
+### The standing rule
+
+**A figure that was reconstituted is not the figure.** If the number on
+screen was not the number counted, either store the number counted or
+mark what is on screen as approximate — and prefer the first, because a
+rendered "~998" invites the question "998 of what?" and the honest answer
+is that the page does not know.
+
+The corollary, which is the part that nearly went unlearned: **when a
+derived figure is wrong, do not fix it by deriving it better.** Precision
+and correctness are different axes, and adding precision to a wrong
+derivation removes the evidence rather than the fault.
+
+### What stands guard, and what did not
+
+The count is checked by the assertion written for it, on the rendered
+page, against a known sheet.
+
+`lazy.test.js` did not catch it and could not have — but the reason is
+instructive enough to record. That test reads its column lists out of
+`db.js` rather than restating them, so when `PU_REP_META` was widened for
+`n_done`, **the test widened with it and said nothing.** Reading from the
+source is right for the structural assertions — no `payload`, no
+wildcard, which hold whatever the list contains — and it is exactly wrong
+as a record of what the list is supposed to be. A list that co-varies
+with the thing it checks is the code echoing itself.
+
+It now carries a literal allowlist: a permitted set per read, with one
+line per column saying what draws it. A column `db.js` asks for that is
+not in its set fails, so adding `n_done` would have cost the one line
+that states why a card needs it. One direction only — a column *removed*
+from a read does not fail there, because narrowing is what that file
+wants, and a column the page stops getting is the business of the guard
+that reads it.
+
+Proved by breaking, three times: a light unlisted column (`created_by`)
+added to the project list; the `n_done` line removed from the allowlist
+while `db.js` still asked for it; and `payload` added to the allowlist to
+make a failure go away, which the allowlist refuses to permit.

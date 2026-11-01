@@ -62,8 +62,15 @@ async function selfCheck() {
 }
 
 /* ---- 1. db.js is the thing under test, loaded for real ----------------
-   Not a copy of its column lists. If somebody widens PU_PROJ_COLS, this
-   test widens with it, which is the only way it can notice. */
+   Not a copy of its column lists, so the STRUCTURAL assertions below -
+   no payload, no wildcard - hold whatever those lists happen to contain.
+
+   But reading them out of db.js is not how this test notices a column
+   being added. It is how it fails to. When PU_REP_META gained n_done,
+   this test gained n_done with it and said nothing; the drift was caught
+   by the guard written for the count itself. A list that co-varies with
+   the thing it checks is db.js echoing itself. Section 2b is the part
+   that does not move. */
 const DB_SRC = fs.readFileSync(path.join(ROOT, 'tools', '_lib', 'db.js'), 'utf8')
   .split('\r\n').join('\n');
 
@@ -128,6 +135,68 @@ is('and asks for nothing else heavy',
 is('sites() asks for sites',          names(SITES).includes('sites'), true);
 is('and sites() does not drag the payload along',
    names(SITES).includes('payload'), false);
+
+/* ---- 2b. THE ALLOWLIST, WHICH DOES NOT MOVE --------------------------
+   A literal set of permitted columns per read, stated here and nowhere
+   else. Any column db.js asks for that is not in its set fails.
+
+   This is the only place a reader can see what the shape is SUPPOSED to
+   be, stated independently of what db.js currently says. Section 2 can
+   tell you the list is free of payload; it cannot tell you the list is
+   right. Adding a column to a read now costs one line here, and that
+   line is a sentence saying what draws it.
+
+   ONE DIRECTION ONLY, deliberately. A column removed from db.js does not
+   fail here, because narrowing a read is the thing this file wants. A
+   column the page needs and stops getting is the business of whatever
+   guard reads it - which is how the n_done drift was actually caught,
+   and not here. */
+const ALLOW = {
+  list: {
+    id:         'the row key, and the card href',
+    name:       'the card title',
+    client:     'the card subtitle',
+    created_at: 'shown on the card',
+    updated_at: 'shown, and the sort order',
+    n_files:    'a card count, written at upload',
+    n_sheets:   'a card count, written at upload',
+    n_rows:     'a card count, written at upload',
+    pct:        'the bar on the card'
+  },
+  reports: {
+    id:         'the row key, and what puPayload is called with',
+    project_id: 'the filter',
+    file:       'the tile heading',
+    sheet:      'the tile heading',
+    uploaded:   'shown, and the sort order that picks the latest',
+    n_rows:     'the tile count',
+    n_cols:     'the tile count',
+    kind:       'which tile is drawn - mat | trk | list',
+    pct:        'the tile bar',
+    n_done:     'N done / N open, EXACT. Not re-derived from pct: see 047',
+
+    items:      'the mat tile count',
+    short:      'the mat tile count'
+  },
+  payload: { id: 'the row key', payload: 'the point of the call' },
+  sites:   { id: 'the row key', sites: 'the harvest the MOD panel reads' }
+};
+
+const notAllowed = (cols, allow) => names(cols).filter(n => !(n in allow));
+
+is('THE LIST ASKS FOR NOTHING THAT IS NOT ON THE ALLOWLIST',
+   notAllowed(LIST, ALLOW.list), []);
+is('nor does the report list',    notAllowed(META, ALLOW.reports), []);
+is('nor the payload fetch',       notAllowed(PAYLOAD, ALLOW.payload), []);
+is('nor the site harvest',        notAllowed(SITES, ALLOW.sites), []);
+
+/* An allowlist is also the obvious place to make a failure go away by
+   widening it, so it cannot be allowed to permit the one thing this file
+   exists to keep off the wire. */
+is('and no allowlist permits a heavy column on a read that should not carry it',
+   ['list', 'reports'].filter(k => HEAVY.some(h => h in ALLOW[k])), []);
+is('the allowlists are not empty, which would pass by vacuity',
+   Object.keys(ALLOW).filter(k => Object.keys(ALLOW[k]).length === 0), []);
 
 /* ---- 3. the same question of the store, by driving it ----------------
    Section 2 reads the source. This drives the real store against a fake
