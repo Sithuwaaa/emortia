@@ -39,6 +39,7 @@
 <script src="../_lib/owner.js"></script>
 <script src="../_lib/supabase-config.js"></script>
 <script src="../_lib/db.js"></script>
+<script src="../_lib/relog.js"></script>
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
 <script>Access.protect({ feature: 'tool:materials' });</script>
@@ -247,8 +248,20 @@ async function load(){
        quarter of an hour, when nothing had happened. The caller was
        handed what it needed to be accurate and dropped it. */
   window.DB.materialsSubscribe(async (why) => {
+    /* INSTRUMENTED, NOT FIXED. The theory is that one of liveChannel's
+       three reconcile paths repaints this list when nothing has changed.
+       Nothing here skips a render yet, and nothing should until the log
+       has run signed in: a skip built on an unconfirmed theory is a
+       guess with a test around it. RELOG records why, when, and whether
+       the rows that came back differ from the ones on screen - and its
+       rate() can say the reconcile is NOT responsible, which is the
+       reading that matters. */
+    const before = ALL;
     const f = await window.DB.materialsLoad();
-    if (!f.error){ ALL = f.rows; paint(); if (!why) toast('Updated from another device'); }
+    if (!f.error){
+      if (window.RELOG) RELOG.mark('materials', why, before, f.rows, r => r && r.code);
+      ALL = f.rows; paint(); if (!why) toast('Updated from another device');
+    }
   });
 }
 function shell(head, body){

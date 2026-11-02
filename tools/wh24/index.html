@@ -36,6 +36,7 @@
 <script src="../_lib/owner.js"></script>
 <script src="../_lib/supabase-config.js"></script>
 <script src="../_lib/db.js"></script>
+<script src="../_lib/relog.js"></script>
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
 <script>Access.protect({ feature: 'tool:wh24' });</script>
@@ -2456,7 +2457,24 @@ window.addEventListener('message', e => {
   const reconcile = async (why) => {
     if (BUSY) return;
     clearTimeout(REFETCH_T); REFETCH_T = null;
+    /* INSTRUMENTED, NOT FIXED. These three triggers are hand-written here
+       and generalised separately in liveChannel, so a fix to one would
+       miss the other - see the decisions file. Before any fix: RELOG
+       records why, when, and whether what came back differs from what
+       was on screen. Its rate() is the half that can falsify, because
+       none of visible-again, resubscribe or a 900000 ms backstop can
+       fire faster than refetchSoon's 1200 ms window.
+
+       `was` is the old array, not a copy. loadAll REPLACES TICKETS
+       rather than mutating it, so the reference still holds what the
+       page was showing. One honest gap: a patch landing during the
+       await writes into that same old array, so a change can be seen as
+       already-present. Deep-copying thousands of rows per reconcile
+       would cost more than the thing being measured, so it is noted
+       rather than engineered around. */
+    const was = TICKETS;
     await loadAll();
+    if (window.RELOG) RELOG.mark('wh24', why, was, TICKETS, KEY);
     if (why) console.info('[wh24] reconciled:', why);
   };
   /* trailing-edge, and deliberately short: long enough to swallow a sync's
