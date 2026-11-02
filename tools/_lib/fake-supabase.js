@@ -34,7 +34,11 @@
 
   /* A Supabase error is not thrown; it comes back in the envelope. Tests care
      about the difference, because db.js handles the two differently. */
-  const ok  = data => ({ data: clone(data), error: null });
+  /* count is the exact row total PostgREST puts in content-range when a
+      select asks for it. undefined when nothing asked, because null would
+      read as "asked and the answer was none". */
+  const ok  = (data, count) => ({ data: clone(data), error: null,
+                                  count: count === undefined ? null : count });
   const bad = message => ({ data: null, error: { message: String(message) } });
 
   function match(row, filters) {
@@ -91,12 +95,16 @@
     function query(table) {
       if (!store[table]) store[table] = [];
       const st = { table, filters: [], order: null, limit: null, range: null,
-                   cols: '*', op: null, rows: null, wants: null };
+                   cols: '*', op: null, rows: null, wants: null, count: null };
 
       const api = {};
       const self = () => api;
 
-      api.select = (cols) => { st.cols = cols || '*'; if (!st.op) st.op = 'select'; return self(); };
+      api.select = (cols, o2) => { st.cols = cols || '*'; if (!st.op) st.op = 'select';
+        /* { count: 'exact' } is how one request gets both the newest row and
+           how many rows there are - which is what makes a change probe one
+           call of about a hundred bytes instead of a table walk. */
+        st.count = (o2 && o2.count) || null; return self(); };
       ['eq','neq','gt','gte','lt','lte','in','is','contains'].forEach(op => {
         api[op] = (col, val) => { st.filters.push({ col, op, val }); return self(); };
       });
@@ -121,8 +129,15 @@
            back whole" but "WHAT DID THIS CALL ASK FOR". A list view that
            asks for a megabyte-wide payload column is the wh24 select('*')
            shape, and it is invisible unless the request is recorded. */
+        /* ORDER, LIMIT AND RANGE ARE RECORDED, not only applied. They were
+           applied and dropped, so a test could watch a call go past and
+           still not say whether it asked for one row or all of them - and
+           "how much did this ask for" is the question this whole family of
+           tests exists for. */
         const b = budget({ table, op: st.op || 'select', cols: st.cols,
-                           filters: st.filters.slice() });
+                           filters: st.filters.slice(),
+                           order: st.order, limit: st.limit, range: st.range,
+                           count: st.count });
         if (b.kind === 'timeout') return stall();
         if (b.kind === 'fail') {
           if (b.thrown) return Promise.reject(new Error(b.message));
@@ -130,7 +145,7 @@
         }
 
         const rows = store[table];
-        let out;
+        let out, matched = 0;
         if (st.op === 'insert' || st.op === 'upsert') {
           const keys = String(st.onConflict || 'id').split(',').map(s => s.trim());
           out = st.rows.map(r => {
@@ -161,6 +176,7 @@
           }
         } else {
           out = rows.filter(r => match(r, st.filters)).map(clone);
+          matched = out.length;
           if (st.order){
             const c = st.order.col;
             out.sort((a, b2) => (String(a[c]) < String(b2[c]) ? -1 : String(a[c]) > String(b2[c]) ? 1 : 0));
@@ -170,13 +186,17 @@
           if (st.limit != null) out = out.slice(0, st.limit);
         }
 
+        /* The count is of the rows the FILTERS matched, before limit and
+           range cut them down - which is what PostgREST reports and the
+           whole point of asking: one row back, and the total it came from. */
+        const total = st.count ? matched : undefined;
         if (st.wants === 'single'){
           if (out.length !== 1) return Promise.resolve(bad(
             'JSON object requested, multiple (or no) rows returned'));
-          return Promise.resolve(ok(out[0]));
+          return Promise.resolve(ok(out[0], total));
         }
-        if (st.wants === 'maybe') return Promise.resolve(ok(out[0] || null));
-        return Promise.resolve(ok(out));
+        if (st.wants === 'maybe') return Promise.resolve(ok(out[0] || null, total));
+        return Promise.resolve(ok(out, total));
       }
 
       /* Awaiting the builder is what runs it, the same as the real one. */

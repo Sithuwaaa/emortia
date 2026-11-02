@@ -1991,3 +1991,108 @@ Proved by breaking, three times: a light unlisted column (`created_by`)
 added to the project list; the `n_done` line removed from the allowlist
 while `db.js` still asked for it; and `payload` added to the allowlist to
 make a failure go away, which the allowlist refuses to permit.
+
+## The comparison goes before the cost, and that is now four times
+
+2 November. Four instances, same shape, and the fourth was costing
+~817 MB a day out of a 6.7 MB database.
+
+1. **wh24Subscribe, 25 October.** A full table read per changed row per
+   open tab. 689 rows at 1.28 MB is 882 MB in a day. Fixed by patching
+   from the payload.
+2. **The done count, 1 November.** `round(pct * n_rows / 100)` rendered
+   998 where the sheet had 1,000, because the figure was rebuilt from a
+   rounded one. Fixed by storing the count.
+3. **The render after a reconcile, 1 November.** A whole list repainted
+   on data that had not moved. Fixed by comparing before painting.
+4. **The dataset loader, 2 November.** `fetchRemote` fetched
+   `datasets.cols/row_count/updated_at`, used the column list, threw the
+   timestamp away, and then walked six pages — 5,940 rows, ~4.2 MB of
+   JSON, last published 1 October. Measured by the last page of each
+   walk: **100 full walks a day, 0.93 of them per meta read.** The
+   answer was in hand before the bill. `site_data` is 13,258 rows and
+   has not moved in 58 days.
+
+In every one of them the cheap question was already being asked, or
+could be asked for a few bytes, and the expensive work happened first
+anyway. Not a performance problem — an **ordering** problem. So the
+tests assert the order, not just the result: a gate that reads all six
+pages and then compares gives the right answer and pays the whole bill,
+and `dataset-gate.test.js` break 6 is exactly that, and fails.
+
+### A spec can be wrong in the safe-sounding direction
+
+The instruction was to gate on `savedAt`. `savedAt` is
+`updated_at.slice(0, 10)` — a **date**. Two publishes on the same day
+would have compared equal and the second would never have reached a
+device holding the first: a stale dataset served as current. That is a
+wrong figure on screen, which was the one outcome the same instruction
+forbade. The gate uses the full timestamp; `savedAt` stays as it was for
+the pill, and `row_count` is checked too, because a cache truncated by a
+storage quota has the right stamp and the wrong rows. Break 1 is the
+specified version and it fails.
+
+### An interrupted walk pays for every page and caches nothing
+
+Found while taking the measurement, by flipping tabs every three seconds
+and manufacturing the churn being measured: five walks started, one got
+past page four. `fetchRemote` concatenates pages into one array and only
+`cacheSet`s at the end, so a walk cut short writes nothing and the next
+load starts from page zero. Every page it already pulled was paid for
+and discarded.
+
+With the gate this is now self-correcting rather than merely wasteful —
+the stamp is written only by a **completed** walk, so an interrupted one
+leaves no stamp and the next load re-walks, which is the right answer.
+But on a slow connection a person who switches away mid-load pays twice
+for doing so, and nothing tells them. Written down, not fixed.
+
+And the measurement lesson underneath it: **a window in which nothing
+happened is not evidence that a fix worked.** The first 35 minutes after
+the gate deployed showed zero `sites` reads — and zero `datasets` reads,
+which is what gave it away: `load()` had not been called at all. Proof
+came from a deliberate sequence instead — load, wait for the walk to
+finish, then two clean hide/show cycles, and look for a `datasets`
+`0-0/*` with no `sites` pages after it.
+
+### The reverse of the same mistake, in a check of my own
+
+Verifying the deployed copy, I asserted
+`js.indexOf('return UNCHANGED') < js.indexOf('const PAGE = 1000')` and
+it came back true — against the **old** file, which contained no gate at
+all. `indexOf` returns `-1` for a missing needle and `-1` is less than
+everything. A check that passes hardest when the thing it checks for is
+absent is the `palette.test.js` shape again. Both offsets are now
+required to be present before they are ordered.
+
+### wh24_tickets, the same fix on an exact marker
+
+178 full walks a day, two pages, 1,308 kB. `wh24Publish` is the only
+writer and stamps `synced_at` on every row of every chunk from one
+hoisted value, so no write can land without moving the maximum; there
+are no deletes, because a removal is the `removed` column, which is an
+update, which is stamped. So `(count, max(synced_at))` cannot miss a
+write, and PostgREST returns both in **one request of about a hundred
+bytes**.
+
+Named rather than hidden: the stamp is the publishing browser's clock,
+not the server's, so two devices with skewed clocks could write a stamp
+older than the current maximum and move neither it nor the count.
+Publishing is owner-only and driven by the WorkHub24 bookmark from one
+browser at a time. If that stops being true the exact version is a
+server-side digest behind an rpc, not a cleverer timestamp.
+
+`tickets: null` means *keep the ones you have* — never `[]`, which would
+blank the list, and blanking the list is worse than the egress this is
+meant to save.
+
+### And a harness that could not model the call
+
+The gate needed `select(cols, { count: 'exact' })`, and
+`fake-supabase.js` did not model it: no count came back, so the gate's
+condition could never be true under test. It also applied `limit`,
+`order` and `range` without **recording** them, so a test could watch a
+call go past and still not say whether it asked for one row or all of
+them — which is the only question that family of tests exists to answer.
+Both are modelled now and checked in the fake's own test. An untested
+gate on a 1,308 kB read is not something to ship.

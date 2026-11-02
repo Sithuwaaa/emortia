@@ -12,6 +12,14 @@
 
 const Fake = require('./fake-supabase.js');
 
+/* ADDED WITH THE CHANGE PROBES. The fake applied limit/order/range but
+   never recorded them, so a test could watch a call go past and still not
+   say whether it asked for one row or all of them - and "how much did this
+   ask for" is the question this fake exists to answer. It also did not
+   model select(cols, { count: 'exact' }) at all, which is how one request
+   gets the newest row AND the row total; a gate built on that could not be
+   exercised, and an untested gate on a 1,308 kB read is not something to
+   ship. Both are modelled now, and checked at the bottom of this file. */
 let pass = 0, fail = 0;
 function is(label, got, want){
   const ok = JSON.stringify(got) === JSON.stringify(want);
@@ -209,6 +217,46 @@ console.log('\n  the record');
   await db.storage.from('b').upload('p', { size:1 }, {});
   is('every call is kept, in order',
      db.__calls.map(c => c.op), ['insert','select','upload']);
+}
+
+/* ---- the request SHAPE, and the count ---------------------------------
+   A change probe is "give me the newest row and tell me how many there
+   are" - one request of about a hundred bytes standing in for a table
+   walk. If the fake cannot report what was asked, a test cannot tell that
+   probe from the walk it replaced. */
+{
+  const db = Fake.client({ t: [{ id: 1, s: 'a' }, { id: 2, s: 'c' }, { id: 3, s: 'b' }] });
+  const r = await db.from('t').select('s', { count: 'exact' })
+    .order('s', { ascending: false }).limit(1);
+  is('the probe gets one row back', r.data.length, 1);
+  is('the newest by that column',   r.data[0].s, 'c');
+  is('AND THE COUNT OF ALL OF THEM, not of the one returned', r.count, 3);
+
+  const c0 = db.__calls[db.__calls.length - 1];
+  is('the call records its limit',  c0.limit, 1);
+  is('and its order',               [c0.order.col, c0.order.asc], ['s', false]);
+  is('and that a count was asked for', c0.count, 'exact');
+}
+{
+  /* a count that was not asked for must not look like a count of none */
+  const db = Fake.client({ t: [{ id: 1 }] });
+  const r = await db.from('t').select('*');
+  is('no count asked, no count invented', r.count, null);
+  is('and the call says nothing was asked', db.__calls[0].count, null);
+}
+{
+  /* the count is of what the FILTERS matched, which is what PostgREST
+     reports - not of what survived the limit */
+  const db = Fake.client({ t: [{ id: 1, k: 'x' }, { id: 2, k: 'x' }, { id: 3, k: 'y' }] });
+  const r = await db.from('t').select('id', { count: 'exact' }).eq('k', 'x').limit(1);
+  is('one row came back',                      r.data.length, 1);
+  is('and the count is the filtered total',    r.count, 2);
+}
+{
+  /* maybeSingle is the other way a probe comes back */
+  const db = Fake.client({ t: [{ id: 1 }, { id: 2 }] });
+  const r = await db.from('t').select('id', { count: 'exact' }).eq('id', 1).maybeSingle();
+  is('maybeSingle carries the count too', r.count, 1);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');

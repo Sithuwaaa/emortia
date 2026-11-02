@@ -40,6 +40,27 @@
         .then(m => clientSync = m.createClient(CFG.url, CFG.anonKey, {
           auth: { persistSession: true, autoRefreshToken: true }
         }))
+        /* AND THEN WAIT FOR THE SESSION, which is the difference between a
+           client that exists and a client that can read anything.
+
+           createClient returns immediately and restores the stored session
+           afterwards, so a select issued in between goes out with the anon
+           key alone. On a table whose policy is may_read('tool:...') that
+           is not an error - it is 0 rows and HTTP 200. materialsLoad's
+           pager breaks on the short page, so the tool painted an EMPTY
+           LIST and said nothing was wrong, until some later reconcile put
+           it right. 361 of those in a day, against 118 real reads: three
+           empty first loads for every good one.
+
+           getSession() is the documented way to await that restoration. It
+           resolves to null for a visitor who is not signed in, which is
+           not a failure and must not be treated as one - the await is for
+           the timing, not the answer. clientSync is assigned before it, so
+           a channel can still be torn down if this step throws. */
+        .then(async c => {
+          if (c) { try { await c.auth.getSession(); } catch (e) {} }
+          return c;
+        })
         .catch(e => { console.warn('Supabase client unavailable:', e.message); return null; });
     }
     return clientPromise;
@@ -1146,6 +1167,63 @@
   async function wh24Load(opts){
     const cols = '*';
     const c = await client(); if (!c) return { tickets: [], marks: {}, error: 'offline' };
+
+    /* ONE IMPLEMENTATION OF THE MARKS KEY. It used to be inline at the end
+       of this function, and the gate below needs it too; a second copy is
+       how (ticket_id, stream) would quietly become (ticket_id) again in one
+       of them. The comment that was here has moved down to it. */
+    const marksOf = async () => {
+      const { data: m, error: me } = await c.from(WH24M).select('*');
+      if (me) return { marks: {}, error: wh24Why(me.message) };
+      /* Keyed on (ticket_id, stream), which is what the table's primary key
+         has been since 039. Keyed on the ticket alone, a PH2 card's two
+         vendor streams share one entry and whichever row loaded second
+         silently wins - so collecting Advantis would show ACE as collected
+         too. The key is built here the same way W.key builds it. */
+      const marks = {};
+      (m || []).forEach(r => { marks[String(r.ticket_id) + '|' + (r.stream || '')] = r; });
+      return { marks, error: null };
+    };
+
+    /* THE COMPARISON BEFORE THE COST, for the reconcile only.
+       wh24Load reads '*' over two pages - 1,308 kB measured - and the
+       reconcile ran it on every tab show, every reconnect and every
+       fifteen minutes: 178 full walks a day, nearly all of them returning
+       what was already on screen.
+
+       WHY (count, max(synced_at)) IS EXACT HERE. wh24Publish is the only
+       writer of this table, and it stamps synced_at on every row of every
+       chunk from one hoisted value - so no write can land without moving
+       the maximum. There are no deletes; a removal is the 'removed'
+       column, which is an update, which is stamped. A row added or taken
+       away moves the count. PostgREST returns the newest row and the exact
+       count in ONE request of about a hundred bytes.
+
+       THE ONE HOLE, named rather than hidden: the stamp is the publishing
+       browser's clock, not the server's. Two devices publishing with
+       skewed clocks could write an older stamp than the current maximum
+       and leave both the maximum and the count unmoved. wh24Publish is
+       owner-only and driven by the WorkHub24 bookmark from one browser at
+       a time, so this needs a second publishing machine to matter. If that
+       ever becomes true, the exact version is a server-side digest behind
+       an rpc, not a cleverer timestamp.
+
+       Marks are still read in full every time. They are one row, the
+       render depends on them, and a gate there would buy nothing. */
+    if (opts && opts.since && opts.since.stamp && opts.since.n > 0){
+      const probe = await c.from(WH24T).select('synced_at', { count: 'exact' })
+        .order('synced_at', { ascending: false }).limit(1);
+      const top = probe.data && probe.data[0];
+      if (!probe.error && probe.count === opts.since.n &&
+          top && top.synced_at === opts.since.stamp){
+        const mm = await marksOf();
+        /* tickets: null means "nothing moved, keep the ones you have". Not
+           [] - that would blank the list, which is the failure this whole
+           change is meant to avoid being worth risking. */
+        return { tickets: null, marks: mm.marks, error: mm.error, unchanged: true };
+      }
+    }
+
     const PAGE = 500; let from = 0, tickets = [];
     for(;;){
       const { data, error } = await c.from(WH24T).select(cols)
@@ -1155,16 +1233,9 @@
       if (!data || data.length < PAGE) break;
       from += PAGE;
     }
-    const { data: m, error: me } = await c.from(WH24M).select('*');
-    if (me) return { tickets, marks: {}, error: wh24Why(me.message) };
-    /* Keyed on (ticket_id, stream), which is what the table's primary key has
-       been since 039. Keyed on the ticket alone, a PH2 card's two vendor
-       streams share one entry and whichever row loaded second silently wins -
-       so collecting Advantis would show ACE as collected too. The key is built
-       here the same way W.key builds it. */
-    const marks = {};
-    (m || []).forEach(r => { marks[String(r.ticket_id) + '|' + (r.stream || '')] = r; });
-    return { tickets, marks, error: null };
+    const mm = await marksOf();
+    if (mm.error) return { tickets, marks: {}, error: mm.error };
+    return { tickets, marks: mm.marks, error: null };
   }
 
   /* Only the tickets that changed - the page works out which - in chunks,

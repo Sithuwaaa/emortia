@@ -1536,9 +1536,18 @@ $('allBtn').onclick = () => {
    their behaviour is unchanged. The model is assigned either way: a
    held render must never leave TICKETS stale. */
 async function loadAll(hold){
-  const r = await window.DB.wh24Load();
+  /* ONLY THE RECONCILE ASKS. 'hold' is passed by nothing else, so the
+     first load and the read after a sync always walk the table - the gate
+     can never be the reason a freshly opened tab is empty. lastWrite() is
+     the newest synced_at across the rows on screen, which is the same
+     value the server is asked for. */
+  const since = (hold && LOADED && TICKETS.length)
+    ? { n: TICKETS.length, stamp: lastWrite() } : null;
+  const r = await window.DB.wh24Load(since ? { since } : undefined);
   if (r.error && r.error !== 'offline'){ $('list').innerHTML = `<div class="empty">${esc(r.error)}</div>`; $('pill').textContent = 'error'; return; }
-  TICKETS = r.tickets; MARKS = r.marks; LOADED = true;
+  /* null is "nothing moved": keep the rows, take the fresh marks. */
+  if (r.tickets !== null) TICKETS = r.tickets;
+  MARKS = r.marks; LOADED = true;
   /* A sync can retire a ticket. Keeping its id selected would put an empty
      sheet in the workbook, so the selection drops what is no longer there -
      and only that. Filtering never touches it. */

@@ -236,9 +236,37 @@ const metaReads = db => db.__calls.filter(c => c.table === 'datasets');
        seq[0] === 'datasets' && seq.indexOf('sites') > 0, true);
   }
   /* and the source says so too: the gate must be inside fetchRemote,
-     before the paging loop, not after it */
-  is('the gate sits before the page walk in the source',
-   DB_SRC.indexOf('return UNCHANGED') < DB_SRC.indexOf('const PAGE = 1000'), true);
+     before the paging loop, not after it. Both offsets must be PRESENT
+     before they are ordered - indexOf returns -1 for a missing needle,
+     and -1 is less than everything, so the comparison alone passes
+     vacuously on a file that has no gate at all. I made exactly that
+     mistake checking the deployed copy an hour before writing this. */
+  const iGate = DB_SRC.indexOf('return UNCHANGED');
+  const iWalk = DB_SRC.indexOf('const PAGE = 1000');
+  is('both the gate and the walk are in the source', iGate > 0 && iWalk > 0, true);
+  is('and the gate sits before the walk', iGate < iWalk, true);
+
+  /* ---- 5. client() WAITS FOR THE SESSION, NOT JUST FOR THE CLIENT ----
+     createClient returns immediately and restores the stored session
+     afterwards, so a select issued in between carried the anon key alone.
+     On a table whose policy is may_read('tool:...') that is not an error:
+     it is 0 rows and HTTP 200. materialsLoad's pager breaks on the short
+     page, so the tool painted an EMPTY LIST and reported nothing wrong
+     until a later reconcile fixed it. Measured: 361 of those in a day
+     against 118 real reads - three empty first loads for every good one,
+     and one of them seen on a cold load.
+
+     This is a db.js property and it lives here rather than in the wh24
+     test, because this is the file somebody editing client() will run. */
+  is('client() awaits getSession before resolving',
+     /\.then\(async c => \{\s*\n\s*if \(c\) \{ try \{ await c\.auth\.getSession\(\); \} catch \(e\) \{\} \}/.test(DB_SRC), true);
+  is('and assigns clientSync FIRST, so a channel can still be torn down if it throws',
+     DB_SRC.indexOf('clientSync = m.createClient') < DB_SRC.indexOf('await c.auth.getSession()'), true);
+  is('a visitor with no session is not treated as a failure',
+     /catch \(e\) \{\} \}\s*\n\s*return c;/.test(DB_SRC), true);
+  is('and the await is not swallowed by the outer catch that returns null',
+     DB_SRC.indexOf('await c.auth.getSession()') <
+     DB_SRC.indexOf("console.warn('Supabase client unavailable:'"), true);
 
   console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
   process.exit(fail ? 1 : 0);
