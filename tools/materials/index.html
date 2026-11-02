@@ -258,10 +258,13 @@ async function load(){
     const before = ALL;
     const f = await window.DB.materialsLoad();
     if (!f.error){
-      const repaint = !window.RELOG || RELOG.shouldRender(before, f.rows);
-      if (window.RELOG) RELOG.mark('materials', why, before, f.rows, r => r && r.code);
       ALL = f.rows;                       /* ALWAYS. A held paint must not leave the model behind. */
-      if (repaint) paint();
+      /* One call decides, paints and records, so this tool and WH24 cannot
+         log differently - which they did, and it read as the skip being
+         absent here when it was only silent. No RELOG means paint. */
+      if (window.RELOG) RELOG.decide('materials', why, before, ALL,
+                                     { key: r => r && r.code, render: paint });
+      else paint();
       if (!why) toast('Updated from another device');
     }
   });

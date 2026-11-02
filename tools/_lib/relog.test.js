@@ -185,6 +185,14 @@ is('a BigInt is the same answer, not a crash',
    R.shouldRender([{ code: 'X', n: 1n }], ROWS_A), true);
 /* undefined is a model that has not loaded; it must never read as "same" */
 is('undefined against a list renders', R.shouldRender(undefined, ROWS_A), true);
+/* and for the stated reason, not by throwing one frame later on
+   `undefined.length`: canon refuses it, so a row with an unloaded field
+   can never come back as the string "undefined" and compare equal. */
+is('canon refuses undefined rather than coercing it to a word',
+   (() => { try { R.canon(undefined); return 'no refusal'; }
+            catch (e) { return /not fingerprintable/.test(e.message); } })(), true);
+is('a row carrying an undefined field is unknown, not equal to another one',
+   R.shouldRender([{ code: 'X', v: undefined }], [{ code: 'X', v: undefined }]), true);
 
 /* 3 - and it must actually skip, or the change is a no-op */
 is('IDENTICAL CONTENT DOES NOT RENDER',
@@ -208,29 +216,58 @@ is('and an unchanged composite does not',
 const pg = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').split('\r\n').join('\n');
 const MAT = pg('materials/index.html'), WH = pg('wh24/index.html');
 
-/* 4 - the model is assigned whether or not the paint is held */
-is('materials assigns ALL outside the skip',
-   /\bALL = f\.rows;[^\n]*\n\s*if \(repaint\) paint\(\);/.test(MAT), true);
-is('and does not assign it inside the conditional',
-   /if \(repaint\)\s*\{?\s*ALL = /.test(MAT), false);
+const DEC_MAT = "RELOG.decide('materials'", DEC_WH = "RELOG.decide('wh24'";
+
+/* 4 - the model is assigned whether or not the paint is held. Both tools
+   now assign BEFORE the decision is taken at all, which is stronger than
+   assigning outside the branch: there is no ordering in which a held
+   paint can leave the model behind. */
+is('materials assigns ALL before the decision is reached',
+   MAT.indexOf('ALL = f.rows;') > 0 &&
+   MAT.indexOf('ALL = f.rows;') < MAT.indexOf(DEC_MAT), true);
+/* Assigned ONCE in the subscriber, and nowhere after the decision inside
+   it - so there is no path on which painting is what makes the model
+   fresh. Two earlier versions of this assertion were wrong about scope
+   rather than about the code: one matched the `if (!f.error)` error guard
+   above it, the other matched `ALL = r.rows` in a different function
+   further down the file. Both were measuring the whole file for a
+   property of one block, so the block is lifted first. */
+const SUB_MAT = (() => {
+  const at = MAT.indexOf('window.DB.materialsSubscribe(');
+  return at < 0 ? '' : MAT.slice(at, MAT.indexOf('\n  });', at));
+})();
+is('the subscriber block was found, or the three below prove nothing',
+   SUB_MAT.length > 100 && SUB_MAT.indexOf(DEC_MAT) > 0, true);
+is('and assigns the model exactly once inside it',
+   (SUB_MAT.match(/ALL = /g) || []).length, 1);
+is('with nothing re-assigning it after the decision',
+   SUB_MAT.slice(SUB_MAT.indexOf(DEC_MAT)).indexOf('ALL = '), -1);
 is('wh24 assigns TICKETS inside loadAll, before the decision is taken',
-   MAT.length > 0 && WH.indexOf('TICKETS = r.tickets; MARKS = r.marks; LOADED = true;')
-     < WH.indexOf('const paint = !window.RELOG'), true);
+   WH.indexOf('TICKETS = r.tickets; MARKS = r.marks; LOADED = true;')
+     < WH.indexOf(DEC_WH), true);
 is('and its hold returns AFTER refreshChecked, so CHECKED is fresh to compare',
    /await refreshChecked\(\);\s*\n\s*if \(hold\) return;/.test(WH), true);
 
-/* 5 - a missing RELOG renders. The polarity is the whole assertion: an
-   `&&` here would make a tool with no instrument skip every render. */
-is('materials renders when RELOG is absent',
-   /const repaint = !window\.RELOG \|\| RELOG\.shouldRender\(/.test(MAT), true);
-is('wh24 renders when RELOG is absent',
-   /const paint = !window\.RELOG \|\| RELOG\.shouldRender\(/.test(WH), true);
-is('neither page gates the paint on RELOG being present',
-   /(const (?:re)?paint = window\.RELOG &&)/.test(MAT + WH), false);
+/* 5 - a missing RELOG renders. Every decide() must be paired with an
+   else that paints, or a tool whose instrument failed to load would
+   silently stop repainting for ever. */
+is('materials paints when RELOG is absent',
+   /if \(window\.RELOG\) RELOG\.decide\('materials'[\s\S]{0,200}?\n\s*else paint\(\);/.test(MAT), true);
+is('wh24 paints when RELOG is absent',
+   /if \(window\.RELOG\) RELOG\.decide\('wh24'[\s\S]{0,200}?\n\s*else render\(true\);/.test(WH), true);
+is('every decide in either page has an else that paints',
+   (MAT + WH).split('RELOG.decide(').length - 1,
+   (MAT.match(/else paint\(\);/g) || []).length +
+   (WH.match(/else render\(true\);/g) || []).length);
+is('and both tools go through the ONE call, so neither can log differently',
+   [MAT.indexOf(DEC_MAT) > 0, WH.indexOf(DEC_WH) > 0], [true, true]);
 /* and the comparison covers what the render reads, not just the rows */
 is('wh24 compares MARKS and CHECKED too, not only TICKETS',
    /const before = \[was, MARKS, CHECKED\];/.test(WH) &&
    /const after = \[TICKETS, MARKS, CHECKED\];/.test(WH), true);
+/* the composite is what is COMPARED; the tickets are what is COUNTED */
+is('while its row count is still the tickets, not the three members',
+   /rows: \[was, TICKETS\]/.test(WH), true);
 
 Date.now = realNow;
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');

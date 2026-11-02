@@ -55,7 +55,16 @@
      nothing did would manufacture the very finding this is meant to
      test. So keys are sorted. */
   function canon(v) {
-    if (v === null || typeof v !== 'object') return JSON.stringify(v);
+    if (v === null || typeof v !== 'object') {
+      var t = JSON.stringify(v);
+      /* undefined has no JSON form, and `'' + undefined` would make it the
+         string "undefined" - so two half-loaded models would compare
+         equal and the render would be skipped. Refused on purpose. The
+         old code reached the same answer by throwing on `undefined.length`
+         one frame later, which is the right answer by accident. */
+      if (t === undefined) throw new Error('relog: undefined is not fingerprintable');
+      return t;
+    }
     if (Array.isArray(v)) {
       var a = '[';
       for (var i = 0; i < v.length; i++) a += (i ? ',' : '') + canon(v[i]);
@@ -70,7 +79,28 @@
   /* FNV-1a over the canonical string. A hash collision would report
      "nothing changed" when something did - the wrong way round for a
      guard - so the length goes in the fingerprint too: two models of
-     different size can never match, whatever the hash does. */
+     different size can never match, whatever the hash does.
+
+     WHERE WH24's 250.6ms COMES FROM, since the obvious answer is wrong.
+     I rewrote this to fold the hash as it walked, on the theory that
+     building one enormous string was the cost. Measured, folding was
+     18.1ms against 16.7ms for the string - no faster, slightly slower -
+     and BOTH were nowhere near 250ms, so the premise was false and the
+     rewrite is gone.
+
+     The cost is the DATA. wh24Load reads '*' and wh24_tickets carries
+     four jsonb columns - gins, timeline, lines, doc. 820 tickets with
+     gins alone populated is 2.8 MB of canonical form and 88ms; four such
+     columns is a quarter of a second, which is exactly what was measured.
+     Materials reads six narrow columns, so 2,422 rows cost 7ms.
+
+     Which leaves a real question this file cannot answer by itself:
+     whether a quarter second to decide costs more than the repaint it
+     is avoiding. That is what renderMs is in the record for. If render
+     turns out cheap, the right answer for WH24 is to drop the skip, not
+     to make the comparison cleverer - a projection that fingerprints
+     only what the render reads would be faster and would drift from what
+     the render reads, which this repository has already paid for once. */
   function fp(v) {
     var s = canon(v), h = 0x811c9dc5;
     for (var i = 0; i < s.length; i++) {
@@ -133,11 +163,44 @@
   /* ---- the one call a page makes ---------------------------------------
      mark(tool, why, before, after, key) - `before` is the model as it
      stood on screen when the reload began, `after` is what came back. */
-  function mark(tool, why, before, after, key) {
-    var t0 = (root.performance && root.performance.now) ? root.performance.now() : 0;
-    var a = fp(before), b = fp(after);
-    var n = changed(before, after, key);
-    var t1 = (root.performance && root.performance.now) ? root.performance.now() : 0;
+  var clock = function () {
+    return (root.performance && root.performance.now) ? root.performance.now() : Date.now();
+  };
+  var ms = function (n) { return Math.round(n * 10) / 10; };
+
+  /* entry(tool, why, before, after, o)
+       o.key     pairs rows so nChanged can be counted
+       o.rows    [before, after] to COUNT, when what is COMPARED is a
+                 composite. WH24 compares [TICKETS, MARKS, CHECKED] but
+                 the interesting count is tickets, and a log line reading
+                 "rows 3->3" for a 2,627-row table is a figure about the
+                 wrong thing.
+       o.render  called when it decides to paint, and timed
+       o.decides false for a record-only read */
+  function entry(tool, why, before, after, o) {
+    o = o || {};
+    var rows = o.rows || [before, after];
+    var decides = o.decides !== false, render = o.render;
+    var t0 = clock();
+    var a = sig(before), b = sig(after);
+    var n = changed(rows[0], rows[1], o.key);
+    var t1 = clock();
+
+    /* THE DECISION AND THE RECORD ARE ONE EVENT, which is why they are in
+       one function. They were two calls - shouldRender() in the page, then
+       mark() in the page - and the first reading showed what that costs:
+       WH24 printed "held" and Materials never did, because the word lived
+       in a console line I had written into one page and not the other. The
+       skip was working in both. Only the log was asymmetric, in the file
+       whose whole purpose is that two tools cannot answer differently. */
+    var paint = null, renderMs = null;
+    if (decides) {
+      paint = (a === null || b === null) ? true : a !== b;
+      if (paint && typeof render === 'function') {
+        var t2 = clock();
+        try { render(); } finally { renderMs = ms(clock() - t2); }
+      }
+    }
 
     var now = Date.now();
     var gap = last[tool] == null ? null : now - last[tool];
@@ -148,11 +211,16 @@
       why: why == null ? 'realtime event' : String(why),
       at: new Date(now).toISOString(),
       gapMs: gap,
-      differs: a !== b,
-      nBefore: Array.isArray(before) ? before.length : null,
-      nAfter: Array.isArray(after) ? after.length : null,
+      /* null, not false, when a signature could not be taken. The same
+         discipline as nChanged: "unknown" never wears the look of a
+         measured answer. */
+      differs: (a === null || b === null) ? null : a !== b,
+      nBefore: Array.isArray(rows[0]) ? rows[0].length : null,
+      nAfter: Array.isArray(rows[1]) ? rows[1].length : null,
       nChanged: n,
-      fpMs: Math.round((t1 - t0) * 10) / 10
+      fpMs: ms(t1 - t0),
+      painted: paint,
+      renderMs: renderMs
     };
     log.push(rec);
     if (log.length > CAP) log.shift();
@@ -161,11 +229,26 @@
       console.info('[relog] ' + tool +
         ' | ' + rec.why +
         ' | +' + (gap == null ? 'first' : gap + 'ms') +
-        ' | ' + (rec.differs ? 'CHANGED' : 'no change') +
+        ' | ' + (rec.differs === null ? 'UNKNOWN' : rec.differs ? 'CHANGED' : 'no change') +
+        ' | ' + (paint === null ? 'not deciding'
+                 : paint ? 'PAINTED' + (renderMs == null ? '' : ' ' + renderMs + 'ms')
+                 : 'HELD') +
         ' | rows ' + rec.nBefore + '→' + rec.nAfter +
         ' | changed ' + (n == null ? '-' : n) +
         ' | fp ' + rec.fpMs + 'ms');
     return rec;
+  }
+
+  /* Record only. Kept for the reads that are not deciding anything. */
+  function mark(tool, why, before, after, key) {
+    return entry(tool, why, before, after, { key: key, decides: false });
+  }
+
+  /* Decide, paint, and record - the call both tools make. Returns whether
+     it painted, so a caller that passed no render can do it itself. */
+  function decide(tool, why, before, after, o) {
+    o = o || {}; o.decides = true;
+    return entry(tool, why, before, after, o).painted;
   }
 
   /* ---- reading it back -------------------------------------------------
@@ -204,7 +287,7 @@
     return out;
   }
 
-  var API = { mark: mark, dump: dump, rate: rate, fp: fp, sig: sig,
+  var API = { mark: mark, decide: decide, dump: dump, rate: rate, fp: fp, sig: sig,
               shouldRender: shouldRender, canon: canon,
               changed: changed, COALESCE: COALESCE,
               reset: function () { log = []; last = {}; } };
