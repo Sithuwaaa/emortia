@@ -58,13 +58,39 @@
     }
   };
 
-  /* The ids this store last put on the server. save() upserts what it is
-     given, which can never delete: a goal removed from the array would
-     simply stop being mentioned and would sit on the server for ever,
-     reappearing on the next device that loaded. So the store remembers
-     what it wrote and deletes the difference. The tool still just calls
-     remove() then save(), exactly as it did against localStorage. */
-  var lastIds = null;
+  /* WHAT THE SERVER LAST CONFIRMED, per goal: the exact row and the
+     updated_at stamp it came back with. Three things depend on it.
+
+       WHICH GOALS TO WRITE. Only the ones that differ from this. A goal
+       nobody touched here is never sent, so a stale copy of it cannot
+       land on top of somebody else's edit.
+
+       WHICH TO DELETE. Ids that are in here and gone from the state. This
+       used to be a list of ids that was set to null whenever a load
+       failed, which quietly made every pending delete disappear: the
+       delete never reached the server and nothing said so. A failed load
+       no longer clears this. The last confirmed view is still the best
+       thing known, and every delete built from it is conditioned anyway.
+
+       WHAT IS PENDING. A goal whose local copy differs from this is an
+       edit the server has not accepted yet, and merge() keeps it through
+       a reload instead of letting S = fresh throw it away. */
+  var seen = Object.create(null);
+
+  function remember(rows) {
+    seen = Object.create(null);
+    (rows || []).forEach(function (r) {
+      if (r && r.id != null) seen[String(r.id)] = { g: clean(r), stamp: r.updated_at || null };
+    });
+  }
+  /* clean() fixes the key order, so this is a stable comparison */
+  function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function pendingIn(state) {
+    return ((state && state.goals) || []).filter(function (g) {
+      var s = seen[String(g.id)];
+      return !s || !same(s.g, clean(g));
+    });
+  }
 
   var remote = {
     read: function () { return null; },      /* unused; load() is overridden below */
@@ -74,7 +100,7 @@
   var backend = local, mode = 'local';
 
   /* for the tests, and for the day this becomes something else again */
-  function use(b) { backend = b || local; mode = b ? 'custom' : 'local'; lastIds = null; }
+  function use(b) { backend = b || local; mode = b ? 'custom' : 'local'; seen = Object.create(null); }
   function syncing() { return mode === 'remote'; }
 
   var EMPTY = { cur: 'Rs', goals: [] };
@@ -116,36 +142,106 @@
       if (r.error) {
         /* A read that fails still hands back the cache, and says why. An
            empty list and a broken connection look identical otherwise, and
-           "no goals this year" is a bad way to learn you are offline. */
+           "no goals this year" is a bad way to learn you are offline.
+
+           `seen` IS DELIBERATELY NOT CLEARED. It used to be, and that is
+           how a delete made after a failed load never reached the server:
+           with nothing remembered there was nothing to diff, so the
+           removal was simply never mentioned and nothing said so. The last
+           confirmed view is still the best thing known, and every write
+           and delete built from it is conditioned on its stamp, so acting
+           on it cannot overwrite anyone - it can only be refused. */
         var cached = shape(local.read());
         cached.error = r.error;
-        lastIds = null;              /* we do not know the server's ids */
         return cached;
       }
+      remember(r.goals);
       var out = shape({ cur: r.cur, goals: r.goals });
-      lastIds = out.goals.map(function (g) { return g.id; });
       local.write(out);
       return out;
     });
   }
 
+  /* A RELOAD MUST NOT THROW AWAY WHAT IS BEING TYPED.
+
+     The page answered a reload with S = fresh, wholesale. A goal edited
+     while that round trip was in flight was simply replaced by the
+     server's older copy - the same bug as the stale write, pointing the
+     other way. Anything that differs from the last server-confirmed copy
+     is a pending edit and survives.
+
+     A goal deleted elsewhere but pending here comes back, which is the
+     safer side of that trade: keeping something the person is editing
+     costs them a second delete, losing it costs them the typing. */
+  function merge(localState, fresh) {
+    var by = Object.create(null);
+    ((fresh && fresh.goals) || []).forEach(function (g) { by[String(g.id)] = clean(g); });
+    pendingIn(localState).forEach(function (g) { by[String(g.id)] = clean(g); });
+    return { cur: (fresh && fresh.cur) || EMPTY.cur,
+             goals: Object.keys(by).map(function (k) { return by[k]; }) };
+  }
+
+  /* WHAT save() RETURNS, AND WHY IT IS NOT A BOOLEAN ANY MORE.
+
+       { ok, wrote, deleted, refused: [...], failed: [...] }
+
+     It used to be true/false, with every outcome collapsed into the
+     false: a refused write, a dropped delete and a dead network were one
+     answer. A refused write means somebody else has the newer version and
+     this edit did not happen; a failed delete means the goal is still
+     there. Those need different sentences, and the page now says them.
+
+     Anything that still treats this as a boolean sees a truthy object and
+     reports success for every failure, so goals.test.js asserts that the
+     page reads .ok and not the object. */
   function save(state) {
     var out = {
       cur: (state && state.cur) || EMPTY.cur,
       goals: ((state && state.goals) || []).map(clean)
     };
-    if (mode !== 'remote') return Promise.resolve(backend.write(out));
+    if (mode !== 'remote') {
+      var okLocal = backend.write(out);
+      return Promise.resolve({ ok: !!okLocal, wrote: okLocal ? out.goals.length : 0,
+        deleted: 0, refused: [],
+        failed: okLocal ? [] : [{ id: null, name: 'this browser', what: 'save',
+                                  why: 'this browser is refusing to store more' }] });
+    }
 
-    var ids = out.goals.map(function (g) { return g.id; });
-    var gone = (lastIds || []).filter(function (id) { return ids.indexOf(id) < 0; });
-    /* write the cache first: if the network write fails the device still
-       has what the person just typed */
+    /* the cache first: if the network write fails the device still has
+       what the person just typed */
     local.write(out);
-    return Promise.all(
-      [window.DB.goalsSave(out.goals), window.DB.goalsCurrency(out.cur)]
-        .concat(gone.map(function (id) { return window.DB.goalsRemove(id); }))
-    ).then(function () { lastIds = ids; return true; })
-     .catch(function () { return false; });
+
+    var here = Object.create(null);
+    out.goals.forEach(function (g) { here[g.id] = 1; });
+
+    var writes = pendingIn(out);
+    var gone = Object.keys(seen).filter(function (id) { return !here[id]; });
+
+    var refused = [], failed = [], wrote = 0, deleted = 0;
+    var jobs = writes.map(function (g) {
+      var s = seen[g.id];
+      return window.DB.goalsWrite(g, s && s.stamp).then(function (r) {
+        if (r && r.ok) { wrote++; seen[g.id] = { g: g, stamp: r.stamp || null }; }
+        else if (r && r.refused) refused.push({ id: g.id, name: g.name, what: 'save', why: r.error });
+        else failed.push({ id: g.id, name: g.name, what: 'save', why: (r && r.error) || 'unknown' });
+      }, function (e) { failed.push({ id: g.id, name: g.name, what: 'save', why: e.message }); });
+    }).concat(gone.map(function (id) {
+      var nm = seen[id] && seen[id].g ? seen[id].g.name : id;
+      return window.DB.goalsRemove(id, seen[id] && seen[id].stamp).then(function (r) {
+        if (r && r.ok) { deleted++; delete seen[id]; }
+        else if (r && r.refused) refused.push({ id: id, name: nm, what: 'delete', why: r.error });
+        else failed.push({ id: id, name: nm, what: 'delete', why: (r && r.error) || 'unknown' });
+      }, function (e) { failed.push({ id: id, name: nm, what: 'delete', why: e.message }); });
+    }));
+
+    jobs.push(Promise.resolve(window.DB.goalsCurrency(out.cur)).then(null, function (e) {
+      failed.push({ id: null, name: 'the currency', what: 'save', why: e.message });
+    }));
+
+    return Promise.all(jobs).then(function () {
+      return { ok: !refused.length && !failed.length,
+               wrote: wrote, deleted: deleted, refused: refused, failed: failed };
+    });
   }
 
   /* Realtime lives behind the boundary too, so the tool asks the store to
@@ -244,7 +340,11 @@
     backend = remote; mode = 'remote';
   }
 
-  return { load: load, save: save, list: list, upsert: upsert, remove: remove,
-           currency: currency, watch: watch, clean: clean, newId: newId,
-           use: use, syncing: syncing, KEY: KEY };
+  return { load: load, save: save, merge: merge, list: list, upsert: upsert,
+           remove: remove, currency: currency, watch: watch, clean: clean,
+           newId: newId, use: use, syncing: syncing, KEY: KEY,
+           /* for the test, which has to be able to set up a device that
+              has already seen a particular server state */
+           __seen: function () { return seen; },
+           __remember: remember, pending: pendingIn };
 }));

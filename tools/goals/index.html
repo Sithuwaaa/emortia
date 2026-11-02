@@ -283,11 +283,29 @@ const cat = k => CATS.find(c => c.k === k) || CATS[5];
    later a change to store.js rather than a change to this one. */
 let S = { cur:'Rs', goals:[] };
 const persist = async () => {
-  const ok = await Store.save(S);
+  const r = await Store.save(S);
   /* A failed write is the user losing a year of planning without being
-     told. It is the one storage outcome that gets its own message. */
-  if (!ok) toast('Could not save - this browser is refusing to store more.');
-  return ok;
+     told. It is the one storage outcome that gets its own message - and
+     there are now three of them, because they mean different things.
+
+     READ .ok, NOT r. save() used to return a boolean and now returns a
+     result; `if (!r)` on an object is false for every outcome including
+     total failure, which would turn the one guard in this tool into a
+     guard that cannot fire. goals.test.js asserts this line reads .ok. */
+  if (r.refused.length){
+    /* somebody else has the newer version - this edit did not happen, and
+       saying "saved" here is the lie the whole change was made to stop */
+    const g = r.refused[0];
+    toast(r.refused.length === 1
+      ? '“' + g.name + '” changed on another device – your ' +
+        (g.what === 'delete' ? 'delete' : 'edit') + ' was not applied. Reload to see it.'
+      : r.refused.length + ' goals changed on another device – those edits were not applied. Reload to see them.',
+      8000);
+  } else if (r.failed.length){
+    const f = r.failed[0];
+    toast('Could not save “' + f.name + '” – ' + f.why, 8000);
+  }
+  return r.ok;
 };
 
 const now = new Date();
@@ -503,7 +521,11 @@ document.addEventListener('click', async e => {
     if (change.remove){ S = Store.remove(S, change.remove); render(); return; }
     if (change.reload){
       const fresh = await Store.load();
-      if (!fresh.error){ S = fresh; render(); }
+      /* MERGE, NOT REPLACE. `S = fresh` discarded anything typed while the
+         round trip was in flight - the stale-write bug pointing the other
+         way. Store.merge keeps any goal whose local copy the server has
+         not confirmed yet and takes the server's for everything else. */
+      if (!fresh.error){ S = Store.merge(S, fresh); render(); }
     }
   });
 })();

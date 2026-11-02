@@ -489,7 +489,9 @@
      browser key to a table - store.js swapped its backend and nothing else
      moved. */
   const GOALS = 'goals', GPREFS = 'goal_prefs';
-  const GOAL_COLS = 'id,name,cat,target,saved,month,year,note,done';
+  /* updated_at comes back because every write is CONDITIONED on it - see
+     goalsWrite. It is not part of a goal and the page never shows it. */
+  const GOAL_COLS = 'id,name,cat,target,saved,month,year,note,done,updated_at';
 
   async function goalsLoad(){
     const c = await client();
@@ -519,26 +521,81 @@
      becoming two. owner is left to the column default, which is auth.uid() -
      a client that tried to set it would be refused by the policy anyway, and
      that is the right way round. */
-  async function goalsSave(rows){
-    const c = await client(); if (!c) throw new Error('offline');
-    const list = (rows || []).map(g => ({
+  /* ONE GOAL, AND ONLY IF IT IS STILL THE ONE WE READ.
+
+     This used to be goalsSave(rows): every column of EVERY goal, upserted
+     on each edit, with updated_at set unconditionally and compared to
+     nothing. Last-writer-wins on whole rows, so a laptop that had been
+     asleep could put back the whole year over a phone edit while the
+     person was changing something unrelated - and nothing would say so.
+
+     Two changes, and the second is the one that makes the first safe:
+
+       ONE ROW. Only the goal that actually changed is written, so an
+       untouched goal cannot be overwritten by a stale copy of itself.
+       That alone closes the sleeping-laptop case and the resurrected-
+       delete case, because a goal nobody edited here is never mentioned.
+
+       updated_at AS A CONDITION, not a field. The update matches on the
+       stamp the caller last saw. If another device has written since, it
+       matches no row, PostgREST returns an empty set, and the write is
+       REFUSED rather than applied. The caller is told which goal and why.
+
+     A refused write and a failed write are different answers and this
+     returns them differently: { ok, refused, error }. Throwing for both
+     is how "your change did not save" became indistinguishable from "the
+     network is down", in the one tool where nobody would notice. */
+  async function goalsWrite(g, expected){
+    const c = await client(); if (!c) return { ok: false, refused: false, error: 'offline' };
+    const row = {
       id: g.id, name: g.name, cat: g.cat,
       target: g.target || 0, saved: g.saved || 0,
       month: g.month == null ? null : g.month,
       year: g.year, note: g.note || null, done: !!g.done,
       updated_at: new Date().toISOString()
-    }));
-    if (!list.length) return true;
-    const { error } = await c.from(GOALS).upsert(list, { onConflict: 'id' });
-    if (error) throw new Error(goalsWhy(error.message));
-    return true;
+    };
+
+    /* No stamp means this device believes the goal is new. INSERT, not
+       upsert: if the server already has that id, the unique violation is
+       the answer - somebody else created it - and silently overwriting
+       theirs is the bug this whole change is about. */
+    if (!expected){
+      const { data, error } = await c.from(GOALS).insert(row).select('id,updated_at');
+      if (error){
+        if (/duplicate key|already exists|23505/i.test(error.message || ''))
+          return { ok: false, refused: true, error: 'already on the server, created elsewhere' };
+        return { ok: false, refused: false, error: goalsWhy(error.message) };
+      }
+      return { ok: true, refused: false, error: null,
+               stamp: data && data[0] ? data[0].updated_at : null };
+    }
+
+    const { data, error } = await c.from(GOALS).update(row)
+      .eq('id', g.id).eq('updated_at', expected).select('id,updated_at');
+    if (error) return { ok: false, refused: false, error: goalsWhy(error.message) };
+    if (!data || !data.length)
+      return { ok: false, refused: true, error: 'changed on another device since this page read it' };
+    return { ok: true, refused: false, error: null, stamp: data[0].updated_at };
   }
 
-  async function goalsRemove(id){
-    const c = await client(); if (!c) throw new Error('offline');
-    const { error } = await c.from(GOALS).delete().eq('id', String(id));
-    if (error) throw new Error(goalsWhy(error.message));
-    return true;
+  /* Conditioned the same way, and with the one distinction that costs a
+     second round trip and is worth it: a delete that removed nothing
+     because the goal had ALREADY GONE is the outcome the caller wanted,
+     while a delete that removed nothing because the stamp moved is a
+     refusal. Reported identically, a lost delete looks like a success. */
+  async function goalsRemove(id, expected){
+    const c = await client(); if (!c) return { ok: false, refused: false, error: 'offline' };
+    let q = c.from(GOALS).delete().eq('id', String(id));
+    if (expected) q = q.eq('updated_at', expected);
+    const { data, error } = await q.select('id');
+    if (error) return { ok: false, refused: false, error: goalsWhy(error.message) };
+    if (data && data.length) return { ok: true, refused: false, error: null, already: false };
+
+    const { data: still, error: e2 } = await c.from(GOALS)
+      .select('id').eq('id', String(id)).maybeSingle();
+    if (e2) return { ok: false, refused: false, error: goalsWhy(e2.message) };
+    if (!still) return { ok: true, refused: false, error: null, already: true };
+    return { ok: false, refused: true, error: 'changed on another device since this page read it' };
   }
 
   async function goalsCurrency(cur){
@@ -2689,7 +2746,7 @@
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
-                goalsLoad: goalsLoad, goalsSave: goalsSave, goalsRemove: goalsRemove,
+                goalsLoad: goalsLoad, goalsWrite: goalsWrite, goalsRemove: goalsRemove,
                 goalsCurrency: goalsCurrency, goalsSubscribe: goalsSubscribe,
                 puProjects, puReports, puPayload, puSites,
                 puSaveProject, puSaveReport, puDeleteProject, puDeleteReports, puSubscribe,

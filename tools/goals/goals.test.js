@@ -138,9 +138,17 @@ is('rubbish reads as zero',        M.money('Rs', 'later'), 'Rs 0');
     st = await S.load();
     is('rubbish opens as an empty year', [st.cur, st.goals], ['Rs', []]);
 
-    /* a full disk is the user losing work; the caller has to be able to know */
+    /* A full disk is the user losing work; the caller has to be able to
+       know. save() used to answer that with `false` and now answers with
+       a result, because a refused write and a dead browser are different
+       sentences - so this asks .ok rather than the object. An object is
+       truthy, so the old form would have passed on every failure, which
+       is why sync.test.js asserts the PAGE reads .ok too. */
     S.use({ read: () => null, write: () => false });
-    is('a failed write says so',       await S.save({ cur: 'Rs', goals: [] }), false);
+    const full = await S.save({ cur: 'Rs', goals: [] });
+    is('a failed write says so',       full.ok, false);
+    is('and says what failed',         full.failed.length, 1);
+    is('without calling it a refusal', full.refused, []);
 
     runSyncTests();
   })();
@@ -173,11 +181,22 @@ function runSyncTests(){
   window.DB = {
     goalsLoad: async () => failRead ? { error: failRead, goals: null, cur: null }
                                     : { goals: server.goals.slice(), cur: server.cur, error: null },
-    goalsSave: async rows => { calls.saved.push(rows.map(r => r.id));
-      rows.forEach(r => { const at = server.goals.findIndex(g => g.id === r.id);
-        if (at < 0) server.goals.push(r); else server.goals[at] = r; }); return true; },
+    /* WAS goalsSave(rows) - every column of every goal, upserted on each
+       edit, returning true. It is goalsWrite(goal, expected) now: ONE
+       goal, conditioned on the updated_at the caller last read, and
+       returning { ok, refused, error } so a refused write and a failed
+       one are different answers. The four ways the old shape lost data
+       are in sync.test.js; this stub only has to behave like the new
+       contract so the rest of this file still means something. */
+    goalsWrite: async (g, expected) => { calls.saved.push(g.id);
+      const at = server.goals.findIndex(x => x.id === g.id);
+      if (at < 0) server.goals.push(Object.assign({}, g, { updated_at: 'st1' }));
+      else server.goals[at] = Object.assign({}, g, { updated_at: 'st1' });
+      return { ok: true, refused: false, error: null, stamp: 'st1' }; },
     goalsRemove: async id => { calls.removed.push(id);
-      server.goals = server.goals.filter(g => g.id !== id); return true; },
+      const had = server.goals.some(g => g.id === id);
+      server.goals = server.goals.filter(g => g.id !== id);
+      return { ok: true, refused: false, error: null, already: !had }; },
     goalsCurrency: async c => { calls.cur.push(c); server.cur = c; return true; },
     goalsSubscribe: async () => () => {}
   };
