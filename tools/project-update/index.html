@@ -1586,9 +1586,28 @@ function renderFooter(){
        switcher that used to choose between them is hidden now. One link
        would have left Master permanently unpublishable, which is the same
        hole one level down. */
+    /* THE ACCOUNT HALF IS GONE, AND NOTHING WAS LOST. It said "signed in
+       as <email> · sign out", and the shared account chip access.js puts
+       in every tool header already carries both - read off the deployed
+       page, its menu rows are Admin / Tooway / Guest / Light mode / Sign
+       out. What To Do deleted its footer for this exact reason and the
+       note it left is the argument: a second sign-out in a different
+       place is not redundancy, it is two things to keep in step.
+
+       THE TWO EXCEL ACTIONS STAY HERE, and that is a choice rather than an
+       oversight. Project Footer Options.dc.html offers nine footers and
+       every one of them carries Sign out; not one of them mentions either
+       Excel action, so the design does not say where they go. The chip's
+       menu is built in access.js for fifteen tools and exposes no hook for
+       a tool's own rows, so putting them there means editing shared code
+       to serve one page. The alternative was inventing header UI the
+       design does not specify, in a bar access.js documents as fixed
+       height with 38px to work in. One quiet owner-only line, one click,
+       is the smaller claim - and deleting the only way to publish a
+       workbook was never on the table. */
     bits.push(DATASETS.map(d =>
       '<a href="#" data-up="' + esc(d.key) + '">Update ' + esc(d.label) + ' from Excel…</a>'
-    ).join(' · ') + ' · <a href="#" id="acct" style="color:var(--muted)">…</a>');
+    ).join(' · '));
   }
   const ft = document.querySelector('footer');
   ft.innerHTML = bits.join('<br>'); ft.style.display = bits.length ? '' : 'none';
@@ -1599,19 +1618,6 @@ function renderFooter(){
     try { localStorage.setItem(DS_KEY, DSK); } catch (err){}
     $('file').click();
   });
-  const ac = $('acct');
-  if (ac){
-    const paint = s => { ac.textContent = s ? ('signed in as ' + s.user.email + ' · sign out')
-                                            : 'sign in to publish'; };
-    window.DB.session().then(paint);
-    window.DB.onAuth(paint);
-    ac.onclick = async e => {
-      e.preventDefault();
-      const s = await window.DB.session();
-      if (s){ await window.DB.signOut(); toast('Signed out'); paint(null); }
-      else { const ns = await window.AuthGate.signIn(); if (ns){ toast('Signed in'); paint(ns); } }
-    };
-  }
 }
 
 
@@ -1623,21 +1629,32 @@ function renderFooter(){
    reached from the Excel Browser tab, and the two share the header, the
    photograph and the Field Operations palette.
 
-   WHERE ITS DATA LIVES, AND WHY THAT IS NOT WHERE THE DASHBOARD'S LIVES.
-   A workbook dropped in here is kept in IndexedDB on the device that
-   dropped it. It is NOT synced, and that is deliberate, not an omission:
+   WHERE ITS DATA LIVES. In pu_projects and pu_reports, since migration
+   047, and it syncs. A project created on the laptop exists on the phone.
 
-     - the rollout dashboard's two workbooks are published, read by other
-       people, and belong in `books` where they are;
-     - an ad-hoc report somebody opens to look at something is not;
-     - and whole workbooks read back out of Postgres is the exact shape
-       that put 96% of a month's egress through PostgREST. One page of this
-       tool reloading every open tab on every row change cost about 880 MB
-       in a day. A sheet is bigger than a ticket.
+   THIS PARAGRAPH USED TO SAY THE OPPOSITE, at length, and it was still
+   saying it after the tables shipped - that the data was IndexedDB only,
+   that it was "NOT synced, and that is deliberate", and that there was "no
+   table, no migration and no channel behind it". There are two tables, a
+   migration and a channel on pu_projects. Left standing, it is a comment
+   arguing a future reader out of something already done, which is worse
+   than no comment. The same stale claim was in the project-list subtitle,
+   in the Excel tab's loading line and in the note further down: four
+   copies, all corrected together.
 
-   So nothing in this half touches window.DB, and there is no table, no
-   migration and no channel behind it. If that ever needs to change it is a
-   deliberate decision with a cost attached, not a refactor.
+   WHAT WAS RIGHT IN IT, AND STILL IS. Whole workbooks read back out of
+   Postgres is the shape that put 96% of a month's egress through
+   PostgREST; one page reloading every open tab on every row change cost
+   about 880 MB in a day, and a sheet is bigger than a ticket. That is why
+   the payload lives in its own column, is selected by id when a sheet is
+   actually opened, and is named by nothing else - and why lazy.test.js
+   has an allowlist that fails on any column added to a list read. The
+   conclusion changed; the cost it was reasoning about did not.
+
+   Nothing in this half talks to storage directly. It goes through
+   PUStore, which chooses the remote table or the local fallback, and
+   merge.test.js asserts that boundary - it has already caught two delete
+   paths going round it.
 
    Every name here is prefixed. The dashboard already has a DB (the
    IndexedDB database name), a parseSheet and a load; shadowing any of them
@@ -1948,8 +1965,12 @@ async function xOpenProjectData(id){
 }
 
 function xHome(){
-  return '<div class="hero"><div><h2>Ongoing <em>Projects</em></h2>' +
-      '<p>Pick a project to open its reports. These are kept on this device.</p></div></div>' +
+  /* No subtitle. The design removed it deliberately and "Ongoing Projects"
+     sits directly above the tiles - and the sentence was false anyway from
+     047 onwards: projects are rows in pu_projects/pu_reports and they sync.
+     It was written four times in this file, which is why the other three
+     are corrected too rather than left to be found later. */
+  return '<div class="hero"><div><h2>Ongoing <em>Projects</em></h2></div></div>' +
     '<div class="pgrid">' +
     XP.map(p => { const s = xProjStats(p); return '<button class="glass proj" data-xopen="' + xesc(p.id) + '">' +
       '<span class="cap">' + xesc(p.client || 'Project') + '</span>' +
@@ -2271,7 +2292,9 @@ function xReportView(){
 
 /* the one entry point render() calls */
 function renderExcel(){
-  if (!xready) return '<div class="empty"><div class="big">📁</div>Opening what is on this device…</div>';
+  /* true whichever backend answered: pu_projects when signed in, the
+     IndexedDB fallback when there is no connection */
+  if (!xready) return '<div class="empty"><div class="big">📁</div>Opening your projects…</div>';
   return '<div id="xl">' + (xcur ? xProjectPage() : xHome()) + '</div>';
 }
 
@@ -2491,7 +2514,9 @@ PUStore.watch(async (e) => {
   if (ACTIVE === EXCEL_TAB) render();
   if (e && e.real) toast('Projects updated from another device', 3600);
 });
-/* Read what is on this device alongside the published workbook, and repaint
+/* Read the projects - from pu_projects when signed in, from the local
+   fallback when there is no connection; PUStore decides which, and this
+   does not need to know - alongside the published workbook, and repaint
    only if the browser tab is the one being looked at. A failed read leaves
    xready true so the tab says what it found rather than spinning. */
 xLoad().then(() => { if (ACTIVE === EXCEL_TAB) render(); })
