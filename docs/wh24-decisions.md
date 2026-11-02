@@ -1995,7 +1995,19 @@ make a failure go away, which the allowlist refuses to permit.
 ## The comparison goes before the cost, and that is now four times
 
 2 November. Four instances, same shape, and the fourth was costing
-~817 MB a day out of a 6.7 MB database.
+a large multiple of the daily traffic of a 6.7 MB database.
+
+**CORRECTED, 3 November.** The ~817 MB/day I reported here was wrong by
+about eight times: it multiplied row counts by UNCOMPRESSED column sizes
+and compared them to a gzipped wire. The real rate since 24 October is
+nearer **100 MB/day**, and the 5.24 GB against a 5 GB ceiling came from
+**three spike days in October**, not from the daily drip. The gates were
+not the emergency the first version of this entry presented them as; they
+lower the floor for next cycle, which is worth having and is not the same
+claim. The ORDERING fault the entry is about is unchanged - the walk was
+real, 100 full reads a day of a dataset last published on 1 October - and
+so is every count taken by the last page of a walk. Only the megabytes
+were invented, by a measurement nobody checked against a known answer.
 
 1. **wh24Subscribe, 25 October.** A full table read per changed row per
    open tab. 689 rows at 1.28 MB is 882 MB in a day. Fixed by patching

@@ -10,8 +10,14 @@
    backstop, the channel coming back - because lookup.js calls load()
    again each time. Measured over 24 hours: about 124 full reads a day,
    roughly 509 MB, of a dataset last published on 1 October. site_data is
-   13,258 rows and has not moved in 58 days. The whole database is 6.7 MB
-   and it was sending ~817 MB a day.
+   13,258 rows and has not moved in 58 days.
+
+   A NOTE ON THE MEGABYTES. An earlier version of this comment said the
+   database was sending ~817 MB a day. That figure was wrong by about
+   eight times - uncompressed column sizes against a gzipped wire - and
+   the real rate is nearer 100 MB/day. The WALK COUNTS below are measured
+   from the last page of each walk and stand; only the bytes were
+   invented, and they are not what this test asserts on.
 
    The meta row was ALREADY being read. fetchRemote fetched
    datasets.cols/row_count/updated_at, used the column list, and threw
