@@ -15,6 +15,7 @@
    confirm is not an instrument.
 
    Fixtures are invented: no real material code, ticket or site. */
+const fs = require('fs');
 const path = require('path');
 const R = require(path.join(__dirname, 'relog.js'));
 
@@ -148,6 +149,88 @@ is('an empty log says so rather than dividing by nothing',
 /* ---- 6. the instrument's own cost is in the record ------------------- */
 is('fpMs is present, so time spent fingerprinting cannot be read as the page',
    typeof R.mark('cost', 'x', A, A, KEY).fpMs, 'number');
+
+/* ---- 7. THE SKIP, AND THE FIVE WAYS IT GOES WRONG -------------------
+   A render skipped when it was needed shows stale rows and says
+   nothing. A render done when it was not needed costs a repaint. So
+   every assertion here is about the FIRST direction, and `false` has
+   exactly one route to it. */
+console.log('\nthe skip');
+
+const ROWS_A = [{ code: 'XX-1', descr: 'one' }];
+const ROWS_B = [{ code: 'XX-1', descr: 'CHANGED' }];
+
+/* 1 - a real change must render */
+is('A CHANGE RENDERS', R.shouldRender(ROWS_A, ROWS_B), true);
+is('a change buried in a nested object renders too',
+   R.shouldRender([{ code: 'X', a: { b: 1 } }], [{ code: 'X', a: { b: 2 } }]), true);
+is('a list that lost a row renders', R.shouldRender(ROWS_A.concat(ROWS_B), ROWS_A), true);
+
+/* 2 - unknown must render. A circular reference and a BigInt both make
+   JSON.stringify throw, which is what "no signature" means in practice. */
+const circular = [{ code: 'X' }]; circular[0].self = circular;
+is('AN UNFINGERPRINTABLE BEFORE RENDERS', R.shouldRender(circular, ROWS_A), true);
+is('an unfingerprintable AFTER renders as well', R.shouldRender(ROWS_A, circular), true);
+is('and sig says null rather than guessing', R.sig(circular), null);
+/* THE ONE THAT CATCHES A STAND-IN. If `sig` returned a sentinel instead
+   of null, two unreadable models would carry the SAME sentinel, compare
+   equal, and skip the render - the exact failure, arrived at through a
+   value that looks like a signature. */
+const circular2 = [{ code: 'Y' }]; circular2[0].self = circular2;
+is('TWO UNFINGERPRINTABLE MODELS ARE NOT THEREFORE THE SAME',
+   R.shouldRender(circular, circular2), true);
+is('nor is a model unfingerprintable twice over',
+   R.shouldRender(circular, circular), true);
+is('a BigInt is the same answer, not a crash',
+   R.shouldRender([{ code: 'X', n: 1n }], ROWS_A), true);
+/* undefined is a model that has not loaded; it must never read as "same" */
+is('undefined against a list renders', R.shouldRender(undefined, ROWS_A), true);
+
+/* 3 - and it must actually skip, or the change is a no-op */
+is('IDENTICAL CONTENT DOES NOT RENDER',
+   R.shouldRender(ROWS_A, [{ code: 'XX-1', descr: 'one' }]), false);
+is('key order alone does not render',
+   R.shouldRender([{ code: 'X', a: 1 }], [{ a: 1, code: 'X' }]), false);
+/* the composite shape both tools pass: model plus the other things the
+   render reads. A change in ANY member must render. */
+is('a composite is compared whole - a changed second member renders',
+   R.shouldRender([ROWS_A, { m: 1 }, null], [ROWS_A, { m: 2 }, null]), true);
+is('a changed third member renders',
+   R.shouldRender([ROWS_A, { m: 1 }, { checked_at: 'a' }],
+                  [ROWS_A, { m: 1 }, { checked_at: 'b' }]), true);
+is('and an unchanged composite does not',
+   R.shouldRender([ROWS_A, { m: 1 }, null], [ROWS_A, { m: 1 }, null]), false);
+
+/* 4 and 5 - the two the pages own, read off the pages.
+   These are source assertions and are labelled as such: they are not a
+   rendered verification. What they can do is bite when the source
+   stops saying it, which is proved by breaking them below. */
+const pg = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8').split('\r\n').join('\n');
+const MAT = pg('materials/index.html'), WH = pg('wh24/index.html');
+
+/* 4 - the model is assigned whether or not the paint is held */
+is('materials assigns ALL outside the skip',
+   /\bALL = f\.rows;[^\n]*\n\s*if \(repaint\) paint\(\);/.test(MAT), true);
+is('and does not assign it inside the conditional',
+   /if \(repaint\)\s*\{?\s*ALL = /.test(MAT), false);
+is('wh24 assigns TICKETS inside loadAll, before the decision is taken',
+   MAT.length > 0 && WH.indexOf('TICKETS = r.tickets; MARKS = r.marks; LOADED = true;')
+     < WH.indexOf('const paint = !window.RELOG'), true);
+is('and its hold returns AFTER refreshChecked, so CHECKED is fresh to compare',
+   /await refreshChecked\(\);\s*\n\s*if \(hold\) return;/.test(WH), true);
+
+/* 5 - a missing RELOG renders. The polarity is the whole assertion: an
+   `&&` here would make a tool with no instrument skip every render. */
+is('materials renders when RELOG is absent',
+   /const repaint = !window\.RELOG \|\| RELOG\.shouldRender\(/.test(MAT), true);
+is('wh24 renders when RELOG is absent',
+   /const paint = !window\.RELOG \|\| RELOG\.shouldRender\(/.test(WH), true);
+is('neither page gates the paint on RELOG being present',
+   /(const (?:re)?paint = window\.RELOG &&)/.test(MAT + WH), false);
+/* and the comparison covers what the render reads, not just the rows */
+is('wh24 compares MARKS and CHECKED too, not only TICKETS',
+   /const before = \[was, MARKS, CHECKED\];/.test(WH) &&
+   /const after = \[TICKETS, MARKS, CHECKED\];/.test(WH), true);
 
 Date.now = realNow;
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');

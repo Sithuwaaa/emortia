@@ -320,6 +320,51 @@ const REPORTS = [
      /add table public\.pu_reports/.test(
        fs.readFileSync(path.join(ROOT, 'supabase', '047_project_update_projects.sql'), 'utf8')), false);
 
+  /* ---- 5b. pu_reports STAYS OUT OF THE PUBLICATION -------------------
+     The assertion above reads 047 and only 047, which is the same
+     mistake as reading a column list out of the thing it checks: it
+     says the migration that created the table did not publish it, and
+     a migration published later is exactly how it would get published.
+     047's own closing comment asks the next person to read the
+     paragraph first. Comments do not run.
+
+     WHAT IT WOULD COST. pu_reports carries `payload` - 141 kB measured
+     on one sheet, with nothing bounding it. postgres_changes ships the
+     whole changed row, and Supabase drops oversized payloads silently,
+     so publishing this table rebuilds the 882 MB fan-out with the
+     heaviest column in the project attached AND a subscription that
+     stops delivering without saying so. There is no version of this
+     that is a small mistake.
+
+     So every .sql in the folder, not one of them. */
+  const SQLDIR = path.join(ROOT, 'supabase');
+  const sqls = fs.readdirSync(SQLDIR).filter(f => /\.sql$/.test(f)).sort();
+  is('there are migrations to be wrong about', sqls.length > 20, true);
+
+  const publishes = [], dynamic = [];
+  sqls.forEach(f => {
+    const src = fs.readFileSync(path.join(SQLDIR, f), 'utf8')
+      .split('\r\n').join('\n')
+      /* a commented-out line is not a statement, and 047 ends with a
+         paragraph that says the table name on purpose */
+      .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+    if (/add\s+table\s+(?:public\s*\.\s*)?pu_reports\b/i.test(src)) publishes.push(f);
+    /* 018 adds tables through format('… add table %I', t) over a list.
+       A name assembled at run time cannot be read off the page, so a
+       file that does that AND mentions pu_reports is refused rather
+       than assumed innocent. */
+    if (/add\s+table\s+%[IsL]/i.test(src) && /pu_reports/i.test(src)) dynamic.push(f);
+  });
+
+  is('NO MIGRATION ADDS pu_reports TO supabase_realtime', publishes, []);
+  is('and none builds a publication add from a name this test cannot read',
+     dynamic, []);
+  /* the other half, or the guard above passes in a repo that publishes
+     nothing at all and proves nothing about either table */
+  is('while pu_projects IS published, so the pair is actually asserted',
+     sqls.filter(f => /add\s+table\s+(?:public\s*\.\s*)?pu_projects\b/i
+       .test(fs.readFileSync(path.join(SQLDIR, f), 'utf8'))), ['047_project_update_projects.sql']);
+
   console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
   process.exit(fail ? 1 : 0);
 })();

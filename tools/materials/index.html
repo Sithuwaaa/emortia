@@ -248,19 +248,21 @@ async function load(){
        quarter of an hour, when nothing had happened. The caller was
        handed what it needed to be accurate and dropped it. */
   window.DB.materialsSubscribe(async (why) => {
-    /* INSTRUMENTED, NOT FIXED. The theory is that one of liveChannel's
-       three reconcile paths repaints this list when nothing has changed.
-       Nothing here skips a render yet, and nothing should until the log
-       has run signed in: a skip built on an unconfirmed theory is a
-       guess with a test around it. RELOG records why, when, and whether
-       the rows that came back differ from the ones on screen - and its
-       rate() can say the reconcile is NOT responsible, which is the
-       reading that matters. */
+    /* A reload that changed nothing produces no repaint. UNKNOWN STILL
+       REPAINTS - no RELOG, no signature, a serialiser that threw, all
+       render - because skipping a render that was needed shows stale
+       rows and says nothing, while rendering one that was not costs a
+       repaint. The two directions are not symmetrical.
+       RELOG still records every reload either way, so the log says
+       whether the skip is doing anything. */
     const before = ALL;
     const f = await window.DB.materialsLoad();
     if (!f.error){
+      const repaint = !window.RELOG || RELOG.shouldRender(before, f.rows);
       if (window.RELOG) RELOG.mark('materials', why, before, f.rows, r => r && r.code);
-      ALL = f.rows; paint(); if (!why) toast('Updated from another device');
+      ALL = f.rows;                       /* ALWAYS. A held paint must not leave the model behind. */
+      if (repaint) paint();
+      if (!why) toast('Updated from another device');
     }
   });
 }

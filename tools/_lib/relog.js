@@ -80,6 +80,38 @@
     return s.length + ':' + h.toString(16);
   }
 
+  /* A fingerprint, or null when one cannot be taken. JSON.stringify
+     throws on a circular reference and on BigInt, and a model that
+     cannot be serialised is not a model that can be declared unchanged. */
+  function sig(v) {
+    try { return fp(v); } catch (e) { return null; }
+  }
+
+  /* ---- THE SKIP DECISION ----------------------------------------------
+     shouldRender(before, after) - the whole of it, in one place, so the
+     two tools cannot answer it differently and so it can be broken on
+     purpose in a test.
+
+     UNKNOWN RENDERS. The two failure directions are not symmetrical and
+     this is the entire design:
+
+       rendering when nothing changed   costs a redundant repaint.
+       skipping when something changed   shows the user stale data and
+                                        says nothing. The tab looks
+                                        live and is not, which is the
+                                        failure this project keeps
+                                        producing.
+
+     So the only path to `false` is BOTH signatures computable AND
+     identical. No signature, one signature, a thrown serialiser, a
+     missing RELOG - every one of those renders. The default is the
+     expensive answer, deliberately. */
+  function shouldRender(before, after) {
+    var a = sig(before), b = sig(after);
+    if (a === null || b === null) return true;
+    return a !== b;
+  }
+
   /* How many rows actually differ, when the caller can pair them. */
   function changed(before, after, key) {
     if (!key || !Array.isArray(before) || !Array.isArray(after)) return null;
@@ -172,7 +204,8 @@
     return out;
   }
 
-  var API = { mark: mark, dump: dump, rate: rate, fp: fp, canon: canon,
+  var API = { mark: mark, dump: dump, rate: rate, fp: fp, sig: sig,
+              shouldRender: shouldRender, canon: canon,
               changed: changed, COALESCE: COALESCE,
               reset: function () { log = []; last = {}; } };
 

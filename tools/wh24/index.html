@@ -1529,7 +1529,13 @@ $('allBtn').onclick = () => {
 };
 
 /* ---- loading ---- */
-async function loadAll(){
+/* `hold` loads and assigns everything exactly as always and leaves the
+   LIST REPAINT to the caller. Only the reconcile passes it, because only
+   the reconcile has a reason not to repaint; every other caller - first
+   load, after a sync - must paint and calls this with no argument, so
+   their behaviour is unchanged. The model is assigned either way: a
+   held render must never leave TICKETS stale. */
+async function loadAll(hold){
   const r = await window.DB.wh24Load();
   if (r.error && r.error !== 'offline'){ $('list').innerHTML = `<div class="empty">${esc(r.error)}</div>`; $('pill').textContent = 'error'; return; }
   TICKETS = r.tickets; MARKS = r.marks; LOADED = true;
@@ -1539,6 +1545,7 @@ async function loadAll(){
   const here = new Set(TICKETS.map(KEY));
   [...SEL].forEach(k => { if (!here.has(k)) SEL.delete(k); });
   await refreshChecked();
+  if (hold) return;
   render(true);
 }
 
@@ -2473,9 +2480,21 @@ window.addEventListener('message', e => {
        would cost more than the thing being measured, so it is noted
        rather than engineered around. */
     const was = TICKETS;
-    await loadAll();
+    /* EVERYTHING render(true) READS THAT A RELOAD CAN CHANGE. Not just
+       TICKETS: board/dash/segs read MARKS, and the freshness line reads
+       CHECKED, which refreshChecked() replaces inside loadAll. A
+       comparison narrower than the render's own inputs is a skip that
+       is wrong for the inputs it left out. SEL is not in here because a
+       reload only ever prunes it when a ticket has gone, which changes
+       TICKETS. */
+    const before = [was, MARKS, CHECKED];
+    await loadAll(true);                       /* assigns; does not paint */
+    const after = [TICKETS, MARKS, CHECKED];
+    /* no RELOG, no signature, a serialiser that threw - all render */
+    const paint = !window.RELOG || RELOG.shouldRender(before, after);
     if (window.RELOG) RELOG.mark('wh24', why, was, TICKETS, KEY);
-    if (why) console.info('[wh24] reconciled:', why);
+    if (paint) render(true);
+    if (why) console.info('[wh24] reconciled:', why, paint ? '(repainted)' : '(no change, held)');
   };
   /* trailing-edge, and deliberately short: long enough to swallow a sync's
      burst, short enough that a single change still lands promptly */
