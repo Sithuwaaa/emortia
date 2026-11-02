@@ -697,6 +697,51 @@
     paint-order:stroke fill;
     -webkit-text-stroke:2.5px rgba(40,10,20,.82);
     text-stroke:2.5px rgba(40,10,20,.82)}
+  /* AND THINNER WHERE THE LETTERS ARE SMALL, because 2.5px is not one
+     thickness - it is a different thickness per font size, and at 12.5px
+     it was closing the letters up.
+
+     THE STROKE IS CENTRED, so 2.5px puts 1.25px INSIDE the letterform as
+     well as outside. The fill paints over the inside of the stem, so
+     stems survive - but a COUNTER, the hole in e / o / d / a, is eaten
+     from every side and nothing paints it back. Measured on the rendered
+     page, at the real font and size, supersampled 8x and counted by
+     flood-filling the sky so an enclosed hole is counted as a hole:
+
+       .doneline  12.5px   59.2 px2 of counter bare -> 7.1 at 2.5px   12% left
+       .none      14px    112.9                     -> 19.5           17%
+       .tk-h .n   16px    151.1                     -> 48.5           32%
+       .lq-sub    26px    188                       -> 184.9          98%
+
+     At 26px and 36px the counters are wide enough that the stroke barely
+     touches them; at 12.5px it takes seven eighths of them. That is the
+     word turning into a row of blobs, which is a legibility failure the
+     contrast number cannot see.
+
+     AND THE CONTRAST NUMBER DOES NOT ARGUE BACK, which is what makes this
+     free. What the eye resolves the glyph against is the STROKE, not the
+     photograph, and a stroke's contrast is its colour - not its width.
+     rgba(40,10,20,.82) against --ground-dim #D6C3C6 measures 11.28 over
+     the darkest the photo can be and 6.47 over the lightest, so it clears
+     4.5 at every backdrop and at every width. Bare, with no stroke at
+     all, the same ink is 1.68 over bright water, which is why the stroke
+     is there.
+
+     So the width is chosen for the letterforms and the colour carries the
+     contrast. 1.6px leaves 0.8px outside - still a halo - and roughly
+     triples the counter area at the three small sizes.
+
+     NOT A FULL ANSWER, and worth saying: 0.8px of halo is about one
+     device pixel, and at 12.5px over a photograph a stroke is close to
+     the limit of what it can do. The real fix for the smallest ground
+     text is a backing plate rather than a heavier outline, and that is a
+     design decision, not a measurement. Sithara's eyes outdoors still
+     settle it. */
+  html[data-theme="light"][data-wtd-scene="on"] .tk-h .n,
+  html[data-theme="light"][data-wtd-scene="on"] .doneline,
+  html[data-theme="light"][data-wtd-scene="on"] .none{
+    -webkit-text-stroke:1.6px rgba(40,10,20,.82);
+    text-stroke:1.6px rgba(40,10,20,.82)}
   /* the readability tint, over the photo and under everything else */
   .scene::after{content:'';position:absolute;inset:0;
     background:var(--wtd-scene-tint,transparent)}
