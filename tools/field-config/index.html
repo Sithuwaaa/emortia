@@ -41,6 +41,8 @@
 <script src="../_lib/db.js"></script>
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
+<script src="../_lib/migrations.js"></script>
+<script src="../_lib/migrations.data.js"></script>
 <script>Access.protect({ owner: true, feature: 'tool:field-config' });</script>
 <script src="config.js"></script>
 <style>
@@ -267,10 +269,70 @@
   </div>
   <div class="found" id="found" hidden></div>
   <main id="body"></main>
+
+  <!-- WHICH MIGRATIONS HAVE ACTUALLY RUN.
+       Nothing records that anywhere: they are pasted into the Supabase SQL
+       editor by hand, so the migration table is empty and the repo cannot
+       tell. 044 sat unrun for a week while WH24 showed zeros, and the
+       question "did 034 run" had no way of being answered.
+
+       ON DEMAND, not on load. It is 34 reads, and a tool that quietly made
+       34 requests every time a page opened would be the shape four of this
+       month's commits were spent removing. The button is the trigger.
+
+       Owner-only because this whole tool is (tier 'mine'). -->
+  <section id="migs" class="card" hidden>
+    <h2>Database migrations</h2>
+    <p class="sub">Nothing records which of these have been run. This asks the
+      database directly – one cheap read per migration.</p>
+    <button type="button" id="migrun">Check migrations</button>
+    <div id="migout" hidden></div>
+  </section>
 </div>
 
 <div id="toastHost"></div>
 
+<script>
+/* ---- the migration check, kept out of the config tool's own closure --- */
+(function(){
+  'use strict';
+  var sec = document.getElementById('migs'), btn = document.getElementById('migrun'),
+      out = document.getElementById('migout');
+  if (!sec || !window.Migrations || !window.MIGRATION_DATA) return;
+  /* the data file wires itself into Migrations when both are present; do it
+     here too so load order cannot silently leave the list empty - and an
+     empty list is the one state summary() refuses to call clean */
+  window.Migrations.load(window.MIGRATION_DATA.probes, window.MIGRATION_DATA.unverifiable);
+  sec.hidden = false;
+
+  var esc = function(s){ return String(s == null ? '' : s)
+    .replace(/[&<>"']/g, function(c){ return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); };
+
+  btn.onclick = async function(){
+    btn.disabled = true; out.hidden = false;
+    out.innerHTML = '<p>Asking the database…</p>';
+    try {
+      /* db.js already exports the client; no new hole in the boundary */
+      var c = window.DB && window.DB.client ? await window.DB.client() : null;
+      if (!c) { out.innerHTML = '<p><b>Could not reach the database.</b> ' +
+        'Nothing here says the migrations are fine – it says they were not asked.</p>'; btn.disabled = false; return; }
+      var rows = await window.Migrations.check(window.Migrations.asker(function(t){ return c.from(t); }));
+      var s = window.Migrations.summary(rows);
+      var bad = rows.filter(function(r){ return r.state !== 'applied'; });
+      out.innerHTML =
+        '<p class="' + (s.clean ? 'ok' : 'warn') + '"><b>' + esc(s.line) + '</b></p>' +
+        '<p>' + s.applied + ' of ' + s.total + ' confirmed applied.</p>' +
+        (bad.length ? '<ul>' + bad.map(function(r){
+          return '<li><code>' + esc(r.file) + '</code> – <b>' + esc(r.state) + '</b>' +
+                 (r.why ? ' · ' + esc(r.why) : '') + '</li>'; }).join('') + '</ul>' : '');
+    } catch (e) {
+      out.innerHTML = '<p><b>The check itself failed:</b> ' + esc(e.message) +
+        '. That is not a clean result.</p>';
+    }
+    btn.disabled = false;
+  };
+})();
+</script>
 <script>
 (function(){
   'use strict';
