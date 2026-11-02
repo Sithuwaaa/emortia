@@ -99,7 +99,7 @@
 
   .hdr{position:sticky;top:0;z-index:30;background:var(--navy);
     color:var(--barInk);padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;display:flex;align-items:center;gap:10px;
-    border-bottom:1px solid var(--barLine);box-shadow:none;overflow:hidden}
+    border-bottom:0;box-shadow:none;overflow:hidden}
   .hdr>*{position:relative;z-index:1}
   .hdr .logo{width:30px;height:30px;border-radius:50%;background:linear-gradient(150deg,var(--accentB),var(--accentD));
     display:grid;place-items:center;font-weight:800;color:var(--barDim);font-size:14px;flex-shrink:0;
@@ -867,6 +867,14 @@
 <script src="../_lib/ask.js?v=1" defer></script>
 <link rel="stylesheet" href="../_lib/nav.css?v=7">
 <link rel="stylesheet" href="../_lib/category.css?v=13">
+<!-- The header runs into the photograph rather than being ruled off from
+     it. category.css:164 sets border-bottom:2px and a drop shadow with
+     !important on html[data-cat] header.hdr, for every tool, so the .hdr
+     rule above cannot win on its own and this has to come after the
+     stylesheet and match its weight. Scoped to this page deliberately:
+     category.css is shared, and the rule is right for the tools that do
+     not sit on a photograph. -->
+<style>html[data-cat] header.hdr,html[data-cat] .hdr{border-bottom:0 !important;box-shadow:none !important}</style>
 </head>
 <body>
 <div class="scene" aria-hidden="true"></div>
