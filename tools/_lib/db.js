@@ -151,13 +151,47 @@
   const TABLE  = { site_access: 'sites',   site_data: 'site_data' };
   const KEYCOL = { site_access: 'site_id', site_data: 'site_id' };
 
-  async function fetchRemote(key){
+  /* "The server has nothing newer." A distinct object rather than null,
+     because null already means "nothing published yet", and rather than the
+     dataset, because the whole point is that no dataset was read. */
+  const UNCHANGED = { unchanged: true };
+
+  async function fetchRemote(key, known){
     const c = await client(); if (!c) return null;
     const table = TABLE[key]; if (!table) throw new Error('No table mapped for "' + key + '"');
 
     const meta = await c.from('datasets').select('cols,row_count,updated_at').eq('key', key).maybeSingle();
     if (meta.error) throw new Error(meta.error.message);
     if (!meta.data) return null;                       // nothing published yet
+
+    /* THE COMPARISON BEFORE THE COST.
+       site_access is 5,940 rows and 4.2 MB of JSON over six pages, and it
+       was last published on 1 October. Every tool that opens re-read all of
+       it, and so did every reconcile of the Site Access tool - measured at
+       about 124 full reads a day of bytes that had not moved in a month,
+       roughly 509 MB. The meta row above was ALREADY being fetched and
+       already carried the answer; it was read, used for the column list,
+       and its timestamp thrown away. Same shape as wh24's full read per changed row
+       and the done count rebuilt from a rounded percentage: the cheap
+       answer existed and was consulted after the bill.
+
+       GATED ON THE FULL TIMESTAMP, NOT ON savedAt. savedAt is
+       updated_at.slice(0,10) - a date - so two publishes on the same day
+       would look identical and the second one would never arrive. A stale
+       dataset served as current is a wrong figure on screen, which is the
+       one outcome this must not have. 'stamp' is the whole timestamp and
+       exists for no other purpose.
+
+       row_count is checked too: a cache truncated by a storage quota has
+       the right stamp and the wrong rows, and that must re-read rather than
+       be trusted.
+
+       A cache written before 'stamp' existed has none, so it fails the test
+       and is re-read once, which rewrites it with one. Nothing to migrate. */
+    if (known && known.stamp && meta.data.updated_at &&
+        known.stamp === meta.data.updated_at &&
+        known.rows === meta.data.row_count) return UNCHANGED;
+
     const cols = meta.data.cols || [];
 
     // PostgREST caps a response, so walk it in pages rather than trusting one call
@@ -170,7 +204,8 @@
       from += PAGE;
     }
     const rows = out.map(o => cols.map(cn => { const v = o.data ? o.data[cn] : ''; return v == null ? '' : String(v); }));
-    return { cols, rows, savedAt: (meta.data.updated_at || '').slice(0, 10), source: 'server' };
+    return { cols, rows, savedAt: (meta.data.updated_at || '').slice(0, 10),
+             stamp: meta.data.updated_at || '', source: 'server' };
   }
 
   /* Hand back the fastest thing available, then upgrade in place.
@@ -193,18 +228,22 @@
     const refresh = (async () => {
       if (!configured()) return null;
       try {
-        const remote = await fetchRemote(key);
+        const remote = await fetchRemote(key, cached && cached.stamp
+          ? { stamp: cached.stamp, rows: (cached.rows || []).length } : null);
+        /* Nothing newer: the cache is already right, so it is not rewritten
+           and no caller is told anything happened. */
+        if (remote === UNCHANGED) return UNCHANGED;
         if (remote){ await cacheSet(key, remote); return remote; }
       } catch(e){ console.warn('Supabase read failed, staying on the cached copy:', e.message); }
       return null;
     })();
 
     if (cached){
-      refresh.then(r => { if (r && onUpdate && r.savedAt !== cached.savedAt) onUpdate(r); });
+      refresh.then(r => { if (r && r !== UNCHANGED && onUpdate && r.savedAt !== cached.savedAt) onUpdate(r); });
       return cached;
     }
     const remote = await refresh;
-    if (remote) return remote;
+    if (remote && remote !== UNCHANGED) return remote;
     /* Nothing here and nothing there. Said as an empty dataset rather than an
        exception, so the tool can put its own sentence on screen. */
     return { cols: [], rows: [], savedAt: '', source: 'empty' };
