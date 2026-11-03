@@ -151,6 +151,12 @@
   .fv .v{flex:1;word-break:break-word}
   .fv .n{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)}
   .fnone{font-size:13px;line-height:1.45;color:var(--muted)}
+  /* the owner's upload, last in the sidebar rather than under the list */
+  .upblk{border-top:1px solid var(--line);padding-top:16px;margin-top:2px}
+  .upbtn{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--accent);
+    background:var(--accent);color:var(--accent-ink);font:inherit;font-size:13.5px;
+    font-weight:600;cursor:pointer}
+  .upbtn:hover{background:var(--goHover)}
   /* the active-filter pills above the list, and the way back out */
   .tag-x{padding:3px 9px;border-radius:999px;background:var(--glowSoft);
     border:1px solid var(--accent);font-size:12px;color:var(--accent);
@@ -290,8 +296,60 @@
 <script src="../_lib/ask.js?v=1" defer></script>
 <link rel="stylesheet" href="../_lib/nav.css?v=7">
 <link rel="stylesheet" href="../_lib/category.css?v=13">
+<style>
+  /* ---- THE PHOTOGRAPH, AND GLASS OVER IT ----
+
+     The design's own, and the last piece of it I had left out: I looked
+     for tools/materials/img/ and did not look for the source, which was
+     in media/backgroud all along as "Dark/Light Mode - Design &
+     Materials.png" - the same place project-update's Field Operations
+     pair came from.
+
+     THE WebP PAIR, not the 2.8 MB PNGs. media/backgroud is gitignored
+     because the sources are 2.6-2.8 MB each; what ships is the same
+     picture exported through a canvas at quality 0.56, 1280 and 1672
+     wide, 120-217 KB. Exactly the treatment What To Do and Project
+     Update already get, and the native width is 1672 so neither file is
+     upscaled.
+
+     The bar keeps its own rule off, as the design draws it: no border,
+     no glow, the header running straight into the picture. */
+  html[data-cat] header.hdr,html[data-cat] .hdr{border-bottom:0 !important;box-shadow:none !important}
+
+  .scene{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:var(--bg) var(--scene) center/cover no-repeat}
+  .scene::after{content:'';position:absolute;inset:0;background:var(--tint)}
+  html{
+    --scene:image-set(url('img/scene-dark-1280.webp') 1x, url('img/scene-dark-1672.webp') 2x);
+    --tint:linear-gradient(rgba(4,14,8,.66),rgba(4,14,8,.86));
+    --g-glass:rgba(16,34,18,.58);--g-edge:rgba(162,229,156,.22);
+    --g-blur:blur(16px) saturate(1.4);--g-inset:inset 0 1px 0 rgba(255,255,255,.08)}
+  html[data-theme="light"]{
+    --scene:image-set(url('img/scene-light-1280.webp') 1x, url('img/scene-light-1672.webp') 2x);
+    --tint:linear-gradient(rgba(255,248,235,.40),rgba(255,248,235,.58));
+    --g-glass:rgba(255,255,255,.72);--g-edge:rgba(255,255,255,.80);
+    --g-blur:blur(24px) saturate(1.3);--g-inset:inset 0 1px 0 rgba(255,255,255,.9)}
+  html,body{background:transparent}
+  main{position:relative;z-index:1}
+
+  /* the two panels and the search field become the glass */
+  .side,.panel,#q{background:var(--g-glass) !important;border-color:var(--g-edge) !important;
+    backdrop-filter:var(--g-blur);-webkit-backdrop-filter:var(--g-blur);
+    box-shadow:var(--g-inset)}
+  .modal{background:var(--g-glass);border-color:var(--g-edge);
+    backdrop-filter:var(--g-blur);-webkit-backdrop-filter:var(--g-blur)}
+  /* the zebra has to be lighter over a picture than it was over a flat
+     card, or every other row reads as a band rather than a nudge */
+  .row:nth-child(even){background:rgba(162,229,156,.045)}
+  html[data-theme="light"] .row:nth-child(even){background:rgba(0,100,0,.035)}
+  footer{color:var(--text)}
+  .totop{background:var(--g-glass);border-color:var(--g-edge);
+    backdrop-filter:var(--g-blur);-webkit-backdrop-filter:var(--g-blur);
+    box-shadow:var(--g-inset),0 14px 34px -14px rgba(0,0,0,.55)}
+</style>
 </head>
 <body>
+<div class="scene" aria-hidden="true"></div>
 <header class="hdr">
   <a class="brand" href="../../" title="Emortia">
     <span class="logo"><i></i><i></i><i></i><i></i></span>
@@ -449,10 +507,15 @@ function renderFacets(){
   const lbl = s => String(s).replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
   let h = '';
 
+  /* grouped under the five families, and spelled out: the sheets call
+     them PWR, IP, TX and "BB,MPT,EXT,BB accs". The stored type is still
+     the value - only the label changes - so the filter is unaffected. */
   h += '<div class="fgrp"><div class="flabel">Category</div><select id="catsel">' +
     '<option value="">All materials</option>' +
-    f.types.map(t => '<option value="' + esc(t.name) + '"' + (TYPE === t.name ? ' selected' : '') +
-      '>' + esc(t.name) + '  (' + t.count + ')</option>').join('') + '</select></div>';
+    M.families(ALL).map(fm => '<optgroup label="' + esc(fm.name) + '">' +
+      fm.types.map(t => '<option value="' + esc(t.name) + '"' + (TYPE === t.name ? ' selected' : '') +
+        '>' + esc(t.label) + ' (' + t.count + ')</option>').join('') + '</optgroup>').join('') +
+    '</select></div>';
 
   if (f.vendors.length)
     h += '<div class="fgrp"><div class="fhead"><span class="flabel">Vendor</span>' +
@@ -488,7 +551,8 @@ function renderFacets(){
           '</span><span class="n">' + n + '</span></button>').join('') + '</div>';
   });
 
-  $('facets').innerHTML = h;
+  $('facets').innerHTML = h + ownerBlock();
+  if ($('up')) $('up').onclick = () => $('file').click();
   const sel = $('catsel');
   sel.onchange = () => { TYPE = sel.value; FS = {}; LIM = 150; PICKED = null; renderFacets(); route(); };
   [...$('facets').querySelectorAll('[data-ven]')].forEach(b => b.onclick = () => {
@@ -540,7 +604,7 @@ function route(){
      narrower search - and the person who wants all 600 antennas is exactly
      the person who cannot. */
   const show = res.slice(0, LIM);
-  const spec = r => [TYPE ? null : r.type,
+  const spec = r => [TYPE ? null : M.labelOf(r.type),
       ...Object.entries(r.attrs || {}).slice(0, 6).map(e => e[1])]
       .filter(Boolean).join(' · ');
   $('view').innerHTML = '<div class="rows">' + show.map((r, i) =>
@@ -595,7 +659,8 @@ function openDetail(r){
         '</div>' +
         '<div class="ddesc">' + esc(r.desc) + '</div>' +
         '<div class="dtags">' +
-          (r.type   ? '<span class="tag">' + esc(r.type)   + '</span>' : '') +
+          (r.type   ? '<span class="tag">' + esc(M.famOf(r.type)) + '</span>' +
+                      '<span class="tag">' + esc(M.labelOf(r.type)) + '</span>' : '') +
           (r.vendor ? '<span class="tag">' + esc(r.vendor) + '</span>' : '') +
         '</div>' +
         '<div class="acts">' +
@@ -707,15 +772,33 @@ $('file').addEventListener('change', async e => {
   }
 });
 
+/* THE FOOTER IS ONE LINE AGAIN, and the upload moved out of it.
+
+   It was "Read from the database · Dialog material master" with the
+   owner's upload link hung underneath on a <br>. In the two-column layout
+   that put the only way to publish a new material master at the very
+   bottom of a 2,422-row list - past every row, in a page that now has a
+   Show more button, so reaching it meant loading everything first.
+
+   It is the last block of the sidebar instead: owner-only, always in
+   view because the aside is sticky, and one click. The sidebar is also
+   the one place in this design with room - the header bar is a fixed
+   height that access.js documents as having 38px to work in, and the
+   account chip already owns the right-hand end of it. */
 function renderFooter(){
-  const own = window.IS_OWNER
-    ? '<br><a href="#" id="up">Update from the workbook or the export…</a>'
-    : '';
   const old = document.querySelector('main footer');
   if (old) old.remove();
-  document.querySelector('main').insertAdjacentHTML('beforeend',
-    '<footer>Read from the database · Dialog material master' + own + '</footer>');
-  if (window.IS_OWNER) $('up').onclick = e => { e.preventDefault(); $('file').click(); };
+  document.querySelector('.panel').insertAdjacentHTML('beforeend',
+    '<footer>Read from the database · Dialog material master</footer>');
+}
+
+/* appended to the sidebar by renderFacets, so it survives every repaint */
+function ownerBlock(){
+  if (!window.IS_OWNER) return '';
+  return '<div class="fgrp upblk"><div class="flabel">Material master</div>' +
+    '<button class="upbtn" id="up">⬆ Update from Excel…</button>' +
+    '<div class="fnone">The workbook or the table export. Nothing is ' +
+    'deleted by an upload.</div></div>';
 }
 
 /* ------------------------------------------------------------------ events */

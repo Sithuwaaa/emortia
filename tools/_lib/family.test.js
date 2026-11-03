@@ -327,6 +327,15 @@ console.log('\n--- no ungoverned chrome anywhere ---');
      category.css already governs, so "allowed" can never become a way to
      take --bg or --text back. */
   const DECLARED = {
+    /* Material Codes sits on the Design & Materials photograph, the same
+       way What To Do sits on the Promenade and Project Update on Field
+       Operations. --tint is the readability veil over the picture and the
+       --g-* set is the frosted panel the list is drawn on; none of them is
+       a colour the five families have an opinion about. --scene and
+       --g-blur are a url() and a filter rather than colours, so the scan
+       below never sees them, and they are listed anyway so the whole look
+       is declared in one place rather than half of it. */
+    materials: ['tint','scene','g-glass','g-edge','g-blur','g-inset'],
     whattodo: ['glass','glass-hero','glass-edge','glass-shadow',
                'lq-ink','lq-track','sel-bg','sel-ink','star','iv-ink','chip-bg','stop-ink',
                /* the weather, from the Promenade design: --wx-dim is the idle

@@ -4,8 +4,24 @@
     {
       "name": "emortia",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "http-server", ".", "-p", "8129", "-c-1"],
+      "runtimeArgs": [
+        "--yes",
+        "http-server",
+        ".",
+        "-p",
+        "8129",
+        "-c-1"
+      ],
       "port": 8129
+    },
+    {
+      "name": "encode",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/serve.js",
+        "8911"
+      ],
+      "port": 8911
     }
   ]
 }

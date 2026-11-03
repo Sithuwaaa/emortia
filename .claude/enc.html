@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><body><script>
+window.ENC = async (b64, widths, q) => {
+  const img = new Image();
+  await new Promise((ok, no) => { img.onload = ok; img.onerror = no;
+    img.src = 'data:image/png;base64,' + b64; });
+  const out = {};
+  for (const w of widths) {
+    const h = Math.round(img.naturalHeight * (w / img.naturalWidth));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    out[w] = c.toDataURL('image/webp', q).split(',')[1];
+  }
+  out.src = [img.naturalWidth, img.naturalHeight];
+  return out;
+};
+</script></body>

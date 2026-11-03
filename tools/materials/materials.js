@@ -306,7 +306,63 @@
     return s(r.code);
   }
 
+  /* ---- THE FIVE FAMILIES, AND WHAT EACH TYPE IS CALLED ON SCREEN ----
+
+     The sheets name their types the way the warehouse does - PWR, IP, TX,
+     "BB,MPT,EXT,BB accs" - and the category list in the design groups them
+     under RF / Baseband / Transmission / Power / Civil and spells them out.
+
+     THIS IS A LABEL TABLE, NOT DATA. The stored `type` is unchanged and is
+     still what every filter, facet and upload matches on; only what the
+     list SAYS changes. Nothing here invents a material, moves a count or
+     affects what is written back - which is why it lives beside
+     SHEET_TYPE, which does the same job one step earlier.
+
+     A type that is not in here still appears, under "Other", with its raw
+     name. That is deliberate: a new sheet in a future upload must turn up
+     in the list on its own rather than vanish because nobody added it
+     here. famOf() is what makes that true and families() asserts it. */
+  var FAMS = ['RF', 'Baseband', 'Transmission', 'Power', 'Civil', 'Other'];
+  var TYPE_META = {
+    'Antenna':             { fam: 'RF',           label: 'Antennas' },
+    'Radio':               { fam: 'RF',           label: 'Radios' },
+    'Jumpers':             { fam: 'RF',           label: 'Jumpers' },
+    'CenRF IBS':           { fam: 'RF',           label: 'CenRF IBS' },
+    'Com & Filters':       { fam: 'RF',           label: 'Combiners & filters' },
+    'AAU & AIR':           { fam: 'RF',           label: 'AAU & AIR' },
+    'IBS':                 { fam: 'RF',           label: 'IBS' },
+    'GPS':                 { fam: 'RF',           label: 'GPS' },
+    'BB,MPT,EXT,BB accs':  { fam: 'Baseband',     label: 'Baseband boards' },
+    'BBU':                 { fam: 'Baseband',     label: 'BBU cards' },
+    'Fibers':              { fam: 'Transmission', label: 'Fibers' },
+    'IP':                  { fam: 'Transmission', label: 'IP / Routers' },
+    'TX':                  { fam: 'Transmission', label: 'Microwave (TX)' },
+    'H & E SFP':           { fam: 'Transmission', label: 'SFP modules' },
+    'PWR':                 { fam: 'Power',        label: 'Power material' },
+    'RRU PWR':             { fam: 'Power',        label: 'RRU power cables' },
+    'Civil':               { fam: 'Civil',        label: 'Civil' }
+  };
+  function famOf(type)   { var m = TYPE_META[s(type)]; return m ? m.fam : 'Other'; }
+  function labelOf(type) { var m = TYPE_META[s(type)]; return m ? m.label : (s(type) || '—'); }
+
+  /* The category list the select draws: the five families in order, each
+     with its types by count, and anything unmapped gathered at the end. */
+  function families(records) {
+    var by = {};
+    (records || []).forEach(function (r) {
+      var t = s(r.type); if (!t) return;
+      var f = famOf(t);
+      (by[f] = by[f] || {})[t] = (by[f][t] || 0) + 1;
+    });
+    return FAMS.filter(function (f) { return by[f]; }).map(function (f) {
+      return { name: f, types: Object.keys(by[f])
+        .map(function (t) { return { name: t, label: labelOf(t), count: by[f][t] }; })
+        .sort(function (a, b) { return b.count - a.count || a.label.localeCompare(b.label); }) };
+    });
+  }
+
   return {
+    FAMS: FAMS, famOf: famOf, labelOf: labelOf, families: families,
     isCode: isCode, normVendor: normVendor, isMasterSheet: isMasterSheet,
     typeForSheet: typeForSheet, findHeader: findHeader, readSheet: readSheet,
     readWorkbook: readWorkbook, collate: collate, fingerprint: fingerprint,
