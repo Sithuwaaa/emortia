@@ -2108,3 +2108,108 @@ call go past and still not say whether it asked for one row or all of
 them — which is the only question that family of tests exists to answer.
 Both are modelled now and checked in the fake's own test. An untested
 gate on a 1,308 kB read is not something to ship.
+
+## A page nobody has looked at is not verified
+
+3 November. Material Codes shipped **invisible** and every check I ran
+said it was fine.
+
+`.scrim` — the modal backdrop — carried the `hidden` attribute *and*
+`display:flex`. The attribute works through one user-agent rule,
+`[hidden]{display:none}`, and a UA rule loses to **any** author
+declaration of the same property. So the backdrop stood over the whole
+page permanently: dimming it, and swallowing every click. `.totop` had
+the identical bug and was permanently on screen. Both `el.hidden = …`
+paths were no-ops that read like they worked.
+
+### What I checked, and why none of it could have found this
+
+- the page parsed, 0 errors
+- the deployed HTML contained `aside.side`, `section.panel`, `id="scrim"`,
+  `function openDetail`
+- computed styles resolved `--accent` to `#81D67B` dark and `#006400`
+  light, both themes, on the rendered page
+
+All true. All useless. **A contrast reading of 14.6:1 was taken on text
+that was sitting under a scrim** — a generic selector returned an element
+nobody could see, and `getComputedStyle` answered happily about it.
+
+I had already written the disclosure: *"the browser pane reports 0×0, so
+rows, facets, the modal and the copy buttons are unexercised."* That was
+the right thing to say and I said it **and shipped anyway**. The
+disclosure was not a caveat on the verification; it was the bug report,
+and I filed it as a footnote.
+
+Sithara found it with `elementFromPoint` at the coordinates of a
+screenshot — the one method that asks *what is actually at this pixel*
+rather than *what does this selector compute to*.
+
+### The standing rule
+
+**When the browser pane reports a 0×0 viewport, the visual check could
+not be done. Say so, and do not ship the page until someone has looked.**
+
+Not "verify what you can and note the rest". The layout, the stacking and
+the hit-testing are exactly what a 0×0 pane cannot report, and they are
+exactly where this class of bug lives. `getComputedStyle` is not a
+substitute for a pair of eyes; it will describe, in confident detail, an
+element that is behind an opaque sheet.
+
+### And the class, not the instance
+
+`[hidden]` silently doing nothing is the **vacuous `indexOf`** shape
+again: a mechanism that does not do what the code says, that nothing
+fails on, and that reads correctly in review.
+
+`tools/_lib/hidden.test.js` now finds every element in every tool whose
+visibility is driven by `hidden`, checks whether the page also sets
+`display` on it, and requires the explicit override. It found **ten more,
+in three tools nobody had reported**:
+
+- **team** — `.btn[hidden]` on `importBtn`, `addPerson`, `addVehicle`.
+  `$('importBtn').hidden = !mine()` had never worked: the owner-only
+  buttons were shown to everyone. RLS still refused the writes, so it was
+  a wrong-looking page rather than an open door.
+- **wh24** — `.selbar`, `.newspop`, `.bm`, `.seg`. `selbar` is
+  `position:fixed;bottom:0`, so the selection bar sat across the bottom
+  of the tool permanently.
+- **site-access** — `#fPanel`, `#tray`, `#plan`, `#detail`, `.ghost`, all
+  driven from `unified.js`.
+
+The guard has its own sensitivity check, because a scan that finds
+nothing passes everything: it asserts it can still see the two elements
+in Material Codes that are there by construction. Proved by breaking
+three times — the original bug restored, one selector dropped from a
+tool's override, and the scan blinded to `.scrim` altogether.
+
+## The judgement call on the design backup was Sithara's, and it was wrong
+
+Recorded at his request, and worth recording because the reasoning was
+good and the conclusion was not.
+
+The question was whether git history counts as a backup of the Claude
+Design project's files before pushing over them. His ruling:
+
+> git history is the backup for anything repo-derived. Only a file edited
+> in the design app and never in the repo is irreplaceable, and the three
+> backwards imports say there are none.
+
+Every step of that is sound. Three successive imports had come back
+pointing at older repo states, which is strong evidence the project is a
+downstream snapshot. The inference was reasonable.
+
+**It was wrong, and the counter-example was in the next file opened.**
+`tools/materials/index.html` in the design project was the repo's page
+*plus* a glass-and-photograph layer — a fixed `.scene` with a per-theme
+tint, frosted panels (`--g-glass`, `--g-edge`, `--g-blur`), and a
+floating back-to-top pill — that existed nowhere in git. Pushing the
+repo's version over it would have destroyed work no history could return.
+
+The evidence had said *the files I have looked at are derived*. It was
+read as *the files are derived*. Three samples from a project of seven
+hundred, chosen because they were the ones being imported, are not a
+sample of the project.
+
+**The backup rule stays exactly as written: read it before you overwrite
+it, every time.** It cost two stopped attempts and most of a session, and
+it paid for all of that in one file.

@@ -36,6 +36,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../_lib/skins/aurora.css?v=6">
 <style>
+  /* [hidden] IS NOT A TOGGLE ONCE CSS SETS display ON THE SAME ELEMENT.
+     The attribute works through one user-agent rule, [hidden]{display:none},
+     and a UA rule loses to ANY author declaration of the same property. So
+     every selector listed here had a display rule, and every
+     `el.hidden = …` driving it was a no-op that read like it worked.
+     tools/_lib/hidden.test.js finds these; this is the override it wants. */
+  .ghost[hidden],#fPanel[hidden],#tray[hidden],#plan[hidden],#detail[hidden]{display:none}
+
   /* Site Access - azure. Access & permissions. */
   :root,html[data-theme="dark"]{
     }

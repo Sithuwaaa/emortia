@@ -46,6 +46,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script src="team.js"></script>
 <style>
+  /* [hidden] IS NOT A TOGGLE ONCE CSS SETS display ON THE SAME ELEMENT.
+     The attribute works through one user-agent rule, [hidden]{display:none},
+     and a UA rule loses to ANY author declaration of the same property. So
+     every selector listed here had a display rule, and every
+     `el.hidden = …` driving it was a no-op that read like it worked.
+     tools/_lib/hidden.test.js finds these; this is the override it wants. */
+  .btn[hidden]{display:none}
+
   /* Olive - the one band none of the other tools had taken. Only the accent
      is this tool's own; the ground, the lines and the type come from
      theme.css, which is what makes the office tools look like one set rather

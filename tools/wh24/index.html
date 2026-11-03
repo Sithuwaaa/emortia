@@ -43,6 +43,14 @@
 <script src="../_lib/sapdocs.js"></script>
 <script src="wh24.js?v=2"></script>
 <style>
+  /* [hidden] IS NOT A TOGGLE ONCE CSS SETS display ON THE SAME ELEMENT.
+     The attribute works through one user-agent rule, [hidden]{display:none},
+     and a UA rule loses to ANY author declaration of the same property. So
+     every selector listed here had a display rule, and every
+     `el.hidden = …` driving it was a no-op that read like it worked.
+     tools/_lib/hidden.test.js finds these; this is the override it wants. */
+  .newspop[hidden],.bm[hidden],.seg[hidden],.selbar[hidden]{display:none}
+
   :root{
     --navy:#3a1a05;
     --bg:#1c0700;--card:#2a1206;--line:#4a2400;--line3:#6b3a12;
