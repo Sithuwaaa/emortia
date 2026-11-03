@@ -2628,8 +2628,47 @@
      response and two and a half thousand rows is past the cap; upserted in
      chunks on the way out, because a few thousand rows of JSON in one request
      is megabytes and it will refuse that too. */
-  async function materialsLoad(){
+  /* THE SAME GATE AS wh24Load, AND IT NEEDED NO MIGRATION.
+
+     Measured over 24 hours: 88 full walks a day, three pages each, of a
+     list of 2,422 rows last written on 5 September. The biggest remaining
+     walk count once the other two were gated.
+
+     WHY (count, max(updated_at)) IS EXACT HERE. materialsSave does not set
+     updated_at - which is what made this look impossible - but the TABLE
+     does. materials_touch_trg is a BEFORE UPDATE trigger that sets
+     new.updated_at = now() on every row it touches, and the column
+     defaults to now() on insert. An upsert takes the ON CONFLICT DO UPDATE
+     path and fires that trigger, so no write lands without moving the
+     maximum. The trigger is also unconditional, so it fires even when the
+     upsert writes identical values - over-eager, which is the safe
+     direction: it can only cause a walk that was not needed, never skip
+     one that was.
+
+     materialsSave is the only writer and there are no deletes; a row added
+     or removed moves the count. One request of about a hundred bytes
+     replaces three pages.
+
+     The stamp is returned ALONGSIDE the rows rather than put on them: the
+     row shape { code, desc, type, vendor, attrs } is what materials.js
+     fingerprints and what planUpload diffs, and widening it to carry a
+     timestamp would change what an upload thinks has changed. */
+  async function materialsLoad(opts){
     const c = await client(); if (!c) return { rows: [], error: 'offline' };
+
+    if (opts && opts.since && opts.since.stamp && opts.since.n > 0){
+      const probe = await c.from('materials').select('updated_at', { count: 'exact' })
+        .order('updated_at', { ascending: false }).limit(1);
+      const top = probe.data && probe.data[0];
+      if (!probe.error && probe.count === opts.since.n &&
+          top && top.updated_at === opts.since.stamp){
+        /* rows: null is "nothing moved, keep the ones you have" - never [],
+           which would blank a list of 2,422 to save three pages. */
+        return { rows: null, stamp: opts.since.stamp, n: opts.since.n,
+                 unchanged: true, error: null };
+      }
+    }
+
     const PAGE = 1000; let from = 0, out = [];
     for(;;){
       const { data, error } = await c.from('materials')
@@ -2649,7 +2688,10 @@
     }
     /* descr on the wire, desc in the page: `desc` is a reserved word in
        PostgREST's ordering syntax and naming a column after it is a trap. */
-    return { rows: out.map(r => ({ code: r.code, desc: r.descr || '', type: r.type || '',
+    let stamp = null;
+    out.forEach(r => { if (r.updated_at && (!stamp || r.updated_at > stamp)) stamp = r.updated_at; });
+    return { stamp, n: out.length,
+             rows: out.map(r => ({ code: r.code, desc: r.descr || '', type: r.type || '',
                                    vendor: r.vendor || '', attrs: r.attrs || {} })),
              at: out.length ? out[0].updated_at : null, error: null };
   }

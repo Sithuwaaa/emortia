@@ -92,7 +92,23 @@
     width:34px;height:34px;font-size:16px;cursor:pointer;line-height:1;flex-shrink:0}
   @media (max-width:820px){ .hdr .bname,.hdr .hsep{display:none} }
 
-  main{max-width:1180px;margin:0 auto;padding:18px 16px 90px}
+  /* THE DESIGN'S TWO COLUMNS. 1600px rather than 1180: the design gives the
+     list the whole remaining width and the row grid needs it once the spec
+     line is in. flex-wrap with a huge grow on the panel is what makes the
+     aside drop above the list on a narrow screen without a second
+     breakpoint deciding it. */
+  main{max-width:1600px;margin:0 auto;padding:20px 24px 28px;
+    display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+  .side{flex:1 1 260px;max-width:320px;position:sticky;top:92px;
+    max-height:calc(100vh - 112px);overflow:auto;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:18px;display:flex;flex-direction:column;gap:18px}
+  .panel{flex:999 1 480px;min-width:0;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .phead{padding:16px 18px;display:flex;flex-direction:column;gap:10px;
+    border-bottom:1px solid var(--line)}
+  .bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:22px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
 
   /* ---------------------------------------------------------- the search */
   .searchwrap{position:relative;display:flex;align-items:center;margin-bottom:14px}
@@ -111,30 +127,71 @@
      or the RRU power cables. Vendor second, because the next question is
      which Huawei one. Both counted from the data, so a type that turns up in
      a future upload turns up here on its own. */
-  .facets{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
-  .frow{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
-  .flabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;
-    text-transform:uppercase;color:var(--muted);flex:none;width:58px}
-  .chip{border:1px solid var(--line);background:var(--card);color:var(--muted);
-    border-radius:999px;padding:5px 12px;font:inherit;font-size:12.5px;cursor:pointer;
-    white-space:nowrap;transition:border-color .16s ease,background .16s ease,color .16s ease}
-  .chip:hover{border-color:var(--accent);color:var(--text)}
-  .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
-  .chip b{font-weight:400;opacity:.6;margin-left:5px;font-size:11px}
-  .chip.on b{opacity:.8}
+  .fgrp{display:flex;flex-direction:column;gap:6px}
+  .flabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted)}
+  .fhead{display:flex;justify-content:space-between;align-items:baseline}
+  .fclear{font-size:11.5px;color:var(--accent);cursor:pointer;background:none;
+    border:none;font-family:inherit;padding:0}
+  .side select{padding:11px 12px;border-radius:10px;border:1px solid var(--accent);
+    background:var(--card-2);color:var(--text);font:inherit;font-size:14px;
+    font-weight:500;outline:none;width:100%}
+  /* THE CHECKBOX FACETS the design draws: a value, its count, and a box that
+     fills with the accent when it is on. One row per value, scrollable with
+     the aside, rather than the chip rows this tool had - chips do not survive
+     an attribute with twenty values. */
+  .fv{display:flex;align-items:center;gap:9px;padding:4px 2px;cursor:pointer;
+    font-size:13.5px;background:none;border:none;color:var(--text);
+    font-family:inherit;text-align:left;width:100%}
+  .fv:hover{color:var(--accent)}
+  .fv .box{width:16px;height:16px;border-radius:4px;border:1px solid var(--accent);
+    color:var(--accent-ink);font-weight:700;font-size:11px;line-height:14px;
+    text-align:center;flex-shrink:0}
+  .fv.on .box{background:var(--accent)}
+  .fv .v{flex:1;word-break:break-word}
+  .fv .n{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)}
+  .fnone{font-size:13px;line-height:1.45;color:var(--muted)}
+  /* the active-filter pills above the list, and the way back out */
+  .tag-x{padding:3px 9px;border-radius:999px;background:var(--glowSoft);
+    border:1px solid var(--accent);font-size:12px;color:var(--accent);
+    cursor:pointer;font-family:inherit}
+  .clearall{font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;
+    background:none;border:none;font-family:inherit}
 
   /* ---------------------------------------------------------- the results */
-  .hint{font-size:12.5px;color:var(--muted);margin-bottom:10px;min-height:1.2em}
-  .rows{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
-  .row{display:grid;grid-template-columns:11ch 1fr auto;gap:12px;align-items:baseline;
-    padding:11px 14px;cursor:pointer;border-top:1px solid var(--line);
-    transition:background .13s ease}
+  .hint{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);
+    letter-spacing:.06em}
+  .rows{overflow:hidden}
+  /* 104px | the description and its spec line | the two copy buttons.
+     The design's three columns, and the middle one stacks two lines where
+     this tool used to show the type in a third column - which is where the
+     attribute values now go, so a row says what the thing IS without
+     anybody opening it. */
+  .row{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:14px;
+    align-items:center;padding:10px 18px;cursor:pointer;
+    border-top:1px solid var(--line);transition:background .13s ease;
+    width:100%;background:none;border-left:0;border-right:0;border-bottom:0;
+    color:var(--text);font-family:inherit;text-align:left}
   .row:first-child{border-top:none}
   .row:nth-child(even){background:var(--zebra)}
   .row:hover{background:var(--glowSoft)}
-  .row .c{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--accent)}
-  .row .d{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
-  .row .t{font-size:11.5px;color:var(--muted);white-space:nowrap}
+  .row .c{font-family:'Space Mono',monospace;font-size:13px;color:var(--accent)}
+  .row .mid{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .row .d{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14.5px}
+  .row .spec{font-size:12px;color:var(--muted);overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .row .cp{display:flex;gap:6px}
+  .cpb{padding:7px 11px;border-radius:8px;border:1px solid var(--line);
+    background:none;color:var(--text);font:inherit;font-size:12.5px;font-weight:500;
+    cursor:pointer;white-space:nowrap}
+  .cpb:hover{border-color:var(--accent);color:var(--accent)}
+  .cpb.primary{background:var(--accent);border-color:var(--accent);
+    color:var(--accent-ink);font-weight:600}
+  .cpb.primary:hover{background:var(--goHover);color:var(--accent-ink)}
+  .more{margin:14px 18px;padding:12px;text-align:center;border:1px dashed var(--line);
+    border-radius:10px;font-size:13.5px;font-weight:500;color:var(--accent);
+    cursor:pointer;background:none;font-family:inherit;width:calc(100% - 36px)}
+  .more:hover{border-color:var(--accent)}
   mark{background:var(--glowSoft);color:inherit;border-radius:3px;padding:0 1px}
 
   /* ----------------------------------------------------------- the detail */
@@ -170,10 +227,53 @@
     opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:60;
     max-width:calc(100vw - 32px);text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* ------------------------------------------------------------ the modal */
+  .scrim{position:fixed;inset:0;background:rgba(2,8,3,.72);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
+  .modal{width:100%;max-width:820px;max-height:100%;display:flex;flex-direction:column;
+    background:var(--card-2);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .mhead{padding:20px 22px;display:flex;flex-direction:column;gap:10px;
+    border-bottom:1px solid var(--line);background:var(--glowSoft)}
+  .mtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .mclose{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);
+    background:none;color:var(--muted);font-size:20px;cursor:pointer;flex-shrink:0;
+    line-height:1;font-family:inherit}
+  .mclose:hover{border-color:var(--accent);color:var(--accent)}
+  .mbody{overflow:auto;min-height:0}
+  .f{padding:12px 22px;border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .f .kv{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .fcopy{font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;
+    background:none;border:none;padding:2px 4px;flex-shrink:0;font-family:inherit}
+
+  /* --------------------------------------------------------- back to top */
+  .totop{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;
+    align-items:center;gap:10px;padding:6px 16px 6px 6px;border-radius:999px;
+    background:var(--card-2);border:1px solid var(--line);cursor:pointer;
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+    box-shadow:0 10px 30px rgba(0,0,0,.4);color:var(--text);font:inherit;
+    font-size:13px;font-weight:600}
+  .totop:hover{border-color:var(--accent)}
+  .totop span{width:36px;height:36px;border-radius:50%;background:var(--accent);
+    color:var(--accent-ink);display:flex;align-items:center;justify-content:center;
+    font-size:17px;font-weight:700}
+
+  @media (max-width:900px){
+    /* the aside stops holding a column open and becomes a block above the
+       list - sticky at 92px on a short screen pins the filters over the very
+       rows they are filtering */
+    .side{position:static;max-width:none;max-height:none;flex-basis:100%}
+  }
   @media (max-width:560px){
-    .row{grid-template-columns:10ch 1fr;gap:8px}
-    .row .t{display:none}
-    .flabel{width:100%}
+    main{padding:14px 12px 24px}
+    .row{grid-template-columns:9ch minmax(0,1fr);gap:10px;padding:10px 14px}
+    .row .cp{display:none}
+    .phead{padding:12px 14px}
+    .scrim{padding:0}
+    .modal{max-height:100%;border-radius:0;border:0}
+    .totop{right:14px;bottom:14px}
   }
 </style>
 <link rel="stylesheet" href="../_lib/motion.css?v=1">
@@ -195,16 +295,30 @@
 </header>
 
 <main>
-  <div class="searchwrap">
-    <span class="ic">⌕</span>
-    <input id="q" type="search" autocomplete="off" spellcheck="false"
-      placeholder="Search a code, a description, a model, a band…" aria-label="Search materials">
-    <button class="clr" id="clr" aria-label="Clear">×</button>
-  </div>
-  <div class="facets" id="facets"></div>
-  <div class="hint" id="hint"></div>
-  <div id="view"></div>
+  <!-- TWO COLUMNS, as the design draws it: the filters stay put on the left
+       while the list scrolls past them. Under 900px the aside stops being
+       sticky and sits above the list, because 260px of filters and a table
+       do not share a phone. -->
+  <aside class="side" id="facets"></aside>
+  <section class="panel">
+    <div class="phead">
+      <div class="searchwrap">
+        <span class="ic">⌕</span>
+        <input id="q" type="search" autocomplete="off" spellcheck="false"
+          placeholder="Search code, description, model, vendor, band…" aria-label="Search materials">
+        <button class="clr" id="clr" aria-label="Clear">×</button>
+      </div>
+      <div class="bar"><span class="hint" id="hint"></span><span class="tags" id="active"></span></div>
+    </div>
+    <div id="view"></div>
+  </section>
 </main>
+
+<!-- The detail is a modal now rather than a route. It used to be a view that
+     replaced the list, so closing it rebuilt the whole table and lost the
+     scroll position; over a dialog the list keeps its place underneath. -->
+<div class="scrim" id="scrim" hidden></div>
+<button class="totop" id="totop" hidden><span>↑</span>Back to top</button>
 
 <div class="toast" id="toast"></div>
 <input type="file" id="file" accept=".xlsx,.xls,.csv" style="display:none" multiple>
@@ -215,6 +329,13 @@
 const $ = id => document.getElementById(id);
 const M = window.MAT;
 let ALL = [], TYPE = '', VENDOR = '', Q = '', PICKED = null;
+/* FS: the per-attribute facet selections, { 'Band': ['900','1800'] }. LIM:
+   how many rows are drawn, raised by Show more - it replaced a hard stop
+   at 400 that nothing could get past. */
+let FS = {}, LIM = 150;
+/* what the last completed read came back with, so the next one can ask
+   whether anything has moved instead of reading it all again */
+let MSTAMP = null, MN = 0;
 
 let tt; function toast(m, ms){ const t=$('toast'); t.textContent=m; t.classList.add('show');
   clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'), ms||2000); }
@@ -234,8 +355,8 @@ function hl(s, term){
 async function load(){
   if (!window.DB || !window.DB.materialsLoad){ shell('Not connected', 'The database library did not load.'); return; }
   const r = await window.DB.materialsLoad();
-  if (r.error && !r.rows.length){ shell('Nothing to show', r.error); return; }
-  ALL = r.rows;
+  if (r.error && !(r.rows || []).length){ shell('Nothing to show', r.error); return; }
+  ALL = r.rows || []; MSTAMP = r.stamp || null; MN = r.n || 0;
   paint();
     /* ONLY ON A REAL EVENT. liveChannel calls this for four reasons and
        hands the reason in: undefined for an actual postgres_changes
@@ -256,9 +377,15 @@ async function load(){
        RELOG still records every reload either way, so the log says
        whether the skip is doing anything. */
     const before = ALL;
-    const f = await window.DB.materialsLoad();
+    /* ASK BEFORE READING. Only the subscriber passes `since`, so the first
+       load always walks and the gate can never be why a freshly opened tab
+       is empty. MSTAMP and MN are what the last completed walk came back
+       with; a reload that was held does not change them. */
+    const f = await window.DB.materialsLoad(
+      MSTAMP && MN ? { since: { stamp: MSTAMP, n: MN } } : undefined);
     if (!f.error){
-      ALL = f.rows;                       /* ALWAYS. A held paint must not leave the model behind. */
+      /* null is "nothing moved": keep the rows that are already on screen. */
+      if (f.rows !== null){ ALL = f.rows; MSTAMP = f.stamp; MN = f.n; }
       /* One call decides, paints and records, so this tool and WH24 cannot
          log differently - which they did, and it read as the skip being
          absent here when it was only silent. No RELOG means paint. */
@@ -283,71 +410,235 @@ function paint(){
   renderFooter();
 }
 
+/* ---------------------------------------------------------- the sidebar
+
+   THE DESIGN'S LEFT COLUMN, with one substitution and one omission, both
+   because of what the data is rather than what the drawing shows.
+
+   SUBSTITUTED: the design's category <select> groups its options under
+   RF / Baseband / Transmission / Power / Civil, read from a `f` family
+   field in its catalog.json. The material list has no family - a row is
+   { code, desc, type, vendor, attrs } - so the select is flat. Inventing
+   a family mapping would be five made-up facts on screen.
+
+   OMITTED: the design's All / Active / Disposed control, which reads a
+   `x` disposed flag. Nothing in the material master marks disposal, so
+   there is nothing for it to filter. Vendor takes that slot instead,
+   which is the second axis the data actually has.
+
+   KEPT, and it is the real gain: the per-attribute facets. Every key in
+   `attrs` with between two and thirty distinct values becomes a checkable
+   list, counted from the rows currently in view. That is the design's
+   behaviour exactly, and this tool's chip rows could not do it. */
+const FEXCL = /part|final mc|comment|remark/i;
+const inFS = (r, skip) => Object.entries(FS).every(([k, set]) =>
+  k === skip || !set.length || set.includes((r.attrs || {})[k] || '—'));
+const baseRows = () => M.view(ALL, { type:TYPE, vendor:VENDOR, q:Q });
+
 function renderFacets(){
-  const f = M.facets(ALL);
-  const row = (label, items, current, kind) =>
-    '<div class="frow"><span class="flabel">'+label+'</span>' +
-    '<button class="chip'+(current?'':' on')+'" data-k="'+kind+'" data-v="">All</button>' +
-    items.map(i => '<button class="chip'+(current===i.name?' on':'')+'" data-k="'+kind+'" data-v="'+esc(i.name)+'">'+
-      esc(i.name)+'<b>'+i.count+'</b></button>').join('') + '</div>';
-  $('facets').innerHTML = row('Type', f.types, TYPE, 'type') +
-                          (f.vendors.length ? row('Vendor', f.vendors, VENDOR, 'vendor') : '');
-  [...$('facets').querySelectorAll('.chip')].forEach(b => b.onclick = () => {
-    if (b.dataset.k === 'type') TYPE = b.dataset.v; else VENDOR = b.dataset.v;
-    PICKED = null; renderFacets(); route();
+  const f = M.facets(ALL), base = baseRows();
+  const lbl = s => String(s).replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  let h = '';
+
+  h += '<div class="fgrp"><div class="flabel">Category</div><select id="catsel">' +
+    '<option value="">All materials</option>' +
+    f.types.map(t => '<option value="' + esc(t.name) + '"' + (TYPE === t.name ? ' selected' : '') +
+      '>' + esc(t.name) + '  (' + t.count + ')</option>').join('') + '</select></div>';
+
+  if (f.vendors.length)
+    h += '<div class="fgrp"><div class="fhead"><span class="flabel">Vendor</span>' +
+      (VENDOR ? '<button class="fclear" data-clr="vendor">clear</button>' : '') + '</div>' +
+      f.vendors.map(v => '<button class="fv' + (VENDOR === v.name ? ' on' : '') +
+        '" data-ven="' + esc(v.name) + '"><span class="box">' + (VENDOR === v.name ? '✓' : '') +
+        '</span><span class="v">' + esc(v.name) + '</span><span class="n">' + v.count +
+        '</span></button>').join('') + '</div>';
+
+  /* the attribute facets, counted against the rows every OTHER filter
+     leaves - so a value's count is what picking it would give you */
+  const seen = {};
+  base.forEach(r => Object.keys(r.attrs || {}).forEach(k => {
+    (seen[k] = seen[k] || new Set()).add(r.attrs[k]);
+  }));
+  const cols = Object.keys(seen)
+    .filter(k => seen[k].size >= 2 && seen[k].size <= 30 && !FEXCL.test(k));
+  if (!TYPE && !cols.length)
+    h += '<div class="fnone">Pick a category to filter by its specs.</div>';
+  cols.forEach(k => {
+    const m = {};
+    base.filter(r => inFS(r, k)).forEach(r => {
+      const v = (r.attrs || {})[k] || '—'; m[v] = (m[v] || 0) + 1;
+    });
+    const sel = FS[k] || [];
+    h += '<div class="fgrp"><div class="fhead"><span class="flabel">' + esc(lbl(k)) + '</span>' +
+      (sel.length ? '<button class="fclear" data-clr="' + esc(k) + '">clear</button>' : '') +
+      '</div>' + Object.entries(m)
+        .sort((a, b) => (parseFloat(a[0]) - parseFloat(b[0])) || b[1] - a[1])
+        .map(([v, n]) => '<button class="fv' + (sel.includes(v) ? ' on' : '') +
+          '" data-fk="' + esc(k) + '" data-fv="' + esc(v) + '"><span class="box">' +
+          (sel.includes(v) ? '✓' : '') + '</span><span class="v">' + esc(v) +
+          '</span><span class="n">' + n + '</span></button>').join('') + '</div>';
+  });
+
+  $('facets').innerHTML = h;
+  const sel = $('catsel');
+  sel.onchange = () => { TYPE = sel.value; FS = {}; LIM = 150; PICKED = null; renderFacets(); route(); };
+  [...$('facets').querySelectorAll('[data-ven]')].forEach(b => b.onclick = () => {
+    VENDOR = VENDOR === b.dataset.ven ? '' : b.dataset.ven;
+    LIM = 150; PICKED = null; renderFacets(); route();
+  });
+  [...$('facets').querySelectorAll('[data-fk]')].forEach(b => b.onclick = () => {
+    const k = b.dataset.fk, v = b.dataset.fv, cur = FS[k] || [];
+    FS[k] = cur.includes(v) ? cur.filter(x => x !== v) : cur.concat([v]);
+    LIM = 150; renderFacets(); route();
+  });
+  [...$('facets').querySelectorAll('[data-clr]')].forEach(b => b.onclick = () => {
+    if (b.dataset.clr === 'vendor') VENDOR = ''; else FS[b.dataset.clr] = [];
+    LIM = 150; renderFacets(); route();
   });
 }
 
 function route(){
-  const res = M.view(ALL, { type:TYPE, vendor:VENDOR, q:Q });
+  const base = baseRows(), res = base.filter(r => inFS(r));
   $('clr').style.display = Q ? 'block' : 'none';
-  if (PICKED){ renderDetail(PICKED); return; }
+
+  /* the count line and the active-filter pills, as the design has them */
   $('hint').textContent = ALL.length
-    ? res.length + (res.length === 1 ? ' material' : ' materials') +
-      (res.length > 400 ? ' · showing the first 400' : '')
-    : '';
+    ? res.length.toLocaleString() + ' of ' + base.length.toLocaleString() : '';
+  const act = [];
+  if (VENDOR) act.push(['vendor', VENDOR, VENDOR]);
+  Object.entries(FS).forEach(([k, set]) => set.forEach(v => act.push([k, v, v])));
+  $('active').innerHTML = act.map(([k, v, t]) =>
+      '<button class="tag-x" data-ak="' + esc(k) + '" data-av="' + esc(v) + '">' +
+      esc(t) + ' ×</button>').join('') +
+    (act.length ? '<button class="clearall" id="clrall">clear all</button>' : '');
+  [...$('active').querySelectorAll('[data-ak]')].forEach(b => b.onclick = () => {
+    const k = b.dataset.ak;
+    if (k === 'vendor') VENDOR = ''; else FS[k] = (FS[k] || []).filter(x => x !== b.dataset.av);
+    LIM = 150; renderFacets(); route();
+  });
+  if ($('clrall')) $('clrall').onclick = () => {
+    VENDOR = ''; FS = {}; LIM = 150; renderFacets(); route();
+  };
+
   if (!res.length){
-    $('view').innerHTML = '<div class="empty"><div class="big">🔍</div>Nothing matches that.</div>';
+    $('view').innerHTML = '<div class="empty"><div class="big">🔍</div>' +
+      (ALL.length ? 'No materials match. Try fewer filters.' : 'Nothing to show.') + '</div>';
     return;
   }
-  const show = res.slice(0, 400);
-  $('view').innerHTML = '<div class="rows">' + show.map((r,i) =>
-    '<div class="row" data-i="'+i+'"><span class="c">'+hl(r.code,Q)+'</span>' +
-    '<span class="d">'+hl(r.desc,Q)+'</span><span class="t">'+esc(r.type)+'</span></div>').join('') + '</div>';
+
+  /* SHOW MORE rather than a hard 400. The old list stopped at 400 and said
+     so in the hint, which left no way to reach row 401 except typing a
+     narrower search - and the person who wants all 600 antennas is exactly
+     the person who cannot. */
+  const show = res.slice(0, LIM);
+  const spec = r => [TYPE ? null : r.type,
+      ...Object.entries(r.attrs || {}).slice(0, 6).map(e => e[1])]
+      .filter(Boolean).join(' · ');
+  $('view').innerHTML = '<div class="rows">' + show.map((r, i) =>
+    '<button class="row" data-i="' + i + '"><span class="c">' + hl(r.code, Q) + '</span>' +
+    '<span class="mid"><span class="d">' + hl(r.desc, Q) + '</span>' +
+    '<span class="spec">' + esc(spec(r)) + '</span></span>' +
+    '<span class="cp"><button class="cpb primary" data-cp="code" data-i="' + i + '">⧉ Code</button>' +
+    '<button class="cpb" data-cp="desc" data-i="' + i + '">⧉ Description</button></span></button>'
+  ).join('') + '</div>' +
+  (res.length > LIM ? '<button class="more" id="more">Show ' +
+    Math.min(200, res.length - LIM) + ' more · ' +
+    (res.length - LIM).toLocaleString() + ' left</button>' : '');
+
   [...$('view').querySelectorAll('.row')].forEach(el =>
-    el.onclick = () => { PICKED = show[+el.dataset.i]; route(); });
+    el.onclick = () => openDetail(show[+el.dataset.i]));
+  [...$('view').querySelectorAll('[data-cp]')].forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    copyOf(show[+b.dataset.i], b.dataset.cp,
+      b.dataset.cp === 'code' ? 'Code copied' : 'Description copied');
+  });
+  if ($('more')) $('more').onclick = () => { LIM += 200; route(); };
 }
 
-function renderDetail(r){
-  $('hint').textContent = '';
-  const d = M.details(r);
-  $('view').innerHTML =
-    '<button class="back" id="back">← back to the list</button>' +
-    '<div class="detail"><div class="dhead">' +
-      '<div class="dcode">'+esc(r.code)+'</div>' +
-      '<div class="ddesc">'+esc(r.desc)+'</div>' +
-      '<div class="dtags">' +
-        (r.type ? '<span class="tag">'+esc(r.type)+'</span>' : '') +
-        (r.vendor ? '<span class="tag">'+esc(r.vendor)+'</span>' : '') + '</div>' +
-      '<div class="acts">' +
-        '<button class="act primary" id="cpCode">⧉ Copy code</button>' +
-        '<button class="act" id="cpDesc">⧉ Copy description</button>' +
-        '<button class="act" id="cpRow">⧉ Copy row</button>' +
-      '</div>' +
-    '</div>' +
-    (d.length ? '<div class="fields">' + d.map(x =>
-      '<div class="f"><div class="k">'+esc(x.k)+'</div><div class="v">'+esc(x.v)+'</div></div>').join('') + '</div>' : '') +
-    '</div>';
-  $('back').onclick = () => { PICKED = null; route(); };
-  const copy = (what, said) => () => {
-    const text = M.copyText(r, what);
-    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
-      .then(() => toast(said)).catch(() => toast('Could not reach the clipboard'));
-  };
-  $('cpCode').onclick = copy('code', 'Code copied');
-  $('cpDesc').onclick = copy('desc', 'Description copied');
-  $('cpRow').onclick  = copy('row',  'Row copied');
+/* one clipboard path for the rows, the modal and its fields */
+function copyOf(r, what, said){
+  const text = what === 'field' ? r : M.copyText(r, what);
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+    .then(() => toast(said)).catch(() => toast('Could not reach the clipboard'));
 }
+
+/* ------------------------------------------------------------- the detail
+
+   A MODAL, not a route. It used to be a view that replaced the list, so
+   closing it rebuilt the whole table and threw away the scroll position -
+   on a 600-row category that is the difference between checking two codes
+   and checking two codes and finding your place again twice. Over a
+   dialog the list keeps its place underneath.
+
+   Escape closes it, the scrim closes it, and the dialog itself does not -
+   a click inside must not fall through to the scrim behind it. */
+function openDetail(r){
+  PICKED = r;
+  const d = M.details(r);
+  const act = (id, cls, label) =>
+    '<button class="cpb ' + cls + '" data-m="' + id + '">' + label + '</button>';
+  $('scrim').innerHTML =
+    '<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="' + esc(r.code) + '">' +
+      '<div class="mhead">' +
+        '<div class="mtop">' +
+          '<div class="dcode">' + esc(r.code) + '</div>' +
+          '<button class="mclose" id="mclose" aria-label="Close">×</button>' +
+        '</div>' +
+        '<div class="ddesc">' + esc(r.desc) + '</div>' +
+        '<div class="dtags">' +
+          (r.type   ? '<span class="tag">' + esc(r.type)   + '</span>' : '') +
+          (r.vendor ? '<span class="tag">' + esc(r.vendor) + '</span>' : '') +
+        '</div>' +
+        '<div class="acts">' +
+          act('code', 'primary', '⧉ Copy code') +
+          act('desc', '', '⧉ Copy description') +
+          act('row',  '', '⧉ Copy row (Excel)') +
+          act('all',  '', '⧉ Copy all details') +
+        '</div>' +
+      '</div>' +
+      '<div class="mbody">' +
+        (d.length
+          ? '<div class="fields">' + d.map((x, i) =>
+              '<div class="f"><div class="kv"><div class="k">' + esc(x.k) + '</div>' +
+              '<div class="v">' + esc(x.v) + '</div></div>' +
+              '<button class="fcopy" data-f="' + i + '">⧉</button></div>').join('') + '</div>'
+          : '<div class="fnone" style="padding:22px">The sheet has no extra columns ' +
+            'for this item, only the code and description.</div>') +
+      '</div>' +
+    '</div>';
+  $('scrim').hidden = false;
+
+  $('mclose').onclick = closeDetail;
+  $('modal').onclick = e => e.stopPropagation();
+  [...$('scrim').querySelectorAll('[data-m]')].forEach(b => b.onclick = () =>
+    copyOf(r, b.dataset.m, ({ code:'Code copied', desc:'Description copied',
+      row:'Row copied', all:'All details copied' })[b.dataset.m]));
+  [...$('scrim').querySelectorAll('[data-f]')].forEach(b => b.onclick = () =>
+    copyOf(d[+b.dataset.f].v, 'field', esc(d[+b.dataset.f].k) + ' copied'));
+  $('mclose').focus();
+}
+
+function closeDetail(){
+  PICKED = null;
+  $('scrim').hidden = true;
+  $('scrim').innerHTML = '';
+}
+
+$('scrim').onclick = closeDetail;
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && PICKED) closeDetail();
+});
+
+/* ------------------------------------------------------------ back to top
+
+   The design shows it after a scroll. 500px is its threshold, and the
+   handler is passive so it cannot hold up a scroll on a phone. */
+addEventListener('scroll', () => {
+  const on = (window.scrollY || document.documentElement.scrollTop) > 500;
+  if (on === !$('totop').hidden) return;
+  $('totop').hidden = !on;
+}, { passive: true });
+$('totop').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
 /* ------------------------------------------------------------- the upload
 
@@ -419,8 +710,10 @@ function renderFooter(){
 }
 
 /* ------------------------------------------------------------------ events */
-$('q').addEventListener('input', () => { Q = $('q').value; PICKED = null; route(); });
-$('clr').onclick = () => { $('q').value = ''; Q = ''; PICKED = null; route(); $('q').focus(); };
+/* a new search is a new list, so it starts at the top of it - and the
+   facet counts are of the rows the search leaves, so they move too */
+$('q').addEventListener('input', () => { Q = $('q').value; LIM = 150; PICKED = null; renderFacets(); route(); });
+$('clr').onclick = () => { $('q').value = ''; Q = ''; LIM = 150; PICKED = null; renderFacets(); route(); $('q').focus(); };
 addEventListener('keydown', e => {
   if (e.key === '/' && document.activeElement !== $('q')){ e.preventDefault(); $('q').focus(); }
   if (e.key === 'Escape' && PICKED){ PICKED = null; route(); }
