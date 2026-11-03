@@ -228,6 +228,15 @@
     max-width:calc(100vw - 32px);text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   /* ------------------------------------------------------------ the modal */
+  /* [hidden] IS NOT A TOGGLE ONCE CSS SETS display ON THE SAME ELEMENT.
+     The hidden attribute works by a UA rule, [hidden]{display:none}, and
+     ANY author display declaration outranks it. .scrim says display:flex,
+     so hidden did nothing: the modal backdrop stood over the whole page
+     permanently - dimming it and swallowing every click - and the tool
+     read as broken while the markup said it was closed.
+
+     Both of these need the explicit rule, and both had the bug. */
+  .scrim[hidden],.totop[hidden]{display:none}
   .scrim{position:fixed;inset:0;background:rgba(2,8,3,.72);
     -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
     display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
