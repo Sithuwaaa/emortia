@@ -2213,3 +2213,71 @@ sample of the project.
 **The backup rule stays exactly as written: read it before you overwrite
 it, every time.** It cost two stopped attempts and most of a session, and
 it paid for all of that in one file.
+
+## A tool reporting zero is reporting its own state, not the world's
+
+4 November. For two days I treated *"the browser pane reports a 0×0
+viewport"* as a fact about the page. It was a fact about the **pane**,
+which was collapsed. Opening it and setting a size gave a live 1400×900
+viewport immediately.
+
+Everything downstream of that misreading was wrong in the same direction:
+
+- I could not measure the two-column layout, so I reported it unverified.
+- I shipped Material Codes anyway, invisible under a permanently-up
+  modal scrim, because the only check that would have caught it is the
+  one the 0×0 reading told me was impossible.
+- When I finally did look, the blocker was not the pane at all — it was
+  the sign-in gate, a completely different problem with a completely
+  different answer (render the real stylesheet against stand-in rows,
+  the way `wh24/__fixture.html` already does here).
+
+### This is the `indexOf` shape, in a new place
+
+`indexOf` returns `-1` for a needle that is not there, and `-1` is less
+than everything, so an ordering check passes hardest when the thing it
+is checking for is **absent**. I wrote that one down a day earlier.
+
+`innerWidth` returns `0` for a pane that is not being painted — and
+every measurement taken through it then agrees, calmly, that nothing has
+any size. Both are a sentinel value that reads as a measurement. Both
+produce *more* confidence the less the instrument can actually see.
+
+### The rule
+
+**A zero, an empty, a `-1` or a `null` from an instrument is a claim
+about the instrument until something independent says otherwise.**
+Before reporting "I cannot measure X", establish that the measuring
+thing is working at all — `getComputedStyle` on a known element,
+`innerWidth` against a size you just set, a hash of black-on-white
+coming back 21. The harness-checked-against-a-known-answer rule already
+in this file is the same rule; this is it applied to *the harness being
+switched off* rather than being wrong.
+
+And the corollary that cost the most: **"I cannot see it" is a thing to
+fix, not a thing to disclose and ship past.** The disclosure was
+accurate and it was not a substitute for looking.
+
+## Read before write, every time
+
+Recorded as a habit rather than an incident, because the incident was
+small and the habit is not.
+
+`cat > .claude/launch.json` on a tracked file I had not read destroyed
+the `emortia` http-server entry — the project's only dev-server config —
+while adding a throwaway one for an image-encoding job. The restore was
+clean because git had it. That is luck about *which* file it was, not
+care about how it was written.
+
+**The file you destroy is the one you did not know was there.** A
+redirect that truncates, an `Edit` whose `old_string` you guessed, a
+`write_files` over a path you have not listed — each is the same move:
+writing to a target whose contents you have not established. The
+established cost in this session alone is one dev-server config and two
+stopped design-project pushes, and the pushes were stopped *because* the
+same rule was followed deliberately — which is what found the one
+irreplaceable file in a project of seven hundred.
+
+Read it, then write it. The read is cheap in every case where it turns
+out to be unnecessary, and it is the whole of the protection in the
+cases where it is not.
