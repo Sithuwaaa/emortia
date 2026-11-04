@@ -2281,3 +2281,49 @@ irreplaceable file in a project of seven hundred.
 Read it, then write it. The read is cheap in every case where it turns
 out to be unnecessary, and it is the whole of the protection in the
 cases where it is not.
+
+## A gate proved under a load it was never designed for
+
+4 November. The best evidence the materials gate works came from an
+accident, and it is better evidence than the baseline comparison.
+
+For about forty-five minutes on 3 November — 17:50 to 18:35, one IP, one
+session — the Material Codes page reconciled roughly **once every 1.5
+seconds**. 956 probes in a single hour, against 0 to 25 in every other
+hour of the day. It was not a timer and not tab switching; 1.5 s is
+`liveChannel`'s own cadence, either `soonish()`'s 1200 ms trailing edge
+or the status path retrying at 1 s and 2 s before backing off. It
+started as the gate shipped, stopped on its own, and has not recurred.
+
+**What it produced: ~1,000 probes and essentially no walks.**
+
+Pre-gate, that same storm would have been **~3,000 full page reads** of
+2,422 rows — three paginated requests per reconcile, roughly 1.5 GB on
+the wire in three quarters of an hour, on an account that had just gone
+over a 5 GB monthly ceiling.
+
+### Why this beats the before-and-after figure
+
+The baseline comparison — 88 walks a day becoming a handful — measures
+the gate under the traffic it was designed for, which is the traffic
+whoever wrote it had in mind. Anybody can build something that holds at
+the rate they imagined.
+
+This measured it at **sixty times that rate**, driven by a fault nobody
+predicted, with no warning and nobody watching. The gate did not
+degrade, did not fall back to walking, and did not serve a stale list:
+every one of those thousand reconciles asked the cheap question and got
+a truthful answer. A guard that holds at the design load is a claim; a
+guard that holds at sixty times it, during a fault, is a measurement.
+
+### And the reading was already running
+
+`RELOG.rate('materials')` would have printed **"THE THREE RECONCILE
+PATHS CANNOT ACCOUNT FOR THIS"** and named the gaps under 1200 ms. That
+is exactly the sentence the instrument was built to produce, it was live
+in the page the whole time, and instead the question was answered by an
+hour of log archaeology after the fact.
+
+**The standing order: when a count looks strange, `rate()` comes before
+the logs.** The instrument that can falsify a theory is worth nothing if
+it is not the first thing asked.
