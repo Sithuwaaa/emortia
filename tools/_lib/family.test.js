@@ -335,7 +335,19 @@ console.log('\n--- no ungoverned chrome anywhere ---');
        --g-blur are a url() and a filter rather than colours, so the scan
        below never sees them, and they are listed anyway so the whole look
        is declared in one place rather than half of it. */
-    materials: ['tint','scene','g-glass','g-edge','g-blur','g-inset'],
+    /* Material Codes sits on the Design & Materials photograph, the same
+       way What To Do sits on the Promenade and Project Update on Field
+       Operations. --tint is the readability veil over the picture and the
+       --g-* set is the frosted panel the list is drawn on.
+
+       The second line is the accent picker's own surface vocabulary: the
+       code column's ink, the search highlight, the sidebar's glass, the
+       selected-row and modal-header washes, and the copy button's edge
+       and label. They vary per picked accent and none of them is a colour
+       the five families have an opinion about. --goHover is the family's
+       hover and is governed; it is NOT listed here. */
+    materials: ['tint','scene','g-glass','g-edge','g-blur','g-inset',
+                'badInk','codeInk','markBg','sideGlass','selBg','modalHead','cpbEdge','cpbInk'],
     whattodo: ['glass','glass-hero','glass-edge','glass-shadow',
                'lq-ink','lq-track','sel-bg','sel-ink','star','iv-ink','chip-bg','stop-ink',
                /* the weather, from the Promenade design: --wx-dim is the idle

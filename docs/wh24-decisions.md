@@ -2327,3 +2327,119 @@ hour of log archaeology after the fact.
 **The standing order: when a count looks strange, `rate()` comes before
 the logs.** The instrument that can falsify a theory is worth nothing if
 it is not the first thing asked.
+
+## The identity channel and the personalisation channel are separable
+
+5 November. The Material Codes design arrived with a seven-theme accent
+picker, and `family.test.js` refused it: *no tool defines an accent of
+its own* — the rule written because Material Codes showed maroon on the
+directory and opened green.
+
+It looked like a straight choice between the site's five-family identity
+and a feature somebody wanted. It was not.
+
+### The guard was written in terms of the mechanism, not the property
+
+The property worth protecting is **what you see before clicking matches
+what you see after**. "The tool's accent equals its family's accent" was
+a *way of guaranteeing* that, and the assertion was written as the way
+rather than as the thing. Same shape as gating a cache on `savedAt`'s
+date when the property was "the server has nothing newer" and the date
+was merely how it was being checked.
+
+So the question became: does the directory tile follow the picked
+accent? **Checked, not assumed, and the answer was no twice over.**
+
+- The picker writes `localStorage.mat_accent`, a materials-only key.
+  `grep -c mat_accent` over `index.html` and `Emortia.html` returns 0.
+  The tile is a static `.tgrp-design{--gc:#40b337}`.
+- All fourteen accent values sit outside the family hue, by **13.8° to
+  48.9°**, against the 6° tolerance this repository already applies to
+  the directory's own `.tgrp-*` colours. Picking "coral" opened a tool
+  whose accent was teal `#4fc6a8` beneath a green tile.
+
+So the property really was broken, not just the mechanism. The guard was
+right for the wrong reason, which is still right.
+
+### What saved it
+
+Reading the themes properly: **every picked `--accent` was a green, and
+the actual theme colour lived in `--codeInk`.** Forest's accent is
+`#1f5d3a` with a brass `--codeInk:#8a6420`; coral's is a teal-green with
+`--codeInk:#ff9f8a`. The picker was already carrying its personality in
+a different token and only incidentally dragging the identity with it.
+
+Two channels, not one. So they were separated: `--accent`,
+`--accent-ink`, `--goHover` and `--glowSoft` were removed from all
+fourteen rules, leaving them to inherit the family's values from
+`category.css`, and the picker kept `--codeInk`, `--markBg`,
+`--sideGlass`, `--selBg`, `--modalHead`, `--cpbEdge` and `--cpbInk`.
+
+Removed rather than pinned to a literal: a hard-coded `#81D67B` in
+fourteen places is fourteen more copies of a fact `category.css` already
+owns, and this file exists because of a fact kept in two places.
+
+**The guard passes unchanged. Nothing was relaxed, nothing re-plumbed,
+and the tile matches the tool again.**
+
+## Fix the ink before the fill, and the polarity is per theme
+
+The Disposed segment button measured **3.39:1** — white on `#e2607a`,
+under the 4.5 floor.
+
+My first instinct was to darken the *fill* to `#c2405c`, which measures
+5.02. That is changing a colour somebody chose in order to fix a defect
+in something else. **The fill is the design; the ink is the fix.**
+`#2b0f16` on the untouched pink is 5.23.
+
+Then I shipped it wrong, and the guard caught it mid-flight.
+
+`--bad` flips with the theme: `#e2607a` in dark is a mid-light pink and
+wants dark ink; `#c2405c` in light is deeper and wants white. Setting
+`#2b0f16` for both **cleared dark at 5.23 and left light at 3.54** — one
+theme fixed, the other broken, in the same edit. `family.test.js`
+reported it on the next run, before it reached anybody.
+
+The first repair was a separate `html[data-theme="light"]` override,
+which the browser would have honoured and the test could not see: it
+measures each rule independently and the override carried no background,
+so the original rule still resolved against light's `--bad` and still
+failed. **The test was right to keep failing.** A fix the guard cannot
+see is a fix that the next edit silently undoes.
+
+So the ink became `--badInk`, declared in both theme blocks, and one
+rule is now correct in both: 5.23 dark, 5.02 light, measured through
+`contrast.js`.
+
+**Two rules out of it.** Fix the ink before the fill — a contrast
+failure is not a licence to repaint somebody's chosen colour. And
+polarity is **per theme, not per element**: a token that flips between
+themes needs its partner to flip with it, and checking only the theme
+you happen to be looking at is how you fix half of it.
+
+## The first design import that was a superset
+
+Every previous import of this project pointed backwards. The last one
+was 21 hunks, 19 of which would have removed that week's work —
+`store.js` unloaded, `const XDB` restored, `r.rows.length` back in the
+tiles.
+
+This one did not. `tools/materials/index.html` came back carrying **the
+Supabase layer, the probe gate (`MSTAMP`/`since`), `RELOG.decide`, the
+`[hidden]` override, the label table, the owner upload block and the
+footer** — all intact — with the accent picker, the disposed filter and
+the liquid-glass scrollbar added on top. A clean superset. It even named
+the four WebP files encoded here the day before, and the one checked
+decoded **byte-identical** to the repo's copy.
+
+**That is the evidence the push was worth doing.** Pushing
+`project-update/index.html` and `whattodo/index.html` into the design
+project put the repo's current state where the design app could read it,
+and the next thing it drew was built on top of that state instead of on
+a snapshot from a fortnight earlier. Two stopped attempts and a lot of
+argument about backups bought exactly one thing, and this is it.
+
+The corollary: the imports were never going backwards because the design
+app was careless. They went backwards because it was working from the
+most recent thing it had been given, and nobody had given it anything
+recent.

@@ -50,10 +50,10 @@
      olive. Only the accent is this tool's own; the rest is theme.css. */
   :root,html[data-theme="dark"]{
     
-    --bad:#e2607a;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
+    --bad:#e2607a;--badInk:#2b0f16;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
   html[data-theme="light"]{
     
-    --bad:#c2405c;--zebra:rgba(0,0,0,.024);}
+    --bad:#c2405c;--badInk:#ffffff;--zebra:rgba(0,0,0,.024);}
 
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);
@@ -100,18 +100,110 @@
   main{max-width:1600px;margin:0 auto;padding:20px 24px 28px;
     display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
   .side{flex:1 1 260px;max-width:320px;position:sticky;top:92px;
-    max-height:calc(100vh - 112px);overflow:auto;
-    background:var(--card);border:1px solid var(--line);border-radius:14px;
-    padding:18px;display:flex;flex-direction:column;gap:18px}
-  .panel{flex:999 1 480px;min-width:0;background:var(--card);
+    max-height:calc(100vh - 112px);overflow-y:auto;
+    display:flex;flex-direction:column;gap:12px;padding-bottom:2px}
+  /* THE SIDEBAR AS TILES (design 3a): category + status, vendor, specs, upload */
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:16px;display:flex;flex-direction:column;gap:12px;flex-shrink:0}
+  .tile.cat{position:relative;z-index:5}
+  /* LIQUID GLASS SCROLLBARS, the browser's own bar restyled: a frosted
+     rounded track and a glossy thumb. No scrollbar-width/color here -
+     Chrome ignores the ::-webkit-scrollbar rules when either is set; the
+     Firefox fallback is in the @supports block below. */
+  .side::-webkit-scrollbar{width:12px}
+  .ddpan::-webkit-scrollbar{width:9px}
+  .side::-webkit-scrollbar-track,.ddpan::-webkit-scrollbar-track{margin:10px 0;border-radius:99px;
+    background:rgba(16,34,18,.45);border:1px solid rgba(162,229,156,.18)}
+  .side::-webkit-scrollbar-thumb,.ddpan::-webkit-scrollbar-thumb{border-radius:99px;
+    border:2px solid transparent;background-clip:padding-box;
+    background-image:linear-gradient(180deg,rgba(210,248,210,.62),rgba(134,224,143,.3))}
+  .side::-webkit-scrollbar-thumb:hover,.ddpan::-webkit-scrollbar-thumb:hover{
+    background-image:linear-gradient(180deg,rgba(225,252,225,.8),rgba(134,224,143,.5))}
+  html[data-theme="light"] .side::-webkit-scrollbar-track,html[data-theme="light"] .ddpan::-webkit-scrollbar-track{
+    background:rgba(255,255,255,.45);border-color:rgba(255,255,255,.75)}
+  html[data-theme="light"] .side::-webkit-scrollbar-thumb,html[data-theme="light"] .ddpan::-webkit-scrollbar-thumb{
+    background-image:linear-gradient(180deg,rgba(31,138,62,.5),rgba(31,138,62,.28))}
+  html[data-theme="light"] .side::-webkit-scrollbar-thumb:hover,html[data-theme="light"] .ddpan::-webkit-scrollbar-thumb:hover{
+    background-image:linear-gradient(180deg,rgba(31,138,62,.7),rgba(31,138,62,.45))}
+  @supports (-moz-appearance:none){
+    .side,.ddpan{scrollbar-width:thin;scrollbar-color:rgba(180,240,180,.5) rgba(16,34,18,.45)}
+    html[data-theme="light"] .side,html[data-theme="light"] .ddpan{scrollbar-color:rgba(31,138,62,.45) rgba(255,255,255,.45)}
+  }
+  .sbar{display:none !important}
+  .tile,.phead{border-radius:18px}
+  /* THE FLOATING PILL (design 4a): the sidebar's own bar is hidden; this
+     one sits in the gap, appears when the cursor is over the filters or
+     they are moving, and fades out after. Drag it, or click the gap. */
+  .sbar{position:fixed;width:14px;z-index:15;opacity:0;pointer-events:none;
+    transition:opacity .45s ease;cursor:pointer;touch-action:none}
+  .sbar.show{opacity:1;pointer-events:auto}
+  .sbar i{display:block;width:5px;margin:0 auto;border-radius:99px;
+    background:rgba(180,240,180,.5);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+    transition:width .2s ease,background .2s ease}
+  .sbar.act i,.sbar:hover i{width:7px;background:rgba(190,245,190,.7)}
+  html[data-theme="light"] .sbar i{background:rgba(15,31,20,.35)}
+  html[data-theme="light"] .sbar.act i,html[data-theme="light"] .sbar:hover i{background:rgba(15,31,20,.5)}
+
+  .tile.specs{gap:16px}
+  .tile .upblk{border:0;padding:0;margin:0}
+  .rcol{flex:999 1 480px;min-width:0;display:flex;flex-direction:column;gap:12px}
+  /* the category dropdown, drawn rather than native */
+  .dd{position:relative}
+  .ddbtn{width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+    border:1px solid var(--accent);background:rgba(0,0,0,.22);color:var(--text);font:inherit;
+    cursor:pointer;text-align:left;box-shadow:0 0 0 3px var(--glowSoft)}
+  .ddbtn .l{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0}
+  .ddbtn .t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ddbtn .s{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--muted)}
+  .ddbtn .ch{color:var(--accent);font-size:14px;transition:transform .18s ease}
+  .dd.open .ch{transform:rotate(180deg)}
+  .ddpan{position:fixed;top:0;left:0;width:260px;min-width:240px;max-height:320px;
+    overflow:auto;z-index:30;border-radius:12px;background:rgba(10,24,13,.97);
+    border:1px solid rgba(162,229,156,.35);box-shadow:0 18px 40px rgba(0,0,0,.6);
+    padding:5px;display:none;flex-direction:column;gap:1px}
+  .ddpan.show{display:flex}
+  .ddi{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;cursor:pointer;
+    font-size:12.5px;background:none;border:0;color:var(--text);font-family:inherit;text-align:left;width:100%}
+  .ddi:hover{background:var(--glowSoft)}
+  .ddi.on{background:var(--glowSoft);color:var(--accent);font-weight:600}
+  .ddi .mk{width:14px;color:var(--accent);font-weight:700;flex-shrink:0}
+  .ddi .v{flex:1}
+  .ddi .n{font-family:'Space Mono',monospace;font-size:11px;opacity:.75}
+  .ddi.fam{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);padding:4px 8px}
+  .ddi.fam.on{color:var(--accent)}
+  .ddi.sub{padding-left:14px}
+  .ddsep{height:1px;background:var(--line);margin:3px 4px;flex-shrink:0}
+  /* All / Active / Disposed */
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:3px;
+    border-radius:10px;border:1px solid var(--line)}
+  .seg button{padding:7px;border-radius:8px;border:0;background:none;color:var(--text);
+    font:inherit;font-size:13px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+  /* DARKEN THE INK, NOT THE FILL. White on #e2607a measures 3.39:1 - under
+     the 4.5 floor - and lightening ink on a mid-light fill was never going
+     to clear it, which is the polarity: a pale fill wants dark ink. The
+     first instinct was to darken the fill to #c2405c (5.02), and that
+     changes a colour somebody chose to fix a defect in something else.
+     #2b0f16 on the same pink is 5.23, measured through contrast.js; pure
+     black is 6.19 and reads harsh against it. The pink is untouched. */
+  .seg button.on.bad{background:var(--bad);color:var(--badInk)}
+  /* AND THE OTHER WAY ROUND IN LIGHT, because --bad flips with the theme.
+     Dark's #e2607a is a mid-light pink and wants dark ink; light's
+     #c2405c is a deeper one and wants white. Setting #2b0f16 for both
+     cleared dark at 5.23 and left light at 3.54 - one theme fixed, the
+     other broken, which family.test.js caught in the same run. The
+     polarity rule is per theme, not per element. */
+  html[data-theme="light"] .seg button.on.bad{color:#fff}
+  .panel{min-width:0;background:var(--card);
     border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  .phead{padding:16px 18px;display:flex;flex-direction:column;gap:10px;
-    border-bottom:1px solid var(--line)}
+  .phead{padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+    background:var(--card);border:1px solid var(--line);border-radius:14px}
   .bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:22px}
   .tags{display:flex;gap:6px;flex-wrap:wrap}
 
   /* ---------------------------------------------------------- the search */
-  .searchwrap{position:relative;display:flex;align-items:center;margin-bottom:14px}
+  .searchwrap{position:relative;display:flex;align-items:center}
   .searchwrap .ic{position:absolute;left:14px;font-size:17px;color:var(--muted);pointer-events:none}
   #q{width:100%;padding:13px 40px 13px 40px;font:inherit;font-size:16px;color:var(--text);
     background:var(--card);border:1px solid var(--line);border-radius:12px;outline:none;
@@ -326,14 +418,46 @@
     --g-blur:blur(16px) saturate(1.4);--g-inset:inset 0 1px 0 rgba(255,255,255,.08)}
   html[data-theme="light"]{
     --scene:image-set(url('img/scene-light-1280.webp') 1x, url('img/scene-light-1672.webp') 2x);
-    --tint:linear-gradient(rgba(255,248,235,.40),rgba(255,248,235,.58));
-    --g-glass:rgba(255,255,255,.72);--g-edge:rgba(255,255,255,.80);
-    --g-blur:blur(24px) saturate(1.3);--g-inset:inset 0 1px 0 rgba(255,255,255,.9)}
+    --tint:linear-gradient(rgba(10,60,25,.14),rgba(10,60,25,.06));
+    --g-glass:rgba(255,255,255,.62);--g-edge:rgba(255,255,255,.7);
+    --g-blur:blur(10px) saturate(1.25);--g-inset:inset 0 1px 0 rgba(255,255,255,.9)}
+  /* light ink over the glass: full-strength text, darker muted and code */
+  html[data-theme="light"] body{--text:#0f1f14;--muted:#3a4d40}
+  html[data-theme="light"] .row .c,html[data-theme="light"] .dcode{color:var(--codeInk,#0b6b2a)}
+  html[data-theme="light"] mark{background:var(--markBg,var(--glowSoft))}
+  /* ACCENT OPTIONS, both themes. ?accent=forest|plum|clay|ink|brass|mint|coral, else localStorage mat_accent.
+     Each palette also reaches the side panel, the dropdown, the copy buttons and the popup. */
+  html[data-accent="forest"] body{--codeInk:#d9b871;--markBg:rgba(201,169,110,.35);--sideGlass:rgba(12,30,18,.66);--selBg:rgba(201,169,110,.10);--modalHead:rgba(201,169,110,.14);--cpbEdge:rgba(201,169,110,.45);--cpbInk:#e8d5a8}
+  html[data-theme="light"][data-accent="forest"] body{--codeInk:#8a6420;--markBg:rgba(201,169,110,.45);--sideGlass:rgba(247,241,232,.74);--selBg:#fbf7ef;--modalHead:rgba(201,169,110,.2);--cpbEdge:#c9a96e;--cpbInk:#7a5e30}
+  html[data-accent="plum"] body{--codeInk:#e6bdc4;--markBg:rgba(180,95,114,.45);--sideGlass:rgba(34,6,14,.55);--selBg:rgba(109,26,46,.45);--modalHead:rgba(109,26,46,.55);--cpbEdge:rgba(209,143,156,.5);--cpbInk:#f4e1e4}
+  html[data-theme="light"][data-accent="plum"] body{--codeInk:#6d1a2e;--markBg:rgba(233,201,196,.8);--sideGlass:rgba(251,243,244,.76);--selBg:#fbf3f4;--modalHead:rgba(233,201,196,.55);--cpbEdge:#d18f9c;--cpbInk:#6d1a2e}
+  html[data-accent="clay"] body{--codeInk:#e8a27f;--markBg:rgba(232,140,100,.35);--sideGlass:rgba(40,24,16,.55);--selBg:rgba(160,74,42,.25);--modalHead:rgba(160,74,42,.3);--cpbEdge:rgba(232,162,127,.45);--cpbInk:#f2cdb8}
+  html[data-theme="light"][data-accent="clay"] body{--codeInk:#a04a2a;--markBg:rgba(232,180,150,.5);--sideGlass:rgba(250,240,230,.74);--selBg:#fbf3ea;--modalHead:rgba(232,180,150,.35);--cpbEdge:#d9a184;--cpbInk:#8a3d21}
+  html[data-accent="ink"] body{--codeInk:#9dbff0;--markBg:rgba(130,165,220,.35);--sideGlass:rgba(10,20,36,.62);--selBg:rgba(29,59,102,.45);--modalHead:rgba(29,59,102,.5);--cpbEdge:rgba(157,191,240,.4);--cpbInk:#cfe0f8}
+  html[data-theme="light"][data-accent="ink"] body{--codeInk:#1d3b66;--markBg:rgba(130,165,220,.35);--sideGlass:rgba(240,245,252,.76);--selBg:#f3f7fc;--modalHead:rgba(130,165,220,.25);--cpbEdge:#8aa6cf;--cpbInk:#1d3b66}
+  html[data-accent="brass"] body{--codeInk:#e0c068;--markBg:rgba(224,192,104,.35);--sideGlass:rgba(26,26,10,.6);--selBg:rgba(168,134,74,.2);--modalHead:rgba(168,134,74,.25);--cpbEdge:rgba(224,192,104,.45);--cpbInk:#efe0b0}
+  html[data-theme="light"][data-accent="brass"] body{--codeInk:#7a5e30;--markBg:rgba(224,192,104,.45);--sideGlass:rgba(250,246,232,.76);--selBg:#fbf8ec;--modalHead:rgba(224,192,104,.3);--cpbEdge:#b9a05a;--cpbInk:#5c4720}
+  html[data-accent="mint"] body{--codeInk:#ffffff;--markBg:rgba(155,227,184,.3);--sideGlass:rgba(14,16,15,.7);--selBg:rgba(255,255,255,.06);--modalHead:rgba(255,255,255,.06);--cpbEdge:rgba(255,255,255,.3);--cpbInk:#ffffff}
+  html[data-theme="light"][data-accent="mint"] body{--codeInk:#16794a;--markBg:rgba(155,227,184,.6);--sideGlass:rgba(255,255,255,.8);--selBg:#ffffff;--modalHead:rgba(155,227,184,.3);--cpbEdge:#1c2b24;--cpbInk:#1c2b24}
+  html[data-accent="coral"] body{--codeInk:#ff9f8a;--markBg:rgba(255,140,115,.35);--sideGlass:rgba(8,28,28,.6);--selBg:rgba(255,140,115,.12);--modalHead:rgba(255,140,115,.16);--cpbEdge:rgba(255,159,138,.45);--cpbInk:#ffd2c8}
+  html[data-theme="light"][data-accent="coral"] body{--codeInk:#c2452d;--markBg:rgba(255,160,135,.45);--sideGlass:rgba(255,246,242,.76);--selBg:#fff7f3;--modalHead:rgba(255,160,135,.3);--cpbEdge:#e59a86;--cpbInk:#a73a25}
+  html[data-accent] .side{background:var(--sideGlass,var(--g-glass)) !important}
+  html[data-accent] .side select{background:var(--selBg,var(--card-2));border-color:var(--accent)}
+  html[data-accent] .fv .box{border-color:var(--accent)}
+  html[data-accent] .cpb:not(.primary),html[data-accent] .mclose{border-color:var(--cpbEdge,var(--line));color:var(--cpbInk,var(--text))}
+  html[data-accent] .cpb:not(.primary):hover{background:var(--glowSoft)}
+  html[data-accent] .mhead{background:var(--modalHead,var(--glowSoft))}
+  html[data-accent] .tag{border-color:var(--cpbEdge,var(--line));color:var(--cpbInk,var(--muted))}
+  html[data-accent] .totop span{background:var(--accent);color:var(--accent-ink)}
+  .row .c,.dcode{color:var(--codeInk,var(--accent))}
+
+  html[data-theme="light"] .row .d{font-weight:500}
+  html[data-theme="light"] .tile,html[data-theme="light"] .phead,html[data-theme="light"] .panel{box-shadow:var(--g-inset),0 18px 40px -22px rgba(0,40,10,.45)}
   html,body{background:transparent}
   main{position:relative;z-index:1}
 
   /* the two panels and the search field become the glass */
-  .side,.panel,#q{background:var(--g-glass) !important;border-color:var(--g-edge) !important;
+  .tile,.panel,.phead{background:var(--g-glass) !important;border-color:var(--g-edge) !important;
     backdrop-filter:var(--g-blur);-webkit-backdrop-filter:var(--g-blur);
     box-shadow:var(--g-inset)}
   .modal{background:var(--g-glass);border-color:var(--g-edge);
@@ -341,6 +465,35 @@
   /* the zebra has to be lighter over a picture than it was over a flat
      card, or every other row reads as a band rather than a nudge */
   .row:nth-child(even){background:rgba(162,229,156,.045)}
+  #q{background:rgba(0,0,0,.22) !important;border-color:var(--accent) !important}
+  html[data-theme="light"] #q,html[data-theme="light"] .ddbtn{background:rgba(255,255,255,.78)}
+  html[data-theme="light"] .ddpan{background:rgba(255,255,255,.98);border-color:rgba(11,107,42,.25);
+    box-shadow:0 18px 40px rgba(0,40,10,.25)}
+  html[data-theme] .row.disp .c{color:var(--badT) !important;text-decoration:line-through}
+  /* THE POPUP READS ON ITS OWN: near-solid card over a darker scrim, so the
+     photo and the list behind it stop bleeding through the text */
+  .scrim{background:rgba(2,8,3,.82)}
+  .modal{background:rgba(12,28,16,.96) !important;border-color:rgba(162,229,156,.35) !important}
+  .mhead{background:linear-gradient(rgba(162,229,156,.16),rgba(162,229,156,.08)) !important;
+    border-bottom-color:rgba(162,229,156,.3)}
+  .modal .ddesc{color:#f2f7f1;font-weight:500}
+  .modal .f{border-bottom-color:rgba(162,229,156,.14)}
+  .modal .f:nth-child(even){background:rgba(162,229,156,.04)}
+  .modal .f .k{color:#a9d9a4}
+  .modal .f .v{color:#f2f7f1}
+  .modal .tag{color:#d6ead3;border-color:rgba(162,229,156,.4)}
+  .modal .cpb:not(.primary){color:#f2f7f1;border-color:rgba(162,229,156,.4)}
+  .modal .mclose{color:#f2f7f1;border-color:rgba(162,229,156,.4)}
+  html[data-theme="light"] .scrim{background:rgba(10,30,15,.55)}
+  html[data-theme="light"] .modal{background:rgba(255,255,255,.97) !important;border-color:rgba(11,107,42,.25) !important}
+  html[data-theme="light"] .mhead{background:linear-gradient(rgba(11,107,42,.10),rgba(11,107,42,.05)) !important;
+    border-bottom-color:rgba(11,107,42,.2)}
+  html[data-theme="light"] .modal .ddesc,html[data-theme="light"] .modal .f .v{color:#0f1f14}
+  html[data-theme="light"] .modal .f{border-bottom-color:rgba(11,107,42,.12)}
+  html[data-theme="light"] .modal .f:nth-child(even){background:rgba(11,107,42,.035)}
+  html[data-theme="light"] .modal .f .k{color:#2f5a3a}
+  html[data-theme="light"] .modal .tag{color:#2f4a37;border-color:rgba(11,107,42,.3)}
+  html[data-theme="light"] .modal .cpb:not(.primary),html[data-theme="light"] .modal .mclose{color:#0f1f14;border-color:rgba(11,107,42,.35)}
   html[data-theme="light"] .row:nth-child(even){background:rgba(0,100,0,.035)}
   footer{color:var(--text)}
   .totop{background:var(--g-glass);border-color:var(--g-edge);
@@ -367,7 +520,7 @@
        sticky and sits above the list, because 260px of filters and a table
        do not share a phone. -->
   <aside class="side" id="facets"></aside>
-  <section class="panel">
+  <div class="rcol">
     <div class="phead">
       <div class="searchwrap">
         <span class="ic">⌕</span>
@@ -377,13 +530,14 @@
       </div>
       <div class="bar"><span class="hint" id="hint"></span><span class="tags" id="active"></span></div>
     </div>
-    <div id="view"></div>
-  </section>
+    <section class="panel"><div id="view"></div></section>
+  </div>
 </main>
 
 <!-- The detail is a modal now rather than a route. It used to be a view that
      replaced the list, so closing it rebuilt the whole table and lost the
      scroll position; over a dialog the list keeps its place underneath. -->
+<div class="sbar" id="sbar" aria-hidden="true"><i></i></div>
 <div class="scrim" id="scrim" hidden></div>
 <button class="totop" id="totop" hidden><span>↑</span>Back to top</button>
 
@@ -400,6 +554,9 @@ let ALL = [], TYPE = '', VENDOR = '', Q = '', PICKED = null;
    how many rows are drawn, raised by Show more - it replaced a hard stop
    at 400 that nothing could get past. */
 let FS = {}, LIM = 150;
+/* FAM: a whole family picked from the dropdown (TYPE is one type in it).
+   STATUS: All / Active / Disposed, read from the sheets' disposal column. */
+let FAM = '', STATUS = 'All', DDOPEN = false;
 /* what the last completed read came back with, so the next one can ask
    whether anything has moved instead of reading it all again */
 let MSTAMP = null, MN = 0;
@@ -425,6 +582,7 @@ async function load(){
   if (r.error && !(r.rows || []).length){ shell('Nothing to show', r.error); return; }
   ALL = r.rows || []; MSTAMP = r.stamp || null; MN = r.n || 0;
   paint();
+  if (QS.get('open') && ALL[0]) openDetail(ALL[0]);
     /* ONLY ON A REAL EVENT. liveChannel calls this for four reasons and
        hands the reason in: undefined for an actual postgres_changes
        event, and a string for the three reconciliation paths - becoming
@@ -497,34 +655,54 @@ function paint(){
    `attrs` with between two and thirty distinct values becomes a checkable
    list, counted from the rows currently in view. That is the design's
    behaviour exactly, and this tool's chip rows could not do it. */
-const FEXCL = /part|final mc|comment|remark/i;
+const FEXCL = /part|final mc|comment|remark|dispos/i;
+const isDisp = r => Object.entries(r.attrs || {}).some(([k, v]) =>
+  v && (/dispos/i.test(k) || /^dispos/i.test(String(v))));
+const stOK = r => STATUS === 'All' || isDisp(r) === (STATUS === 'Disposed');
 const inFS = (r, skip) => Object.entries(FS).every(([k, set]) =>
   k === skip || !set.length || set.includes((r.attrs || {})[k] || '—'));
-const baseRows = () => M.view(ALL, { type:TYPE, vendor:VENDOR, q:Q });
+const baseRows = () => M.view(ALL, { type:TYPE, vendor:VENDOR, q:Q })
+  .filter(r => (!FAM || M.famOf(r.type) === FAM) && stOK(r));
 
 function renderFacets(){
   const f = M.facets(ALL), base = baseRows();
   const lbl = s => String(s).replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
   let h = '';
 
-  /* grouped under the five families, and spelled out: the sheets call
-     them PWR, IP, TX and "BB,MPT,EXT,BB accs". The stored type is still
-     the value - only the label changes - so the filter is unaffected. */
-  h += '<div class="fgrp"><div class="flabel">Category</div><select id="catsel">' +
-    '<option value="">All materials</option>' +
-    M.families(ALL).map(fm => '<optgroup label="' + esc(fm.name) + '">' +
-      fm.types.map(t => '<option value="' + esc(t.name) + '"' + (TYPE === t.name ? ' selected' : '') +
-        '>' + esc(t.label) + ' (' + t.count + ')</option>').join('') + '</optgroup>').join('') +
-    '</select></div>';
+  /* THE CATEGORY TILE: a drawn dropdown - every family, its types under
+     it, a count on each that ignores the current pick - and the status
+     switch when the sheets carry a disposal column at all. */
+  const ddBase = M.view(ALL, { vendor:VENDOR, q:Q }).filter(stOK);
+  const cnt = {}; ddBase.forEach(r => { cnt[r.type] = (cnt[r.type] || 0) + 1; });
+  const resN = base.filter(r => inFS(r)).length;
+  const ddi = (cls, on, attr, v, n) => '<button class="ddi ' + cls + (on ? ' on' : '') + '" ' + attr +
+    '><span class="mk">' + (on ? '✓' : '') + '</span><span class="v">' + esc(v) +
+    '</span><span class="n">' + n + '</span></button>';
+  const label = TYPE ? M.labelOf(TYPE) : (FAM || 'All materials');
+  const sub = (TYPE ? M.famOf(TYPE) + ' · ' : '') + resN.toLocaleString() + ' items';
+  h += '<div class="tile cat"><div class="flabel">Category</div>' +
+    '<div class="dd' + (DDOPEN ? ' open' : '') + '" id="dd"><button class="ddbtn" id="ddbtn">' +
+    '<span class="l"><span class="t">' + esc(label) + '</span><span class="s">' + esc(sub) + '</span></span>' +
+    '<span class="ch">▾</span></button><div class="ddpan">' +
+    ddi('', !TYPE && !FAM, 'data-dd=""', 'All materials', ddBase.length) +
+    M.families(ALL).map(fm => '<div class="ddsep"></div>' +
+      ddi('fam', FAM === fm.name && !TYPE, 'data-ddf="' + esc(fm.name) + '"', fm.name,
+        fm.types.reduce((s, t) => s + (cnt[t.name] || 0), 0)) +
+      fm.types.map(t => ddi('sub', TYPE === t.name, 'data-ddt="' + esc(t.name) + '"', t.label, cnt[t.name] || 0)).join('')
+    ).join('') + '</div></div>' +
+    (ALL.some(isDisp) ? '<div class="seg">' + ['All', 'Active', 'Disposed'].map(n =>
+      '<button class="' + (STATUS === n ? 'on' : '') + (n === 'Disposed' ? ' bad' : '') +
+      '" data-st="' + n + '">' + n + '</button>').join('') + '</div>' : '') + '</div>';
 
   if (f.vendors.length)
-    h += '<div class="fgrp"><div class="fhead"><span class="flabel">Vendor</span>' +
+    h += '<div class="tile"><div class="fgrp"><div class="fhead"><span class="flabel">Vendor</span>' +
       (VENDOR ? '<button class="fclear" data-clr="vendor">clear</button>' : '') + '</div>' +
       f.vendors.map(v => '<button class="fv' + (VENDOR === v.name ? ' on' : '') +
         '" data-ven="' + esc(v.name) + '"><span class="box">' + (VENDOR === v.name ? '✓' : '') +
         '</span><span class="v">' + esc(v.name) + '</span><span class="n">' + v.count +
-        '</span></button>').join('') + '</div>';
+        '</span></button>').join('') + '</div></div>';
 
+  let sp = '';
   /* the attribute facets, counted against the rows every OTHER filter
      leaves - so a value's count is what picking it would give you */
   const seen = {};
@@ -534,14 +712,14 @@ function renderFacets(){
   const cols = Object.keys(seen)
     .filter(k => seen[k].size >= 2 && seen[k].size <= 30 && !FEXCL.test(k));
   if (!TYPE && !cols.length)
-    h += '<div class="fnone">Pick a category to filter by its specs.</div>';
+    sp += '<div class="fnone">Pick a category to filter by its specs.</div>';
   cols.forEach(k => {
     const m = {};
     base.filter(r => inFS(r, k)).forEach(r => {
       const v = (r.attrs || {})[k] || '—'; m[v] = (m[v] || 0) + 1;
     });
     const sel = FS[k] || [];
-    h += '<div class="fgrp"><div class="fhead"><span class="flabel">' + esc(lbl(k)) + '</span>' +
+    sp += '<div class="fgrp"><div class="fhead"><span class="flabel">' + esc(lbl(k)) + '</span>' +
       (sel.length ? '<button class="fclear" data-clr="' + esc(k) + '">clear</button>' : '') +
       '</div>' + Object.entries(m)
         .sort((a, b) => (parseFloat(a[0]) - parseFloat(b[0])) || b[1] - a[1])
@@ -551,10 +729,26 @@ function renderFacets(){
           '</span><span class="n">' + n + '</span></button>').join('') + '</div>';
   });
 
-  $('facets').innerHTML = h + ownerBlock();
+  if (sp) h += '<div class="tile specs">' + sp + '</div>';
+  const ob = ownerBlock();
+  $('facets').innerHTML = h + (ob ? '<div class="tile">' + ob + '</div>' : '');
+  /* the dropdown list lives on <body>, outside the sidebar's scroll box,
+     so the sidebar scrollbar cannot paint over it */
+  const oldP = document.getElementById('ddpan'); if (oldP) oldP.remove();
+  const pan = $('facets').querySelector('.ddpan');
+  pan.id = 'ddpan'; pan.classList.toggle('show', DDOPEN); document.body.appendChild(pan);
   if ($('up')) $('up').onclick = () => $('file').click();
-  const sel = $('catsel');
-  sel.onchange = () => { TYPE = sel.value; FS = {}; LIM = 150; PICKED = null; renderFacets(); route(); };
+  $('ddbtn').onclick = e => { e.stopPropagation(); setDD(!DDOPEN); };
+  placeDD(); sbUpdate();
+  [...$('ddpan').querySelectorAll('.ddi')].forEach(b => b.onclick = () => {
+    if ('ddt' in b.dataset){ TYPE = b.dataset.ddt; FAM = ''; }
+    else if ('ddf' in b.dataset){ FAM = b.dataset.ddf; TYPE = ''; }
+    else { FAM = ''; TYPE = ''; }
+    DDOPEN = false; FS = {}; LIM = 150; PICKED = null; renderFacets(); route();
+  });
+  [...$('facets').querySelectorAll('[data-st]')].forEach(b => b.onclick = () => {
+    STATUS = b.dataset.st; LIM = 150; renderFacets(); route();
+  });
   [...$('facets').querySelectorAll('[data-ven]')].forEach(b => b.onclick = () => {
     VENDOR = VENDOR === b.dataset.ven ? '' : b.dataset.ven;
     LIM = 150; PICKED = null; renderFacets(); route();
@@ -608,18 +802,19 @@ function route(){
       ...Object.entries(r.attrs || {}).slice(0, 6).map(e => e[1])]
       .filter(Boolean).join(' · ');
   $('view').innerHTML = '<div class="rows">' + show.map((r, i) =>
-    '<button class="row" data-i="' + i + '"><span class="c">' + hl(r.code, Q) + '</span>' +
+    '<div class="row' + (isDisp(r) ? ' disp' : '') + '" role="button" tabindex="0" data-i="' + i + '"><span class="c">' + hl(r.code, Q) + '</span>' +
     '<span class="mid"><span class="d">' + hl(r.desc, Q) + '</span>' +
     '<span class="spec">' + esc(spec(r)) + '</span></span>' +
     '<span class="cp"><button class="cpb primary" data-cp="code" data-i="' + i + '">⧉ Code</button>' +
-    '<button class="cpb" data-cp="desc" data-i="' + i + '">⧉ Description</button></span></button>'
+    '<button class="cpb" data-cp="desc" data-i="' + i + '">⧉ Description</button></span></div>'
   ).join('') + '</div>' +
   (res.length > LIM ? '<button class="more" id="more">Show ' +
     Math.min(200, res.length - LIM) + ' more · ' +
     (res.length - LIM).toLocaleString() + ' left</button>' : '');
 
   [...$('view').querySelectorAll('.row')].forEach(el =>
-    el.onclick = () => openDetail(show[+el.dataset.i]));
+    { el.onclick = () => openDetail(show[+el.dataset.i]);
+      el.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === el){ e.preventDefault(); openDetail(show[+el.dataset.i]); } }; });
   [...$('view').querySelectorAll('[data-cp]')].forEach(b => b.onclick = e => {
     e.stopPropagation();
     copyOf(show[+b.dataset.i], b.dataset.cp,
@@ -699,6 +894,68 @@ function closeDetail(){
 }
 
 $('scrim').onclick = closeDetail;
+/* THE DROPDOWN FLOATS (position:fixed) so the sidebar's own scroll box
+   cannot clip it: it starts under the button and runs 26px past the tile's
+   right edge, clear of the sidebar scrollbar. */
+function setDD(on){
+  DDOPEN = on;
+  const d = $('dd'), p = $('ddpan');
+  if (d) d.classList.toggle('open', on);
+  if (p) p.classList.toggle('show', on);
+  placeDD();
+}
+function placeDD(){
+  const d = $('dd'); if (!d || !DDOPEN) return;
+  const b = $('ddbtn').getBoundingClientRect(), p = $('ddpan'); if (!p) return;
+  const room = innerHeight - b.bottom - 16;
+  p.style.top = (b.bottom + 6) + 'px'; p.style.left = b.left + 'px';
+  p.style.width = (b.width + 26) + 'px';
+  p.style.maxHeight = Math.max(180, Math.min(320, room)) + 'px';
+}
+addEventListener('resize', placeDD);
+
+/* the floating pill: positioned beside the sidebar, sized to what it shows */
+let sbHover = false, sbT = 0;
+function sbUpdate(){
+  const side = $('facets'), sb = $('sbar'), th = sb.firstChild;
+  const r = side.getBoundingClientRect(), max = side.scrollHeight - side.clientHeight;
+  if (max <= 1 || getComputedStyle(side).position === 'static'){ sb.style.display = 'none'; return; }
+  sb.style.display = 'block';
+  const trackH = r.height - 40, h = Math.max(48, trackH * side.clientHeight / side.scrollHeight);
+  sb.style.left = (r.right + 3) + 'px'; sb.style.top = (r.top + 20) + 'px'; sb.style.height = trackH + 'px';
+  th.style.height = h + 'px';
+  th.style.transform = 'translateY(' + (side.scrollTop / max * (trackH - h)) + 'px)';
+  sb.classList.toggle('show', sbHover || sb.classList.contains('act'));
+}
+(function(){
+  const side = $('facets'), sb = $('sbar');
+  const hov = on => { sbHover = on; sbUpdate(); };
+  [side, sb].forEach(el => {
+    el.addEventListener('mouseenter', () => hov(true));
+    el.addEventListener('mouseleave', () => hov(false));
+  });
+  side.addEventListener('scroll', () => {
+    sb.classList.add('act'); sbUpdate(); clearTimeout(sbT);
+    sbT = setTimeout(() => { sb.classList.remove('act'); sbUpdate(); }, 700);
+  }, { passive: true });
+  const drag = e => {
+    const r = sb.getBoundingClientRect();
+    side.scrollTop = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) * (side.scrollHeight - side.clientHeight);
+  };
+  sb.addEventListener('pointerdown', e => {
+    e.preventDefault(); sb.setPointerCapture(e.pointerId); drag(e);
+    sb.onpointermove = drag; sb.onpointerup = () => { sb.onpointermove = null; };
+  });
+  addEventListener('resize', sbUpdate);
+  addEventListener('scroll', sbUpdate, { passive: true });
+})();
+document.addEventListener('scroll', placeDD, true);
+document.addEventListener('click', e => {
+  if (DDOPEN && !e.target.closest('#dd') && !e.target.closest('#ddpan')) setDD(false);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && DDOPEN) setDD(false);
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && PICKED) closeDetail();
 });
@@ -824,7 +1081,11 @@ function applyTheme(t){
 }
 let savedTheme = null;
 try { savedTheme = localStorage.getItem(THEME_KEY); } catch(e){}
-applyTheme(savedTheme || 'light');
+const QS = new URLSearchParams(location.search);
+applyTheme(QS.get('theme') || savedTheme || 'light');
+let accent = QS.get('accent');
+try { if (!accent) accent = localStorage.getItem('mat_accent'); } catch(e){}
+if (accent && accent !== 'green') document.documentElement.dataset.accent = accent;
 $('themeBtn').onclick = () => {
   const to = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   try { localStorage.setItem(THEME_KEY, to); } catch(e){}
