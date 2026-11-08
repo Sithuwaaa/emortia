@@ -2428,6 +2428,93 @@ supports it, or it does not ship.** Not "ship it and verify after" – if
 the verification is still to come, the entry says what was done and
 stops there, and the conclusion waits for the commit that can prove it.
 
+## The drawing and the tool agree, for the first time
+
+9 November. `tools/materials/index.html` was pushed from the repository
+back into the Claude Design project, and the next read of it came back
+**byte-identical to the file on disk. Zero hunks.**
+
+That ends a pattern four imports long. Every previous import of this
+file diffed to a mixture of two different things wearing the same
+shape: the design's new work, and reverts of whatever had been
+committed since the project last took a copy. Each import meant reading
+the whole diff and sorting one from the other by hand, and getting that
+wrong in either direction loses something – take the lot and you revert
+a fix, take too little and you drop the design.
+
+Why it was safe this time, in his words: everything design-only had
+already been absorbed, so what remained in the project was reverts and
+nothing else. That is only knowable because the **whole file** had just
+been read and everything unique in it taken. It is not a general
+licence; it was true of this file on this day.
+
+**The backup rule did not bend for the confidence.** The design copy was
+read and saved outside the repository before a byte was written, and
+the copy was checked byte-for-byte against what the server returned
+before the push went out. That rule exists for the one time the
+reasoning is good and the conclusion is wrong – see the entry on the
+glass-scene layer, which is exactly that.
+
+One thing the backup exposed: **the previous backup folder no longer
+existed.** It had been written into a session temp directory, which is
+cleared. A backup that lives for one session is a backup for one
+session. The current one is a sibling of the repository:
+
+    …/My WEB Works/Emortia-design-backup/tools/materials/
+      index (design, pre-push 2026-11-09).html
+
+Still open, deliberately: **every other file in that project is stale
+the same way.** Not started. One file, prove the loop closes, then
+decide whether the rest are worth the same treatment.
+
+## A guard written for my own mistake caught the same mistake arriving from outside
+
+The design's Empty button specified `color:#fff` on `--bad`. White on
+dark's `#e2607a` measures 3.39:1 – **the identical defect, on the
+identical pair of tokens, that `family.test.js` had been taught to
+refuse two commits earlier.** It was caught on the first run after the
+import, before the page was ever looked at.
+
+The guard was not written for this. It was written because *I* had put
+white on that pink, and then, fixing it, had put `#2b0f16` on both
+themes and broken light. Nothing about it anticipated a colour arriving
+from a design tool.
+
+It caught it anyway, because **it checks a property, not a diff.** "No
+text under 4.5:1 on its own background, in either theme" does not care
+where the declaration came from, who wrote it, or whether it is new. A
+check shaped like "did this commit change a contrast pair?" would have
+seen an import, found the pair unchanged *relative to the drawing*, and
+passed.
+
+This is the argument for property guards over change detection, and it
+is the same shape as the allowlist: a check that moves with the thing it
+is checking has stopped checking. The fix also wrote itself – `--badInk`
+already existed, per theme, for exactly this pairing.
+
+## A fake is only as good as the structure it reproduces
+
+The Empty button is `<button><svg/>Empty the list…</button>`. The page
+swaps its label to "Emptying…" and back, and doing that through
+`textContent` deletes the icon.
+
+The test double was `{ disabled, textContent }`. One property where the
+real element has two children. It did not catch the icon being eaten –
+**it threw `btn.childNodes is not iterable`**, which looks like a broken
+test rather than a found bug, and would have been "fixed" by deleting
+the call.
+
+Same family as the fake that did not model `head: true`, where a probe
+dragging every row back looked identical to one asking only for the
+count; and the fake that had no `.not()`, where a filtered DELETE and an
+unfiltered one gave the same answer. In all three the double was not
+wrong about behaviour – **it was missing a piece of structure, and what
+it could not represent it could not test.**
+
+The rule: model the shape the real thing has, not the shape the test
+happens to touch. The double now carries both children, and asserts the
+`svg` is still there after the label has been swapped and put back.
+
 ## A deploy check asserts every file the change touched
 
 8 November. `materialsWipe` shipped in `5b9eb39` and the button said
