@@ -43,6 +43,18 @@
 
   function match(row, filters) {
     return filters.every(f => {
+      /* .not(col, op, val) is the same operator with the answer flipped.
+         It is done here rather than as a separate operator table so a
+         negated operator the fake does not know still throws, instead of
+         becoming a filter that silently matches everything - which is the
+         exact failure .not('code','is',null) would have caused: a DELETE
+         that looked filtered and was not. */
+      const hit = one(row, f);
+      return f.neg ? !hit : hit;
+    });
+  }
+
+  function one(row, f) {
       const v = row[f.col];
       switch (f.op) {
         case 'eq':  return v === f.val;
@@ -57,7 +69,6 @@
           return Array.isArray(v) && (f.val || []).every(x => v.indexOf(x) > -1);
         default: throw new Error('the fake does not know the operator "' + f.op + '"');
       }
-    });
   }
 
   function client(seed, opts) {
@@ -95,7 +106,8 @@
     function query(table) {
       if (!store[table]) store[table] = [];
       const st = { table, filters: [], order: null, limit: null, range: null,
-                   cols: '*', op: null, rows: null, wants: null, count: null };
+                   cols: '*', op: null, rows: null, wants: null, count: null,
+                   head: false };
 
       const api = {};
       const self = () => api;
@@ -104,12 +116,19 @@
         /* { count: 'exact' } is how one request gets both the newest row and
            how many rows there are - which is what makes a change probe one
            call of about a hundred bytes instead of a table walk. */
-        st.count = (o2 && o2.count) || null; return self(); };
+        st.count = (o2 && o2.count) || null;
+        /* head: true is 'count it, send me no rows'. It was not recorded,
+           so a probe that asked for the count AND dragged every row back
+           looked identical to one that asked for the count alone - which
+           is the entire difference a change probe exists to make. */
+        st.head = !!(o2 && o2.head); return self(); };
       ['eq','neq','gt','gte','lt','lte','in','is','contains'].forEach(op => {
         api[op] = (col, val) => { st.filters.push({ col, op, val }); return self(); };
       });
       api.match = (obj) => { Object.keys(obj).forEach(c =>
         st.filters.push({ col: c, op: 'eq', val: obj[c] })); return self(); };
+      api.not = (col, op, val) => { st.filters.push({ col, op, val, neg: true });
+        return self(); };
       api.order = (col, o2) => { st.order = { col, asc: !(o2 && o2.ascending === false) }; return self(); };
       api.limit = (n) => { st.limit = n; return self(); };
       api.range = (a, b) => { st.range = [a, b]; return self(); };
@@ -120,7 +139,11 @@
       api.update = (patch) => { st.op = 'update'; st.rows = [patch]; return self(); };
       api.upsert = (rows, cfg) => { st.op = 'upsert'; st.rows = [].concat(rows);
         st.onConflict = (cfg && cfg.onConflict) || 'id'; return self(); };
-      api.delete = () => { st.op = 'delete'; return self(); };
+      /* A DELETE can ask for a count too, and PostgREST answers with how
+         many rows it actually removed. Dropping the option here made a
+         wipe that deleted two thousand rows report 0. */
+      api.delete = (o2) => { st.op = 'delete'; st.count = (o2 && o2.count) || null;
+        return self(); };
 
       function run() {
         /* cols is recorded, and still deliberately NOT applied - a fake that
@@ -137,7 +160,7 @@
         const b = budget({ table, op: st.op || 'select', cols: st.cols,
                            filters: st.filters.slice(),
                            order: st.order, limit: st.limit, range: st.range,
-                           count: st.count });
+                           count: st.count, head: st.head });
         if (b.kind === 'timeout') return stall();
         if (b.kind === 'fail') {
           if (b.thrown) return Promise.reject(new Error(b.message));
@@ -174,6 +197,7 @@
           for (let i = rows.length - 1; i >= 0; i--) {
             if (match(rows[i], st.filters)) out.push(clone(rows.splice(i, 1)[0]));
           }
+          matched = out.length;
         } else {
           out = rows.filter(r => match(r, st.filters)).map(clone);
           matched = out.length;
@@ -196,6 +220,7 @@
           return Promise.resolve(ok(out[0], total));
         }
         if (st.wants === 'maybe') return Promise.resolve(ok(out[0] || null, total));
+        if (st.head) return Promise.resolve(ok(null, total));
         return Promise.resolve(ok(out, total));
       }
 

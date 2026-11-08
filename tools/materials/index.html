@@ -249,6 +249,19 @@
     background:var(--accent);color:var(--accent-ink);font:inherit;font-size:13.5px;
     font-weight:600;cursor:pointer}
   .upbtn:hover{background:var(--goHover)}
+  /* The destructive one is NOT a second primary button. It is quiet until
+     you are on it, because the only reason to make it loud would be to
+     make it easy to hit, and that is the opposite of what it needs. */
+  .delbtn{width:100%;margin-top:8px;padding:9px 12px;border-radius:10px;
+    border:1px solid var(--line2,var(--line));background:transparent;
+    color:var(--muted);font:inherit;font-size:13px;cursor:pointer;
+    transition:border-color .15s ease,color .15s ease}
+  /* the fill token on the border, the text token on the text - --bad is
+     a fill and reads too light as text in one of the two themes, which is
+     what --badT is for and what family.test.js refuses without */
+  .delbtn:hover{border-color:var(--bad);color:var(--badT)}
+  .delbtn[disabled]{opacity:.5;cursor:default}
+  .delbtn:hover[disabled]{border-color:var(--line2,var(--line));color:var(--muted)}
   /* the active-filter pills above the list, and the way back out */
   .tag-x{padding:3px 9px;border-radius:999px;background:var(--glowSoft);
     border:1px solid var(--accent);font-size:12px;color:var(--accent);
@@ -560,6 +573,9 @@ let FAM = '', STATUS = 'All', DDOPEN = false;
 /* what the last completed read came back with, so the next one can ask
    whether anything has moved instead of reading it all again */
 let MSTAMP = null, MN = 0;
+/* null until a delete on THIS page has completed, then the number the
+   server reported deleting. Not a boolean: the page prints it. */
+let WIPED = null;
 
 let tt; function toast(m, ms){ const t=$('toast'); t.textContent=m; t.classList.add('show');
   clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'), ms||2000); }
@@ -611,6 +627,9 @@ async function load(){
     if (!f.error){
       /* null is "nothing moved": keep the rows that are already on screen. */
       if (f.rows !== null){ ALL = f.rows; MSTAMP = f.stamp; MN = f.n; }
+      /* somebody uploaded again, here or elsewhere: the page is no longer
+         showing the aftermath of a delete and must stop saying so */
+      if (ALL.length) WIPED = null;
       /* One call decides, paints and records, so this tool and WH24 cannot
          log differently - which they did, and it read as the skip being
          absent here when it was only silent. No RELOG means paint. */
@@ -738,6 +757,7 @@ function renderFacets(){
   const pan = $('facets').querySelector('.ddpan');
   pan.id = 'ddpan'; pan.classList.toggle('show', DDOPEN); document.body.appendChild(pan);
   if ($('up')) $('up').onclick = () => $('file').click();
+  if ($('wipe')) $('wipe').onclick = askWipe;
   $('ddbtn').onclick = e => { e.stopPropagation(); setDD(!DDOPEN); };
   placeDD(); sbUpdate();
   [...$('ddpan').querySelectorAll('.ddi')].forEach(b => b.onclick = () => {
@@ -769,7 +789,10 @@ function route(){
   $('clr').style.display = Q ? 'block' : 'none';
 
   /* the count line and the active-filter pills, as the design has them */
-  $('hint').textContent = ALL.length
+  /* WIPED is the number the server said it deleted. While it is set the
+     count line stays on at "0 of 0", because a blank line next to an
+     empty page is what a failed load looks like and this is not one. */
+  $('hint').textContent = (ALL.length || WIPED !== null)
     ? res.length.toLocaleString() + ' of ' + base.length.toLocaleString() : '';
   const act = [];
   if (VENDOR) act.push(['vendor', VENDOR, VENDOR]);
@@ -788,8 +811,19 @@ function route(){
   };
 
   if (!res.length){
-    $('view').innerHTML = '<div class="empty"><div class="big">🔍</div>' +
-      (ALL.length ? 'No materials match. Try fewer filters.' : 'Nothing to show.') + '</div>';
+    /* THREE EMPTINESSES, AND THEY ARE NOT THE SAME SENTENCE. Filters that
+       match nothing, a list that was emptied on purpose, and a list that
+       is empty for a reason nobody here knows - which is also what a read
+       that quietly returned nothing looks like, so it keeps the vaguest
+       wording and the other two say what happened. */
+    $('view').innerHTML = ALL.length
+      ? '<div class="empty"><div class="big">🔍</div>' +
+        'No materials match. Try fewer filters.</div>'
+      : WIPED !== null
+      ? '<div class="empty"><div class="big">✓</div><h2>The list is empty</h2><p>' +
+        WIPED.toLocaleString() + (WIPED === 1 ? ' row was' : ' rows were') +
+        ' deleted. Nothing failed – upload a workbook to fill it again.</p></div>'
+      : '<div class="empty"><div class="big">🔍</div>Nothing to show.</div>';
     return;
   }
 
@@ -1049,13 +1083,81 @@ function renderFooter(){
     '<footer>Read from the database · Dialog material master</footer>');
 }
 
+/* ------------------------------------------------- emptying the list
+
+   THE SAME BOX AS EVERY OTHER DELETE IN THE PROJECT: Ask.twice from
+   _lib/ask.js, which this page already loads. Two questions, not one
+   question twice - the first names the number, the second names what
+   that number is. Escape, the backdrop and the safe button all cancel,
+   at either step, and the safe button holds the focus, so no stray
+   Enter agrees to anything.
+
+   THE NUMBER IS READ HERE, NOT TAKEN FROM ALL.length. ALL is whatever
+   the last walk left on this tab, which may be minutes old and may have
+   been held by the gate; the table is the only thing that knows. If the
+   read fails the question is never asked, because a question with the
+   wrong number in it is worse than no question.
+
+   Nothing is deleted between the two steps. The only call that writes is
+   after both of them have been answered. */
+async function askWipe(){
+  const btn = $('wipe');
+  if (!window.DB || !window.DB.materialsCount || !window.DB.materialsWipe){
+    toast('The database library did not load.', 4000); return;
+  }
+  if (btn) btn.disabled = true;
+  let n = null;
+  try {
+    const r = await window.DB.materialsCount();
+    if (r.error || r.n === null){ toast(r.error || 'Could not read the count.', 4000); return; }
+    n = r.n;
+  } finally { if (btn) btn.disabled = false; }
+
+  if (!n){ toast('The list is already empty.', 3000); return; }
+
+  const ok = await Ask.twice([
+    { title: 'Delete all ' + n.toLocaleString() + ' materials?',
+      body: 'That is every row in the material list, counted just now. ' +
+            'There is a second question after this one.',
+      no: 'Cancel', yes: 'Yes, go on' },
+    { title: 'Every code, description, vendor and attribute.',
+      body: 'The list is read by everyone and this empties it for all of ' +
+            'them. Nothing else is touched – no files, no other table – and ' +
+            'there is no copy of it here. Putting it back means uploading ' +
+            'the workbook again.',
+      no: 'No, keep them', yes: 'Delete them all' }
+  ]);
+  if (!ok) return;
+
+  if (btn){ btn.disabled = true; btn.textContent = 'Emptying…'; }
+  try {
+    /* THE NUMBER PRINTED IS THE ONE THE SERVER REPORTS, not the one in the
+       question. They are the same unless something moved in between, or
+       unless RLS refused and nothing was deleted at all - and in that case
+       this says 0, which is the truth, instead of congratulating itself. */
+    const gone = await window.DB.materialsWipe();
+    ALL = []; MSTAMP = null; MN = 0; PICKED = null;
+    FS = {}; TYPE = ''; FAM = ''; VENDOR = ''; Q = ''; LIM = 150;
+    if ($('q')) $('q').value = '';
+    WIPED = gone;
+    paint();
+    toast(gone ? gone.toLocaleString() + ' rows deleted' : 'Nothing was deleted', 4000);
+  } catch (err){
+    toast(err.message, 5000);
+  } finally {
+    if (btn){ btn.disabled = false; btn.textContent = 'Empty the list…'; }
+  }
+}
+
 /* appended to the sidebar by renderFacets, so it survives every repaint */
 function ownerBlock(){
   if (!window.IS_OWNER) return '';
   return '<div class="fgrp upblk"><div class="flabel">Material master</div>' +
     '<button class="upbtn" id="up">⬆ Update from Excel…</button>' +
+    '<button class="delbtn" id="wipe">Empty the list…</button>' +
     '<div class="fnone">The workbook or the table export. Nothing is ' +
-    'deleted by an upload.</div></div>';
+    'deleted by an upload – emptying the list is the separate button, ' +
+    'and it asks twice.</div></div>';
 }
 
 /* ------------------------------------------------------------------ events */

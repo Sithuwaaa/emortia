@@ -2645,9 +2645,17 @@
      direction: it can only cause a walk that was not needed, never skip
      one that was.
 
-     materialsSave is the only writer and there are no deletes; a row added
-     or removed moves the count. One request of about a hundred bytes
-     replaces three pages.
+     A row added or removed moves the count, so the pair stays exact
+     whoever moved it. This used to say "materialsSave is the only writer
+     and there are no deletes", which stopped being true the day
+     materialsWipe was added - and the sentence was the wrong reason even
+     then. THE GATE DOES NOT REST ON THERE BEING ONE WRITER. It rests on
+     every write moving one half of the pair: an insert or an upsert
+     moves max(updated_at) through materials_touch_trg, and a delete
+     moves the count. Emptying the table takes it to 0, which can never
+     equal a `since.n` that was worth gating on, so the next read walks -
+     which is exactly right, because everything it knew is gone.
+     One request of about a hundred bytes replaces three pages.
 
      The stamp is returned ALONGSIDE the rows rather than put on them: the
      row shape { code, desc, type, vendor, attrs } is what materials.js
@@ -2724,6 +2732,59 @@
       fn);
   }
 
+  /* --------------------------------------------- emptying the material list
+
+     THE COUNT IS READ, NEVER REMEMBERED. The page asks for it immediately
+     before it asks the question, because the number in the question is the
+     only thing that makes asking twice worth anything - "delete everything"
+     and "delete 2,422 rows" are not the same question, and a number baked
+     into the page stops being true the first time somebody uploads.
+
+     head: true is the whole point: the server counts and sends the count in
+     a header, no rows at all. One request, a few hundred bytes, against a
+     list whose full walk is three pages. */
+  async function materialsCount(){
+    const c = await client(); if (!c) return { n: null, error: 'offline' };
+    const { count, error } = await c.from('materials')
+      .select('code', { count: 'exact', head: true });
+    if (error) return { n: null, error:
+      /does not exist|schema cache|could not find the table/i.test(error.message)
+        ? 'The material list is not switched on yet - run migration 017.'
+      : /jwt|not authenticated|row-level security|permission/i.test(error.message)
+        ? 'Your sign-in has run out. Reload the page and sign in again.'
+      : error.message };
+    return { n: count || 0, error: null };
+  }
+
+  /* ROWS, AND NOTHING ELSE.
+
+     No storage bucket, no second table, no meta row. There is no meta row
+     to forget: materials keeps its stamp in updated_at ON THE ROWS, which
+     is the whole reason materialsLoad can gate on (count, max(updated_at))
+     without a migration. Emptying the table therefore moves both halves of
+     that pair by itself - count goes to 0 - and the next gated read falls
+     through to a full walk on its own, which is what it should do.
+
+     .not('code','is',null) is "every row" spelled out. PostgREST refuses a
+     DELETE with no filter at all, which is the right default; this is the
+     one place in the file that has to say out loud that it means all of
+     them, and it is better that it costs a line.
+
+     IT RETURNS WHAT THE SERVER DELETED, not what the caller expected. RLS
+     on this table is "for all using (is_owner())", so a signed-in reader
+     who is not the owner does not get an error here - the rows are simply
+     not visible to the DELETE and the count comes back 0. The page says
+     the number that comes back, so a refusal reads as a refusal rather
+     than as a success. */
+  async function materialsWipe(){
+    const c = await client(); if (!c) throw new Error('Not connected just now.');
+    const { error, count } = await c.from('materials')
+      .delete({ count: 'exact' }).not('code', 'is', null);
+    if (error) throw new Error(/row-level security|permission/i.test(error.message)
+      ? 'Only Sithara can empty the material list.' : error.message);
+    return count || 0;
+  }
+
   /* ------------------------------------------------- the field reference
 
      Vendor commands, logins and the UMPT passwords. One row holding one JSON
@@ -2766,6 +2827,7 @@
   window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
                 fieldConfigLoad, fieldConfigSave, fieldConfigSubscribe,
                 materialsLoad, materialsSave, materialsSubscribe,
+                materialsCount, materialsWipe,
                 trackVisit, trackSignIn, insightSummary, insightDaily, insightBy, insightDevices,
                 revokeDevice, unrevokeDevice, revokedAt, myVisitor,
                 attendPeople, attendAddPerson, attendRemovePerson, attendDay,

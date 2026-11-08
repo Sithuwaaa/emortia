@@ -259,6 +259,53 @@ console.log('\n  the record');
   is('maybeSingle carries the count too', r.count, 1);
 }
 
+/* ---- .not(), and a DELETE that asked how many ------------------------
+
+   Both were added for materialsWipe, and both were holes the fake could
+   not see through. .not did not exist at all, so the call would have
+   thrown; worse would have been a fake that accepted it and ignored it,
+   because "delete everything that is not null" and "delete everything"
+   are the same answer and the test would have passed for the wrong
+   reason. So the negative case is checked too: a negated operator the
+   fake does not know must still be loud. */
+{
+  const db = Fake.client({ t: [{ id: 1, k: 'x' }, { id: 2, k: null }, { id: 3, k: 'y' }] });
+  const r = await db.from('t').select('id').not('k', 'is', null);
+  is('not(is,null) keeps the rows that have a value', r.data.map(x => x.id), [1, 3]);
+}
+{
+  const db = Fake.client({ t: [{ id: 1, k: 'x' }, { id: 2, k: 'y' }] });
+  const r = await db.from('t').select('id').not('k', 'eq', 'x');
+  is('not(eq) is the opposite of eq', r.data.map(x => x.id), [2]);
+}
+{
+  /* the filter has to actually narrow, or a wipe test proves nothing */
+  const db = Fake.client({ t: [{ id: 1, k: 'a' }, { id: 2, k: 'b' }] });
+  const r = await db.from('t').delete({ count: 'exact' }).not('k', 'is', null);
+  is('a counting delete reports what it removed', r.count, 2);
+  is('and the store is empty afterwards',          db.__store.t.length, 0);
+}
+{
+  const db = Fake.client({ t: [{ id: 1, k: null }, { id: 2, k: 'b' }] });
+  const r = await db.from('t').delete({ count: 'exact' }).not('k', 'is', null);
+  is('a filtered delete leaves the rows it did not match', r.count, 1);
+  is('and they are still there',                            db.__store.t.map(x => x.id), [1]);
+}
+{
+  const db = Fake.client({ t: [{ id: 1 }] });
+  let threw = '';
+  try { await db.from('t').select('id').not('id', 'wat', 1); }
+  catch (e) { threw = e.message; }
+  is('a negated operator it does not know still throws',
+     /does not know the operator "wat"/.test(threw), true);
+}
+{
+  /* a DELETE that did not ask gets no count, same as a select */
+  const db = Fake.client({ t: [{ id: 1 }, { id: 2 }] });
+  const r = await db.from('t').delete().not('id', 'is', null);
+  is('a delete that did not ask for a count gets none', r.count, null);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);
 

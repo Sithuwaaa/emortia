@@ -31,7 +31,7 @@
 
    Anything not matched by those falls through to the network untouched. */
 
-const VERSION = 'v111';
+const VERSION = 'v112';
 
 const SHELL   = 'emortia-shell-' + VERSION;   // HTML and JS, the fallback copy
 const STATIC  = 'emortia-static-' + VERSION;  // images and fonts
