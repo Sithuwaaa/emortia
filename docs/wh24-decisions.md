@@ -2382,6 +2382,147 @@ owns, and this file exists because of a fact kept in two places.
 **The guard passes unchanged. Nothing was relaxed, nothing re-plumbed,
 and the tile matches the tool again.**
 
+### What it cost, measured after the fact
+
+The two paragraphs above were written before the check that could
+contradict them, and the check contradicted part of them. The channels
+are separable – that stands. But two of the seven pairs had been relying
+on `--accent` to tell them apart, and pinning it removed a difference
+you could see:
+
+| pair | `--accent` apart, before | `--codeInk` apart, after |
+|---|---|---|
+| brass / forest | ΔE 33.3 | ΔE **8.5** |
+| clay / coral   | ΔE 25.5 | ΔE **12.0** |
+
+At 8.5 the two were indistinguishable in a side-by-side crop of the same
+rows. So *something* was re-plumbed: the whole burden of telling the
+seven apart moved onto one token that had only been carrying a secondary
+part of it. The fix was to widen `--codeInk` rather than to unpin – see
+the entry on deriving the ΔE floor – but the claim as first written was
+wrong, and it was wrong in the direction of the author's own proposal.
+
+## A conclusion committed ahead of its evidence
+
+5 November, and the shape is this file's, not a tool's.
+
+The entry above shipped in `07dd455` saying **"nothing was relaxed,
+nothing re-plumbed"**. The measurement that would have tested that
+sentence – render all seven with `--accent` pinned and look – had not
+been run yet. It ran afterwards and said otherwise.
+
+Being wrong in conversation costs a correction. Being wrong **in this
+file** costs more, because a decisions entry is what a future reader
+trusts *instead of* re-deriving. Somebody reading that paragraph in six
+months would have taken "nothing was re-plumbed" as settled and not
+measured the pairs, which is precisely the work the entry was there to
+save them.
+
+It is the same shape as a guard written in terms of the mechanism: the
+conclusion was written from the reasoning that motivated the change
+rather than from the artefact the change produced. A proxy agrees with
+you. The page does not.
+
+**The rule: a claim ships in the same commit as the measurement that
+supports it, or it does not ship.** Not "ship it and verify after" – if
+the verification is still to come, the entry says what was done and
+stops there, and the conclusion waits for the commit that can prove it.
+
+## The ΔE floor was measured, not chosen – and so was the ground
+
+8 November. `--codeInk` had to carry the whole difference between the
+seven accents, so it needed a number to clear. Two numbers, in fact,
+and both were nearly got wrong.
+
+### The ground is `--card`, not the photograph
+
+The obvious ground for "is this code legible" is what is actually
+painted behind it. So it was measured: the scene `.webp` drawn at
+`center/cover` into a canvas, the `--tint` gradient composited on top,
+then the panel glass and the zebra stripe, sampled only over the
+panel's own bounding box.
+
+    dark   ground runs  rgb(16,29,18) .. rgb(43,57,45)
+    light  ground runs  rgb(155,156,155) .. rgb(243,245,244)
+
+Against the **darkest** light-mode pixel, `#1d3b66` measures 4.08 and
+`--muted` measures 3.29 – and `--muted` is shipped, on every tool, and
+has been through the contrast work twice. A standard that condemns the
+existing body text is not the standard this page is held to; it is a
+different standard being smuggled in under one token.
+
+What the repository actually governs is the opaque card: `family.test.js`
+resolves `var(--card)` and measures against that. Dark `#142006`, light
+`#ffffff`. So that is the ground used here, for consistency rather than
+convenience, and the photograph finding is recorded as its own thing:
+**text over the darkest parts of the scene image is below 4.5 across the
+whole site, not just here.** It is not fixed in this change because it is
+page-wide and was not asked for.
+
+### The floor came from a blind staircase
+
+Picking "ΔE 10 sounds about right" is the same error as picking 1200 ms
+for the coalescing window by feel. So it was measured the same way.
+
+Nine pairs per mode, ΔE 4 to 28, rendered as real code cells on the real
+ground, **hue-rotated at constant lightness** – no pair separated by
+being brighter, which is an easier discrimination than the one the
+accents actually need. Shown in a shuffled order labelled only `P1..P9`,
+judged before the key was read.
+
+| judged | dark | light |
+|---|---|---|
+| same      | 3.9, 7.0, 9.2 | 3.7, 6.8, 8.8 |
+| different | 10.8 and above | 10.8 and above |
+
+A clean break in both modes: **9.2 was the largest failure, 10.8 the
+smallest success.**
+
+The floor is **14**, not 11. Three reasons, all from evidence already in
+hand:
+
+1. 10.8 was a success but a faint one – adopting it would make the
+   weakest thing I could just about see the standard.
+2. The staircase is an *easier* test than the real page. It shows the
+   pair adjacent, same size, same ground, same instant. Nobody ever sees
+   two accents that way: you pick one and live in it, so the real
+   comparison is against memory, which is far weaker.
+3. The one field pair measured at 12.0 – clay/coral before this change –
+   read as borderline on the page itself. A floor at 12 would admit it.
+
+14 clears the entire failure band, the faint band, and the borderline
+field case, and sits well under 22.7, the smallest gap that read as
+plainly different in the wild. It is reachable: the solved palette's
+worst pair is 15.1 dark and 21.6 light.
+
+### The palette is the quietest one that clears it, not the widest
+
+First attempt maximised the minimum pairwise distance subject to 4.5:1.
+It returned `#19f90f` and `#ff0fce`. Correct, and unusable – **separation
+is a constraint, not an objective.**
+
+The objective is to stay in the register the page already has. Each name
+gets a target: the average lightness and chroma of the current seven, at
+that name's own Lab hue. The search minimises total drift from those
+targets subject to 4.5:1 on `--card` and every pair at or above 14.
+Five of the seven land within ΔE 1 of their target; dark coral moves
+6.3 and light ink 5.3, which is what clearing the floor cost.
+
+    dark    coral #ffa79e  clay #f5b28e  brass #eace90  forest #9cc69a
+            mint  #a8e9d8  ink  #8db3e4  plum  #f3acd2
+    light   coral #a73836  clay #8a4319  brass #7a620d  forest #1f5c26
+            mint  #007d69  ink  #004d86  plum  #8c3469
+
+Looked at afterwards, all seven side by side in both modes, from the
+values read back off the rendered page rather than out of the
+stylesheet: seven.
+
+**Still open, deliberately.** `--markBg`, `--cpbEdge` and `--cpbInk` were
+not touched, so forest's search highlight is still gold and mint's is
+still pale green – they were tuned to the *old* `--codeInk` and now
+disagree with their own theme. Raised, not fixed: only `--codeInk` was
+asked for.
+
 ## Fix the ink before the fill, and the polarity is per theme
 
 The Disposed segment button measured **3.39:1** — white on `#e2607a`,
