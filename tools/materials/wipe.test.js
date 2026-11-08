@@ -67,8 +67,21 @@ const store = n => Array.from({ length: n }, (_, i) => row(i + 1));
    than assume. */
 function pageFor(db, opts) {
   const o = opts || {};
-  const el = { wipe: { disabled: false, textContent: 'Empty the list…' },
-               q: { value: '' } };
+  /* The real control is <button><svg/>Empty the list…</button>, so the
+     double has the same two children. It matters: the label is swapped
+     to "Emptying…" and back, and setting textContent on that element
+     would delete the icon. A stub that was only { textContent } could
+     not see that, and did not - it crashed instead, which is the same
+     message in a worse voice. */
+  const label = { nodeType: 3, nodeValue: 'Empty the list…' };
+  const icon  = { nodeType: 1, nodeName: 'svg' };
+  const el = {
+    wipe: { disabled: false, childNodes: [icon, label],
+            get textContent(){ return this.childNodes
+              .filter(n => n.nodeType === 3).map(n => n.nodeValue).join(''); },
+            set textContent(v){ this.childNodes = [{ nodeType: 3, nodeValue: v }]; } },
+    q: { value: '' }
+  };
   const seen = { toasts: [], steps: null, painted: 0 };
   const $ = id => el[id] || null;
   const toast = (m) => seen.toasts.push(String(m));
@@ -136,19 +149,24 @@ function pageFor(db, opts) {
      first, so a step that is falsy is a step that does not exist, and
      asserting on the raw array length would not notice one going missing */
   const steps = (p.seen.steps || []).filter(Boolean);
+  /* read title AND body: the design puts the figure in the body, and the
+     property asked for is that step one STATES the count, not that one
+     particular field holds it */
+  const said = s => String(s.title || '') + ' ' + String(s.body || '');
   is('the box was opened with two real steps', steps.length, 2);
   is('and both of them ask something',
      steps.every(s => typeof s.title === 'string' && s.title.length > 10), true);
-  is('STEP ONE NAMES THE LIVE COUNT', /\b2,422\b/.test(steps[0].title), true);
-  is('and step two names what that number is, not the number again',
-     /\b2,422\b/.test(steps[1].title), false);
+  is('STEP ONE NAMES THE LIVE COUNT', /\b2,422\b/.test(said(steps[0])), true);
+  is('and step two is about the act, not the number again',
+     /\b2,422\b/.test(said(steps[1])), false);
 }
 {
   const db = Fake.client({ materials: store(7) });
   const p = pageFor(db, { cancelAt: 1 });
   await p.askWipe();
+  const s1 = p.seen.steps[0].title + ' ' + p.seen.steps[0].body;
   is('AND A TABLE OF 7 SAYS 7, NOT 2,422',
-     /\b7\b/.test(p.seen.steps[0].title) && !/2,422/.test(p.seen.steps[0].title), true);
+     /\b7\b/.test(s1) && !/2,422/.test(s1), true);
 }
 {
   /* the page's own idea of the list is deliberately wrong here: if the
@@ -157,7 +175,7 @@ function pageFor(db, opts) {
   const p = pageFor(db, { cancelAt: 1, ALL: [row(1), row(2), row(3)] });
   await p.askWipe();
   is('IT DOES NOT READ THE ROWS ALREADY ON THE PAGE',
-     /\b2,422\b/.test(p.seen.steps[0].title), true);
+     /\b2,422\b/.test(p.seen.steps[0].title + ' ' + p.seen.steps[0].body), true);
 }
 {
   const db = Fake.client({ materials: [] });
@@ -200,6 +218,11 @@ function pageFor(db, opts) {
   is('...and answering yes twice empties it',    db.__store.materials.length, 0);
   is('the page is told how many went',           p.peek().WIPED, 2422);
   is('and it repainted',                         p.seen.painted, 1);
+  is('THE ICON SURVIVED THE LABEL SWAP',
+     p.el.wipe.childNodes.some(n => n.nodeName === 'svg'), true);
+  is('and the label is back to what it was',
+     p.el.wipe.textContent, 'Empty the list…');
+  is('and the button is usable again',           p.el.wipe.disabled, false);
 }
 
 /* ================================================================== 4

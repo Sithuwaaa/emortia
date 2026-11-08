@@ -106,28 +106,45 @@
   .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:16px;display:flex;flex-direction:column;gap:12px;flex-shrink:0}
   .tile.cat{position:relative;z-index:5}
-  /* LIQUID GLASS SCROLLBARS, the browser's own bar restyled: a frosted
-     rounded track and a glossy thumb. No scrollbar-width/color here -
-     Chrome ignores the ::-webkit-scrollbar rules when either is set; the
-     Firefox fallback is in the @supports block below. */
-  .side::-webkit-scrollbar{width:12px}
+  /* LIQUID GLASS SCROLLBARS, AUTO-HIDING: the sidebar and the dropdown.
+     Invisible at rest, so the glass is not cut by a bar nobody is using;
+     any scroll puts .sbon on the scroller for a second, and hovering the
+     panel shows its own. No scrollbar-width/color outside @supports -
+     Chrome ignores the ::-webkit-scrollbar rules when either is set.
+
+     The html rules are here for completeness and do nothing: nav.css
+     loads after this block and hides the page's own bar outright. That
+     is why the page has a DRAWN bar instead, #pgbar, further down. */
+  html::-webkit-scrollbar,.side::-webkit-scrollbar{width:12px}
   .ddpan::-webkit-scrollbar{width:9px}
-  .side::-webkit-scrollbar-track,.ddpan::-webkit-scrollbar-track{margin:10px 0;border-radius:99px;
-    background:rgba(16,34,18,.45);border:1px solid rgba(162,229,156,.18)}
-  .side::-webkit-scrollbar-thumb,.ddpan::-webkit-scrollbar-thumb{border-radius:99px;
-    border:2px solid transparent;background-clip:padding-box;
+  html::-webkit-scrollbar-track,.side::-webkit-scrollbar-track,.ddpan::-webkit-scrollbar-track{
+    margin:10px 0;border-radius:99px;background:transparent;border:1px solid transparent}
+  html::-webkit-scrollbar-thumb,.side::-webkit-scrollbar-thumb,.ddpan::-webkit-scrollbar-thumb{
+    border-radius:99px;border:2px solid transparent;background-clip:padding-box;background-image:none}
+  html.sbon::-webkit-scrollbar-track,.side.sbon::-webkit-scrollbar-track,.side:hover::-webkit-scrollbar-track,
+  .ddpan.sbon::-webkit-scrollbar-track,.ddpan:hover::-webkit-scrollbar-track{
+    background:rgba(16,34,18,.45);border-color:rgba(162,229,156,.18)}
+  html.sbon::-webkit-scrollbar-thumb,.side.sbon::-webkit-scrollbar-thumb,.side:hover::-webkit-scrollbar-thumb,
+  .ddpan.sbon::-webkit-scrollbar-thumb,.ddpan:hover::-webkit-scrollbar-thumb{
     background-image:linear-gradient(180deg,rgba(210,248,210,.62),rgba(134,224,143,.3))}
-  .side::-webkit-scrollbar-thumb:hover,.ddpan::-webkit-scrollbar-thumb:hover{
+  html.sbon::-webkit-scrollbar-thumb:hover,.side::-webkit-scrollbar-thumb:hover,.ddpan::-webkit-scrollbar-thumb:hover{
     background-image:linear-gradient(180deg,rgba(225,252,225,.8),rgba(134,224,143,.5))}
-  html[data-theme="light"] .side::-webkit-scrollbar-track,html[data-theme="light"] .ddpan::-webkit-scrollbar-track{
+  html[data-theme="light"].sbon::-webkit-scrollbar-track,html[data-theme="light"] .side.sbon::-webkit-scrollbar-track,
+  html[data-theme="light"] .side:hover::-webkit-scrollbar-track,html[data-theme="light"] .ddpan.sbon::-webkit-scrollbar-track,
+  html[data-theme="light"] .ddpan:hover::-webkit-scrollbar-track{
     background:rgba(255,255,255,.45);border-color:rgba(255,255,255,.75)}
-  html[data-theme="light"] .side::-webkit-scrollbar-thumb,html[data-theme="light"] .ddpan::-webkit-scrollbar-thumb{
+  html[data-theme="light"].sbon::-webkit-scrollbar-thumb,html[data-theme="light"] .side.sbon::-webkit-scrollbar-thumb,
+  html[data-theme="light"] .side:hover::-webkit-scrollbar-thumb,html[data-theme="light"] .ddpan.sbon::-webkit-scrollbar-thumb,
+  html[data-theme="light"] .ddpan:hover::-webkit-scrollbar-thumb{
     background-image:linear-gradient(180deg,rgba(31,138,62,.5),rgba(31,138,62,.28))}
-  html[data-theme="light"] .side::-webkit-scrollbar-thumb:hover,html[data-theme="light"] .ddpan::-webkit-scrollbar-thumb:hover{
+  html[data-theme="light"].sbon::-webkit-scrollbar-thumb:hover,html[data-theme="light"] .side::-webkit-scrollbar-thumb:hover,
+  html[data-theme="light"] .ddpan::-webkit-scrollbar-thumb:hover{
     background-image:linear-gradient(180deg,rgba(31,138,62,.7),rgba(31,138,62,.45))}
   @supports (-moz-appearance:none){
-    .side,.ddpan{scrollbar-width:thin;scrollbar-color:rgba(180,240,180,.5) rgba(16,34,18,.45)}
-    html[data-theme="light"] .side,html[data-theme="light"] .ddpan{scrollbar-color:rgba(31,138,62,.45) rgba(255,255,255,.45)}
+    html,.side,.ddpan{scrollbar-width:thin;scrollbar-color:transparent transparent}
+    html.sbon,.side.sbon,.side:hover,.ddpan.sbon,.ddpan:hover{scrollbar-color:rgba(180,240,180,.5) rgba(16,34,18,.45)}
+    html[data-theme="light"].sbon,html[data-theme="light"] .side.sbon,html[data-theme="light"] .side:hover,
+    html[data-theme="light"] .ddpan.sbon,html[data-theme="light"] .ddpan:hover{scrollbar-color:rgba(31,138,62,.45) rgba(255,255,255,.45)}
   }
   .sbar{display:none !important}
   .tile,.phead{border-radius:18px}
@@ -249,19 +266,21 @@
     background:var(--accent);color:var(--accent-ink);font:inherit;font-size:13.5px;
     font-weight:600;cursor:pointer}
   .upbtn:hover{background:var(--goHover)}
-  /* The destructive one is NOT a second primary button. It is quiet until
-     you are on it, because the only reason to make it loud would be to
-     make it easy to hit, and that is the opposite of what it needs. */
-  .delbtn{width:100%;margin-top:8px;padding:9px 12px;border-radius:10px;
-    border:1px solid var(--line2,var(--line));background:transparent;
-    color:var(--muted);font:inherit;font-size:13px;cursor:pointer;
-    transition:border-color .15s ease,color .15s ease}
-  /* the fill token on the border, the text token on the text - --bad is
-     a fill and reads too light as text in one of the two themes, which is
-     what --badT is for and what family.test.js refuses without */
-  .delbtn:hover{border-color:var(--bad);color:var(--badT)}
-  .delbtn[disabled]{opacity:.5;cursor:default}
-  .delbtn:hover[disabled]{border-color:var(--line2,var(--line));color:var(--muted)}
+  /* THE DESIGN MAKES IT A FILLED BUTTON, not the quiet outline I had
+     drawn. His call: it is the owner's own sidebar, nobody reaches it
+     without signing in as the owner, and it asks twice after the click.
+
+     --badInk, NOT #fff, which is the one change made to the drawing.
+     White on this pink measures 3.39:1 in dark; --badInk is the token
+     that already flips per theme for exactly this pairing - #2b0f16 on
+     dark's #e2607a at 5.23, white on light's #c2405c at 5.02. Same
+     button, same colour, legible in both. family.test.js refuses the
+     other version, which is how it was caught the first time. */
+  .emptybtn{width:100%;margin-top:10px;padding:10px 12px;border-radius:10px;
+    border:1px solid var(--bad);background:var(--bad);color:var(--badInk);
+    font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+  .emptybtn:hover{filter:brightness(1.1)}
+  .emptybtn[disabled]{opacity:.55;cursor:default;filter:none}
   /* the active-filter pills above the list, and the way back out */
   .tag-x{padding:3px 9px;border-radius:999px;background:var(--glowSoft);
     border:1px solid var(--accent);font-size:12px;color:var(--accent);
@@ -402,6 +421,22 @@
 <link rel="stylesheet" href="../_lib/nav.css?v=7">
 <link rel="stylesheet" href="../_lib/category.css?v=13">
 <style>
+  /* PAGE SCROLLBAR - a drawn liquid-glass bar sitting just right of the
+     results list. The page's own bar is hidden by nav.css for the whole
+     site, so without this there is nothing to show position or to drag.
+     Auto-hides; shows while scrolling or hovered; draggable. */
+  #pgbar{position:fixed;width:10px;z-index:15;border-radius:99px;opacity:0;
+    transition:opacity .35s ease;background:rgba(16,34,18,.45);
+    border:1px solid rgba(162,229,156,.18);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  #pgbar.on,#pgbar:hover,#pgbar.drag{opacity:1;transition-duration:.12s}
+  #pgbar i{position:absolute;left:1px;right:1px;top:0;border-radius:99px;min-height:36px;cursor:grab;
+    background:linear-gradient(180deg,rgba(210,248,210,.62),rgba(134,224,143,.3));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+  #pgbar i:hover,#pgbar.drag i{background:linear-gradient(180deg,rgba(225,252,225,.8),rgba(134,224,143,.5))}
+  #pgbar.drag i{cursor:grabbing}
+  html[data-theme="light"] #pgbar{background:rgba(255,255,255,.45);border-color:rgba(255,255,255,.75)}
+  html[data-theme="light"] #pgbar i{background:linear-gradient(180deg,rgba(31,138,62,.5),rgba(31,138,62,.28))}
+  html[data-theme="light"] #pgbar i:hover,html[data-theme="light"] #pgbar.drag i{background:linear-gradient(180deg,rgba(31,138,62,.7),rgba(31,138,62,.45))}
   /* ---- THE PHOTOGRAPH, AND GLASS OVER IT ----
 
      The design's own, and the last piece of it I had left out: I looked
@@ -1115,21 +1150,30 @@ async function askWipe(){
 
   if (!n){ toast('The list is already empty.', 3000); return; }
 
+  /* THE DESIGN'S WORDING, over the count this page read a moment ago
+     rather than over ALL.length. The drawing takes the number from the
+     rows on screen; those are whatever the last walk left on this tab
+     and may have been held by the gate, so the figure in the question
+     could be wrong at the one moment it matters. */
   const ok = await Ask.twice([
-    { title: 'Delete all ' + n.toLocaleString() + ' materials?',
-      body: 'That is every row in the material list, counted just now. ' +
-            'There is a second question after this one.',
+    { title: 'Empty the material list?',
+      body: 'All ' + n.toLocaleString() + ' materials, counted just now, are ' +
+            'removed for everybody who searches the codes. There is a second ' +
+            'question after this one.',
       no: 'Cancel', yes: 'Yes, go on' },
-    { title: 'Every code, description, vendor and attribute.',
-      body: 'The list is read by everyone and this empties it for all of ' +
-            'them. Nothing else is touched – no files, no other table – and ' +
-            'there is no copy of it here. Putting it back means uploading ' +
-            'the workbook again.',
-      no: 'No, keep them', yes: 'Delete them all' }
+    { title: 'This cannot be undone.',
+      body: 'Nothing else is touched – no files, no other table – and there is ' +
+            'no copy of it here. The list stays empty until a workbook is ' +
+            'uploaded again.',
+      no: 'No, keep them', yes: 'Empty it' }
   ]);
-  if (!ok) return;
+  if (!ok){ toast('Nothing was removed'); return; }
 
-  if (btn){ btn.disabled = true; btn.textContent = 'Emptying…'; }
+  /* textContent would eat the icon, so only the label node is touched */
+  const setLabel = t => { if (!btn) return;
+    const n2 = [...btn.childNodes].find(x => x.nodeType === 3);
+    if (n2) n2.nodeValue = t; else btn.textContent = t; };
+  if (btn){ btn.disabled = true; setLabel('Emptying…'); }
   try {
     /* THE NUMBER PRINTED IS THE ONE THE SERVER REPORTS, not the one in the
        question. They are the same unless something moved in between, or
@@ -1145,7 +1189,7 @@ async function askWipe(){
   } catch (err){
     toast(err.message, 5000);
   } finally {
-    if (btn){ btn.disabled = false; btn.textContent = 'Empty the list…'; }
+    if (btn){ btn.disabled = false; setLabel('Empty the list…'); }
   }
 }
 
@@ -1154,7 +1198,15 @@ function ownerBlock(){
   if (!window.IS_OWNER) return '';
   return '<div class="fgrp upblk"><div class="flabel">Material master</div>' +
     '<button class="upbtn" id="up">⬆ Update from Excel…</button>' +
-    '<button class="delbtn" id="wipe">Empty the list…</button>' +
+    /* the id stays `wipe` and the handler stays askWipe: the drawing
+       changes how it looks, not what it is called, and wipe.test.js
+       asserts the control and the wiring by those names. */
+    '<button class="emptybtn" id="wipe">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
+      'style="vertical-align:-2px;margin-right:6px" aria-hidden="true">' +
+      '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>' +
+      'Empty the list…</button>' +
     '<div class="fnone">The workbook or the table export. Nothing is ' +
     'deleted by an upload – emptying the list is the separate button, ' +
     'and it asks twice.</div></div>';
@@ -1195,6 +1247,80 @@ $('themeBtn').onclick = () => {
 };
 
 load();
+})();
+</script>
+<script>
+/* AUTO-HIDE: any scroll marks its own scroller for a second, so the bar
+   is there while you are moving and gone while you are reading. Capture,
+   because scroll does not bubble - a listener on document only hears the
+   sidebar and the dropdown if it is catching on the way down. */
+(function(){
+  const T = new WeakMap();
+  document.addEventListener('scroll', e => {
+    const el = (e.target === document || e.target === document.body)
+      ? document.documentElement : e.target;
+    if (!el.classList) return;
+    el.classList.add('sbon');
+    clearTimeout(T.get(el));
+    T.set(el, setTimeout(() => el.classList.remove('sbon'), 1000));
+  }, { capture: true, passive: true });
+})();
+</script>
+<script>
+/* THE DRAWN PAGE SCROLLBAR, beside the results column.
+
+   nav.css hides the page's own bar across the whole site, so this page
+   had no way to show how far down the list you were, and no way to drag.
+   This is that bar, drawn: positioned against .rcol so it sits in the
+   gutter beside the list rather than off at the window edge.
+
+   It hides itself when the page does not scroll - a bar that is always
+   there, pinned at full height, is a lie about the length of the list. */
+(function(){
+  const bar = document.createElement('div');
+  bar.id = 'pgbar'; bar.innerHTML = '<i></i>';
+  document.body.appendChild(bar);
+  const th = bar.firstChild, D = document.documentElement;
+  let hideT, drag = null;
+
+  function layout(){
+    const col = document.querySelector('.rcol'), hd = document.querySelector('.hdr');
+    const sh = D.scrollHeight, vh = innerHeight;
+    if (!col || sh <= vh + 2){ bar.style.display = 'none'; return; }
+    bar.style.display = '';
+    const r = col.getBoundingClientRect();
+    const top = (hd ? hd.getBoundingClientRect().bottom : 0) + 20;
+    const H = vh - top - 20;
+    bar.style.left = (r.right + 7) + 'px';
+    bar.style.top = top + 'px';
+    bar.style.height = H + 'px';
+    const tH = Math.max(36, H * vh / sh);
+    th.style.height = tH + 'px';
+    th.style.transform = 'translateY(' + ((H - 2 - tH) * scrollY / (sh - vh)) + 'px)';
+  }
+  function show(){
+    bar.classList.add('on');
+    clearTimeout(hideT);
+    hideT = setTimeout(() => bar.classList.remove('on'), 1000);
+  }
+  addEventListener('scroll', () => { layout(); show(); }, { passive: true });
+  addEventListener('resize', layout);
+  new ResizeObserver(layout).observe(document.body);
+
+  th.addEventListener('pointerdown', e => { e.preventDefault();
+    th.setPointerCapture(e.pointerId); drag = { y: e.clientY, s: scrollY };
+    bar.classList.add('drag'); });
+  th.addEventListener('pointermove', e => { if (!drag) return;
+    const H = bar.clientHeight - 2, tH = th.offsetHeight, max = D.scrollHeight - innerHeight;
+    scrollTo(0, drag.s + (e.clientY - drag.y) * max / Math.max(1, H - tH)); });
+  const end = () => { drag = null; bar.classList.remove('drag'); show(); };
+  th.addEventListener('pointerup', end);
+  th.addEventListener('pointercancel', end);
+  /* a click on the track pages, the way a real one does */
+  bar.addEventListener('pointerdown', e => { if (e.target !== bar) return;
+    const r = th.getBoundingClientRect();
+    scrollBy({ top: (e.clientY < r.top ? -1 : 1) * innerHeight * 0.9, behavior: 'smooth' }); });
+  layout();
 })();
 </script>
 </body>
