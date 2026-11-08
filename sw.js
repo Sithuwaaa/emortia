@@ -31,7 +31,7 @@
 
    Anything not matched by those falls through to the network untouched. */
 
-const VERSION = 'v112';
+const VERSION = 'v113';
 
 const SHELL   = 'emortia-shell-' + VERSION;   // HTML and JS, the fallback copy
 const STATIC  = 'emortia-static-' + VERSION;  // images and fonts
@@ -43,13 +43,32 @@ const MINE    = [SHELL, STATIC, AUDIO];
 const DOOR = ['/', '/index.html', '/404.html'];
 
 /* The files the old worker froze. They get no special case here, and that
-   is deliberate: network-first is already the fix, because with a network
-   they are fetched fresh every single time and a stale copy can never be
-   preferred. Cutting them out of the cache altogether was the other idea,
-   and it is worse - offline the script tag would simply fail, and the tool
-   would announce a missing anon key, which is precisely the sentence this
-   whole file exists to stop anybody reading again. Offline, last known
-   good beats nothing. */
+   is deliberate: network-first is the fix, and offline they still have to
+   come from somewhere. Cutting them out of the cache altogether was the
+   other idea, and it is worse - offline the script tag would simply fail,
+   and the tool would announce a missing anon key, which is precisely the
+   sentence this whole file exists to stop anybody reading again. Offline,
+   last known good beats nothing.
+
+   THIS USED TO SAY "with a network they are fetched fresh every single
+   time and a stale copy can never be preferred". That was false, and it
+   cost a broken feature in production on 8 November.
+
+   networkFirst called fetch(req), and a plain fetch goes through the HTTP
+   CACHE first. GitHub Pages serves this site's assets with
+   Cache-Control: max-age=14400, so for four hours after a deploy a plain
+   fetch answers out of that cache without any network involved. db.js
+   shipped with materialsWipe in it and the live page kept loading the
+   previous copy; the page called a function that was not there. Measured
+   at the time, same server, same second:
+
+     /tools/_lib/db.js          age 537  no materialsWipe
+     /tools/_lib/db.js?x=...    age   0  materialsWipe present
+
+   So the fetches here say cache: 'reload' - go to the network, put the
+   result in the HTTP cache, never read from it. That is what the sentence
+   above always claimed was happening. The cache API fallback underneath
+   is untouched and is still what answers when there is no network. */
 
 const isHTML = (req, url) =>
   req.mode === 'navigate' ||
@@ -139,7 +158,10 @@ self.addEventListener('message', e => {
 
 async function networkFirst(req, cacheName){
   try {
-    const res = await fetch(req);
+    /* cache: 'reload' is the whole of network-first. Without it this is
+       http-cache-first with a cache-API fallback, which is a different
+       strategy wearing this one's name - see the note at the top. */
+    const res = await fetch(req, { cache: 'reload' });
     /* An opaque or error response is not worth keeping - caching a 404 of
        a script is how a site starts lying about itself. */
     if (res && res.ok && res.type === 'basic') {

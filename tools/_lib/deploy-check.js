@@ -1,0 +1,171 @@
+#!/usr/bin/env node
+/* deploy-check.js - did every file in this commit actually reach the site?
+
+     node tools/_lib/deploy-check.js            # HEAD, against emortia.com
+     node tools/_lib/deploy-check.js de08a2d
+     node tools/_lib/deploy-check.js HEAD~2..HEAD
+     node tools/_lib/deploy-check.js HEAD http://localhost:8899
+
+   WHY THIS EXISTS. On 8 November a two-file change shipped, and the check
+   afterwards was: fetch the page, see the new markup, call it deployed. The
+   page was one of the two files, and it was the one that had arrived. db.js
+   had not. The page called a function that was not there and the tool said
+   "The database library did not load."
+
+   Two separate mistakes, and the second is the nastier one:
+
+     1. ONE FILE WAS CHECKED AND TWO WERE CHANGED. So this checks every
+        file the commit touched, from git, not a list anybody types.
+
+     2. THE CHECK USED A CACHE-BUSTING QUERY STRING. `/sw.js?x=1762...`
+        came back v112 while `/sw.js` came back v111 - same server, same
+        second. A query string is a different cache key, so it asked a
+        question no browser ever asks. Checking db.js that way would have
+        passed too, and still been wrong.
+
+        So every fetch here goes to the URL THE PAGE ACTUALLY REQUESTS,
+        including its ?v= if it has one, read out of the HTML. Nothing is
+        ever appended.
+
+   WHAT IT COMPARES. The bytes committed against the bytes served. Not a
+   substring, not a version constant - those are proxies, and a proxy
+   agrees with you. A file whose served copy differs from the commit is
+   reported with both lengths and the first line that differs.
+
+   A MISSED ?v= BUMP FAILS HERE. If db.js changes and no page bumps
+   db.js?v=N, the old URL is still what the page asks for, the CDN still
+   has it, and the comparison fails - which is the point. The forgotten
+   bump stops being a silent four-hour outage and becomes a red line. */
+
+'use strict';
+const { execFileSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'],
+  { encoding: 'utf8' }).trim();
+const REF  = process.argv[2] || 'HEAD';
+const SITE = (process.argv[3] || 'https://emortia.com').replace(/\/+$/, '');
+
+const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8',
+  maxBuffer: 1 << 28 });
+
+/* ---- what the commit touched ---------------------------------------- */
+const range = REF.indexOf('..') > -1 ? REF : REF + '~1..' + REF;
+const touched = git('diff', '--name-only', '--diff-filter=ACMR', range)
+  .split('\n').map(s => s.trim()).filter(Boolean);
+
+/* Files the site never serves: tests, SQL, docs, anything outside the
+   published tree. They are listed as skipped rather than dropped, so the
+   output accounts for every file in the commit. */
+const NOT_SERVED = /(^supabase\/|^docs\/|^\.|\.test\.js$|^README)/;
+const serve = touched.filter(f => !NOT_SERVED.test(f));
+const skip  = touched.filter(f =>  NOT_SERVED.test(f));
+
+/* ---- the URL a page would actually ask for --------------------------- */
+/* A versioned asset is only reachable at its versioned URL, so the check
+   has to find the version the same way a browser does.
+
+   THE VERSION IS READ FROM THE SERVED HTML, NOT FROM THE WORKING TREE.
+   The first draft of this file read it locally and that reproduced the
+   very bug it was written to catch: the working tree said `db.js?v=2`,
+   nobody had ever requested that URL, so the CDN had nothing cached for
+   it and it came back fresh and green - while `/tools/_lib/db.js`, the
+   URL every live page was actually loading, was four hours stale.
+
+   A URL nobody has requested is always fresh. The only URLs worth
+   checking are the ones the LIVE pages ask for, so the live pages are
+   what gets read. If the HTML carrying a new ?v= has not deployed yet,
+   this correctly checks the old URL and correctly calls it stale. */
+const pageCache = new Map();
+async function fetchText(u) {
+  if (pageCache.has(u)) return pageCache.get(u);
+  const p = fetch(u, { cache: 'no-store' })
+    .then(r => (r.ok ? r.text() : '')).catch(() => '');
+  pageCache.set(u, p);
+  return p;
+}
+
+async function servedUrl(file) {
+  const base = '/' + file.split(path.sep).join('/');
+  if (!/\.(js|css)$/.test(base)) return { url: base, from: 'path' };
+
+  /* which pages load it - from git, because a page that was deleted
+     locally should not be consulted; what they SAY is read from the site */
+  const pages = git('ls-files', '*.html').split('\n').filter(Boolean);
+  const name = base.replace(/^.*\//, '');
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const rx = new RegExp('(?:src|href)="([^"]*' + esc + '(?:\\?[^"]*)?)"', 'g');
+
+  const seen = new Map();                   /* query -> a page that says it */
+  for (const p of pages) {
+    const local = (() => { try { return fs.readFileSync(path.join(ROOT, p), 'utf8'); }
+                           catch (e) { return ''; } })();
+    if (!rx.test(local)) { rx.lastIndex = 0; continue; }   /* cheap pre-filter */
+    rx.lastIndex = 0;
+    const live = await fetchText(SITE + '/' + p.split(path.sep).join('/'));
+    if (!live) continue;
+    let m;
+    while ((m = rx.exec(live))) {
+      const q = m[1].indexOf('?');
+      const key = q > -1 ? m[1].slice(q) : '';
+      if (!seen.has(key)) seen.set(key, p);
+    }
+    rx.lastIndex = 0;
+  }
+  if (seen.size > 1) {
+    return { url: base, from: 'AMBIGUOUS',
+             queries: [...seen].map(([q, p]) => (q || '(none)') + ' in ' + p) };
+  }
+  if (!seen.size) return { url: base, from: 'no live page loads it' };
+  const q = [...seen.keys()][0];
+  return { url: base + q, from: q ? 'as the live pages ask for it' : 'path' };
+}
+
+/* ---- run -------------------------------------------------------------- */
+(async () => {
+  console.log('deploy-check  ' + range + '  ->  ' + SITE);
+  console.log(touched.length + ' file(s) in the commit, ' + serve.length + ' served\n');
+
+  let bad = 0;
+  for (const f of serve) {
+    const want = git('show', REF.indexOf('..') > -1 ? REF.split('..')[1] + ':' + f
+                                                    : REF + ':' + f);
+    const u = await servedUrl(f);
+    if (u.from === 'AMBIGUOUS') {
+      bad++;
+      console.log('AMBIGUOUS  ' + f + '\n    pages disagree on its version: ' +
+                  JSON.stringify(u.queries));
+      continue;
+    }
+    let got = null, status = 0;
+    try {
+      const res = await fetch(SITE + u.url, { cache: 'no-store' });
+      status = res.status;
+      got = await res.text();
+    } catch (e) {
+      bad++; console.log('UNREACHABLE  ' + u.url + '  ' + e.message); continue;
+    }
+    if (status !== 200) { bad++; console.log('HTTP ' + status + '  ' + u.url); continue; }
+
+    /* line endings are a checkout detail, not a deploy one */
+    const norm = s => s.split('\r\n').join('\n');
+    if (norm(got) === norm(want)) {
+      console.log('ok         ' + u.url + (u.from === 'path' ? '' : '   (' + u.from + ')'));
+      continue;
+    }
+    bad++;
+    const a = norm(want).split('\n'), b = norm(got).split('\n');
+    let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    console.log('STALE      ' + u.url +
+      '\n    committed ' + norm(want).length + ' bytes, served ' + norm(got).length +
+      '\n    first difference at line ' + (i + 1) +
+      '\n      committed: ' + String(a[i]).trim().slice(0, 90) +
+      '\n      served:    ' + String(b[i]).trim().slice(0, 90));
+  }
+
+  for (const f of skip) console.log('-          ' + f + '   (not served)');
+
+  console.log('\n' + (bad ? bad + ' FILE(S) NOT LIVE' : 'every served file in this commit is live'));
+  process.exit(bad ? 1 : 0);
+})();
