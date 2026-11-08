@@ -2428,6 +2428,91 @@ supports it, or it does not ship.** Not "ship it and verify after" – if
 the verification is still to come, the entry says what was done and
 stops there, and the conclusion waits for the commit that can prove it.
 
+## A deploy check asserts every file the change touched
+
+8 November. `materialsWipe` shipped in `5b9eb39` and the button said
+*"The database library did not load"* in production for about four
+hours. The commit was complete, it was pushed, the Pages build
+succeeded, and the page was live. `db.js` was not.
+
+    /tools/_lib/db.js          age 537   no materialsWipe
+    /tools/_lib/db.js?x=...    age   0   materialsWipe present
+
+Same server, same second. Cloudflare sits in front of Pages and serves
+assets with `Cache-Control: max-age=14400` while HTML comes back at age
+0 – so `index.html` went live at once and called a function the
+four-hour-old `db.js` beside it did not have. Nothing was lost: the
+guard that says the library did not load is the reason it failed
+loudly rather than silently.
+
+### Why I said it was live
+
+My check was: fetch the page, see `id="wipe"` and `askWipe` in the
+markup, conclude v112 live. **Two files changed and I checked one of
+them – the one that had arrived.**
+
+The second half is worse. The version check fetched
+`/sw.js?x=<timestamp>`. A query string is a different cache key, so it
+asked a question no browser ever asks, and got v112 while every real
+request got v111. **Checking `db.js` that way would have passed too.**
+
+This is the 0×0 pane again, and the `IS_OWNER` probe again: a check
+that reports its own easiest reading as the whole answer. The
+cache-buster did not reveal the deploy; it concealed it, by addressing
+a URL that had no history to be stale.
+
+### What was done
+
+1. Every page loads `_lib/db.js?v=2`, the way `ask.js`, `motion.js` and
+   `lookup.js` already carry a version. A changed version is a new cache
+   key, so the next change reaches everyone the moment the HTML does.
+2. `sw.js` `networkFirst` now fetches with `cache: 'reload'`. Its own
+   comment had claimed *"with a network they are fetched fresh every
+   single time and a stale copy can never be preferred"* – false, since
+   a plain `fetch()` reads the HTTP cache first. It was
+   http-cache-first with a cache-API fallback, wearing network-first's
+   name. **A third claim in this file that was written from the
+   intention rather than from the behaviour.**
+3. `tools/_lib/deploy-check.js`, so the rule is a script and not a
+   promise: every file in the commit, from git, fetched at the URL the
+   **live pages** actually request, committed bytes against served
+   bytes.
+
+### The check made the same mistake first
+
+Its first draft read `?v=2` out of the working tree. That URL had never
+been requested by anybody, so nothing was cached for it, so it came
+back fresh – **green, for precisely the reason the original check was
+green.** A URL nobody has asked for is always live.
+
+It now reads the version out of the *served* HTML. An asset whose page
+has not deployed yet is therefore checked at the old URL and correctly
+called stale. Proved by serving the pre-wipe `db.js`:
+
+    STALE  /tools/_lib/db.js?v=2
+      committed 144,580 bytes, served 141,084
+      first difference at line 2648
+
+One honest complication: Cloudflare rewrites `mailto:` links in transit,
+so two pages' served bytes legitimately differ from their committed
+bytes. That is **reversed, not ignored** – the obfuscation is exactly
+invertible, and the decode is checked to reproduce the committed file
+byte for byte before the comparison is trusted. Ignoring "lines that
+look like email protection" would have been a hole wide enough to hide
+a real change in.
+
+### The rule
+
+**A deploy check asserts every file the change touched, at the URL the
+page requests. For a two-file change, two fetches – and never with a
+cache-buster, which measures a URL nobody uses.**
+
+`sw.js` is the one file this cannot cover: it has no query to version
+and Cloudflare returns `cf-cache-status: HIT` even to a request
+carrying `Cache-Control: no-cache`, so a new worker is up to four hours
+behind its own deploy. Worth knowing before trusting a `VERSION`
+constant as evidence of anything.
+
 ## The ΔE floor was measured, not chosen – and so was the ground
 
 8 November. `--codeInk` had to carry the whole difference between the

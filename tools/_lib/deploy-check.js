@@ -122,6 +122,43 @@ async function servedUrl(file) {
   return { url: base + q, from: q ? 'as the live pages ask for it' : 'path' };
 }
 
+/* ---- what the CDN rewrites on the way out ----------------------------
+   Cloudflare sits in front of Pages and obfuscates mailto: links in HTML
+   as it serves them, so the served bytes legitimately differ from the
+   committed bytes on any page with an email address on it. index.html
+   and Emortia.html both have one.
+
+   It is UNDONE here rather than ignored. Ignoring "lines that look like
+   email protection" would be a hole big enough to hide a real change in;
+   the obfuscation is exactly reversible - the first byte of the hex is
+   the key and the rest is XORed with it - so the served copy is turned
+   back into what was committed and then compared byte for byte. If the
+   decode does not reproduce the original, that is a difference and it is
+   reported like any other. */
+function uncloudflare(html) {
+  if (html.indexOf('__cf_email__') < 0 && html.indexOf('/cdn-cgi/l/email-protection') < 0)
+    return html;
+  const decode = hex => {
+    const k = parseInt(hex.slice(0, 2), 16);
+    let out = '';
+    for (let i = 2; i < hex.length; i += 2)
+      out += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16) ^ k);
+    return out;
+  };
+  return html
+    /* the injected decoder script */
+    .replace(/<script data-cfasync="false" src="\/cdn-cgi\/scripts\/[^"]*email-decode\.min\.js"><\/script>/g, '')
+    /* <a href="/cdn-cgi/l/email-protection#HEX" ...>…</a> -> mailto: */
+    .replace(/href="\/cdn-cgi\/l\/email-protection#([0-9a-f]+)"/g,
+             (m, h) => 'href="mailto:' + decode(h) + '"')
+    /* the span that replaced the visible address */
+    .replace(/<span class="__cf_email__" data-cfemail="([0-9a-f]+)">\[email&#160;protected\]<\/span>/g,
+             (m, h) => decode(h))
+    /* a bare address replaced in text, no span */
+    .replace(/<a href="\/cdn-cgi\/l\/email-protection" class="__cf_email__" data-cfemail="([0-9a-f]+)">\[email&#160;protected\]<\/a>/g,
+             (m, h) => decode(h));
+}
+
 /* ---- run -------------------------------------------------------------- */
 (async () => {
   console.log('deploy-check  ' + range + '  ->  ' + SITE);
@@ -149,7 +186,9 @@ async function servedUrl(file) {
     if (status !== 200) { bad++; console.log('HTTP ' + status + '  ' + u.url); continue; }
 
     /* line endings are a checkout detail, not a deploy one */
-    const norm = s => s.split('\r\n').join('\n');
+    /* line endings are a checkout detail; the CDN's email obfuscation is a
+       transit detail and is reversed, not waved away */
+    const norm = s => uncloudflare(s.split('\r\n').join('\n'));
     if (norm(got) === norm(want)) {
       console.log('ok         ' + u.url + (u.from === 'path' ? '' : '   (' + u.from + ')'));
       continue;
