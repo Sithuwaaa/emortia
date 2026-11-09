@@ -28,7 +28,110 @@
 (function(){
   const CFG = window.SUPABASE_CONFIG || {};
   const CACHE_DB = 'emortia_cache', CACHE_STORE = 'ds';
-  const CDN = 'https://esm.sh/@supabase/supabase-js@2';
+  /* READ HERE, NOT IN loadLib(). document.currentScript is only non-null
+     while a script is first executing; by the time anything calls client()
+     it is null, and the vendored path would be resolved against the page
+     instead of against this file - right for the tools two levels down,
+     wrong for the site root, which loads db.js from tools/_lib. */
+  const SELF_URL = (document.currentScript && document.currentScript.src) || location.href;
+  /* ---- THE SUPABASE LIBRARY IS A FILE IN THIS REPOSITORY ----
+
+     It used to be `import('https://esm.sh/@supabase/supabase-js@2')`, and
+     every one of those words was a problem:
+
+       esm.sh   a third party, and the only external host this site loads
+                code from that is not cdnjs or jsdelivr
+       @2       AN UNPINNED RANGE. Whatever esm.sh served that minute
+                became the database layer of every tool here. A breaking
+                2.x release would have reached production with no deploy,
+                no commit and no warning.
+       import   not one request. That specifier returns a 503-byte stub
+                which imports six more modules from the same host, so a
+                cold load of any database-backed tool was a seven-request
+                waterfall before it could ask a single question.
+
+     Any one of those failing - the host down, a bad publish, a slow
+     waterfall - stopped Material Codes, WH24, attendance, goals and the
+     rest, and nothing here could do anything about it. That is why this
+     changed. The migrated design canvas not loading the tool is a BONUS,
+     not the reason: if the probe comes back saying the canvas blocks
+     something else entirely, this was still the right change.
+
+     PINNED, 9 November 2026: @supabase/supabase-js 2.119.0, the UMD
+     build, 219,856 bytes.
+       sha256 a867edbcfb029370aeec7223dd6180b560b621fbe3bc64c6584fb0369d1b7bce
+     Downloaded from cdn.jsdelivr.net and unpkg independently and compared:
+     identical, byte for byte, which is what the hash above records. To
+     move it, download the new version, check the two CDNs agree, replace
+     the file, change these three lines, and say so in a commit - which is
+     the entire point of it being here.
+
+     It is the UMD build because it is the only genuine single file: the
+     package's own ESM entry, and jsDelivr's +esm, are both shims that
+     import the sub-packages separately and would rebuild the waterfall.
+     UMD means a <script> and a global rather than import(), so the tag is
+     injected below on first use - nothing was added to the twenty pages
+     that load db.js, and a page that never touches the database never
+     fetches the 56 kB (gzipped) it costs. */
+  const LIB = '../_lib/vendor/supabase-js-2.119.0.js';
+  const LIB_VERSION = '2.119.0';
+
+  /* Injected once, on the first client(), and awaited. The <script> is
+     resolved against this file's own URL rather than the page's, because
+     db.js is loaded from ../_lib by tools two directories deep and from
+     tools/_lib by the site root, and a relative path that is right for one
+     is wrong for the other. */
+  /* WHY THE CLIENT IS EMPTY, KEPT RATHER THAN THROWN AWAY.
+
+     Every caller below used to say the same sentence when client() came
+     back null: "Supabase is not configured - the anon key is missing from
+     tools/_lib/supabase-config.js". There are two ways to get a null
+     client and only one of them is that, so half the time the message
+     named a file that was perfectly correct.
+
+     It cost a real afternoon. The migrated design canvas showed exactly
+     that sentence, the key was present in the file it named, and the
+     search went to the config and to the sign-in before anyone thought to
+     doubt the message. A guess dressed as a diagnosis is worse than no
+     diagnosis - it tells you where NOT to look.
+
+     So the reason is carried, and noClient() says which one it was. */
+  let libError = null;
+  function noClient(){
+    if (libError) return new Error(libError.message);
+    if (!CFG.url || !CFG.anonKey) {
+      return new Error('Supabase is not configured - the anon key is missing '
+                     + 'from tools/_lib/supabase-config.js.');
+    }
+    return new Error('The database is not reachable just now.');
+  }
+
+  let libPromise = null;
+  function loadLib(){
+    if (window.supabase && window.supabase.createClient) {
+      return Promise.resolve(window.supabase);
+    }
+    if (libPromise) return libPromise;
+    libPromise = new Promise((resolve, reject) => {
+      let src;
+      try { src = new URL('vendor/supabase-js-' + LIB_VERSION + '.js', SELF_URL).href; }
+      catch (e) { src = LIB; }
+      const el = document.createElement('script');
+      el.src = src;
+      el.async = true;
+      el.onload = () => {
+        if (window.supabase && window.supabase.createClient) resolve(window.supabase);
+        /* loaded and still no global is a corrupt or wrong file, and it
+           must not look like a network problem */
+        else reject(new Error('The database library loaded but is not the '
+                            + 'expected build (' + src + ').'));
+      };
+      el.onerror = () => reject(new Error('The database library could not be '
+                            + 'loaded from ' + src + '.'));
+      (document.head || document.documentElement).appendChild(el);
+    });
+    return libPromise;
+  }
 
   let clientPromise = null;
   /* the resolved client, so a channel can be closed without awaiting again */
@@ -36,7 +139,7 @@
   function client(){
     if (!CFG.url || !CFG.anonKey) return Promise.resolve(null);
     if (!clientPromise){
-      clientPromise = import(CDN)
+      clientPromise = loadLib()
         .then(m => clientSync = m.createClient(CFG.url, CFG.anonKey, {
           auth: { persistSession: true, autoRefreshToken: true }
         }))
@@ -61,7 +164,7 @@
           if (c) { try { await c.auth.getSession(); } catch (e) {} }
           return c;
         })
-        .catch(e => { console.warn('Supabase client unavailable:', e.message); return null; });
+        .catch(e => { libError = e; console.warn('Supabase client unavailable:', e.message); return null; });
     }
     return clientPromise;
   }
@@ -96,7 +199,7 @@
   }
   async function signIn(email, password){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing from tools/_lib/supabase-config.js.');
+    if (!c) throw noClient();
     const { data, error } = await c.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
     return data.session;
@@ -107,7 +210,7 @@
      handle both, because only the project owner knows which it is. */
   async function signUp(email, password, meta){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing from tools/_lib/supabase-config.js.');
+    if (!c) throw noClient();
     const { data, error } = await c.auth.signUp({ email, password, options: { data: meta || {} } });
     if (error) throw new Error(error.message);
     return data;
@@ -277,7 +380,7 @@
      rows instead of piling up duplicates. */
   async function publish(key, cols, rows, onProgress){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    if (!c) throw noClient();
     const s = await session();
     if (!s) throw new Error('Sign in first - the write policies check auth.uid(), so uploads fail without a session.');
 
@@ -400,7 +503,7 @@
 
   async function publishBook(key, book){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    if (!c) throw noClient();
     const s = await session();
     if (!s) throw new Error('Sign in first - the write policies check auth.uid(), so uploads fail without a session.');
 
@@ -804,7 +907,7 @@
 
   async function addTodo(t){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    if (!c) throw noClient();
     const s = await session();
     if (!s) throw new Error('Sign in first - adding writes to the shared list.');
     const row = { title: t.title, note: t.note || null, due: t.due || null,
@@ -818,7 +921,7 @@
      types - what it is, the note, and when it is due. */
   async function updateTodo(id, t){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    if (!c) throw noClient();
     const s = await session();
     if (!s) throw new Error('Sign in first - the list is shared.');
     const row = { title: t.title, note: t.note || null, due: t.due || null,
@@ -830,7 +933,7 @@
 
   async function setTodoDone(id, done){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    if (!c) throw noClient();
     const s = await session();
     if (!s) throw new Error('Sign in first - ticking off writes to the shared list.');
     const { error } = await c.from('todos').update({
@@ -860,7 +963,7 @@
 
   async function removeTodo(id){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    if (!c) throw noClient();
     const s = await session();
     if (!s) throw new Error('Sign in first - removing writes to the shared list.');
     const { error } = await c.from('todos').update({
@@ -878,7 +981,7 @@
 
   async function restoreTodo(id){
     const c = await client();
-    if (!c) throw new Error('Supabase is not configured - the anon key is missing.');
+    if (!c) throw noClient();
     const s = await session();
     if (!s) throw new Error('Sign in first - the list is shared.');
     const { error } = await c.from('todos').update({

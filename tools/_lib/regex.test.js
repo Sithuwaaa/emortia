@@ -210,7 +210,12 @@ function strippedEscapes(body) {
 
 /* ---- and now the codebase -------------------------------------------- */
 const ROOT = path.resolve(__dirname, '..', '..');
-const SKIP = new Set(['node_modules', 'img', 'media', 'fonts']);
+/* `vendor` holds somebody else's published build - 220KB of minified
+   supabase-js, pinned and never hand-edited here. Same reasoning as the
+   hidden directories below: a guard about how WE write regexes has no
+   business failing on a file nobody in this repository will ever change,
+   and walking it is 220KB of work for an answer that cannot matter. */
+const SKIP = new Set(['node_modules', 'img', 'media', 'fonts', 'vendor']);
 /* Anything hidden is either tooling or somebody else's library - .tools holds
    945KB of minified SheetJS, and a guard about how WE write regexes has no
    business failing on a vendored file nobody here is going to edit. */
