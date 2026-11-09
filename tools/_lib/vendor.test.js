@@ -86,8 +86,29 @@ is('the comments really were stripped',
    CODE.length < DB.length && CODE.indexOf('UNPINNED RANGE') < 0, true);
 is('db.js imports nothing from esm.sh at runtime',
    /import\(\s*['"`]?https:\/\/esm\.sh/.test(CODE), false);
-is('and names no CDN host in code at all',
-   /https:\/\/(esm\.sh|cdn\.jsdelivr|unpkg|cdnjs)/.test(CODE), false);
+/* There IS one CDN reference in the code now, and it is allowed to be
+   there: the fallback, for when the vendored file fails to deploy - which
+   happened, and took the data layer of the whole site down for the window
+   between the pages going live and Pages publishing the file beside them.
+   What must stay true is that it is PINNED and that it is the same build.
+   An unpinned range is the thing this whole change existed to remove, and
+   it must not come back through the back door. */
+{
+  const cdns = CODE.match(/https:\/\/[a-z0-9.\-\/@]*(esm\.sh|jsdelivr|unpkg|cdnjs)[^'"`\s]*/g) || [];
+  is('esm.sh is gone from the code',
+     cdns.some(u => u.indexOf('esm.sh') > -1), false);
+  is('exactly one CDN reference remains - the fallback', cdns.length, 1);
+  /* The URL is concatenated with LIB_VERSION rather than written out, so
+     it is pinned BY CONSTRUCTION - it cannot drift from the vendored file
+     even if somebody bumps one and forgets the other. That is the property
+     worth asserting, and it is stronger than matching a version in a
+     literal, which was what the first draft of this check looked for and
+     is why it failed against better code than it expected. */
+  is('the fallback URL is built from LIB_VERSION, so it cannot drift',
+     /supabase-js@'\s*\+\s*LIB_VERSION\s*\+\s*'\/dist\/umd/.test(CODE), true);
+  is('AND NO VERSION RANGE IS WRITTEN ANYWHERE IN THE CODE',
+     /@supabase\/supabase-js@(\^|~|\d+['"`/])/.test(CODE), false);
+}
 is('and loads the library from vendor/',
    /vendor\/supabase-js-/.test(DB), true);
 

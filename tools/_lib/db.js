@@ -97,6 +97,9 @@
 
      So the reason is carried, and noClient() says which one it was. */
   let libError = null;
+  /* exposed on DB below, so a page or a check can ask whether the primary
+     copy actually served - a silent fallback is a broken deploy nobody sees */
+  let libUsedFallback = false;
   function noClient(){
     if (libError) return new Error(libError.message);
     if (!CFG.url || !CFG.anonKey) {
@@ -112,10 +115,32 @@
       return Promise.resolve(window.supabase);
     }
     if (libPromise) return libPromise;
-    libPromise = new Promise((resolve, reject) => {
-      let src;
-      try { src = new URL('vendor/supabase-js-' + LIB_VERSION + '.js', SELF_URL).href; }
-      catch (e) { src = LIB; }
+
+    let local;
+    try { local = new URL('vendor/supabase-js-' + LIB_VERSION + '.js', SELF_URL).href; }
+    catch (e) { local = LIB; }
+
+    /* THE FALLBACK, AND WHY IT IS NOT A RETREAT.
+
+       The local file is the primary and the point: one request, same
+       origin, pinned, nothing outside this repository. But a file that
+       has to be deployed can fail to deploy, and on 9 November it did -
+       the pages went live asking for the new db.js while Pages had not
+       yet published the vendored file beside it, and every database tool
+       on the site could not make a client. A deploy race took the whole
+       site's data layer down, which is a worse failure than the one the
+       vendoring was removing.
+
+       So: if the local copy does not load, fetch the IDENTICAL build
+       from jsDelivr - same version, same bytes, same sha256 recorded
+       above - and carry on. That is not the old dependency coming back.
+       The old one was an unpinned @2 range resolved through a thirteen
+       request waterfall on every cold load; this is one request, for one
+       pinned file, only when the primary is missing. */
+    const remote = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@'
+                 + LIB_VERSION + '/dist/umd/supabase.js';
+
+    const inject = src => new Promise((resolve, reject) => {
       const el = document.createElement('script');
       el.src = src;
       el.async = true;
@@ -129,6 +154,15 @@
       el.onerror = () => reject(new Error('The database library could not be '
                             + 'loaded from ' + src + '.'));
       (document.head || document.documentElement).appendChild(el);
+    });
+
+    libPromise = inject(local).catch(first => {
+      /* say it, every time: a site quietly running on the fallback has a
+         broken deploy nobody is looking at */
+      console.warn('The vendored database library did not load (' + first.message
+                 + ') - falling back to the pinned copy on jsDelivr.');
+      libUsedFallback = true;
+      return inject(remote);
     });
     return libPromise;
   }
@@ -2927,7 +2961,9 @@
       fn);
   }
 
-  window.DB = { configured, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
+  /* libSource(): which copy actually served, for a check or a console */
+  function libSource(){ return libPromise ? (libUsedFallback ? "jsdelivr" : "vendored") : "not loaded yet"; }
+  window.DB = { configured, libSource, client, session, signIn, signUp, signOut, onAuth, emailForUsername, myProfile, setUsername,
                 fieldConfigLoad, fieldConfigSave, fieldConfigSubscribe,
                 materialsLoad, materialsSave, materialsSubscribe,
                 materialsCount, materialsWipe,
