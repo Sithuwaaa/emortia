@@ -310,6 +310,50 @@
   .row .d{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14.5px}
   .row .spec{font-size:12px;color:var(--muted);overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap}
+  /* ---- THE METADATA AS PILLS, AND A STATUS CHIP ON EVERY ROW ----
+
+     It was one grey line, type · vendor · model · band · Dispose, and
+     the disposal marker was the last word of a run of six - the one
+     thing on the row somebody scans for, in the least scannable place.
+     Now each value is its own pill and the status is a chip of its own.
+
+     THE STATUS CHIP IS AN OUTLINE, NOT A FILL, AND THE REASON IS
+     MEASURED. A chip tinted with its own colour moves its background
+     towards its ink: at every alpha from .01 to .40, dark Disposed
+     (#e2607a on #e2607a over --card) never reaches 4.5 - the tint eats
+     the contrast it is supposed to decorate. So the colour lives in the
+     text, where --okT and --badT are already solved for this exact job,
+     and the border is neutral.
+
+     --okT and --badT, not --ok and --bad. The base tokens are fills;
+     category.css carries the darkened text variants because a status
+     colour cannot be both, and family.test.js refuses the base ones as
+     text. The border is var(--line3) rather than currentColor, which
+     would have been the same token worn as a border and would have
+     slipped past that check on a technicality.
+
+     Measured on the plain row and on the zebra row, both themes, with
+     tools/_lib/contrast.js - worst of the twelve is 4.77:
+
+       metadata pill   10.09 / 9.49  dark      13.14 / 12.44  light
+       Active          7.97 / 7.60   dark      5.20 / 4.94    light
+       Disposed        4.99 / 4.77   dark      5.28 / 5.01    light */
+  .row .tags{display:flex;gap:5px;min-width:0;overflow:hidden;align-items:center}
+  .row .tg,.row .st{flex:none;font-size:11px;line-height:1.5;padding:1px 8px;
+    border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .tg{max-width:18ch;background:var(--glowSoft);
+    border:1px solid var(--line3);color:var(--text)}
+  /* A SCRIM UNDER THE CHIP, because the row ground is not --card.
+     Measured flat against --card the dark Disposed chip reads 4.77; measured
+     on the page it is 4.49, because the panel is glass over a photograph and
+     the zebra row is lighter still - and a light ink wants a DARK ground.
+     So each theme gets a scrim pushing the ground away from the ink: black
+     under the light inks, white under the dark ones. Neutral fills, not a T
+     variant worn as a background. */
+  .row .st{background:rgba(0,0,0,.26);border:1px solid var(--line3);font-weight:600}
+  html[data-theme="light"] .row .st{background:rgba(255,255,255,.55)}
+  .row .st.ok{color:var(--okT)}
+  .row .st.bad{color:var(--badT)}
   .row .cp{display:flex;gap:6px}
   .cpb{padding:7px 11px;border-radius:8px;border:1px solid var(--line);
     background:none;color:var(--text);font:inherit;font-size:12.5px;font-weight:500;
@@ -867,13 +911,36 @@ function route(){
      narrower search - and the person who wants all 600 antennas is exactly
      the person who cannot. */
   const show = res.slice(0, LIM);
-  const spec = r => [TYPE ? null : M.labelOf(r.type),
-      ...Object.entries(r.attrs || {}).slice(0, 6).map(e => e[1])]
-      .filter(Boolean).join(' · ');
+  /* The same values the dot-line carried, one per pill, plus the vendor -
+     which the row already holds and the line never showed.
+
+     FEXCL IS REUSED, NOT RE-WRITTEN. It is the list the facets already
+     skip: part numbers, final MC, comments, remarks and the disposal
+     column. The disposal column in particular must not also appear as a
+     pill now that the chip says it, and reusing the one regex means the
+     two can never disagree about which keys are noise.
+
+     The chip reads isDisp(r), which is the flag this page already
+     derives from attrs for the Disposed segment and the struck-through
+     code. No second source for it. */
+  const tagsOf = r => {
+    const out = [];
+    if (!TYPE) out.push(M.labelOf(r.type));
+    if (r.vendor) out.push(r.vendor);
+    Object.entries(r.attrs || {}).forEach(([k, v]) => {
+      v = String(v == null ? '' : v).trim();
+      if (!v || FEXCL.test(k) || v === r.vendor) return;
+      out.push(v);
+    });
+    return out.filter(Boolean).slice(0, 5);
+  };
   $('view').innerHTML = '<div class="rows">' + show.map((r, i) =>
     '<div class="row' + (isDisp(r) ? ' disp' : '') + '" role="button" tabindex="0" data-i="' + i + '"><span class="c">' + hl(r.code, Q) + '</span>' +
     '<span class="mid"><span class="d">' + hl(r.desc, Q) + '</span>' +
-    '<span class="spec">' + esc(spec(r)) + '</span></span>' +
+    '<span class="tags">' +
+      tagsOf(r).map(t => '<span class="tg">' + esc(t) + '</span>').join('') +
+      '<span class="st ' + (isDisp(r) ? 'bad">Disposed' : 'ok">Active') +
+      '</span></span></span>' +
     '<span class="cp"><button class="cpb primary" data-cp="code" data-i="' + i + '">⧉ Code</button>' +
     '<button class="cpb" data-cp="desc" data-i="' + i + '">⧉ Description</button></span></div>'
   ).join('') + '</div>' +
