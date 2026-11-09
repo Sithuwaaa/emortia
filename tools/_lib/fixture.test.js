@@ -15,6 +15,9 @@ const fs = require('fs');
 const path = require('path');
 
 const SRC = fs.readFileSync(path.join(__dirname, 'fixture.js'), 'utf8');
+/* the real materials.js, so the fixture's vendors go through the real
+   normVendor rather than a stand-in of it */
+const MAT = require(path.join(__dirname, '..', 'materials', 'materials.js'));
 
 let pass = 0, fail = 0;
 const is = (label, got, want) => {
@@ -40,7 +43,8 @@ function fakeWindow(host, anonKey) {
     SUPABASE_CONFIG: anonKey === undefined ? undefined : { url: 'u', anonKey },
     location: { hostname: host },
     document: doc,
-    console: { info: () => {} }
+    console: { info: () => {} },
+    MAT: MAT
   };
   win.window = win;
   return { win, doc, made };
@@ -110,23 +114,41 @@ function run(host, anonKey) {
   is('DB untouched',                         r.win.DB, undefined);
 }
 
-/* ---- 3. WHAT IT STANDS IN FOR, WHEN IT IS ON ---------------------- */
+/* ---- 3. WHAT IT STANDS IN FOR, WHEN IT IS ON ----------------------
+
+   The rows are built on the first read, not at load, because materials.js
+   loads after this file and the builder needs its normVendor. So the rows
+   are asked for the way the page asks for them. */
 {
-  const { F, win } = run('localhost', '');
-  is('there are rows',                       F.rows.length > 40, true);
-  is('the shape is what materials.js collates',
-     Object.keys(F.rows[0]).sort(), ['attrs', 'code', 'desc', 'type', 'vendor']);
-  is('NO REAL MATERIAL CODE - 7 to 12 digits is the real shape',
-     F.rows.some(r => /^\d{7,12}$/.test(r.code)), false);
-  is('every row says it is invented',
-     F.rows.every(r => /invented/i.test(r.desc)), true);
-  is('some are disposed, so the chips and the segment have both states',
-     F.rows.some(r => r.attrs['Total Dispose']) &&
-     F.rows.some(r => !r.attrs['Total Dispose']), true);
-  is('more than one type, or the facets are empty',
-     new Set(F.rows.map(r => r.type)).size > 5, true);
+  const { win } = run('localhost', '');
+  is('the rows are not built before anything asks', win.FIXTURE.rows, null);
+  return win.DB.materialsLoad().then(res => {
+    const R = res.rows;
+    is('there are rows',                       R.length > 40, true);
+    is('and FIXTURE.rows is filled in once built', win.FIXTURE.rows.length, R.length);
+    is('the shape is what materials.js collates',
+       Object.keys(R[0]).sort(), ['attrs', 'code', 'desc', 'type', 'vendor']);
+    is('NO REAL MATERIAL CODE - 7 to 12 digits is the real shape',
+       R.some(r => /^\d{7,12}$/.test(r.code)), false);
+    is('every row says it is invented',
+       R.every(r => /invented/i.test(r.desc)), true);
+    is('some are disposed, so the chips and the segment have both states',
+       R.some(r => r.attrs['Total Dispose']) && R.some(r => !r.attrs['Total Dispose']), true);
+    is('more than one type, or the facets are empty',
+       new Set(R.map(r => r.type)).size > 5, true);
+
+    /* the vendor goes through the real normaliser, so the preview shows
+       what the page would: HUA folded into Huawei, Fibrolan kept whole */
+    const v = new Set(R.map(r => r.vendor));
+    is('a mappable spelling is normalised, not passed through', v.has('HUA'), false);
+    is('and lands on the mapped name',                          v.has('Huawei'), true);
+    is('AN UNMAPPED ONE SURVIVES, so a preview can show that case',
+       v.has('Fibrolan'), true);
+    is('and no row lost its vendor',   R.every(r => !!r.vendor), true);
+    return next();
+  });
 }
-{
+function next() {
   /* reads answer, writes refuse - a preview must not be able to pretend
      it deleted anything */
   const { win } = run('localhost', '');

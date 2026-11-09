@@ -55,7 +55,10 @@
   var TYPES = ['Antenna', 'Radio', 'Jumpers', 'CenRF IBS', 'Com & Filters',
                'AAU & AIR', 'IBS', 'GPS', 'BB,MPT,EXT,BB accs', 'BBU',
                'Fibers', 'IP', 'TX', 'H & E SFP', 'PWR', 'RRU PWR', 'Civil'];
-  var VENDORS = ['Huawei', 'Ericsson', 'Nokia', 'ZTE'];
+  /* Four the table maps and two it does not, because the real sheets are
+     the same mix - and a fixture that only carried mappable spellings
+     could not show that an unmapped one now keeps its own name. */
+  var VENDORS = ['Huawei', 'Ericsson', 'Nokia', 'ZTE', 'Fibrolan', 'HUA'];
   var BANDS = ['900MHz', '1.8GHz', '2.1GHz', '2.6GHz'];
 
   function build() {
@@ -75,14 +78,20 @@
         code: 'SAMPLE-' + String(1000 + i),
         desc: 'Sample ' + type + ' row ' + (i + 1) + ' - invented, not a real material',
         type: type,
-        vendor: attrs.Vendor,
+        /* through the real normaliser, not straight across, so the preview
+           shows what collate() would actually put on the row */
+        vendor: (window.MAT && window.MAT.normVendor) ? window.MAT.normVendor(attrs.Vendor) : attrs.Vendor,
         attrs: attrs
       });
     }
     return rows;
   }
-  var ROWS = build();
-  window.FIXTURE.rows = ROWS;
+  /* BUILT ON FIRST READ, NOT NOW. materials.js loads after this file, so
+     window.MAT does not exist yet and normVendor could not be used at all
+     if the rows were made here - the preview would show the raw spelling
+     where the real page shows the normalised one. */
+  var ROWS = null;
+  function rows(){ if (!ROWS){ ROWS = build(); window.FIXTURE.rows = ROWS; } return ROWS; }
 
   /* ------------------------------------------------- the gate, and reads
 
@@ -106,9 +115,9 @@
   DB.configured      = function () { return false; };
   DB.session         = function () { return Promise.resolve(null); };
   DB.materialsLoad   = function () {
-    return Promise.resolve({ rows: ROWS.slice(), stamp: stamp, n: ROWS.length, error: null });
+    return Promise.resolve({ rows: rows().slice(), stamp: stamp, n: rows().length, error: null });
   };
-  DB.materialsCount  = function () { return Promise.resolve({ n: ROWS.length, error: null }); };
+  DB.materialsCount  = function () { return Promise.resolve({ n: rows().length, error: null }); };
   DB.materialsSubscribe = function () { return Promise.resolve({ unsubscribe: function () {} }); };
   DB.materialsSave   = refuse('uploading');
   DB.materialsWipe   = refuse('emptying the list');

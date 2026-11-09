@@ -758,7 +758,24 @@ function paint(){
    `attrs` with between two and thirty distinct values becomes a checkable
    list, counted from the rows currently in view. That is the design's
    behaviour exactly, and this tool's chip rows could not do it. */
-const FEXCL = /part|final mc|comment|remark|dispos/i;
+/* `vendor` is in here as of 9 November, and it closes the SECOND of two
+   bugs that together drew the sidebar two "VENDOR" headings.
+
+   collate() lifts attrs.Vendor into its own normalised r.vendor column,
+   which the Vendor tile above is built from - but it LEAVES the raw key in
+   attrs, and this list did not skip it. So the same fact drew a facet
+   twice: once normalised (Huawei 394) and once raw (Huawei 183, Hua 171,
+   and "—" for the 1,104 rows with no Vendor attr at all).
+
+   THE ORDER MATTERED. This line on its own would have removed the second
+   heading and, with it, the only visible sign that normVendor was throwing
+   away 20 rows' vendors - the raw facet was the only place those rows'
+   spellings still appeared. Deleting the symptom before the cause would
+   have left the data loss in place and invisible. materials.js was fixed
+   first; this is the tidy-up after it.
+
+   The /i flag covers Vendor and vendor both; the sheets use each. */
+const FEXCL = /part|final mc|comment|remark|dispos|vendor/i;
 const isDisp = r => Object.entries(r.attrs || {}).some(([k, v]) =>
   v && (/dispos/i.test(k) || /^dispos/i.test(String(v))));
 const stOK = r => STATUS === 'All' || isDisp(r) === (STATUS === 'Disposed');

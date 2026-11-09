@@ -72,9 +72,27 @@
      whose Vendor reads "4.3-10M TO NM JUMPER", which is a port type that ended
      up one column to the left.
 
-     Only a name on this list becomes a vendor. Anything else stays in the
-     attributes where it can be read, and out of the filter where it would be
-     a chip of one. */
+     A name on this list is NORMALISED to one spelling. Anything else is now
+     KEPT AS IT WAS TYPED, rather than thrown away.
+
+     This used to return empty for anything unmapped, and this comment used
+     to say that was deliberate, so a port type in the vendor column would
+     not become "a chip of one". The cost was invisible and larger.
+     Measured against the database: 20 rows carry a vendor spelling this
+     table has no entry for, and every one of them showed "—" in the vendor
+     filter. Nothing said it had happened - no fallback, no flag, no count.
+     A filter that silently drops the value it is filtering on is worse than
+     one carrying a few entries of one.
+
+     SO: map what is known, keep what is not. Nothing is invented - no new
+     mappings were guessed from those 20 rows. They appear under the
+     spelling their sheet used, which is the truth about them, and is also
+     what makes a missing mapping visible enough to be added on purpose.
+
+     IT FOLLOWS THAT A PORT TYPE IN THE VENDOR COLUMN NOW SHOWS AS A VENDOR.
+     That is the price, it is paid knowingly, and it is the visible half of
+     a problem that was previously the invisible half. The cure is an entry
+     in this table, or a fix in the sheet - not discarding the column. */
   var VENDOR = {
     'hua': 'Huawei', 'huawei': 'Huawei', 'hw': 'Huawei',
     'eric': 'Ericsson', 'ericsson': 'Ericsson', 'ericson': 'Ericsson',
@@ -88,8 +106,10 @@
     'wi-bas': 'Wi-Bas', 'wibas': 'Wi-Bas'
   };
   function normVendor(v) {
-    var k = s(v).toLowerCase().replace(/[.\s_-]+$/, '');
-    return VENDOR[k] || VENDOR[k.replace(/[^a-z]/g, '')] || '';
+    var raw = s(v);
+    if (!raw) return '';                /* no vendor is still no vendor */
+    var k = raw.toLowerCase().replace(/[.\s_-]+$/, '');
+    return VENDOR[k] || VENDOR[k.replace(/[^a-z]/g, '')] || raw;
   }
 
   /* --------------------------------------------------------- reading a sheet

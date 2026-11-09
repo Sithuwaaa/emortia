@@ -80,11 +80,45 @@ console.log('\ntidying the vendor');
 {
   is('two spellings are one company',     [M.normVendor('HUA'), M.normVendor('Huawei')], ['Huawei','Huawei']);
   is('and so are the other two',          [M.normVendor('ERIC'), M.normVendor('ericsson')], ['Ericsson','Ericsson']);
-  /* the Jumpers sheet has a port type sitting in the vendor column; it stays
-     readable in the attributes and stays out of the filter */
-  is('a port type in the vendor column is not a vendor',
-     M.normVendor('4.3-10M TO NM JUMPER'), '');
-  is('and neither is nothing',            M.normVendor(''), '');
+
+  /* WHAT IT CANNOT MAP, IT KEEPS. This asserted the opposite until
+     9 November: unmapped returned '', and the row showed "—" in the vendor
+     filter with nothing to say its vendor had been dropped. Twenty rows in
+     the database were in that state. The expectation changed because the
+     contract changed, not to make a red test green. */
+  is('AN UNMAPPED VENDOR COMES BACK AS IT WAS TYPED',
+     M.normVendor('Fibrolan'), 'Fibrolan');
+  is('and it is trimmed, not reshaped',
+     M.normVendor('  Fibrolan  '), 'Fibrolan');
+  is('a known one is still normalised, not passed through',
+     M.normVendor('hw'), 'Huawei');
+  /* The Jumpers sheet has a port type sitting in the vendor column. It now
+     shows as a vendor, which is the price of not discarding the column -
+     paid knowingly, and fixed by a mapping or by the sheet, not by
+     throwing the value away. */
+  is('a port type in the vendor column now shows as itself',
+     M.normVendor('4.3-10M TO NM JUMPER'), '4.3-10M TO NM JUMPER');
+  is('nothing is still nothing',          M.normVendor(''), '');
+  is('and so is whitespace',              M.normVendor('   '), '');
+}
+
+console.log('\nthe vendor reaches the row and the facet');
+{
+  /* end to end, because normVendor returning a string is not the point -
+     the point is that the row and the filter show it */
+  const rows = M.collate([
+    { code: '1000000001', desc: 'Mapped vendor',   type: 'Antenna', attrs: { Vendor: 'HUA' } },
+    { code: '1000000002', desc: 'Unmapped vendor', type: 'Antenna', attrs: { Vendor: 'Fibrolan' } },
+    { code: '1000000003', desc: 'No vendor at all', type: 'Antenna', attrs: {} }
+  ]);
+  is('the mapped one is normalised',      rows[0].vendor, 'Huawei');
+  is('THE UNMAPPED ONE IS NOT EMPTY',     rows[1].vendor, 'Fibrolan');
+  is('and a row with no vendor still has none', rows[2].vendor, '');
+
+  const v = M.facets(rows).vendors.map(x => x.name).sort();
+  is('BOTH APPEAR IN THE FILTER, NEITHER AS A DASH', v, ['Fibrolan', 'Huawei']);
+  is('and the row with none is not a vendor of its own',
+     v.indexOf('—') < 0 && v.indexOf('') < 0, true);
 }
 
 console.log('\nmerging the two on the material code');
