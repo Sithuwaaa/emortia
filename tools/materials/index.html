@@ -42,6 +42,11 @@
 <script src="../_lib/relog.js"></script>
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
+<!-- Stand-in rows, and ONLY where there is no anon key and the host is not
+     the live site. Loaded after access.js and before Access.protect runs,
+     because it replaces the gate rather than satisfying it. Inert on
+     emortia.com: see the note at the top of the file. -->
+<script src="../_lib/fixture.js?v=1"></script>
 <script>Access.protect({ feature: 'tool:materials' });</script>
 <script src="materials.js"></script>
 <style>
