@@ -1,0 +1,9 @@
+# Vendored builds are somebody else's bytes and are recorded by hash.
+#
+# db.js pins @supabase/supabase-js 2.119.0 and names its sha256 in a
+# comment, and tools/_lib/vendor.test.js checks the file against it. Git's
+# line-ending conversion would quietly rewrite those bytes on checkout -
+# on a CRLF machine a fresh clone would get a file that no longer matches
+# the hash, and the check would fail for a reason that has nothing to do
+# with the library. -text turns that off for this directory only.
+tools/_lib/vendor/** -text -diff
