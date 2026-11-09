@@ -2467,6 +2467,60 @@ Still open, deliberately: **every other file in that project is stale
 the same way.** Not started. One file, prove the loop closes, then
 decide whether the rest are worth the same treatment.
 
+### The rule, and what the audit found
+
+**A backup is verified by reading it back from a location that outlives
+the process that wrote it. Writing it is not the same as having it.**
+
+Same family as a function that logs its failure instead of returning
+it: in both, the thing that would tell you it went wrong is discarded
+at the moment it is produced, and what survives is a line of output
+that reads like success.
+
+The glass-scene layer survived the first bad push only because it
+happened to be in the repository rather than in the backup folder.
+That was luck about where it lived, not the backup working. So the
+question was asked of everything else here that saves, exports or backs
+up — and the answer is mostly clean:
+
+- **Nothing in the repository writes to a temp directory.** No
+  `os.tmpdir`, `/tmp/`, `%TEMP%`, `AppData\Local\Temp`, `TMPDIR`,
+  `mkdtemp` or scratchpad path in any tracked file.
+- **Browser storage holds nothing that matters.** Sixteen keys, all of
+  them a theme, an accent, a scroll position, a collapsed panel or a
+  session token. The one whose name suggested real data,
+  `whattodo_tasks`, exists only in `_lib/mkfixture.js`, seeding a
+  stand-in list.
+- **The four storage uploads in `db.js` all read the error and throw.**
+  WH24's tolerates a missing bucket on purpose, and says why.
+
+**One exception, and it is the backup itself.** `.github/workflows/
+backup.yml` dumps the database on a GitHub runner — ephemeral, and
+correctly so, because it uploads to R2 afterwards. But:
+
+- the size check and `gzip -t` run on the **local** archive, before the
+  upload;
+- the upload echoes "Uploaded …" on the strength of `aws s3 cp`'s exit
+  code;
+- the final step, named **"Say what landed"**, reports
+  `stat -c%s "$ARCHIVE"` — the size of the file on the runner, not of
+  the object in the bucket.
+
+Nothing reads the object back. A hard failure does fail the job, so the
+loud cases are caught. A truncated object, a wrong key, a lifecycle
+rule, or a write to a bucket nobody can read from would all pass, and
+the summary would print a number of bytes that looks exactly right.
+A step that is named for what landed should be the step that looked.
+
+Raised, not changed: it is one `head-object` after the upload, compared
+against the local size, with the reported figure taken from the bucket
+rather than from the runner — but a weekly database backup is not
+something to edit in passing.
+
+Also noticed and left: `db.js:1625` removes old lyric files without
+reading the error. That orphans files rather than losing them, which is
+the harmless direction.
+
 ## A guard written for my own mistake caught the same mistake arriving from outside
 
 The design's Empty button specified `color:#fff` on `--bad`. White on
