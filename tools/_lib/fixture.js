@@ -42,14 +42,30 @@
   var host = String(location.hostname || '').toLowerCase();
   var live = host === 'emortia.com' || /\.emortia\.com$/.test(host);
 
+  /* A CLAUDE CANVAS IS THE THIRD WAY IN, and it is the one this was
+     really for. The migrated design project serves the site from its own
+     origin, carries the anon key, and has no way to sign anyone in - so
+     "no key" never fires there and the page shows a password box nobody
+     can use. The host is the honest signal, and it is what the keyless
+     check was standing in for all along. */
+  var canvas = /(^|\.)claudeusercontent\.com$/.test(host) ||
+               /(^|\.)claude\.ai$/.test(host);
+  /* and a way to ask for it by hand anywhere else off the live site */
+  var asked = /[?&]preview=1(&|$)/.test(String(location.search || ''));
+
   window.FIXTURE = { on: false, why: '', rows: null };
 
-  if (!keyless) { window.FIXTURE.why = 'an anon key is configured'; return; }
-  if (live)     { window.FIXTURE.why = 'this is the live host'; return; }
+  /* THE LIVE LOCK IS FIRST AND BEATS ALL THREE, ?preview=1 included:
+     nothing below this line can switch sample data on at emortia.com. */
+  if (live) { window.FIXTURE.why = 'this is the live host'; return; }
+  if (!keyless && !canvas && !asked) {
+    window.FIXTURE.why = 'an anon key is configured'; return;
+  }
 
   window.FIXTURE.on = true;
-  window.FIXTURE.why = 'no anon key, and "' + (host || 'no host') +
-                       '" is not the live site';
+  window.FIXTURE.why = (canvas ? 'a Claude canvas' :
+                        keyless ? 'no anon key' : 'asked for with ?preview=1') +
+                       ', and "' + (host || 'no host') + '" is not the live site';
 
   /* ---------------------------------------------------------- the rows */
   var TYPES = ['Antenna', 'Radio', 'Jumpers', 'CenRF IBS', 'Com & Filters',

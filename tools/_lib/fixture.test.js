@@ -61,7 +61,7 @@ function run(host, anonKey) {
 {
   const r = run('emortia.com', 'sb_publishable_realkey');
   is('live host WITH a key: off',            r.F.on, false);
-  is('and it says why',                      r.F.why, 'an anon key is configured');
+  is('and it says why',                      r.F.why, 'this is the live host');
   is('no banner',                            r.banner, 0);
   is('it did not touch DB',                  r.win.DB, undefined);
   is('it did not touch Access',              r.win.Access, undefined);
@@ -100,6 +100,38 @@ function run(host, anonKey) {
 {
   const r = run('some-canvas.claudeusercontent.com', '');
   is('a canvas host, keyless: ON',           r.F.on, true);
+}
+
+/* ---- 2b. THE CANVAS, WHICH IS WHY THIS EXISTS --------------------
+
+   The migrated design project carries the anon key and still cannot
+   sign anybody in. "No key" never fires there, so the host does. */
+{
+  const r = run('some-canvas.claudeusercontent.com', 'sb_publishable_realkey');
+  is('A CANVAS WITH A KEY: ON, where localhost with a key is off', r.F.on, true);
+  is('and it says which way in',             r.F.why, 'a Claude canvas, and "some-canvas.claudeusercontent.com" is not the live site');
+  is('it stands in for the reads',           typeof r.win.DB.materialsLoad, 'function');
+}
+{
+  const r = run('claude.ai', 'sb_publishable_realkey');
+  is('claude.ai counts as a canvas too',     r.F.on, true);
+}
+{
+  /* asked for by hand, off the live site */
+  const { win } = (() => { const f = fakeWindow('staging.example.com', 'sb_publishable_realkey');
+    f.win.location.search = '?preview=1';
+    new Function('window','document','location','console', SRC)(f.win, f.doc, f.win.location, f.win.console);
+    return f; })();
+  is('?preview=1 off the live site: ON',     win.FIXTURE.on, true);
+}
+{
+  /* AND IT IS STILL REFUSED ON THE LIVE SITE - the one that matters */
+  const f = fakeWindow('emortia.com', 'sb_publishable_realkey');
+  f.win.location.search = '?preview=1';
+  new Function('window','document','location','console', SRC)(f.win, f.doc, f.win.location, f.win.console);
+  is('?preview=1 ON THE LIVE SITE: STILL OFF', f.win.FIXTURE.on, false);
+  is('and the reason is the host',           f.win.FIXTURE.why, 'this is the live host');
+  is('DB untouched',                         f.win.DB, undefined);
 }
 {
   const r = run('localhost', '   ');
