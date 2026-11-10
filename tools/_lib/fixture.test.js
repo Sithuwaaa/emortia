@@ -138,12 +138,41 @@ function run(host, anonKey) {
   is('a whitespace key is no key',           r.F.on, true);
 }
 {
-  /* the guard has to be able to say no off the live site too, or the
-     key check above is doing nothing */
+  /* LOCALHOST IS NOW A WAY IN, deliberately - it is the design surface,
+     and it has to show a page the moment it opens. This asserted the
+     opposite until 10 November, when the local server became where the
+     look is worked on. The expectation changed because the contract did. */
   const r = run('localhost', 'sb_publishable_realkey');
-  is('LOCALHOST WITH A KEY: OFF',            r.F.on, false);
+  is('LOCALHOST WITH A KEY: ON, because it is the design surface', r.F.on, true);
+  is('and it says which way in',
+     r.F.why, 'a local server, and "localhost" is not the live site');
+  is('127.0.0.1 too',    run('127.0.0.1', 'sb_publishable_realkey').F.on, true);
+}
+{
+  /* ...and the key check must still bite SOMEWHERE, or removing it would
+     cost nothing and this file would be agreeing with whatever it finds.
+     A host that is neither live, nor a canvas, nor local is the case it
+     still governs. */
+  const r = run('staging.example.com', 'sb_publishable_realkey');
+  is('A KEYED HOST THAT IS NEITHER LOCAL NOR A CANVAS: OFF', r.F.on, false);
   is('reason is the key',                    r.F.why, 'an anon key is configured');
   is('DB untouched',                         r.win.DB, undefined);
+}
+{
+  /* the door out, for testing the real gate on localhost */
+  const f = fakeWindow('localhost', 'sb_publishable_realkey');
+  f.win.location.search = '?nofixture=1';
+  new Function('window','document','location','console', SRC)(f.win, f.doc, f.win.location, f.win.console);
+  is('?nofixture=1 turns it off on localhost',  f.win.FIXTURE.on, false);
+  is('and says so',                             f.win.FIXTURE.why, 'turned off with ?nofixture=1');
+  is('leaving the real gate and DB alone',      f.win.DB, undefined);
+}
+{
+  /* but it cannot turn the LIVE lock into a way in - live is checked first */
+  const f = fakeWindow('emortia.com', '');
+  f.win.location.search = '?nofixture=1';
+  new Function('window','document','location','console', SRC)(f.win, f.doc, f.win.location, f.win.console);
+  is('the live host is still decided by the live check', f.win.FIXTURE.why, 'this is the live host');
 }
 
 /* ---- 3. WHAT IT STANDS IN FOR, WHEN IT IS ON ----------------------

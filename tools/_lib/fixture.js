@@ -50,20 +50,34 @@
      check was standing in for all along. */
   var canvas = /(^|\.)claudeusercontent\.com$/.test(host) ||
                /(^|\.)claude\.ai$/.test(host);
+  /* LOCALHOST IS THE DESIGN SURFACE. This is where the look gets worked
+     on now - started with one command, opened at one URL, reloaded on
+     every edit - and it has to show a full page the moment it opens.
+     The repository's own supabase-config.js carries the key, so without
+     this the local copy sat behind a sign-in box nobody can get through
+     there, which made the one place designed for looking the one place
+     you could not look. */
+  var local = host === 'localhost' || host === '127.0.0.1' || host === '::1' ||
+              host === '' || /\.localhost$/.test(host);
   /* and a way to ask for it by hand anywhere else off the live site */
   var asked = /[?&]preview=1(&|$)/.test(String(location.search || ''));
+  /* ...and the way back out, for testing the real gate locally: the sample
+     rows are the default here, so there has to be a door out of them. */
+  var refused = /[?&]nofixture=1(&|$)/.test(String(location.search || ''));
 
   window.FIXTURE = { on: false, why: '', rows: null };
 
   /* THE LIVE LOCK IS FIRST AND BEATS ALL THREE, ?preview=1 included:
      nothing below this line can switch sample data on at emortia.com. */
   if (live) { window.FIXTURE.why = 'this is the live host'; return; }
-  if (!keyless && !canvas && !asked) {
+  if (refused) { window.FIXTURE.why = 'turned off with ?nofixture=1'; return; }
+  if (!keyless && !canvas && !local && !asked) {
     window.FIXTURE.why = 'an anon key is configured'; return;
   }
 
   window.FIXTURE.on = true;
   window.FIXTURE.why = (canvas ? 'a Claude canvas' :
+                        local  ? 'a local server' :
                         keyless ? 'no anon key' : 'asked for with ?preview=1') +
                        ', and "' + (host || 'no host') + '" is not the live site';
 
