@@ -2569,6 +2569,80 @@ The rule: model the shape the real thing has, not the shape the test
 happens to touch. The double now carries both children, and asserts the
 `svg` is still there after the label has been swapped and put back.
 
+## A design that only works as a set, imported one item at a time
+
+10 November. His Material Codes redesign came over as a list of items to
+take or leave. Two of them were:
+
+> take the untinted dark photograph, `--tint:none`
+> …and verify his claim that the glass panels carry the contrast instead
+
+Measured on the rendered page, the claim failed and it was not close.
+The brightest pixel under the results panel in that photograph is
+`rgb(255,255,250)` — blown-out white, which the old darkening layer had
+been hiding. Through the panel at its `.58` alpha:
+
+| | | | |
+|---|---|---|---|
+| `--text` | 3.23 | chip type | 2.52 |
+| `--muted` | **1.61** | chip vendor | 2.56 |
+| Active | 3.07 | chip attr | 2.23 |
+| Disposed | 1.92 | **worst** | **1.61** |
+
+Every number true. Every number irrelevant, because **the answer was
+elsewhere in the same drawing.** Solving for the glass alpha that would
+clear the floor gives **0.93**. His own `leafmint` palette, further down
+the file and on nobody's list, sets `--g-glass` to **0.94**.
+
+The untinted photo and the near-solid panels are **one change**. It
+arrived as two list items, was reviewed as two, and the half that cannot
+stand alone was measured, failed, and made the designer look wrong about
+his own work.
+
+**THE REVIEWER SPLITTING IT CAUSED THAT.** Not the designer, and not the
+measurement — the measurement was correct and well made. What was wrong
+was the unit. A contrast reading answers "does this pass", and the
+question that mattered was "does this pass *as drawn*", which needs the
+whole drawing.
+
+**The rule: before refusing a design item on measurement, look for what
+else in the same drawing was carrying it.** A value that fails in
+isolation and passes in company is not a defect; it is a dependency
+nobody wrote down. And the tell is specific — when a designer's own file
+already contains the number you had to solve for, you did not find their
+mistake, you found the piece you left behind.
+
+Shipped as the pair. Both themes measured on the page, every element
+with its own wash and scrim: dark worst 4.52, light worst 4.52, at 0.93
+in both. Light had to move too — but light was *already* failing at
+`.62`, worst 2.08, which is the site-wide problem raised on 9 November
+getting measured properly rather than anything the pair introduced.
+
+## An instrument that does not recompute
+
+Setting `data-btn` from the console and reading `getComputedStyle` came
+back unchanged, so fifty button rules looked like they were not
+applying. The selector matched. The rule was in the CSSOM, with
+`!important`, and nothing out-ranked it. It should have been impossible.
+
+It was. **A hidden browser pane does not recompute style.** The reading
+was stale, not the CSS. Loading the URL with `?btn=b7` forces a fresh
+render and the rules apply exactly as written.
+
+I was one step from "fixing" fifty lines of correct code — and the fix
+would have been some invented specificity bump that did nothing, shipped
+with a confident commit message.
+
+Same family as the 0×0 pane and the `IS_OWNER` probe: **an instrument
+reporting its own state as the world's.** The pane was hidden, so it
+stopped laying out, stopped decoding images, and stopped recomputing
+style — and every one of those came back as a plausible fact about the
+page. `img.onload` works where `img.decode()` hangs, which is the only
+reason the photograph could be measured at all.
+
+The habit that catches it: when a measurement says something is
+impossible, suspect the instrument before the subject.
+
 ## A deploy check asserts every file the change touched
 
 8 November. `materialsWipe` shipped in `5b9eb39` and the button said

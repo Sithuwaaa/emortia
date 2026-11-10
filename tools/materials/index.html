@@ -567,29 +567,41 @@
     background:var(--bg) var(--scene) center/cover no-repeat}
   .scene::after{content:'';position:absolute;inset:0;background:var(--tint)}
   html{
-    /* THE DARKENING LAYER STAYS, for now, and the measurement is why.
-       His redesign drops it - --scene to the untinted original and
-       --tint:none - on the grounds that the glass panels carry the
-       contrast instead. Measured on the rendered page against the real
-       untinted image, the brightest pixel under the list is rgb(255,255,250),
-       blown-out white, and through the panel at its current .58 alpha
-       EVERY text colour fails: --text 3.23, --muted 1.61, the chips 2.23
-       to 2.56, Disposed 1.92. Worst 1.61 against a floor of 4.5.
+    /* ---- THE PHOTOGRAPH AS IT IS, AND THE PANELS THAT MAKE THAT WORK ----
 
-       He is not wrong that panels could carry it - they need to be at
-       alpha 0.93, where the worst becomes 4.54. That is almost exactly
-       the 0.94 his own leafmint palette uses, so the untinted photo and
-       the near-solid panels are one change, not two. Splitting them is
-       what fails. The two original images are committed and ready for
-       the day that lands together. */
-    --scene:image-set(url('img/scene-dark-1280.webp') 1x, url('img/scene-dark-1672.webp') 2x);
-    --tint:linear-gradient(rgba(4,14,8,.66),rgba(4,14,8,.86));
-    --g-glass:rgba(16,34,18,.58);--g-edge:rgba(162,229,156,.22);
+       His change, and it is ONE change: the darkening layer comes off the
+       dark-mode photo, and the glass goes near-solid so the text still has
+       a ground. It arrived as two items on a list and was reviewed as two,
+       which is how the half of it that cannot stand alone got measured,
+       failed, and looked like the designer had been wrong.
+
+       WHAT SPLITTING IT MEASURED. With --tint:none at the old .58 glass,
+       the brightest pixel under the results panel is rgb(255,255,250) -
+       blown-out white - and every text colour failed against it:
+       --text 3.23, --muted 1.61, the chips 2.23 to 2.56, Disposed 1.92,
+       worst 1.61 against a floor of 4.5. All true, and all irrelevant,
+       because the other half of his change was the answer: solving for
+       the glass alpha that clears the floor gives 0.93, and his own
+       leafmint palette already set 0.94.
+
+       So the alpha below is not a number I invented to rescue his idea.
+       It is the one he had used, arrived at from the other direction. */
+    --scene:image-set(url('img/scene-dark-original-1280.webp') 1x, url('img/scene-dark-original-1672.webp') 2x);
+    --tint:none;
+    --g-glass:rgba(16,34,18,0.93);--g-edge:rgba(162,229,156,.22);
     --g-blur:blur(16px) saturate(1.4);--g-inset:inset 0 1px 0 rgba(255,255,255,.08)}
   html[data-theme="light"]{
     --scene:image-set(url('img/scene-light-1280.webp') 1x, url('img/scene-light-1672.webp') 2x);
     --tint:linear-gradient(rgba(10,60,25,.14),rgba(10,60,25,.06));
-    --g-glass:rgba(255,255,255,.62);--g-edge:rgba(255,255,255,.7);
+    /* LIGHT GOES SOLID TOO, AND THIS ONE WAS ALREADY BROKEN. Light keeps
+       its photo and its tint - his change was dark-only - but the darkest
+       pixel under the panel is rgb(2,4,2), and at the old .62 glass the
+       worst pairing measured 2.08, with --muted at 3.29 and the code ink
+       at 2.42. That is the site-wide problem raised on 9 November, not
+       something the pair introduced; it simply got measured properly this
+       time. .93 clears it, worst 4.51. Same number as dark, arrived at
+       independently. */
+    --g-glass:rgba(255,255,255,0.93);--g-edge:rgba(255,255,255,.7);
     --g-blur:blur(10px) saturate(1.25);--g-inset:inset 0 1px 0 rgba(255,255,255,.9)}
   /* light ink over the glass: full-strength text, darker muted and code */
   html[data-theme="light"] body{--text:#0f1f14;--muted:#3a4d40}
