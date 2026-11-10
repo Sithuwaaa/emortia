@@ -567,6 +567,21 @@
     background:var(--bg) var(--scene) center/cover no-repeat}
   .scene::after{content:'';position:absolute;inset:0;background:var(--tint)}
   html{
+    /* THE DARKENING LAYER STAYS, for now, and the measurement is why.
+       His redesign drops it - --scene to the untinted original and
+       --tint:none - on the grounds that the glass panels carry the
+       contrast instead. Measured on the rendered page against the real
+       untinted image, the brightest pixel under the list is rgb(255,255,250),
+       blown-out white, and through the panel at its current .58 alpha
+       EVERY text colour fails: --text 3.23, --muted 1.61, the chips 2.23
+       to 2.56, Disposed 1.92. Worst 1.61 against a floor of 4.5.
+
+       He is not wrong that panels could carry it - they need to be at
+       alpha 0.93, where the worst becomes 4.54. That is almost exactly
+       the 0.94 his own leafmint palette uses, so the untinted photo and
+       the near-solid panels are one change, not two. Splitting them is
+       what fails. The two original images are committed and ready for
+       the day that lands together. */
     --scene:image-set(url('img/scene-dark-1280.webp') 1x, url('img/scene-dark-1672.webp') 2x);
     --tint:linear-gradient(rgba(4,14,8,.66),rgba(4,14,8,.86));
     --g-glass:rgba(16,34,18,.58);--g-edge:rgba(162,229,156,.22);
