@@ -347,7 +347,11 @@ console.log('\n--- no ungoverned chrome anywhere ---');
        the five families have an opinion about. --goHover is the family's
        hover and is governed; it is NOT listed here. */
     materials: ['tint','scene','g-glass','g-edge','g-blur','g-inset',
-                'badInk','codeInk','markBg','sideGlass','selBg','modalHead','cpbEdge','cpbInk'],
+                'badInk','codeInk','markBg','sideGlass','selBg','modalHead','cpbEdge','cpbInk',
+                /* the row chips: one colour per kind, so what a chip IS can be
+                   read before the word is. Declared, not governed, because they
+                   are this tool's own and measured against --card. */
+                'chipType','chipVendor','chipAttr'],
     whattodo: ['glass','glass-hero','glass-edge','glass-shadow',
                'lq-ink','lq-track','sel-bg','sel-ink','star','iv-ink','chip-bg','stop-ink',
                /* the weather, from the Promenade design: --wx-dim is the idle

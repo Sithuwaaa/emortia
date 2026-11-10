@@ -55,10 +55,19 @@
      olive. Only the accent is this tool's own; the rest is theme.css. */
   :root,html[data-theme="dark"]{
     
-    --bad:#e2607a;--badInk:#2b0f16;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB)}
+    --bad:#e2607a;--badInk:#2b0f16;--zebra:rgba(255,255,255,.02);--goHover:var(--accentB);
+    /* THE CHIP KINDS. His colours, taken from the leaf palette in his
+       redesign and made the defaults here, so the chips carry his colour
+       intent without the palette machinery that came with them - see the
+       note in the commit about why those palettes were not taken.
+       Measured against --card with tools/_lib/contrast.js, which is the
+       ground family.test.js governs: 11.48 / 11.71 / 10.05 in dark. */
+    --chipType:#A2E59C;--chipVendor:#E8D5A8;--chipAttr:#A9CFC9}
   html[data-theme="light"]{
     
-    --bad:#c2405c;--badInk:#ffffff;--zebra:rgba(0,0,0,.024);}
+    --bad:#c2405c;--badInk:#ffffff;--zebra:rgba(0,0,0,.024);
+    /* 6.59 / 6.05 / 6.57 on white */
+    --chipType:#1F6B22;--chipVendor:#7A5E30;--chipAttr:#2E6663;}
 
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--bg);color:var(--text);
@@ -315,50 +324,99 @@
   .row .d{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14.5px}
   .row .spec{font-size:12px;color:var(--muted);overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap}
-  /* ---- THE METADATA AS PILLS, AND A STATUS CHIP ON EVERY ROW ----
+  /* ---- THE METADATA AS CHIPS ----
 
-     It was one grey line, type · vendor · model · band · Dispose, and
-     the disposal marker was the last word of a run of six - the one
-     thing on the row somebody scans for, in the least scannable place.
-     Now each value is its own pill and the status is a chip of its own.
+     His. The pills this replaces were mine, and the difference is that a
+     chip carries its KIND in its colour: what the material is, who makes
+     it, a fact or two off its sheet, and whether it is still in use - four
+     things that were four identical grey pills and are now told apart
+     before they are read.
 
-     THE STATUS CHIP IS AN OUTLINE, NOT A FILL, AND THE REASON IS
-     MEASURED. A chip tinted with its own colour moves its background
-     towards its ink: at every alpha from .01 to .40, dark Disposed
-     (#e2607a on #e2607a over --card) never reaches 4.5 - the tint eats
-     the contrast it is supposed to decorate. So the colour lives in the
-     text, where --okT and --badT are already solved for this exact job,
-     and the border is neutral.
+     THE BORDER AND THE WASH ARE DERIVED FROM THE TEXT COLOUR, with
+     color-mix, so a chip needs one colour rather than three and cannot
+     drift out of step with itself. 38% for the border, 7% for the wash:
+     both faint enough that the TEXT is what carries the contrast, which
+     is what keeps this measurable - see the tokens below.
 
-     --okT and --badT, not --ok and --bad. The base tokens are fills;
-     category.css carries the darkened text variants because a status
-     colour cannot be both, and family.test.js refuses the base ones as
-     text. The border is var(--line3) rather than currentColor, which
-     would have been the same token worn as a border and would have
-     slipped past that check on a technicality.
-
-     Measured on the plain row and on the zebra row, both themes, with
-     tools/_lib/contrast.js - worst of the twelve is 4.77:
-
-       metadata pill   10.09 / 9.49  dark      13.14 / 12.44  light
-       Active          7.97 / 7.60   dark      5.20 / 4.94    light
-       Disposed        4.99 / 4.77   dark      5.28 / 5.01    light */
-  .row .tags{display:flex;gap:5px;min-width:0;overflow:hidden;align-items:center}
-  .row .tg,.row .st{flex:none;font-size:11px;line-height:1.5;padding:1px 8px;
-    border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .row .tg{max-width:18ch;background:var(--glowSoft);
-    border:1px solid var(--line3);color:var(--text)}
-  /* A SCRIM UNDER THE CHIP, because the row ground is not --card.
-     Measured flat against --card the dark Disposed chip reads 4.77; measured
-     on the page it is 4.49, because the panel is glass over a photograph and
-     the zebra row is lighter still - and a light ink wants a DARK ground.
-     So each theme gets a scrim pushing the ground away from the ink: black
-     under the light inks, white under the dark ones. Neutral fills, not a T
-     variant worn as a background. */
-  .row .st{background:rgba(0,0,0,.26);border:1px solid var(--line3);font-weight:600}
-  html[data-theme="light"] .row .st{background:rgba(255,255,255,.55)}
-  .row .st.ok{color:var(--okT)}
-  .row .st.bad{color:var(--badT)}
+     The three kind colours fall back to --text and --muted, so a chip is
+     always legible even where no palette defines them. */
+  .row .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .row .chips .tag{font-size:11.5px;font-weight:500;padding:2px 10px;border-radius:999px;
+    border:1px solid currentColor;border-color:color-mix(in srgb,currentColor 38%,transparent);
+    background:color-mix(in srgb,currentColor 7%,transparent);white-space:nowrap}
+  .row .chips .ty{color:var(--chipType,var(--text))}
+  .row .chips .vn{color:var(--chipVendor,var(--text))}
+  .row .chips .at{color:var(--chipAttr,var(--muted))}
+  .row .chips .st.ok{color:var(--okT)}
+  .row .chips .st.bad{color:var(--badT)}
+  /* A SCRIM UNDER THE STATUS CHIP, kept from 9 November. The row ground
+     is not --card: it is glass over a photograph, and the zebra row is
+     lighter again. Measured on the page then, the dark Disposed chip read
+     4.49 flat and 5.04 with this scrim. His chips carry only a 7% wash of
+     their own colour, which moves the ground TOWARDS the ink and makes the
+     pairing slightly worse, so the scrim stays - black under the light
+     inks, white under the dark ones. Neutral fills, not a T variant worn
+     as a background.
+     NOT RE-MEASURED TODAY: the browser pane is hidden, so the photo cannot
+     be decoded and composited. This is carried forward from the reading
+     that established it rather than re-derived. */
+  .row .chips .st{background:rgba(0,0,0,.26)}
+  html[data-theme="light"] .row .chips .st{background:rgba(255,255,255,.55)}
+  /* BUTTON OPTIONS for Code (primary) and Description, ?btn=b1..b6.
+     Rows and the popup both. Text stays as it is. */
+  html[data-btn] .cpb{font-weight:600;text-shadow:none !important;transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease}
+  html[data-btn] .cpb:hover{transform:translateY(-1px)}
+  html:not([data-theme="light"])[data-btn="b1"] .cpb.primary{background:#81D67B !important;border-color:#81D67B !important;color:#071307 !important}
+  html:not([data-theme="light"])[data-btn="b1"] .cpb:not(.primary){background:transparent !important;border:1.5px solid #A2E59C !important;color:#E6F7E4 !important}
+  html[data-theme="light"][data-btn="b1"] .cpb.primary{background:#0B6B2A !important;border-color:#0B6B2A !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b1"] .cpb:not(.primary){background:transparent !important;border:1.5px solid #0B6B2A !important;color:#0B4A1D !important}
+  html:not([data-theme="light"])[data-btn="b2"] .cpb.primary{background:#29523B !important;border:1px solid #6FB98A !important;color:#E9FBEF !important}
+  html:not([data-theme="light"])[data-btn="b2"] .cpb:not(.primary){background:#1C3A29 !important;border:1px solid #3E6150 !important;color:#CFE9D8 !important}
+  html[data-theme="light"][data-btn="b2"] .cpb.primary{background:#1E4D33 !important;border-color:#1E4D33 !important;color:#F2FFF6 !important}
+  html[data-theme="light"][data-btn="b2"] .cpb:not(.primary){background:#BCDAC7 !important;border:1px solid #8FBFA2 !important;color:#12321F !important}
+  html:not([data-theme="light"])[data-btn="b3"] .cpb.primary{background:rgba(129,214,123,.22) !important;border:1px solid rgba(162,229,156,.7) !important;color:#C9F5C4 !important}
+  html:not([data-theme="light"])[data-btn="b3"] .cpb:not(.primary){background:rgba(255,255,255,.07) !important;border:1px solid rgba(255,255,255,.28) !important;color:#F4FBF5 !important}
+  html[data-theme="light"][data-btn="b3"] .cpb.primary{background:rgba(11,107,42,.14) !important;border:1px solid rgba(11,107,42,.55) !important;color:#0A4F1C !important}
+  html[data-theme="light"][data-btn="b3"] .cpb:not(.primary){background:rgba(255,255,255,.7) !important;border:1px solid rgba(8,23,13,.25) !important;color:#08170D !important}
+  html:not([data-theme="light"])[data-btn="b4"] .cpb.primary{background:#81D67B !important;border-color:#81D67B !important;color:#071307 !important}
+  html:not([data-theme="light"])[data-btn="b4"] .cpb:not(.primary){background:rgba(232,213,168,.12) !important;border:1.5px solid #E8D5A8 !important;color:#F2DFB4 !important}
+  html[data-theme="light"][data-btn="b4"] .cpb.primary{background:#0B6B2A !important;border-color:#0B6B2A !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b4"] .cpb:not(.primary){background:#F6EBD2 !important;border:1px solid #B8955A !important;color:#5E4317 !important}
+  html:not([data-theme="light"])[data-btn="b5"] .cpb.primary{background:#BCDAC7 !important;border-color:#BCDAC7 !important;color:#0B2416 !important}
+  html:not([data-theme="light"])[data-btn="b5"] .cpb:not(.primary){background:transparent !important;border:1px solid rgba(188,218,199,.55) !important;color:#E3F3E9 !important}
+  html[data-theme="light"][data-btn="b5"] .cpb.primary{background:#29523B !important;border-color:#29523B !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b5"] .cpb:not(.primary){background:#ffffff !important;border:1px solid #29523B !important;color:#1B3A28 !important}
+  html:not([data-theme="light"])[data-btn="b6"] .cpb{border-radius:999px !important;padding:7px 14px !important}
+  html:not([data-theme="light"])[data-btn="b6"] .cpb.primary{background:linear-gradient(135deg,#A2E59C,#4FB86A) !important;border:0 !important;color:#06160A !important;box-shadow:0 6px 16px -6px rgba(129,214,123,.7)}
+  html:not([data-theme="light"])[data-btn="b6"] .cpb:not(.primary){background:rgba(255,255,255,.06) !important;border:1px solid rgba(162,229,156,.45) !important;color:#E6F7E4 !important}
+  html[data-theme="light"][data-btn="b6"] .cpb{border-radius:999px !important;padding:7px 14px !important}
+  html[data-theme="light"][data-btn="b6"] .cpb.primary{background:linear-gradient(135deg,#1E8A3C,#0B5A22) !important;border:0 !important;color:#ffffff !important;box-shadow:0 6px 14px -6px rgba(11,90,34,.6)}
+  html[data-theme="light"][data-btn="b6"] .cpb:not(.primary){background:#ffffff !important;border:1px solid rgba(11,90,34,.45) !important;color:#0B4A1D !important}
+  /* B7-B12: the buttons in a colour other than green */
+  html:not([data-theme="light"])[data-btn="b7"] .cpb.primary{background:#E8C77A !important;border-color:#E8C77A !important;color:#2A1E05 !important}
+  html:not([data-theme="light"])[data-btn="b7"] .cpb:not(.primary){background:transparent !important;border:1.5px solid #F2DFB4 !important;color:#F2DFB4 !important}
+  html[data-theme="light"][data-btn="b7"] .cpb.primary{background:#8A6A12 !important;border-color:#8A6A12 !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b7"] .cpb:not(.primary){background:#FBF3DE !important;border:1.5px solid #8A6A12 !important;color:#6B500C !important}
+  html:not([data-theme="light"])[data-btn="b8"] .cpb.primary{background:#F59AAE !important;border-color:#F59AAE !important;color:#2A0812 !important}
+  html:not([data-theme="light"])[data-btn="b8"] .cpb:not(.primary){background:transparent !important;border:1.5px solid #F8C3CF !important;color:#F8C3CF !important}
+  html[data-theme="light"][data-btn="b8"] .cpb.primary{background:#8C1D3A !important;border-color:#8C1D3A !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b8"] .cpb:not(.primary){background:#FBE8EC !important;border:1.5px solid #8C1D3A !important;color:#7A1832 !important}
+  html:not([data-theme="light"])[data-btn="b9"] .cpb.primary{background:#9AC6DD !important;border-color:#9AC6DD !important;color:#0A1F2B !important}
+  html:not([data-theme="light"])[data-btn="b9"] .cpb:not(.primary){background:transparent !important;border:1.5px solid #C4DFEC !important;color:#C4DFEC !important}
+  html[data-theme="light"][data-btn="b9"] .cpb.primary{background:#1E4D6B !important;border-color:#1E4D6B !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b9"] .cpb:not(.primary){background:#E6F1F7 !important;border:1.5px solid #1E4D6B !important;color:#1A4360 !important}
+  html:not([data-theme="light"])[data-btn="b10"] .cpb.primary{background:#CBAEDC !important;border-color:#CBAEDC !important;color:#22122E !important}
+  html:not([data-theme="light"])[data-btn="b10"] .cpb:not(.primary){background:transparent !important;border:1.5px solid #E0CCEA !important;color:#E0CCEA !important}
+  html[data-theme="light"][data-btn="b10"] .cpb.primary{background:#533D60 !important;border-color:#533D60 !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b10"] .cpb:not(.primary){background:#F1EAF5 !important;border:1.5px solid #533D60 !important;color:#4A3556 !important}
+  html:not([data-theme="light"])[data-btn="b11"] .cpb.primary{background:#F4FBF5 !important;border-color:#F4FBF5 !important;color:#0B1A10 !important}
+  html:not([data-theme="light"])[data-btn="b11"] .cpb:not(.primary){background:transparent !important;border:1.5px solid #F4FBF5 !important;color:#F4FBF5 !important}
+  html[data-theme="light"][data-btn="b11"] .cpb.primary{background:#10201A !important;border-color:#10201A !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b11"] .cpb:not(.primary){background:#FFFFFF !important;border:1.5px solid #10201A !important;color:#10201A !important}
+  html:not([data-theme="light"])[data-btn="b12"] .cpb.primary{background:#F0A877 !important;border-color:#F0A877 !important;color:#2A1205 !important}
+  html:not([data-theme="light"])[data-btn="b12"] .cpb:not(.primary){background:transparent !important;border:1.5px solid #F6C9A8 !important;color:#F6C9A8 !important}
+  html[data-theme="light"][data-btn="b12"] .cpb.primary{background:#9A4A1C !important;border-color:#9A4A1C !important;color:#ffffff !important}
+  html[data-theme="light"][data-btn="b12"] .cpb:not(.primary){background:#FCEDE3 !important;border:1.5px solid #9A4A1C !important;color:#7E3C16 !important}
   .row .cp{display:flex;gap:6px}
   .cpb{padding:7px 11px;border-radius:8px;border:1px solid var(--line);
     background:none;color:var(--text);font:inherit;font-size:12.5px;font-weight:500;
@@ -933,36 +991,32 @@ function route(){
      narrower search - and the person who wants all 600 antennas is exactly
      the person who cannot. */
   const show = res.slice(0, LIM);
-  /* The same values the dot-line carried, one per pill, plus the vendor -
-     which the row already holds and the line never showed.
+  /* THE CHIPS under each description: what it is, who makes it, a few
+     short facts from its sheet, and whether it is still in use.
 
-     FEXCL IS REUSED, NOT RE-WRITTEN. It is the list the facets already
-     skip: part numbers, final MC, comments, remarks and the disposal
-     column. The disposal column in particular must not also appear as a
-     pill now that the chip says it, and reusing the one regex means the
-     two can never disagree about which keys are noise.
+     SKIP is his, and it is NOT FEXCL. FEXCL is the facet list and is
+     about which attribute keys deserve a filter; this is about which
+     deserve a chip, and the answers differ - a Model is worth filtering
+     on and would be noise on every row. They do overlap on the disposal
+     column, which both must drop, and that overlap is the one thing to
+     watch if either list changes: the chip would say Active while the
+     disposal value sat beside it as an attribute.
 
-     The chip reads isDisp(r), which is the flag this page already
-     derives from attrs for the Disposed segment and the struck-through
-     code. No second source for it. */
-  const tagsOf = r => {
-    const out = [];
-    if (!TYPE) out.push(M.labelOf(r.type));
-    if (r.vendor) out.push(r.vendor);
-    Object.entries(r.attrs || {}).forEach(([k, v]) => {
-      v = String(v == null ? '' : v).trim();
-      if (!v || FEXCL.test(k) || v === r.vendor) return;
-      out.push(v);
-    });
-    return out.filter(Boolean).slice(0, 5);
+     The status still reads isDisp(r) - the same flag the Disposed
+     segment and the struck-through code use. No second source for it. */
+  const SKIP = /^(vendor|category|category \d|type|type - cat|model|model name|item description|part no|part number|final mc|remarks|comment|owner|base|column\d*|level \d+ categorizing|genaric name of antenna|bb\/mpt\/ext\/bb accs|total disposal.*|total dispose)$/i;
+  const chips = r => {
+    const at = Object.entries(r.attrs || {})
+      .filter(([k, v]) => !SKIP.test(k) && v && v.length <= 14 && !/^[-—]$/.test(v) && v !== r.vendor)
+      .slice(0, 3).map(e => '<span class="tag at">' + esc(e[1]) + '</span>').join('');
+    return (r.type ? '<span class="tag ty">' + esc(M.labelOf(r.type)) + '</span>' : '') +
+      (r.vendor ? '<span class="tag vn">' + esc(r.vendor) + '</span>' : '') + at +
+      (isDisp(r) ? '<span class="tag st bad">Disposed</span>' : '<span class="tag st ok">Active</span>');
   };
   $('view').innerHTML = '<div class="rows">' + show.map((r, i) =>
     '<div class="row' + (isDisp(r) ? ' disp' : '') + '" role="button" tabindex="0" data-i="' + i + '"><span class="c">' + hl(r.code, Q) + '</span>' +
     '<span class="mid"><span class="d">' + hl(r.desc, Q) + '</span>' +
-    '<span class="tags">' +
-      tagsOf(r).map(t => '<span class="tg">' + esc(t) + '</span>').join('') +
-      '<span class="st ' + (isDisp(r) ? 'bad">Disposed' : 'ok">Active') +
-      '</span></span></span>' +
+    '<span class="chips">' + chips(r) + '</span></span>' +
     '<span class="cp"><button class="cpb primary" data-cp="code" data-i="' + i + '">⧉ Code</button>' +
     '<button class="cpb" data-cp="desc" data-i="' + i + '">⧉ Description</button></span></div>'
   ).join('') + '</div>' +
@@ -1329,6 +1383,10 @@ applyTheme(QS.get('theme') || savedTheme || 'light');
 let accent = QS.get('accent');
 try { if (!accent) accent = localStorage.getItem('mat_accent'); } catch(e){}
 if (accent && accent !== 'green') document.documentElement.dataset.accent = accent;
+/* ?btn=b1..b12, his button studies. Sets data-btn and nothing else; the
+   rules that read it are in the stylesheet and are inert without it. */
+const btnOpt = QS.get('btn');
+if (btnOpt && /^b([1-9]|1[0-2])$/.test(btnOpt)) document.documentElement.dataset.btn = btnOpt;
 $('themeBtn').onclick = () => {
   const to = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   try { localStorage.setItem(THEME_KEY, to); } catch(e){}
