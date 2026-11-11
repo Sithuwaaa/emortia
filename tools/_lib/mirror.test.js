@@ -84,12 +84,25 @@ for (const [a, b] of PAIRS) {
       const n = Math.max(la.length, lb.length);
       for (let i = 0; i < n; i++) {
         if (la[i] !== lb[i]) {
-          /* escaped, so a stray \r or trailing space is visible */
-          const cut = s => s === undefined ? '(no such line)'
-            : JSON.stringify(s.length > 100 ? s.slice(0, 100) + '...' : s);
-          console.log('  first difference at line ' + (i + 1));
-          console.log('    ' + a + ': ' + cut(la[i]));
-          console.log('    ' + b + ': ' + cut(lb[i]));
+          /* WINDOW ON THE DIFFERENCE, not the start of the line. Printing
+             the first 100 characters put two identical-looking strings on
+             screen when the change was further right - the second time
+             this reporter managed to render a real difference as no
+             difference. Find the column where they part and show that. */
+          const x = la[i], y = lb[i];
+          let c = 0;
+          while (c < x.length && c < y.length && x[c] === y[c]) c++;
+          const from = Math.max(0, c - 40);
+          const win = s => {
+            if (s === undefined) return '(no such line)';
+            const head = from > 0 ? '...' : '';
+            const tail = s.length > from + 90 ? '...' : '';
+            /* escaped, so a stray \r or trailing space is visible */
+            return head + JSON.stringify(s.slice(from, from + 90)) + tail;
+          };
+          console.log('  first difference at line ' + (i + 1) + ', column ' + (c + 1));
+          console.log('    ' + a + ': ' + win(x));
+          console.log('    ' + b + ': ' + win(y));
           break;
         }
       }
