@@ -2965,3 +2965,66 @@ the broken instrument.
 The fix in the scanner is mundane: rebuild the photograph per call rather
 than per helper, and never hand out a closure that outlives the state it
 captured.
+
+## A guard whose subject moved
+
+`family.test.js` has a rule called "not one of them is a lamp on the
+page": it reads each tool's `--tc` and refuses any value brighter than
+5:1 against the burgundy ground. It was written when `--tc` *was* the
+band — the big block of colour across the top of a directory card — and
+every band then sat between 2.59 and 3.60, so the cap was never close
+and nobody had to defend it.
+
+The approved palette of 11 November splits that token in two. `--tcBand`
+becomes the band and the side stripe; `--tc` becomes the icon, edge and
+glow tint, which is *supposed* to be bright. The guard failed 15 of 17
+tools, reporting tints of 7.1 to 11.1.
+
+**It did not break, and it did not pass wrongly.** It went on measuring
+`--tc` exactly as written, correctly, while the meaning of `--tc` moved
+out from under it. The failures were real readings of the wrong subject,
+and every one of them was a tool being the colour it had just been
+designed to be.
+
+That is a third thing, distinct from the two failure modes already in
+this file. A guard that breaks announces itself. A guard that passes
+wrongly is the one everybody fears. This one **changed its subject** —
+same name, same code, same assertion, different thing being asserted
+about — and it announced itself in the most misleading way available, by
+failing loudly and pointing at fifteen innocent values.
+
+**The tell is that the failures cluster on the new thing.** Fifteen
+tools failing the moment a token is repurposed is not fifteen mistakes;
+it is one. When a guard suddenly indicts a whole category of values that
+were just deliberately changed, the first question is not "which value is
+wrong" but "is this still measuring what its name says".
+
+The repair is to point it at `--tcBand`, which is what a band is now. That
+is not relaxing it — the cap and the assertions are untouched — it is
+following the subject.
+
+### And then the proxy had to be checked against the thing
+
+Retargeted, four bands read 1.96, 3.20, 4.82 and 4.90, and the fifth —
+Design & materials `#28B24B` — read 6.86 against a cap of 5.
+
+The cap was a round number, not a measurement. It had never been tested
+because nothing had ever come near it. So rather than argue from it, the
+five cards were rendered on the real ground with the real stylesheet, the
+approved green shown beside the smallest colour that would have cleared 5,
+and the person whose palette it is was asked the question the cap is a
+proxy for: does it glare. It does not. The cap is now 7, with its
+provenance — set by eye on the rendered page, 11 November — written beside
+it, and it still refuses the tints it was always meant to refuse.
+
+**The rule: when a proxy and the thing it stands for disagree, go and look
+at the thing.** A threshold nobody has ever had to defend is not evidence,
+it is a habit. The way to keep the guard honest was to give it a number
+somebody had actually looked at.
+
+One thing worth saying plainly, because it was nearly fudged: there was no
+cheap version of the alternative. The smallest colour satisfying the old
+cap was ΔE 13.6 from the approved green, at the noticeability floor set on
+8 November. Offering it as a small adjustment would have been a second
+proxy standing in for a judgement — presenting a visible change as a nudge
+so the number could win without anyone deciding it should.

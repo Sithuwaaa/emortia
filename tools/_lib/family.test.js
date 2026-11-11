@@ -686,15 +686,45 @@ console.log('\n--- the directory carries the same five hues ---');
     is('and it is the ' + pick + ' hue, within 6 degrees',
        apart(hueOf(m[1]), hueOf(pick)) <= 6, true);
   }
-  /* The point of the change: nothing in the directory glares any more. */
+  /* The point of the change: nothing in the directory glares any more.
+
+     THIS READ --tc UNTIL 11 NOVEMBER, and --tc was the band then. The
+     approved palette splits that in two: --tcBand is the band and the
+     side stripe, --tc became the icon, edge and glow tint, which is
+     meant to be bright and reads 7.1 to 11.1 here. Leaving the match on
+     --tc would have been this guard quietly changing its subject and
+     failing 15 tools for being the colour they were designed to be.
+     Pointing it at --tcBand keeps it testing the thing it was written
+     to test: the big block of colour at the top of the card. The cap is
+     unchanged and nothing is excepted. */
   const lum = h => { const c = [0,2,4].map(i => parseInt(h.replace('#','').slice(i,i+2),16)/255)
       .map(v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
     return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2]; };
   const onPage = h => (Math.max(lum(h), lum('#170d10')) + 0.05) / (Math.min(lum(h), lum('#170d10')) + 0.05);
-  const bands = [...INDEX.matchAll(/^\.tool-[a-z0-9]+\{--tc:(#[0-9a-fA-F]{6})/gm)].map(m => m[1]);
+  /* THE CAP IS 7, AND IT WAS 5. The 5 was a round number, never a
+     measurement - picked when --tc was the band and every band sat
+     between 2.59 and 3.60, so nothing was ever near it and nobody had to
+     defend it. The approved palette of 11 November put the band at
+     1.96, 3.20, 4.82, 4.90 and 6.86. Only the green is anywhere close,
+     and 5 would have rejected it by 1.86.
+
+     So the proxy was checked against the thing it stands for. The cap
+     asks "does it glare"; the five cards were rendered on the real
+     #170d10 ground with this stylesheet, the approved green shown
+     beside the smallest colour that would have cleared 5 (#22953F,
+     dE 13.6 away - there is no small version of this change), and
+     Sithuwaaa looked at them and said it does not glare. 7 is set above
+     #28B24B's 6.86 and well below the --tc tints at 7.1 to 11.1 that
+     this guard was never meant to admit, so it still bites.
+
+     Set by eye on the rendered page, 11 November 2026, not derived.
+     That is the honest provenance and it is why the number is written
+     here rather than argued from. Nothing is excepted. */
+  const LAMP = 7;
+  const bands = [...INDEX.matchAll(/^\.tool-[a-z0-9]+\{[^}]*?--tcBand:(#[0-9a-fA-F]{6})/gm)].map(m => m[1]);
   is('a card band exists for every tool', bands.length, FEATURES.length);
   is('and not one of them is a lamp on the page',
-     bands.filter(b => onPage(b) > 5).map(b => b + ' ' + onPage(b).toFixed(1)), []);
+     bands.filter(b => onPage(b) > LAMP).map(b => b + ' ' + onPage(b).toFixed(1)), []);
 }
 
 /* ---- THE STATUS FILL/TEXT SPLIT STAYS SPLIT -------------------------

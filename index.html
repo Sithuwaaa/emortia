@@ -1587,66 +1587,30 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 .grp-head .gmark{color:var(--gc,var(--mute));}
 .term-card .gmark{opacity:.72;}
 .term-card{--tc:var(--accent);--tcB:var(--accentB);--tcGrid:rgba(255,255,255,.05);--tcLine:var(--line2);--tcBg:var(--surface2);--tcRGB:255,255,255;}
-/* ---- The tools, by family ----
-
-   One family of colour per group, and the group a tool is filed under is the
-   whole of what decides its colour - so a shelf is one colour and moving a
-   tool moves its colour with it.
-
-   THE FIVE ANCHORS ARE PICKED, NOT DERIVED. They are:
-
-     Design & materials  #6F1D1B   Emortia           #FF467A
-     Field operations    #76C457   People & work     #C654C3
-     Site intelligence   #B58500
-
-   and they replace a palette that was five warm hues 29 degrees apart. The
-   arc is gone deliberately: these are chosen colours, not a generated ramp.
-
-   WHICH MEANS THE ROLES NOW MATTER, where before they did not. Every old
-   value was light, so any of them could be text, fill, or ink on a fill
-   without thinking about it. #6F1D1B cannot: it is 1.70:1 on the page
-   ground. So each token is measured for the job it actually does -
-
-     --tc     background / stroke / border    a FILL. Any lightness works,
-                                              and the dark ones are the point.
-     --tcB    color                           TEXT. >= 6:1 on the ground.
-     --gc     color, on the group heading     TEXT. >= 6:1 on the ground.
-     --tcOn   color, ON a --tc fill           measured against that fill, so
-                                              it is near-white on the dark
-                                              families and the family tint on
-                                              the light ones.
-
-   --tcOn is new. The header band is background:--tc with --tcBg as its text,
-   which worked only while every family was light; with the picked anchors it
-   put a dark tint on a dark fill at 1.73:1.
-
-   Measured: lowest text 6.41 (.tool-wh24), lowest ink-on-fill 5.01
-   (.tool-team). Nothing here is under the 6:1 floor the palette has always
-   claimed.
-
-   ONE THING THESE PICKS COST. The old palette put 19 greyscale points between
-   families so they survived a black and white print and red/green colour
-   blindness. These five cluster: Site intelligence 141, Emortia 145, Design
-   151, People 154, Field 160 - gaps of 3 to 6. Colour alone no longer
-   separates them for everyone. The shape each family carries (FAMILY, below)
-   is what does that now, and it is why it is not decoration. */
-.tool-design{--tc:#32602f;--tcB:#40b337;--tcGrid:rgba(50,96,47,.10);--tcLine:#1e351d;--tcBg:#070e07;--tcOn:#f3e7ea;--tcRGB:50,96,47;}
-.tool-mat{--tc:#356732;--tcB:#42bb3a;--tcGrid:rgba(53,103,50,.10);--tcLine:#1e351d;--tcBg:#070e07;--tcOn:#f3e7ea;--tcRGB:53,103,50;}
-.tool-bom{--tc:#396d36;--tcB:#45c33c;--tcGrid:rgba(57,109,54,.10);--tcLine:#1e351d;--tcBg:#070e07;--tcOn:#f3e7ea;--tcRGB:57,109,54;}
-.tool-gin{--tc:#3d7439;--tcB:#4dc544;--tcGrid:rgba(61,116,57,.10);--tcLine:#1e351d;--tcBg:#070e07;--tcOn:#f3e7ea;--tcRGB:61,116,57;}
-.tool-wh24{--tc:#3f783b;--tcB:#5bca53;--tcGrid:rgba(63,120,59,.10);--tcLine:#1e351d;--tcBg:#070e07;--tcOn:#f3e7ea;--tcRGB:63,120,59;}
-.tool-lyric{--tc:#9e2e3a;--tcB:#f47783;--tcGrid:rgba(158,46,58,.10);--tcLine:#351d1f;--tcBg:#230b0e;--tcOn:#f3e7ea;--tcRGB:158,46,58;}
-.tool-todo{--tc:#a6303c;--tcB:#f4808c;--tcGrid:rgba(166,48,60,.10);--tcLine:#351d1f;--tcBg:#230b0e;--tcOn:#f3e7ea;--tcRGB:166,48,60;}
-.tool-goals{--tc:#b03348;--tcB:#f58597;--tcGrid:rgba(176,51,72,.10);--tcLine:#351d1f;--tcBg:#230b0e;--tcOn:#f3e7ea;--tcRGB:176,51,72;}
-.tool-field{--tc:#365496;--tcB:#759beb;--tcGrid:rgba(54,84,150,.10);--tcLine:#222b3f;--tcBg:#080d16;--tcOn:#f3e7ea;--tcRGB:54,84,150;}
-.tool-swap{--tc:#38599e;--tcB:#7ea1ec;--tcGrid:rgba(56,89,158,.10);--tcLine:#222b3f;--tcBg:#080d16;--tcOn:#f3e7ea;--tcRGB:56,89,158;}
-.tool-esn{--tc:#3c5faa;--tcB:#88a8ed;--tcGrid:rgba(60,95,170,.10);--tcLine:#222b3f;--tcBg:#080d16;--tcOn:#f3e7ea;--tcRGB:60,95,170;}
-.tool-rf{--tc:#3e63b1;--tcB:#90aeef;--tcGrid:rgba(62,99,177,.10);--tcLine:#222b3f;--tcBg:#080d16;--tcOn:#f3e7ea;--tcRGB:62,99,177;}
-.tool-team{--tc:#693fa7;--tcB:#b18aea;--tcGrid:rgba(105,63,167,.10);--tcLine:#291f38;--tcBg:#100a1a;--tcOn:#f3e7ea;--tcRGB:105,63,167;}
-.tool-att{--tc:#7043b2;--tcB:#b793eb;--tcGrid:rgba(112,67,178,.10);--tcLine:#291f38;--tcBg:#100a1a;--tcOn:#f3e7ea;--tcRGB:112,67,178;}
-.tool-update{--tc:#3a62b4;--tcB:#8fb4f6;--tcGrid:rgba(58,98,180,.10);--tcLine:#222b3f;--tcBg:#080d16;--tcOn:#f3e7ea;--tcRGB:58,98,180;}
-.tool-access{--tc:#7f522a;--tcB:#e78f41;--tcGrid:rgba(127,82,42,.10);--tcLine:#3f3022;--tcBg:#1f140a;--tcOn:#f3e7ea;--tcRGB:127,82,42;}
-.tool-data{--tc:#86572d;--tcB:#e8974f;--tcGrid:rgba(134,87,45,.10);--tcLine:#3f3022;--tcBg:#1f140a;--tcOn:#f3e7ea;--tcRGB:134,87,45;}
+/* Tool families - approved 11 Nov 2026: the vivid colour in the band and the
+   side stripe, the card in a deep tone of the same hue, a soft tint of it for
+   the icon, edges and glow, white for the link.
+   Row 12: the colours 10% darker in the band, the card near black-with-colour:
+   Emortia #E64562 · Site intelligence #E04E32 · Design & materials #28B24B ·
+   Field operations #3C57D6 · People & work #6708A5. Band letters are white on
+   every band. */
+.tool-todo{--tc:#FF8BA0;--tcB:#FFFFFF;--tcBand:#E64562;--tcInk:#FFFFFF;--tcGrid:rgba(230,69,98,.10);--tcLine:rgba(230,69,98,.45);--tcBg:#290C11;--tcRGB:230,69,98;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-lyric{--tc:#FF8BA0;--tcB:#FFFFFF;--tcBand:#E64562;--tcInk:#FFFFFF;--tcGrid:rgba(230,69,98,.10);--tcLine:rgba(230,69,98,.45);--tcBg:#290C11;--tcRGB:230,69,98;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-goals{--tc:#FF8BA0;--tcB:#FFFFFF;--tcBand:#E64562;--tcInk:#FFFFFF;--tcGrid:rgba(230,69,98,.10);--tcLine:rgba(230,69,98,.45);--tcBg:#290C11;--tcRGB:230,69,98;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-data{--tc:#FB927E;--tcB:#FFFFFF;--tcBand:#E04E32;--tcInk:#FFFFFF;--tcGrid:rgba(224,78,50,.10);--tcLine:rgba(224,78,50,.45);--tcBg:#280E09;--tcRGB:224,78,50;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-access{--tc:#FB927E;--tcB:#FFFFFF;--tcBand:#E04E32;--tcInk:#FFFFFF;--tcGrid:rgba(224,78,50,.10);--tcLine:rgba(224,78,50,.45);--tcBg:#280E09;--tcRGB:224,78,50;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-design{--tc:#76DA8F;--tcB:#FFFFFF;--tcBand:#28B24B;--tcInk:#FFFFFF;--tcGrid:rgba(40,178,75,.10);--tcLine:rgba(40,178,75,.45);--tcBg:#07200D;--tcRGB:40,178,75;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-bom{--tc:#76DA8F;--tcB:#FFFFFF;--tcBand:#28B24B;--tcInk:#FFFFFF;--tcGrid:rgba(40,178,75,.10);--tcLine:rgba(40,178,75,.45);--tcBg:#07200D;--tcRGB:40,178,75;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-mat{--tc:#76DA8F;--tcB:#FFFFFF;--tcBand:#28B24B;--tcInk:#FFFFFF;--tcGrid:rgba(40,178,75,.10);--tcLine:rgba(40,178,75,.45);--tcBg:#07200D;--tcRGB:40,178,75;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-gin{--tc:#76DA8F;--tcB:#FFFFFF;--tcBand:#28B24B;--tcInk:#FFFFFF;--tcGrid:rgba(40,178,75,.10);--tcLine:rgba(40,178,75,.45);--tcBg:#07200D;--tcRGB:40,178,75;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-wh24{--tc:#76DA8F;--tcB:#FFFFFF;--tcBand:#28B24B;--tcInk:#FFFFFF;--tcGrid:rgba(40,178,75,.10);--tcLine:rgba(40,178,75,.45);--tcBg:#07200D;--tcRGB:40,178,75;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-rf{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-esn{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-field{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-swap{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-update{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-team{--tc:#A35FD0;--tcB:#FFFFFF;--tcBand:#6708A5;--tcInk:#FFFFFF;--tcGrid:rgba(103,8,165,.10);--tcLine:rgba(103,8,165,.45);--tcBg:#12011D;--tcRGB:103,8,165;--text:#FFFFFF;--dim:#E3DEEA;}
+.tool-att{--tc:#A35FD0;--tcB:#FFFFFF;--tcBand:#6708A5;--tcInk:#FFFFFF;--tcGrid:rgba(103,8,165,.10);--tcLine:rgba(103,8,165,.45);--tcBg:#12011D;--tcRGB:103,8,165;--text:#FFFFFF;--dim:#E3DEEA;}
 
 .tgrp-design{--gc:#40b337;}
 .tgrp-emortia{--gc:#f47783;}
@@ -3356,9 +3320,9 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));grid-auto-rows:1fr;gap:16px;">
         <sc-for list="{{ grp.tools }}" as="tool" hint-placeholder-count="1">
           <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;height:100%;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
-            <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--tc);z-index:2;"></div>
+            <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--tcBand,var(--tc));z-index:2;"></div>
             <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;right:-64px;bottom:-48px;width:260px;height:260px;stroke:var(--tc);stroke-width:0.5;opacity:.12;z-index:0;pointer-events:none;"><path d="{{ tool.icon }}"></path></svg>
-            <div style="position:relative;overflow:hidden;flex:none;height:50px;background:var(--tc);color:var(--tcOn);display:flex;align-items:center;padding:0 18px 0 100px;">
+            <div style="position:relative;overflow:hidden;flex:none;height:50px;background:var(--tcBand,var(--tc));color:var(--tcInk,var(--tcOn));display:flex;align-items:center;padding:0 18px 0 100px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
               <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
             </div>
@@ -3407,9 +3371,9 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         <div class="{{ tlRowClass }}">
         <sc-for list="{{ tlCards }}" as="tool" hint-placeholder-count="3">
           <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
-            <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--tc);z-index:2;"></div>
+            <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--tcBand,var(--tc));z-index:2;"></div>
             <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;right:-64px;bottom:-48px;width:260px;height:260px;stroke:var(--tc);stroke-width:0.5;opacity:.12;z-index:0;pointer-events:none;"><path d="{{ tool.icon }}"></path></svg>
-            <div style="position:relative;overflow:hidden;flex:none;height:50px;background:var(--tc);color:var(--tcOn);display:flex;align-items:center;padding:0 18px 0 100px;">
+            <div style="position:relative;overflow:hidden;flex:none;height:50px;background:var(--tcBand,var(--tc));color:var(--tcInk,var(--tcOn));display:flex;align-items:center;padding:0 18px 0 100px;">
               <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
               <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
             </div>
