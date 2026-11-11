@@ -2901,3 +2901,67 @@ The corollary: the imports were never going backwards because the design
 app was careless. They went backwards because it was working from the
 most recent thing it had been given, and nobody had given it anything
 recent.
+
+## A guard that enforces the pin on tool pages only
+
+The leaf stylesheet arrived setting `--accent`, `--accentB`, `--accentT`,
+`--accentD` and `--accent-ink` with `!important` — the five tokens the
+8 November identity pin exists to protect. The expectation was that
+`family.test.js` would refuse it.
+
+It does not, and I proved that rather than reasoning about it: installed
+the file untouched, overrides and all, and ran the guard. **332 passed,
+0 failed.** It reads `tools/<tool>/index.html`, `access.js`,
+`category.css` and `theme.css`. It has never opened a `_lib` stylesheet,
+because until now no `_lib` stylesheet set a family token.
+
+**What that means, stated plainly: the accent pin is enforced on tool
+pages only.** Any shared stylesheet can override it unseen, for every
+page that loads that stylesheet, and the suite will stay green. The pin
+reads as enforced and is enforced in one of the two places it can be
+broken.
+
+Left open deliberately. Widening the guard to read every stylesheet a
+page links is its own change and wants its own breaking tests — a guard
+extended without a test that fails first is a guard nobody has checked.
+
+The general shape, which is not new here but is sharper than the previous
+instances: **a check's silence is only as wide as its inputs.** Green
+means "nothing I looked at was wrong", and the set of things it looks at
+is a decision somebody made once, usually before the thing that now needs
+checking existed. Asking what a passing test *reads* is a different
+question from asking what it *asserts*, and it is the one that was not
+being asked.
+
+## The prober that was measuring the other theme
+
+While solving the leaf panels I quoted **1.84:1** for the struck-through
+code on a disposed row. The real figure is **2.59**.
+
+The scanner loads the scene photograph into a canvas, blurs it through
+the panel's real `backdrop-filter`, and caches the result. The cache was
+keyed on the filter string and built once per invocation — so after I
+measured light and then switched the page to dark, the helper I had kept
+a reference to was still holding **the light photograph**. It composited
+dark panels over the bright picture and reported the result as dark mode.
+Lighter ground under light-on-dark text, so the number came out worse.
+
+**The third instrument-reports-its-own-state instance this week** — after
+the 0x0 hidden pane and the `IS_OWNER` probe — and the first where the
+instrument's error was in the *safe* direction. That is what makes it
+worth writing down. The other two produced numbers that were too kind and
+got caught because the page visibly disagreed. This one produced a number
+that was too harsh, and a too-harsh contrast figure looks like diligence.
+Nothing about it invites a second look; it argues for doing more work,
+not less, and it would have been reported and acted on.
+
+**The rule: a measurement that flatters your conclusion and a measurement
+that indicts it both need the same check.** The only reason this was
+caught is that two passes disagreed and the disagreement was chased
+instead of resolved by taking the worse number. Taking the worse number
+is the instinct that feels responsible and is actually the one that hides
+the broken instrument.
+
+The fix in the scanner is mundane: rebuild the photograph per call rather
+than per helper, and never hand out a closure that outlives the state it
+captured.
