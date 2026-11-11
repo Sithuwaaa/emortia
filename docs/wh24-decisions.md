@@ -2472,6 +2472,17 @@ decide whether the rest are worth the same treatment.
 **A backup is verified by reading it back from a location that outlives
 the process that wrote it. Writing it is not the same as having it.**
 
+**And when a backup does fail, the next move is a deterministic reversal,
+not a second backup.** Third instance, 11 November: a mutation test wrote
+its backup to `/tmp/idx.bak` and the restore read a scratchpad path, so
+`index.html` sat mutated with the only copy somewhere the restore was not
+looking. The recovery was to reverse the exact string that had been
+substituted - an operation whose correctness does not depend on any file
+having survived - and then verify the result directly: seventeen rules,
+the right family split, no stray hex. Reaching for another backup at that
+moment compounds the thing that already went wrong, because the belief
+under test is precisely that a copy exists where you think it does.
+
 Same family as a function that logs its failure instead of returning
 it: in both, the thing that would tell you it went wrong is discarded
 at the moment it is produced, and what survives is a line of output
