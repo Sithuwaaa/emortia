@@ -1,0 +1,265 @@
+/* ===========================================================================
+   LEAF GLASS - the Material Codes look, shared.
+
+   G1 Leaf colours on pastel green liquid-glass panels (#142C1F dark,
+   #D0F4DE light), B1 buttons, the waterfront photo behind everything.
+   A page opts in with data-look="leaf" on <html>, loads this AFTER
+   category.css, and puts <div class="scene" aria-hidden="true"></div>
+   first in <body>. Nothing here applies to a page that has not opted in.
+
+   Paths to the photos are relative to this file.
+   =========================================================================== */
+
+/* The panels must read as the chosen colours, #142C1F and #D0F4DE, not as
+   whatever the photo is behind them: .72 dark and .80 light keep the photo
+   glowing through while the colour stays the colour. */
+/* ---- colours: tokens first, so every rule a tool already has picks them up */
+html[data-cat][data-look="leaf"]{
+  /* THE ACCENT TOKENS ARE NOT SET HERE, and they were, with !important.
+
+     --accent, --accentB, --accentT, --accentD and --accent-ink belong to
+     the family: category.css owns them, and the 8 November identity pin
+     is the reason the directory tile and the tool it opens are the same
+     green. A look may change everything else about a page; it may not
+     change what the page IS.
+
+     Removing them cost almost nothing, measured against category.css:
+
+       DARK   all five were already byte-identical to the pin.
+              #81D67B, #A2E59C, #A2E59C, #569252, #071307.
+              Setting them was a no-op with an !important on it.
+
+       LIGHT  three differ, and only three:
+                --accent   #0B6B2A -> #006400   dE 13.6
+                --accentB  #004E00 -> #006400   dE 12.6
+                --accentT  #004E00 -> #006400   dE 12.6
+              --accentD and --accent-ink were already identical.
+
+     All still the same dark green, and contrast does not suffer - the
+     filled primary button with white ink goes from 6.67 to 7.44, which
+     is better, not worse. The only real loss is --accentT as text on
+     white dropping from 10.05 to 7.44, and 7.44 is a long way clear of
+     the 4.5 floor.
+
+     A NOTE ON THE GUARD, because it did not catch this. family.test.js
+     reads tools/<tool>/index.html, access.js, category.css and
+     theme.css. It never opened this file, so it passed with the
+     overrides in place - tested, not assumed. It governs tool pages, and
+     this is a _lib stylesheet, which is a shape it had not seen before.
+     A check is extended alongside this change so the next one cannot
+     slip through the same gap. */
+  --glow:rgba(129,214,123,.3) !important; --glowSoft:rgba(129,214,123,.14) !important;
+  --bar:#142C1F !important; --navy:#142C1F !important; --barFill:#1C3A29 !important;
+  --barLine:#3E6150 !important; --barInk:#F4FBF5 !important; --barDim:#C6DACB !important;
+  --barRule:#81D67B !important;
+  --bg:#0b1a10 !important;
+  --card:rgba(20,44,31,.72) !important; --card-2:rgba(28,58,41,.55) !important;
+  --line:rgba(196,240,196,.20) !important; --line3:rgba(196,240,196,.36) !important;
+  --text:#F4FBF5 !important; --muted:#C6DACB !important;
+
+  /* THE DISPOSED RED, LIGHTENED - AND THE INSTRUCTION SAID DEEPEN.
+
+     It said deepen because the light panel's worst ground is pale and
+     deepening is right there. Dark is not the same problem wearing a
+     different colour. At .72 over the untinted photograph the worst
+     ground a struck-through code can sit on is rgb(75,77,45) - the
+     sunset patch through blur(30px) saturate(1.9) - which is in the
+     MIDDLE of the range, not at either end. Measured against it with
+     the repo's own contrast.js:
+
+       pure black        2.40      the ceiling of the whole deepening
+       #e2607a today     2.58      already above that ceiling
+       pure white        8.76
+
+     So every deeper red scores worse than the one already there. The
+     direction was not a close call that went the other way; it was
+     unavailable. Lightened along the same hue (348deg) and saturation
+     until both grounds clear with margin:
+
+       #f0afbc   4.82 on the code, 6.56 on the Disposed chip   dE 34.8
+
+     Light goes the other way, deeper, for the same reason reversed -
+     see the light block. One token, two directions, because the panel
+     puts its ground in a different place in each theme. */
+  --badT:#f0afbc !important;
+  --chipType:#B4F0AE; --chipVendor:#F2DFB4; --chipAttr:#BEE3DD;
+  --g-sheen:linear-gradient(155deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.04) 34%,rgba(255,255,255,0) 58%,rgba(162,229,156,.07) 100%);
+  --g-base:rgba(20,44,31,.72); --g-solid:rgba(16,36,25,.94);
+  --g-edge:rgba(196,240,196,.30);
+  --g-shadow:inset 0 1px 0 rgba(255,255,255,.26),inset 0 -1px 0 rgba(0,0,0,.28),inset 0 14px 26px -18px rgba(255,255,255,.22),inset 0 -18px 30px -24px rgba(129,214,123,.25),0 20px 44px -22px rgba(0,0,0,.75);
+  --g-blur:blur(30px) saturate(1.9);
+  --scene:image-set(url('../materials/img/scene-dark-original-1280.webp') 1x, url('../materials/img/scene-dark-original-1672.webp') 2x);
+}
+html[data-cat][data-look="leaf"][data-theme="light"]{
+  --glow:rgba(0,100,0,.22) !important; --glowSoft:rgba(0,100,0,.1) !important;
+  --bar:#D0F4DE !important; --navy:#D0F4DE !important; --barFill:#E6F9ED !important;
+  --barLine:#A9D6BA !important; --barInk:#0F1F14 !important; --barDim:#3A4D40 !important;
+  --barRule:#0B6B2A !important;
+  --bg:#eef8f1 !important;
+  --card:rgba(208,244,222,.80) !important; --card-2:rgba(236,251,241,.6) !important;
+  --line:rgba(11,107,42,.18) !important; --line3:rgba(11,107,42,.34) !important;
+  --text:#08170D !important; --muted:#23392B !important;
+
+  /* THE STATUS INK, DEEPENED FOR THIS LOOK ONLY.
+
+     category.css sets --badT #BE3C59 and --okT #007D4D, and both were
+     chosen against a solid white card. The leaf panel is not solid: at
+     .80 over the photograph the worst ground a chip or a struck-through
+     code can sit on is rgb(167,200,173) - the sunset patch read through
+     blur(30px) saturate(1.9), worst of sheen-present and sheen-absent,
+     at the scroll position that puts a row over it. Against that:
+
+       --badT  #BE3C59  2.89 on the code, 4.02 on the chip   both short
+       --okT   #007D4D  3.96 on the chip                     short
+
+     Deepened along the same hue until every ground clears 4.8, so the
+     margin survives a photo change:
+
+       --badT  #852a3e  4.80 / 6.68   dE 19.5
+       --okT   #006e44  4.83          dE  6.9
+
+     Light only. The dark panel lands its worst ground in the MIDDLE of
+     the range, rgb(75,77,45), where deepening cannot work at all - pure
+     black scores 2.40 there, below the 2.58 the current pink already
+     gets. Dark is handled separately. */
+  --badT:#852a3e !important;
+  --okT:#006e44 !important;
+  --chipType:#14561A; --chipVendor:#5E4317; --chipAttr:#1F4C49;
+  --g-sheen:linear-gradient(155deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.10) 36%,rgba(255,255,255,0) 60%,rgba(255,255,255,.12) 100%);
+  --g-base:rgba(208,244,222,.80); --g-solid:rgba(232,250,239,.96);
+  --g-edge:rgba(255,255,255,.9);
+  --g-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 rgba(0,70,25,.10),inset 0 14px 26px -18px rgba(255,255,255,.9),0 20px 44px -24px rgba(0,60,20,.38);
+  --g-blur:blur(30px) saturate(1.7);
+  --scene:image-set(url('../materials/img/scene-light-1280.webp') 1x, url('../materials/img/scene-light-1672.webp') 2x);
+}
+
+/* ---- the photo, as it is: no darkening layer */
+html[data-look="leaf"],html[data-look="leaf"] body{background:transparent !important}
+html[data-look="leaf"] .scene{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:#0b1a10 var(--scene) center/cover no-repeat}
+html[data-look="leaf"][data-theme="light"] .scene{background-color:#eef8f1}
+html[data-look="leaf"] main,html[data-look="leaf"] footer{position:relative;z-index:1}
+
+/* ---- letters: strong, with a soft lift in dark mode */
+html[data-look="leaf"] body{color:var(--text)}
+html[data-look="leaf"]:not([data-theme="light"]) body{text-shadow:0 1px 2px rgba(0,0,0,.55)}
+html[data-look="leaf"] .btn,html[data-look="leaf"] .bm,html[data-look="leaf"] .seg button.on,
+html[data-look="leaf"] .badge,html[data-look="leaf"] .pbadge,html[data-look="leaf"] .cbadge,
+html[data-look="leaf"] .nbadge{text-shadow:none}
+
+/* ---- LIQUID GLASS on every surface that stands on the photo */
+html[data-look="leaf"] .hl-glass,
+html[data-look="leaf"] .tile,html[data-look="leaf"] .pipe,html[data-look="leaf"] .panel,
+html[data-look="leaf"] .sync,html[data-look="leaf"] .tk,html[data-look="leaf"] .empty,
+html[data-look="leaf"] .seg,html[data-look="leaf"] .phead,html[data-look="leaf"] .totop{
+  background:var(--g-sheen),var(--g-base) !important;
+  -webkit-backdrop-filter:var(--g-blur) !important;backdrop-filter:var(--g-blur) !important;
+  border:1px solid var(--g-edge) !important;
+  box-shadow:var(--g-shadow) !important}
+html[data-look="leaf"] .sync{border-style:solid !important}
+html[data-look="leaf"] .empty{border-style:dashed !important}
+/* a ticket keeps its coloured stage stripe down the left */
+html[data-look="leaf"] .tk{border-left:4px solid var(--line3) !important}
+html[data-look="leaf"] .tk.s-ready{border-left-color:var(--ok) !important}
+html[data-look="leaf"] .tk.s-issuing{border-left-color:var(--warn) !important}
+html[data-look="leaf"] .tk.s-reserving{border-left-color:var(--info) !important}
+html[data-look="leaf"] .tk.s-shortage,html[data-look="leaf"] .tk.s-rejected{border-left-color:var(--bad) !important}
+html[data-look="leaf"] .tk.picked{border-left-color:var(--accent) !important}
+/* the one tile that is the answer keeps its glow, over the glass */
+html[data-look="leaf"] .tile.hero{background:linear-gradient(135deg,rgba(52,201,139,.22),rgba(52,201,139,0) 70%),var(--g-sheen),var(--g-base) !important;
+  border-color:rgba(52,201,139,.55) !important}
+html[data-look="leaf"] .tile.on{border-color:var(--accent) !important;
+  box-shadow:inset 0 0 0 1px var(--accent),var(--g-shadow) !important}
+
+/* ---- popups and fixed bars read on their own: near-solid glass */
+html[data-look="leaf"] .newspop,html[data-look="leaf"] #syncDlg .box,html[data-look="leaf"] .selbar,
+html[data-look="leaf"] .modal{
+  background:var(--g-sheen),var(--g-solid) !important;
+  -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);
+  border-color:var(--g-edge) !important}
+
+/* ---- the nav bar: SOLID, no glass. Flat #142C1F in dark mode and flat
+   #D0F4DE in light mode - no sheen, no blur, no see-through. */
+html[data-cat][data-look="leaf"] header.hdr,html[data-cat][data-look="leaf"] .hdr{
+  background:#142C1F !important;background-image:none !important;
+  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+  color:var(--barInk) !important;border-bottom:0 !important;box-shadow:none !important}
+html[data-cat][data-look="leaf"][data-theme="light"] header.hdr,html[data-cat][data-look="leaf"][data-theme="light"] .hdr{
+  background:#D0F4DE !important}
+
+/* ---- inputs sit a shade deeper than the glass they are on */
+html[data-look="leaf"] input:not([type=checkbox]):not([type=radio]),html[data-look="leaf"] select,html[data-look="leaf"] textarea{
+  background:rgba(0,0,0,.24) !important;border:1px solid var(--accent) !important;color:var(--text)}
+html[data-look="leaf"][data-theme="light"] input:not([type=checkbox]):not([type=radio]),
+html[data-look="leaf"][data-theme="light"] select,html[data-look="leaf"][data-theme="light"] textarea{
+  background:rgba(255,255,255,.78) !important}
+html[data-look="leaf"] input:focus{box-shadow:0 0 0 3px var(--glowSoft)}
+
+/* ---- B1 BUTTONS: filled green for the main action, outlined for the rest */
+html[data-look="leaf"] .btn,html[data-look="leaf"] .mini{font-weight:600;transition:background .15s ease,border-color .15s ease,transform .15s ease}
+html[data-look="leaf"] .btn:hover,html[data-look="leaf"] .mini:hover{transform:translateY(-1px)}
+html[data-look="leaf"]:not([data-theme="light"]) .btn:not(.pri):not(.ok),
+html[data-look="leaf"]:not([data-theme="light"]) .mini{
+  background:transparent !important;border:1.5px solid #A2E59C !important;color:#E6F7E4 !important}
+html[data-look="leaf"]:not([data-theme="light"]) .btn.pri,html[data-look="leaf"]:not([data-theme="light"]) .bm{
+  background:#81D67B !important;border:1px solid #81D67B !important;color:#071307 !important}
+html[data-look="leaf"][data-theme="light"] .btn:not(.pri):not(.ok),html[data-look="leaf"][data-theme="light"] .mini{
+  background:rgba(255,255,255,.55) !important;border:1.5px solid var(--accent) !important;color:#0B4A1D !important}
+html[data-look="leaf"][data-theme="light"] .btn.pri,html[data-look="leaf"][data-theme="light"] .bm{
+  background:var(--accent) !important;border:1px solid var(--accent) !important;color:#FFFFFF !important}
+/* the filter strip: the chosen one is the filled green */
+html[data-look="leaf"] .seg button.on{background:var(--accent) !important;color:var(--accent-ink) !important}
+html[data-look="leaf"] .seg button+button{border-left-color:var(--line) !important}
+
+/* ---- the numbers and codes in the leaf green */
+html[data-look="leaf"]:not([data-theme="light"]) .mono{color:inherit}
+
+/* ---- glass needs a still page to look through. A fade-in left on the page
+   wrapper (opacity in its keyframes, fill-mode both) turns the wrapper into a
+   backdrop root, and every glass panel inside it then blurs nothing. */
+html[data-look="leaf"] main{animation:none !important;opacity:1 !important;transform:none !important}
+
+/* ---- anything that sits straight on the photo - the search box and the
+   outlined buttons beside it - gets its own frosted glass, or the photo
+   runs through the letters */
+html[data-look="leaf"] .sbar input,html[data-look="leaf"] .btn:not(.pri):not(.ok){
+  -webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6)}
+html[data-look="leaf"]:not([data-theme="light"]) .sbar input,
+html[data-look="leaf"]:not([data-theme="light"]) .btn:not(.pri):not(.ok){background:rgba(16,36,25,.62) !important}
+html[data-look="leaf"][data-theme="light"] .sbar input{background:rgba(255,255,255,.82) !important}
+html[data-look="leaf"][data-theme="light"] .btn:not(.pri):not(.ok){background:rgba(255,255,255,.78) !important}
+
+/* ===========================================================================
+   MATERIAL CODES - the pieces only that tool has
+   =========================================================================== */
+html[data-look="leaf"] .scene::after{content:none !important}
+/* the photo shows between the side tiles, not a slab behind them */
+html[data-look="leaf"] .side{background:transparent !important;border:0 !important;box-shadow:none !important;
+  -webkit-backdrop-filter:none !important;backdrop-filter:none !important}
+/* every glass surface in the tool uses the same pastel glass */
+html[data-look="leaf"] .tile,html[data-look="leaf"] .panel,html[data-look="leaf"] .phead{
+  --g-glass:var(--g-base)}
+/* codes, chips and the dropdown in the leaf colours */
+html[data-look="leaf"] body{--codeInk:#B4F0AE}
+html[data-look="leaf"][data-theme="light"] body{--codeInk:#0A5A1E}
+html[data-look="leaf"] .row .c{color:var(--codeInk) !important;font-weight:700}
+html[data-look="leaf"] .row .d{font-weight:600}
+html[data-look="leaf"] .row .chips .tag{font-weight:600}
+html[data-look="leaf"] .row:nth-child(even){background:rgba(162,229,156,.05) !important}
+html[data-look="leaf"][data-theme="light"] .row:nth-child(even){background:rgba(0,80,20,.05) !important}
+html[data-look="leaf"] #q,html[data-look="leaf"] .ddbtn{background:rgba(0,0,0,.24) !important;border-color:var(--accent) !important}
+html[data-look="leaf"][data-theme="light"] #q,html[data-look="leaf"][data-theme="light"] .ddbtn{background:rgba(236,251,241,.9) !important}
+html[data-look="leaf"] .ddpan{background:var(--g-sheen),var(--g-solid) !important;border-color:var(--g-edge) !important;
+  -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur)}
+html[data-look="leaf"] .seg button.on,html[data-look="leaf"] .upbtn{background:var(--accent) !important;color:var(--accent-ink) !important;border-color:var(--accent) !important}
+html[data-look="leaf"] .fv .box{border-color:var(--accent) !important}
+html[data-look="leaf"] .fv.on .box{background:var(--accent) !important}
+/* B1 copy buttons: filled green Code, outlined Description */
+html[data-look="leaf"] .cpb{font-weight:600;text-shadow:none !important}
+html[data-look="leaf"]:not([data-theme="light"]) .cpb.primary{background:#81D67B !important;border-color:#81D67B !important;color:#071307 !important}
+html[data-look="leaf"]:not([data-theme="light"]) .cpb:not(.primary){background:rgba(16,36,25,.4) !important;border:1.5px solid #A2E59C !important;color:#E6F7E4 !important}
+html[data-look="leaf"][data-theme="light"] .cpb.primary{background:var(--accent) !important;border-color:var(--accent) !important;color:#FFFFFF !important}
+html[data-look="leaf"][data-theme="light"] .cpb:not(.primary){background:rgba(255,255,255,.6) !important;border:1.5px solid var(--accent) !important;color:#0B4A1D !important}
+/* the detail popup reads on its own */
+html[data-look="leaf"] .mhead{background:linear-gradient(rgba(162,229,156,.16),rgba(162,229,156,.06)) !important}
+html[data-look="leaf"][data-theme="light"] .modal .ddesc,html[data-look="leaf"][data-theme="light"] .modal .f .v{color:#08170D}
