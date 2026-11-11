@@ -57,31 +57,37 @@ html[data-cat][data-look="leaf"]{
   --line:rgba(196,240,196,.20) !important; --line3:rgba(196,240,196,.36) !important;
   --text:#F4FBF5 !important; --muted:#C6DACB !important;
 
-  /* THE DISPOSED RED, LIGHTENED - AND THE INSTRUCTION SAID DEEPEN.
+  /* THE DISPOSED RED IS category.css's, AND THAT IS A DECISION.
 
-     It said deepen because the light panel's worst ground is pale and
-     deepening is right there. Dark is not the same problem wearing a
-     different colour. At .72 over the untinted photograph the worst
-     ground a struck-through code can sit on is rgb(75,77,45) - the
-     sunset patch through blur(30px) saturate(1.9) - which is in the
-     MIDDLE of the range, not at either end. Measured against it with
-     the repo's own contrast.js:
+     This block briefly set --badT to #f0afbc - the lightened pink that
+     clears 4.5 on the glass. Sithuwaaa looked at it on the live page and
+     asked for the old red back, and the old red is what category.css
+     already gives: #e2607a here, #BE3C59 in light. So nothing is set.
 
-       pure black        2.40      the ceiling of the whole deepening
-       #e2607a today     2.58      already above that ceiling
-       pure white        8.76
+     What that costs, measured on the rendered page through the panel's
+     real backdrop-filter, worst ground at any scroll position:
 
-     So every deeper red scores worse than the one already there. The
-     direction was not a close call that went the other way; it was
-     unavailable. Lightened along the same hue (348deg) and saturation
-     until both grounds clear with margin:
+       dark   struck-through code  2.58     Disposed chip  3.51
+       light  struck-through code  2.89     Disposed chip  4.02
 
-       #f0afbc   4.82 on the code, 6.56 on the Disposed chip   dE 34.8
+     Four figures under the 4.5 floor, knowingly. The struck-through code
+     was under before this look existed too - 4.02 dark and 4.37 light -
+     so two of the four are older than the glass and two are the glass
+     deepening them.
 
-     Light goes the other way, deeper, for the same reason reversed -
-     see the light block. One token, two directions, because the panel
-     puts its ground in a different place in each theme. */
-  --badT:#f0afbc !important;
+     WHAT THE FLOOR WOULD COST, priced against those same grounds. In
+     light a full saturation crimson does clear it as ink: #9e0020 at
+     4.65 and 6.47. In dark nothing red clears it as ink - not even a
+     full saturation hot pink, #ff99be, which reaches only 4.40 on the
+     code. The ground there is mid-olive and caps the luminance from
+     both directions at once. A deep red in dark is only reachable as a
+     solid fill, the way the Disposed segment button below does it at
+     5.23. Costed and declined, not unexamined.
+
+     (An earlier draft of this note quoted 2.87 / 3.78 / 3.09 / 4.14 and
+     said #ff99be cleared. Those came from a solver holding grounds from
+     a different run, which were kinder than the page's. The numbers
+     above are read off the rendered page.) */
   --chipType:#B4F0AE; --chipVendor:#F2DFB4; --chipAttr:#BEE3DD;
   --g-sheen:linear-gradient(155deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.04) 34%,rgba(255,255,255,0) 58%,rgba(162,229,156,.07) 100%);
   --g-base:rgba(20,44,31,.72); --g-solid:rgba(16,36,25,.94);
@@ -100,29 +106,18 @@ html[data-cat][data-look="leaf"][data-theme="light"]{
   --line:rgba(11,107,42,.18) !important; --line3:rgba(11,107,42,.34) !important;
   --text:#08170D !important; --muted:#23392B !important;
 
-  /* THE STATUS INK, DEEPENED FOR THIS LOOK ONLY.
+  /* --okT ONLY. --badT IS LEFT TO category.css - see the dark block.
 
-     category.css sets --badT #BE3C59 and --okT #007D4D, and both were
-     chosen against a solid white card. The leaf panel is not solid: at
-     .80 over the photograph the worst ground a chip or a struck-through
-     code can sit on is rgb(167,200,173) - the sunset patch read through
-     blur(30px) saturate(1.9), worst of sheen-present and sheen-absent,
-     at the scroll position that puts a row over it. Against that:
+     category.css sets --okT #007D4D, chosen against a solid white card.
+     This panel is not solid: at .80 over the photograph the worst ground
+     an Active chip sits on is rgb(219,231,220), where #007D4D measures
+     3.96. Deepened along the same hue until it clears with margin:
 
-       --badT  #BE3C59  2.89 on the code, 4.02 on the chip   both short
-       --okT   #007D4D  3.96 on the chip                     short
+       --okT  #006e44   4.98   dE 6.9
 
-     Deepened along the same hue until every ground clears 4.8, so the
-     margin survives a photo change:
-
-       --badT  #852a3e  4.80 / 6.68   dE 19.5
-       --okT   #006e44  4.83          dE  6.9
-
-     Light only. The dark panel lands its worst ground in the MIDDLE of
-     the range, rgb(75,77,45), where deepening cannot work at all - pure
-     black scores 2.40 there, below the 2.58 the current pink already
-     gets. Dark is handled separately. */
-  --badT:#852a3e !important;
+     --badT is deliberately not set. The Disposed red is the one Sithuwaaa
+     asked to keep as it was, under the floor, for the reasons written out
+     in the dark block above. */
   --okT:#006e44 !important;
   --chipType:#14561A; --chipVendor:#5E4317; --chipAttr:#1F4C49;
   --g-sheen:linear-gradient(155deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.10) 36%,rgba(255,255,255,0) 60%,rgba(255,255,255,.12) 100%);
@@ -210,6 +205,23 @@ html[data-look="leaf"][data-theme="light"] .btn.pri,html[data-look="leaf"][data-
 /* the filter strip: the chosen one is the filled green */
 html[data-look="leaf"] .seg button.on{background:var(--accent) !important;color:var(--accent-ink) !important}
 html[data-look="leaf"] .seg button+button{border-left-color:var(--line) !important}
+/* ---- EXCEPT DISPOSED, WHICH IS RED AND WAS GREEN ----
+
+   The rule above paints every chosen segment with the accent, and it
+   carries !important, so it beat .seg button.on.bad in index.html and
+   turned the Disposed filter green. Disposed is a state, not a choice:
+   it has been red since the filter shipped and the page says so in its
+   own stylesheet. This puts it back, at a specificity that wins.
+
+   The fill is --bad and the ink is --badInk, untouched, which is the
+   decision already recorded: darken the ink, never repaint a chosen
+   fill. Both are opaque, so the photograph underneath does not reach
+   them and these numbers hold at every scroll position:
+
+     dark   #2b0f16 on #e2607a   5.23
+     light  #ffffff on #c2405c   5.02 */
+html[data-look="leaf"] .seg button.on.bad{
+  background:var(--bad) !important;color:var(--badInk) !important;border-color:var(--bad) !important}
 
 /* ---- the numbers and codes in the leaf green */
 html[data-look="leaf"]:not([data-theme="light"]) .mono{color:inherit}
@@ -260,6 +272,22 @@ html[data-look="leaf"]:not([data-theme="light"]) .cpb.primary{background:#81D67B
 html[data-look="leaf"]:not([data-theme="light"]) .cpb:not(.primary){background:rgba(16,36,25,.4) !important;border:1.5px solid #A2E59C !important;color:#E6F7E4 !important}
 html[data-look="leaf"][data-theme="light"] .cpb.primary{background:var(--accent) !important;border-color:var(--accent) !important;color:#FFFFFF !important}
 html[data-look="leaf"][data-theme="light"] .cpb:not(.primary){background:rgba(255,255,255,.6) !important;border:1.5px solid var(--accent) !important;color:#0B4A1D !important}
+/* ---- THE ACCOUNT MENU IS NOT GLASS ----
+
+   access.js builds the signed-in chip and its menu with
+   background:var(--card). Everywhere else on the site --card is opaque,
+   so that was a solid panel. This look redefines --card as the glass -
+   rgba(20,44,31,.72) and rgba(208,244,222,.80) - and the menu inherited
+   it, which put the results list and the Code buttons straight through
+   the middle of it. The menu has no backdrop-filter of its own, so it
+   was not even blurred glass: it was plain transparency over sharp text.
+
+   A dropdown is not a surface you look through. It gets the look's panel
+   colour at full opacity. The border, the text and the hover tint still
+   come from the leaf tokens, so it still belongs to the page. */
+html[data-look="leaf"] .acc-menu{background:#142C1F !important}
+html[data-look="leaf"][data-theme="light"] .acc-menu{background:#D0F4DE !important}
+
 /* the detail popup reads on its own */
 html[data-look="leaf"] .mhead{background:linear-gradient(rgba(162,229,156,.16),rgba(162,229,156,.06)) !important}
 html[data-look="leaf"][data-theme="light"] .modal .ddesc,html[data-look="leaf"][data-theme="light"] .modal .f .v{color:#08170D}
