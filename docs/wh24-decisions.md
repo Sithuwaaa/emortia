@@ -2599,18 +2599,35 @@ arrived as two list items, was reviewed as two, and the half that cannot
 stand alone was measured, failed, and made the designer look wrong about
 his own work.
 
-**THE REVIEWER SPLITTING IT CAUSED THAT.** Not the designer, and not the
-measurement — the measurement was correct and well made. What was wrong
-was the unit. A contrast reading answers "does this pass", and the
-question that mattered was "does this pass *as drawn*", which needs the
-whole drawing.
+**THE SPLIT CAUSED THAT, AND THE SPLIT CAME FROM A DIFF.** Not the
+designer, and not the measurement — the measurement was correct and well
+made. What was wrong was the unit, and it is worth being exact about
+where the wrong unit came from, because it was nobody's carelessness.
 
-**The rule: before refusing a design item on measurement, look for what
-else in the same drawing was carrying it.** A value that fails in
-isolation and passes in company is not a defect; it is a dependency
-nobody wrote down. And the tell is specific — when a designer's own file
-already contains the number you had to solve for, you did not find their
-mistake, you found the piece you left behind.
+**A diff has no idea what depends on what.** It reports changed regions,
+in file order, because that is the only thing it can see. Turn one into
+a list — take this, leave that — and the list *looks* like a set of
+independent choices. Nothing in its shape says that item two is the only
+reason item one works. The dependency was real and load-bearing and it
+existed nowhere in the artefact the list was made from.
+
+So the list was reviewed as written, each item on its own merits, and
+the review was sound at every step and wrong overall. Same family as a
+guard written in terms of the mechanism: the thing being reasoned over
+was a faithful representation of *something*, and not of the thing that
+mattered.
+
+**The rule: a list of changes derived from a diff is a list of regions,
+not a list of decisions. Before refusing a design item on measurement,
+look for what else in the same drawing was carrying it.** A value that
+fails alone and passes in company is not a defect; it is a dependency
+nobody wrote down, because the format it travelled in had nowhere to
+write it.
+
+**And the tell is exact: when the number you had to solve for is already
+in the designer's own file, you have not found their mistake — you have
+found the piece you left behind.** 0.93 was solved for here. 0.94 was
+sitting forty lines further down, in a palette nobody had listed.
 
 Shipped as the pair. Both themes measured on the page, every element
 with its own wash and scrim: dark worst 4.52, light worst 4.52, at 0.93
