@@ -3039,3 +3039,85 @@ cap was ΔE 13.6 from the approved green, at the noticeability floor set on
 8 November. Offering it as a small adjustment would have been a second
 proxy standing in for a judgement — presenting a visible change as a nudge
 so the number could win without anyone deciding it should.
+
+## A rule you can recite while breaking it
+
+On 12 November a test fixture went into `tools/wh24/wh24.test.js`
+carrying a real ticket number, site code, site name, material code, GI
+number and reservation, copied straight out of a live export. Directly
+above it, in the same block, was a comment I had just written: *"Nothing
+real is in this file... the repository is public."*
+
+Both things were true at the same time. The rule was known, stated, and
+being broken in the act of stating it.
+
+**What caught it was neither the rule nor the comment.** It was a
+permission check at the boundary — the commit was refused for
+sensitive-source provenance, with the data still only on disk. The
+check had no idea what the Dialog naming conventions are or why they
+matter. It only knew that content which arrived from the user's live
+session was about to be published, and it stopped at the publish.
+
+That is the lesson, and it is not "try harder". **A rule lives in the
+head of whoever is about to break it, and at that moment they are not
+consulting it — they are busy being right about something else.** I was
+busy reproducing an export byte-for-byte so the assertion would be
+exact. Making it exact was the whole reason the real values were there.
+The more careful I was being about the test, the more certain the leak
+became.
+
+A check at the boundary does not care what you were busy with. It fires
+on the shape of the action, not on the state of your attention, and it
+fires at the last moment when the mistake is still free to fix.
+
+**So the rule now has a check.** `tools/_lib/identifiers.test.js` fails
+on any real-shaped identifier in any committed file: a site code, a
+ten-digit material code, a GI number, a reservation. An invented range
+is reserved for each shape so a new fixture has an obvious place to live
+— `ZZ####`, `1000000###`, `4900000###`, `1700###` — and anything outside
+them fails by name and line.
+
+**The already-committed ones are held as hashes, not values.** There are
+38 distinct real identifiers in 20 files, most of them predating this,
+several in UI placeholders and SQL comments rather than fixtures. Listing
+them in the clear would be a test that publishes exactly what it exists
+to keep out. Each is a SHA-256 prefix instead: the count is the debt,
+visible and countable, and removing a hash is how it gets paid.
+
+The second general point, because it is the same shape as the backup
+rule two entries up: **the instinct after being caught is to add another
+rule.** The rule already existed. What was missing was something that
+acts without being remembered.
+
+## The guard that was worth building because it was checked
+
+The accent-pin guard added the same day resolves the CSS cascade in plain
+Node — every stylesheet a page loads, in order, winner by `!important`
+then specificity then source order. It catches an override wherever it
+lives, which is what `family.test.js` could not do.
+
+It would have been easy to write that, run the three known breaks, see
+all three fail, and ship it satisfied.
+
+**The part that made it worth anything was checking the resolver against
+a real browser first.** Forty-four values read off `getComputedStyle` on
+the two rendered pages, both themes, compared against what the resolver
+said. It disagreed twice, on real bugs:
+
+- it returned the winning *declaration*, so a token came back as
+  `var(--bad, #e2607a)` where Chrome resolved it to a different colour
+  entirely, set elsewhere on that page;
+- it did not inherit custom properties, so a `var()` used on a button
+  refused as "never set" while Chrome painted the button correctly.
+
+**Both bugs would have passed all three breaks.** The breaks all turn on
+a declaration that wins when it should not, and a resolver can get that
+right while being wrong about what the value then resolves to, or about
+which element can see it. A guard that passes its own tests and answers
+the wrong question is worse than no guard, because the green is now
+evidence.
+
+**The rule: a guard is only as good as the thing it measures with, and
+the measuring instrument needs its own known answers from outside.** The
+breaks prove the guard notices. Only the browser could say whether what
+it noticed was true.

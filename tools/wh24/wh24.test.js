@@ -49,7 +49,7 @@ is('partial', W.issueCheck({ qty: 5, gin: { qty: 3 } }), 'Partial');
 
 /* ---- a whole ticket, from 25307 as WorkHub has it ---- */
 const T = W.record({
-  id: 25307, site: 'cm5756', siteName: 'Yasorapura_Rd_Lamp', reservation: '1675015',
+  id: 25307, site: 'zz5756', siteName: 'Yasorapura_Rd_Lamp', reservation: '1675015',
   requested: [{ code: '1000029192', desc: '7_16-DIN Male to 4.3-10 Female Adapter', qty: 18, uom: 'EA' }],
   timeline: [
     { n: 'System Issuance Done - ACE', s: 'DONE', c: '2026-09-28T14:24:02Z', d: '2026-09-30T07:31:47Z' },
@@ -58,7 +58,7 @@ const T = W.record({
   gins: [{ file: '1675015.pdf', gi: '4932166689', date: '2026-09-28', res: '1675015', sloc: '7390',
            items: [{ code: '1000029192', qty: 18, uom: 'EA', sn: [] }] }]
 });
-is('site upper', T.site, 'CM5756');
+is('site upper', T.site, 'ZZ5756');
 is('timeline sorted', T.timeline.map(t => t.n.slice(0, 22)),
    ['Material Reservation -', 'System Issuance Pendin', 'System Issuance Done -']);
 is('stage when nothing is open', [T.stage, T.team, T.status], ['System Issuance Done', 'ACE', 'completed']);
@@ -71,7 +71,7 @@ is('state', W.state(T), 'collected');
 is('two days on the shelf', W.waiting(T, null, '2026-10-01'), 2);
 
 /* ---- waiting, and the date the counter knows better ---- */
-const R = W.record({ id: 25490, site: 'BD5071', requested: [],
+const R = W.record({ id: 25490, site: 'ZZ5071', requested: [],
   timeline: [{ n: 'System Issuance Pending - ACE', s: 'DONE', c: '2026-09-30T04:23:00Z', d: '2026-09-30T12:33:00Z' },
              { n: 'System Issuance Done - ACE', s: 'NEW', c: '2026-09-30T12:33:00Z', d: null }] });
 is('open task is current', [R.stage, R.status], ['System Issuance Done', 'inprogress']);
@@ -101,12 +101,12 @@ const Twice = W.record({ id: 1, timeline: [
 is('last done wins', [W.localDay(Twice.done_at), Twice.wh_collected_at], ['2026-09-05', null]);
 
 /* ---- finding ---- */
-const F = { id: 25293, site: 'MR5049', site_name: 'Midigama_Lamp', lines: [
+const F = { id: 25293, site: 'ZZ5049', site_name: 'Midigama_Lamp', lines: [
   { code: '1000026380', desc: 'RADIO 2271 B8', gin: { res: '1772833', gi: '4932180605', sn: ['EA8D945522'] } }] };
 is('by serial', W.matches(F, 'ea8d945522'), true);
 is('by gi', W.matches(F, '4932180605'), true);
-is('by site', W.matches(F, 'mr50'), true);
-is('miss', W.matches(F, 'KU0361'), false);
+is('by site', W.matches(F, 'zz50'), true);
+is('miss', W.matches(F, 'ZZ0361'), false);
 
 /* ---- and WHERE it was found, which is the half the counter needs ----
 
@@ -120,7 +120,7 @@ is('a GI number names itself',          found('4932180605')[0].label, 'GI number
 is('a material code too',               found('1000026380')[0].label, 'Material code');
 is('a partial site hit keeps its offset', [found('5049')[0].label, found('5049')[0].at], ['Site', 2]);
 is('a description hit says so',         found('RADIO')[0].label, 'Description');
-is('a miss finds nowhere',              found('KU0361'), []);
+is('a miss finds nowhere',              found('ZZ0361'), []);
 is('an empty query is not a search',    found(''), []);
 is('and the boolean still agrees with it',
    [W.matches(F, 'RADIO'), W.matches(F, 'nope'), W.matches(F, '')], [true, false, true]);
@@ -391,7 +391,7 @@ is('a collapsed publish counts as the one line it draws, not its sixty rows',
   };
   const sig = lift('sig', /const sig = (t => JSON\.stringify\(\[[\s\S]*?\]\));/);
   const sigReal = lift('sigReal', /const sigReal = (t => JSON\.stringify\(\[[\s\S]*?\]\));/);
-  const base = { site: 'QQ0248', site_name: 'Inv', wo: 'W', reservation: '1780194',
+  const base = { site: 'ZZ0248', site_name: 'Inv', wo: 'W', reservation: '1780194',
     stage: 'System Issuance Done - ACE', team: 'T', status: 'S',
     wh_created_at: '2026-10-13T00:00:00Z', wh_updated_at: '2026-10-19T08:08:00Z',
     done_at: null, wh_collected_at: null, timeline: [{ n: 'A', s: 'DONE', c: '1', d: '2' }],

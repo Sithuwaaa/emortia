@@ -84,7 +84,7 @@ console.log('\nfinding a site by what someone actually types');
 
 console.log('\nwhat a record needs before it can be filed');
 {
-  const full = () => ({ siteId:'MU5051', siteName:'Iyankankulam_Lamp', runOm:false,
+  const full = () => ({ siteId:'ZZ5051', siteName:'Iyankankulam_Lamp', runOm:false,
     esnPhoto:'a.webp', esnFull:'b.webp', omIpPhoto:null,
     cards:[{type:'UMPTg2', serial:'21500'}], note:'' });
 
@@ -137,21 +137,21 @@ console.log('\nthe card list');
 console.log('\nthe export');
 {
   const recs = [
-    { site_id:'MU5051', site_name:'Iyankankulam_Lamp', run_om:true,
+    { site_id:'ZZ5051', site_name:'Iyankankulam_Lamp', run_om:true,
       esn_photo:'p/a.webp', esn_full:'p/b.webp', om_ip_photo:'p/c.webp',
       cards:[{type:'UMPTg2',serial:'2150A'},{type:'UBBPg1a',serial:'773X'}],
       note:'ok', created_email:'x@y.z', created_at:'2026-08-17T04:05:06.000Z' },
-    { site_id:'KI5032', site_name:'Pallikuda_North', run_om:false,
+    { site_id:'ZZ5032', site_name:'Pallikuda_North', run_om:false,
       esn_photo:'p/d.webp', esn_full:'p/e.webp', om_ip_photo:null,
       cards:[], note:'', created_email:'x@y.z', created_at:'2026-08-17T04:06:00.000Z' }
   ].map(E.fromRow);
 
   const rows = E.toRows(recs);
   is('a row for each card, and one for a site with none', rows.length, 3);
-  is('the site repeats down its rows', [rows[0][0], rows[1][0]], ['MU5051','MU5051']);
+  is('the site repeats down its rows', [rows[0][0], rows[1][0]], ['ZZ5051','ZZ5051']);
   is('card and serial land in their columns', [rows[0][2], rows[0][3]], ['UMPTg2','2150A']);
   is('the tick is readable', [rows[0][4], rows[2][4]], ['Yes','No']);
-  is('a site with no cards still gets a row', [rows[2][0], rows[2][2], rows[2][3]], ['KI5032','','']);
+  is('a site with no cards still gets a row', [rows[2][0], rows[2][2], rows[2][3]], ['ZZ5032','','']);
   /* The stamp is UTC in the database and local on the screen. Printing the
      ISO string straight out showed 04:05 for a record filed at 09:35 in
      Colombo, and it never looked broken enough to notice. */
@@ -209,7 +209,7 @@ console.log('\nthe pictures are left exactly as they arrive');
 
 console.log('\ncoming back from the database');
 {
-  const r = E.fromRow({ id:'u1', site_id:'AM5155', site_name:'Muwangala', run_om:false,
+  const r = E.fromRow({ id:'u1', site_id:'ZZ5155', site_name:'Muwangala', run_om:false,
     esn_photo:'a', esn_full:'b', om_ip_photo:null, cards:[], note:null,
     created_email:'a@b.c', created_at:'2026-01-01T00:00:00Z', updated_at:'2026-01-02T00:00:00Z' });
   is('an empty card list becomes one blank row to type into', r.cards.length, 1);
@@ -219,7 +219,7 @@ console.log('\ncoming back from the database');
 
 console.log('\nthe UMPT password');
 {
-  const rec = E.fromRow({ site_id:'MU5051', cards:[{type:'UMPTg2',serial:'X'}],
+  const rec = E.fromRow({ site_id:'ZZ5051', cards:[{type:'UMPTg2',serial:'X'}],
     umpt_password:'Sw0rd!', created_at:'2026-08-17T04:05:06.000Z' });
   is('it comes back off the row',        rec.umptPassword, 'Sw0rd!');
   is('a blank record has an empty one',  E.blank().umptPassword, '');
