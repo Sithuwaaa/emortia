@@ -7,6 +7,13 @@
    category.css, and puts <div class="scene" aria-hidden="true"></div>
    first in <body>. Nothing here applies to a page that has not opted in.
 
+
+   BACKGROUND RULE (approved 12 Nov 2026), for every tool on this look:
+   dark mode and light mode use the SAME photo, the night waterfront
+   (materials/img/scene-dark-original-*.webp). Dark mode lays a .75 veil
+   over it; light mode puts nothing over it and runs the picture itself at
+   brightness(.55). No white or mint layers in light mode.
+
    Paths to the photos are relative to this file.
    =========================================================================== */
 
@@ -158,11 +165,13 @@ html[data-look="leaf"]:not([data-theme="light"]) .mini{
 html[data-look="leaf"]:not([data-theme="light"]) .btn.pri,html[data-look="leaf"]:not([data-theme="light"]) .bm{
   background:#81D67B !important;border:1px solid #81D67B !important;color:#071307 !important}
 html[data-look="leaf"][data-theme="light"] .btn:not(.pri):not(.ok),html[data-look="leaf"][data-theme="light"] .mini{
-  background:rgba(255,255,255,.55) !important;border:1.5px solid #0B6B2A !important;color:#0B4A1D !important}
+  background:rgba(255,255,255,.55) !important;border:1.5px solid var(--accent) !important;color:#0B4A1D !important}
 html[data-look="leaf"][data-theme="light"] .btn.pri,html[data-look="leaf"][data-theme="light"] .bm{
-  background:#0B6B2A !important;border:1px solid #0B6B2A !important;color:#FFFFFF !important}
+  background:var(--accent) !important;border:1px solid var(--accent) !important;color:#FFFFFF !important}
 /* the filter strip: the chosen one is the filled green */
 html[data-look="leaf"] .seg button.on{background:var(--accent) !important;color:var(--accent-ink) !important}
+html[data-look="leaf"] .seg button.on.bad{
+  background:var(--bad) !important;color:var(--badInk) !important;border-color:var(--bad) !important}
 /* ---- EXCEPT DISPOSED, WHICH IS RED AND WAS GREEN ----
 
    The rule above paints every chosen segment with the accent and carries
@@ -174,8 +183,7 @@ html[data-look="leaf"] .seg button.on{background:var(--accent) !important;color:
    Fill and ink are --bad and --badInk untouched - darken the ink, never
    repaint a chosen fill. Both opaque, so the photograph does not reach
    them: 5.23 dark, 5.02 light. */
-html[data-look="leaf"] .seg button.on.bad{
-  background:var(--bad) !important;color:var(--badInk) !important;border-color:var(--bad) !important}
+
 html[data-look="leaf"] .seg button+button{border-left-color:var(--line) !important}
 
 /* ---- the numbers and codes in the leaf green */
@@ -225,8 +233,8 @@ html[data-look="leaf"] .fv.on .box{background:var(--accent) !important}
 html[data-look="leaf"] .cpb{font-weight:600;text-shadow:none !important}
 html[data-look="leaf"]:not([data-theme="light"]) .cpb.primary{background:#81D67B !important;border-color:#81D67B !important;color:#071307 !important}
 html[data-look="leaf"]:not([data-theme="light"]) .cpb:not(.primary){background:rgba(16,36,25,.4) !important;border:1.5px solid #A2E59C !important;color:#E6F7E4 !important}
-html[data-look="leaf"][data-theme="light"] .cpb.primary{background:#0B6B2A !important;border-color:#0B6B2A !important;color:#FFFFFF !important}
-html[data-look="leaf"][data-theme="light"] .cpb:not(.primary){background:rgba(255,255,255,.6) !important;border:1.5px solid #0B6B2A !important;color:#0B4A1D !important}
+html[data-look="leaf"][data-theme="light"] .cpb.primary{background:var(--accent) !important;border-color:var(--accent) !important;color:#FFFFFF !important}
+html[data-look="leaf"][data-theme="light"] .cpb:not(.primary){background:rgba(255,255,255,.6) !important;border:1.5px solid var(--accent) !important;color:#0B4A1D !important}
 /* the detail popup reads on its own */
 html[data-look="leaf"] .mhead{background:linear-gradient(rgba(162,229,156,.16),rgba(162,229,156,.06)) !important}
 html[data-look="leaf"][data-theme="light"] .modal .ddesc,html[data-look="leaf"][data-theme="light"] .modal .f .v{color:#08170D}
@@ -360,3 +368,12 @@ html[data-look="leaf"] .board .tile.hero .v,
 html[data-look="leaf"] .board .tile.hero.s-bad .v,
 html[data-look="leaf"] .board .tile.hero.s-never .v,
 html[data-look="leaf"] .board .tile.hero.s-warn .v{color:#27A300 !important}
+
+/* LIGHT MODE: the night photo as it is, no veil over it. */
+html[data-look="leaf"][data-theme="light"] .scene::after{content:none !important}
+/* light mode uses the same night waterfront photo as dark mode, shown as it is */
+html[data-cat][data-look="leaf"][data-theme="light"]{
+  --scene:image-set(url('../materials/img/scene-dark-original-1280.webp') 1x, url('../materials/img/scene-dark-original-1672.webp') 2x)}
+/* light mode: the photo itself turned down - no layer over it, just less
+   brightness on the picture */
+html[data-look="leaf"][data-theme="light"] .scene{filter:brightness(.55) saturate(1.05)}
