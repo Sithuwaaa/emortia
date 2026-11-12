@@ -510,5 +510,55 @@ is('29 Feb 2024 is a real day',        W.realDay('2024-02-29'), true);
 is('29 Feb 2026 is not',               W.realDay('2026-02-29'), false);
 is('localDay still lets it through',   W.localDay('2026-09-31'), '2026-09-31');
 
+/* ---- one row per serial ----
+
+   A line issued against several serials used to be one row with the serials
+   comma-joined into a single cell. The sheet is counted against at a
+   counter, so each piece now gets its own row.
+
+   Serials and codes here are invented. The repository is public and no real
+   site code, serial or material code belongs in a fixture. */
+{
+  const C = n => W.HEADERS.indexOf(n);
+  const many = { id: 900, stage: 'System Issuance Done', site: 'ZZ0001', site_name: 'Invented_Town',
+    done_at: '2026-03-01T10:00:00Z', phase: 'PH1', team: 'ACE',
+    lines: [{ code: '1000000001', desc: 'Invented radio', qty: 3, uom: 'EA',
+              gin: { res: '1700001', gi: '4900000001', date: '2026-03-01', qty: 3,
+                     sn: ['SNTEST001', 'SNTEST002', 'SNTEST003'], sloc: '7386' } }] };
+  const one  = { id: 901, site: 'ZZ0002', done_at: '2026-03-01T10:00:00Z',
+    lines: [{ code: '1000000002', desc: 'Invented filter', qty: 1, uom: 'EA',
+              gin: { qty: 1, sn: ['SNTEST009'] } }] };
+  const none = { id: 902, site: 'ZZ0003', done_at: '2026-03-01T10:00:00Z',
+    lines: [{ code: '1000000003', desc: 'Invented cable', qty: 15, uom: 'M',
+              gin: { qty: 15, sn: [] } }] };
+
+  const a = W.sheet([many], {}, '2026-03-02').slice(1);
+  is('three serials make three rows', a.length, 3);
+  is('one serial per row, in order', a.map(r => r[C('Serial Number(s)')]),
+     ['SNTEST001', 'SNTEST002', 'SNTEST003']);
+  is('each row is one piece', a.map(r => r[C('Quantity')]), [1, 1, 1]);
+  is('and one issued piece', a.map(r => r[C('Issued Qty')]), [1, 1, 1]);
+  is('the quantity column still sums to what was issued',
+     a.reduce((n, r) => n + r[C('Issued Qty')], 0), 3);
+  is('the material repeats so every row stands alone',
+     a.map(r => r[C('Material Code')] + '/' + r[C('Site ID')]),
+     ['1000000001/ZZ0001', '1000000001/ZZ0001', '1000000001/ZZ0001']);
+  is('the ticket names itself once, on its first row only',
+     a.map(r => r[C('Ticket ID')]), [900, '', '']);
+  is('and so does its source', a.map(r => r[C('Source')]), ['PH1', '', '']);
+  is('the GIN columns repeat, because every piece came on that note',
+     [...new Set(a.map(r => r[C('GI Number')]))], ['4900000001']);
+
+  const b = W.sheet([one], {}, '2026-03-02').slice(1);
+  is('a single serial is still a single row', b.length, 1);
+  is('and keeps its own quantity, not 1 by coincidence',
+     [b[0][C('Serial Number(s)')], b[0][C('Issued Qty')]], ['SNTEST009', 1]);
+
+  const c = W.sheet([none], {}, '2026-03-02').slice(1);
+  is('a line with no serials is untouched', c.length, 1);
+  is('and keeps its real quantity', [c[0][C('Quantity')], c[0][C('Issued Qty')],
+     c[0][C('Serial Number(s)')]], [15, 15, '']);
+}
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

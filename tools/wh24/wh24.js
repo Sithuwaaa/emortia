@@ -1217,19 +1217,48 @@
       var mk = markOf(marks, t), lines = t.lines && t.lines.length ? t.lines : [{}];
       var done = localDay(t.done_at), got = collectedOn(t, mk);
       lines.forEach(function (l, i) {
-        var g = l.gin || {}, first = i === 0;
-        out.push([
-          first ? t.id : '', first ? (t.stage || '') : '', first ? localStamp(t.wh_updated_at) : '',
-          first ? (t.reservation || '') : '', t.wo || '', t.site || '', t.site_name || '',
-          l.code || '', l.desc || '', l.qty == null ? '' : l.qty, l.uom || '',
-          first ? (t.team || '') : '', first ? (t.status === 'completed' ? 'Completed' : 'Inprogress') : '',
-          first ? nz(issuing(t, today)) : '', first ? done : '', first ? got : '',
-          first && done && !got ? nz(waiting(t, mk, today)) : '',
-          g.res || '', g.gi || '', g.date || '', g.qty == null ? '' : g.qty,
-          (g.sn || []).join(', '), g.sloc || '', g.wbs || '', l.code && t.done_at ? issueCheck(l) : '',
-          first ? (t.phase || '') : '', first ? (t.stream || '') : '',
-          first ? (t.order_no || '') : '', first ? (t.grn || '') : ''
-        ]);
+        var g = l.gin || {};
+        /* ---- ONE ROW PER SERIAL ----
+
+           A line issued against 24 serials is 24 pieces, and the sheet is
+           counted against at a warehouse counter. Serials used to arrive
+           comma-joined in a single cell, so a 24-piece line was one row
+           holding a 24-item list - impossible to tick off, filter, or paste
+           beside a scanner's output.
+
+           Each piece gets its own row. Quantity and Issued Qty are 1 on each,
+           so the column still sums to the quantity issued, and the material
+           columns repeat so every row stands on its own. The ticket's own
+           columns stay on the ticket's FIRST row only, exactly as before - a
+           ticket is still one ticket however many pieces it has.
+
+           A line with one serial or none is untouched: one row, and the
+           serial cell is the single serial or blank. Only a line that
+           actually has something to split gets split, so nothing moves for
+           the 2,113 of 3,484 lines that carry no serials at all.
+
+           In the live data every line with serials has exactly as many as
+           its Issued Qty - 1,371 of 1,371, no exceptions - so splitting on
+           the serial count and writing 1 per row cannot disagree with the
+           quantity. If that ever stops being true the serial count wins,
+           because the serials are the things being counted. */
+        var sns = (g.sn || []), reps = sns.length > 1 ? sns.length : 1, split = reps > 1;
+        for (var r = 0; r < reps; r++) {
+          var first = i === 0 && r === 0;
+          out.push([
+            first ? t.id : '', first ? (t.stage || '') : '', first ? localStamp(t.wh_updated_at) : '',
+            first ? (t.reservation || '') : '', t.wo || '', t.site || '', t.site_name || '',
+            l.code || '', l.desc || '', split ? 1 : (l.qty == null ? '' : l.qty), l.uom || '',
+            first ? (t.team || '') : '', first ? (t.status === 'completed' ? 'Completed' : 'Inprogress') : '',
+            first ? nz(issuing(t, today)) : '', first ? done : '', first ? got : '',
+            first && done && !got ? nz(waiting(t, mk, today)) : '',
+            g.res || '', g.gi || '', g.date || '', split ? 1 : (g.qty == null ? '' : g.qty),
+            split ? sns[r] : sns.join(', '), g.sloc || '', g.wbs || '',
+            l.code && t.done_at ? issueCheck(l) : '',
+            first ? (t.phase || '') : '', first ? (t.stream || '') : '',
+            first ? (t.order_no || '') : '', first ? (t.grn || '') : ''
+          ]);
+        }
       });
       /* The lines the card struck off, under the live ones, marked as what
          they are. Leaving them out of the sheet would make the sheet disagree

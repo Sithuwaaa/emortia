@@ -1209,40 +1209,6 @@ function paintSel(){
   $('selShow').hidden = FILTER === 'picked';
 }
 
-/* ---- the workbook ----
-
-   One sheet per site. That is what the job is: somebody is handed a sheet per
-   site for a collection run, and a sheet that mixes two sites has to be read
-   twice to be used once. Source and collected state are both already columns
-   on every row, so splitting by either of those would hide nothing and gain
-   nothing - and a selection spanning sites is the case this exists for.
-
-   The columns are W.HEADERS, the same ones Export Excel writes, so a sheet
-   from here and a sheet from there line up.
-
-   Returned as data - [{ sheet, aoa }] in sheet order - and handed to XLSX by
-   the caller, so what would be written can be checked without a spreadsheet
-   library in the way. */
-function sheetName(used, site){
-  /* Excel: 31 characters, and none of : \ / ? * [ ] */
-  var base = String(site == null || site === '' ? 'No site' : site)
-    .replace(/[:\\\/?*\[\]]/g, '-').slice(0, 31) || 'No site';
-  var name = base, i = 2;
-  while (used[name]) { var tail = ' (' + i + ')'; name = base.slice(0, 31 - tail.length) + tail; i++; }
-  used[name] = 1;
-  return name;
-}
-function workbook(list){
-  const by = new Map();
-  (list || []).forEach(t => {
-    const k = t.site || '';
-    if (!by.has(k)) by.set(k, []);
-    by.get(k).push(t);
-  });
-  const keys = [...by.keys()].sort((a, b) => String(a).localeCompare(String(b)));
-  const used = {};
-  return keys.map(k => ({ site: k, sheet: sheetName(used, k), aoa: W.sheet(by.get(k), MARKS, today()) }));
-}
 
 /* WHERE THE SEARCH FOUND IT, on the row.
 
@@ -1535,12 +1501,20 @@ $('selExport').onclick = () => {
   if (!window.XLSX){ toast('Excel is still loading – try again in a second.'); return; }
   const list = picked();
   if (!list.length){ toast('Nothing is selected.'); return; }
-  const book = workbook(list);
+  /* ONE SHEET, EVERY SITE DOWN IT. This used to group the selection by site
+     and give each its own tab, which meant a ten-site pick arrived as ten
+     sheets nobody could sort, filter or total across - the first thing
+     anyone did with it was paste the tabs under each other by hand.
+
+     Same sheet name, same columns and the same row order as Export Excel,
+     so the two files are comparable and a template built for one reads the
+     other. */
+  const aoa = W.sheet([...list].sort(order), MARKS, today());
   const wb = XLSX.utils.book_new();
-  book.forEach(s => XLSX.utils.book_append_sheet(wb, asSheet(s.aoa), s.sheet));
+  XLSX.utils.book_append_sheet(wb, asSheet(aoa), 'To be Received');
   XLSX.writeFile(wb, 'WH24-selected-' + today() + '.xlsx');
-  toast(list.length + ' ticket' + (list.length === 1 ? '' : 's') + ' in ' +
-        book.length + ' sheet' + (book.length === 1 ? '' : 's'));
+  toast(list.length + ' ticket' + (list.length === 1 ? '' : 's') + ' · ' +
+        (aoa.length - 1) + ' row' + (aoa.length - 1 === 1 ? '' : 's'));
 };
 $('selClear').onclick = () => {
   SEL.clear();
