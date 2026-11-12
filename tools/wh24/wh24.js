@@ -1275,6 +1275,64 @@
     });
     return out;
   }
+  /* ---- the collection sheet ----
+
+     Export selected writes THESE ten columns, not the twenty-nine the
+     filter export writes. The two sheets answer different questions and
+     were wrongly made identical: the wide one is the WorkHub record, for
+     reconciling; this one is carried to a counter to collect against, and
+     the columns are the ones you read out loud at the window.
+
+     The layout is Sithuwaaa's, taken from the sheet he sent on 11 November
+     rather than invented here:
+
+       Ticket ID · Site ID · Site Name · GI Number · Reservation No ·
+       Material Code · Material Description · UOM · Qty · S/N
+
+     EVERY ROW STANDS ALONE. No column is left blank just because the row
+     above repeats it - a counting sheet gets sorted and filtered, and a
+     ticket number that only appears on the first of its rows disappears
+     the moment anybody sorts by material.
+
+     UOM COMES FROM THE NOTE FIRST. The line's own unit is blank on 646 of
+     the lines that have one on the Goods Issue Note, and the sheet he sent
+     reads "EA" where the line says nothing - so the note wins and the
+     line is the fallback. Qty the same way.
+
+     RESERVATION IS THE NOTE'S, not the card's. It sits beside GI Number
+     and belongs to it; a note can be issued against a reservation the card
+     never mentions, and that is the number asked for at the counter. The
+     card's own field is the fallback.
+
+     Removed lines are left out. The wide sheet carries them marked
+     'Removed' in a column this sheet does not have, and a struck-off line
+     with nowhere to say so is worse than an absent one on a sheet somebody
+     collects from. */
+  var PICK_HEADERS = ['Ticket ID', 'Site ID', 'Site Name', 'GI Number', 'Reservation No',
+    'Material Code', 'Material Description', 'UOM', 'Qty', 'S/N'];
+
+  function pickSheet(tickets) {
+    var out = [PICK_HEADERS.slice()];
+    (tickets || []).forEach(function (t) {
+      (t.lines || []).forEach(function (l) {
+        var g = l.gin || {};
+        var uom = s(g.uom) || s(l.uom);
+        var qty = g.qty == null ? l.qty : g.qty;
+        var res = s(g.res) || s(t.reservation);
+        var sns = (g.sn || []), reps = sns.length > 1 ? sns.length : 1, split = reps > 1;
+        for (var r = 0; r < reps; r++) {
+          out.push([
+            nz(t.id), s(t.site), s(t.site_name), s(g.gi), res,
+            s(l.code), s(l.desc), uom,
+            split ? 1 : (qty == null ? '' : qty),
+            split ? sns[r] : (sns[0] || '')
+          ]);
+        }
+      });
+    });
+    return out;
+  }
+
   function nz(v) { return v == null ? '' : v; }
   function localStamp(v) {
     if (!v) return '';
@@ -1585,5 +1643,5 @@
            collectedOn: collectedOn, daysBetween: daysBetween, state: state, waiting: waiting,
            issuing: issuing, issueCheck: issueCheck, matches: matches, matchesAt: matchesAt, sheet: sheet,
            pipeline: pipeline, pickList: pickList,
-           HEADERS: HEADERS };
+           HEADERS: HEADERS, PICK_HEADERS: PICK_HEADERS, pickSheet: pickSheet };
 }));

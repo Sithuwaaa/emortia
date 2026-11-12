@@ -560,5 +560,67 @@ is('localDay still lets it through',   W.localDay('2026-09-31'), '2026-09-31');
      c[0][C('Serial Number(s)')]], [15, 15, '']);
 }
 
+/* ---- the collection sheet Export selected writes ----
+
+   Ten columns, not the wide sheet's twenty-nine. The two answer different
+   questions: the wide one is the WorkHub record, this one is carried to a
+   counter. The column order is taken from the sheet Sithuwaaa sent on
+   11 November; the first case below has that sheet's SHAPE - a line with a
+   unit only on the note, a quantity, and no serials - with invented values
+   throughout.
+
+   Nothing real is in this file. The first draft of this block carried the
+   actual ticket, site code, site name, material code, GI number and
+   reservation straight out of his export, in a comment that said the
+   repository is public. It is, and they are gone. */
+{
+  const ref = { id: 9001, site: 'ZZ0100', site_name: 'Invented_Town', reservation: '1700100',
+    lines: [{ code: '1000000100', desc: 'Invented_Jumper_1/2_3m', qty: 8, uom: '',
+              gin: { gi: '4900000100', res: '1700100', qty: 8, uom: 'EA', sn: [] } }] };
+  const a = W.pickSheet([ref]);
+  is('ten columns, in his order', a[0],
+     ['Ticket ID', 'Site ID', 'Site Name', 'GI Number', 'Reservation No',
+      'Material Code', 'Material Description', 'UOM', 'Qty', 'S/N']);
+  is('the shape of the row he sent', a[1],
+     [9001, 'ZZ0100', 'Invented_Town', '4900000100', '1700100', '1000000100',
+      'Invented_Jumper_1/2_3m', 'EA', 8, '']);
+  is('a line with no serials stays one row, keeping its quantity', a.length, 2);
+
+  /* the note wins over the line for unit, quantity and the reservation that
+     sits beside the GI number */
+  const pref = { id: 1, site: 'ZZ0001', site_name: 'Invented', reservation: '1111111',
+    lines: [{ code: 'C1', desc: 'D1', qty: 99, uom: 'Nos',
+              gin: { gi: 'G1', res: '2222222', qty: 4, uom: 'EA', sn: [] } }] };
+  is('UOM, Qty and Reservation come from the note', W.pickSheet([pref])[1].slice(3),
+     ['G1', '2222222', 'C1', 'D1', 'EA', 4, '']);
+  const fb = { id: 2, site: 'ZZ0002', site_name: 'Invented2', reservation: '3333333',
+    lines: [{ code: 'C2', desc: 'D2', qty: 7, uom: 'M', gin: { gi: 'G2', sn: [] } }] };
+  is('and fall back to the line when the note is silent', W.pickSheet([fb])[1].slice(3),
+     ['G2', '3333333', 'C2', 'D2', 'M', 7, '']);
+
+  /* serials: one per row, each row a piece, every column repeated */
+  const many = { id: 3, site: 'ZZ0003', site_name: 'Invented3', reservation: '4444444',
+    lines: [{ code: 'C3', desc: 'D3', qty: 3, uom: 'EA',
+              gin: { gi: 'G3', res: '4444444', qty: 3, uom: 'EA',
+                     sn: ['SNTEST011', 'SNTEST012', 'SNTEST013'] } }] };
+  const m = W.pickSheet([many]).slice(1);
+  is('three serials make three rows', m.length, 3);
+  is('one serial per row', m.map(r => r[9]), ['SNTEST011', 'SNTEST012', 'SNTEST013']);
+  is('each row is one piece', m.map(r => r[8]), [1, 1, 1]);
+  is('and every row stands alone - nothing left blank for the row above',
+     m.every(r => r[0] === 3 && r[1] === 'ZZ0003' && r[3] === 'G3' && r[5] === 'C3'), true);
+
+  /* a struck-off line has no column to be marked in here, so it stays out */
+  const rm = { id: 4, site: 'ZZ0004', site_name: 'Invented4',
+    lines: [{ code: 'C4', desc: 'D4', qty: 1, gin: { gi: 'G4', sn: [] } }],
+    removed: [{ code: 'C9', desc: 'struck off', qty: 2 }] };
+  is('a removed line is not on a sheet somebody collects from',
+     W.pickSheet([rm]).slice(1).map(r => r[5]), ['C4']);
+
+  /* several sites go down one sheet, in the order given */
+  const two = W.pickSheet([ref, fb]).slice(1).map(r => r[1]);
+  is('every selected site is in the one sheet, downwards', two, ['ZZ0100', 'ZZ0002']);
+}
+
 console.log(pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

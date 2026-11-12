@@ -1477,6 +1477,16 @@ $('pickPanel').addEventListener('toggle', () => {
    exported from a selection have to be comparable, so neither gets its own
    idea of what the columns are. */
 const COLW = W.HEADERS.map((h, i) => ({ wch: [8,22,16,18,22,9,22,12,40,8,6,12,11,10,12,12,10,12,12,11,8,40,8,24,12][i] || 12 }));
+/* The collection sheet is ten columns, not twenty-nine, so it cannot borrow
+   the wide sheet's widths or its autofilter range - a filter declared over
+   columns that are not there is a file Excel offers to repair. */
+const PICKW = W.PICK_HEADERS.map((h, i) => ({ wch: [9, 9, 22, 13, 15, 13, 42, 6, 7, 18][i] || 12 }));
+function asPickSheet(aoa){
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = PICKW;
+  ws['!autofilter'] = { ref: 'A1:J' + aoa.length };
+  return ws;
+}
 function asSheet(aoa){
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = COLW;
@@ -1509,9 +1519,9 @@ $('selExport').onclick = () => {
      Same sheet name, same columns and the same row order as Export Excel,
      so the two files are comparable and a template built for one reads the
      other. */
-  const aoa = W.sheet([...list].sort(order), MARKS, today());
+  const aoa = W.pickSheet([...list].sort(order));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, asSheet(aoa), 'To be Received');
+  XLSX.utils.book_append_sheet(wb, asPickSheet(aoa), 'To be Received');
   XLSX.writeFile(wb, 'WH24-selected-' + today() + '.xlsx');
   toast(list.length + ' ticket' + (list.length === 1 ? '' : 's') + ' · ' +
         (aoa.length - 1) + ' row' + (aoa.length - 1 === 1 ? '' : 's'));
