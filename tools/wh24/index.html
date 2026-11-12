@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-cat="design">
+<html lang="en" data-cat="design" data-look="leaf">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -624,8 +624,12 @@
 </style>
 <link rel="stylesheet" href="../_lib/nav.css?v=7">
 <link rel="stylesheet" href="../_lib/category.css?v=13">
+<!-- the approved look: G1 Leaf on #142C1F / #D0F4DE liquid glass, B1 buttons.
+     AFTER category.css, which owns the accent family this must not touch. -->
+<link rel="stylesheet" href="../_lib/leaf-glass.css?v=3">
 </head>
 <body>
+<div class="scene" aria-hidden="true"></div>
 <header class="hdr">
   <a class="brand" href="../../" title="Emortia"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bname">Emortia</span></a>
   <span class="hsep"></span>
@@ -705,13 +709,18 @@
   </section>
 
   <div class="sbar">
+    <div class="findwrap">
     <input id="find" placeholder="Find a ticket, site, code, reservation, GI number or serial" autocomplete="off" spellcheck="false">
+    <button type="button" class="findx" id="findClear" aria-label="Clear search" title="Clear search" hidden>&times;</button>
+    </div>
     <div class="seg" id="seg" role="tablist"></div>
+    <div class="sbar2">
     <!-- which WorkHub app. Drawn only when there is more than one to choose
          between, so it is not a control that does nothing. -->
     <div class="seg src" id="srcseg" role="tablist" hidden></div>
     <button class="btn" id="exportBtn">Export Excel</button>
     <button class="btn" id="allBtn" title="Tick every row the current filter shows">Select shown</button>
+    </div>
   </div>
 
   <div id="list"><div class="empty">Loading tickets…</div></div>
@@ -1316,8 +1325,8 @@ function docsBox(t){
     ${gs.map((g, i) => {
       const kind = g.kind === 'move' ? 'Activity Report' : g.gi ? 'Goods Issue Note' : 'Activity Report';
       const num = g.gi || g.rep || '';
-      return `<div class="doc"><span class="k">${kind}</span>` +
-             `<span class="n mono">${esc(num || g.file)}</span>` +
+      const ids = `<span class="n mono">${esc((g.gi && g.res) || num || g.file)}</span>`;
+      return `<div class="doc"><span class="k">${kind}</span>` + ids +
              (g.date ? `<span class="d">${esc(nice(g.date, g.gi || g.rep || g.res || 'document'))}${g.date_field ? ' · ' + esc(g.date_field) : ''}</span>` : '') +
              /* A link only when the file is actually in the bucket. A button
                 that 404s is worse than no button - see rule 1. */
@@ -1472,6 +1481,19 @@ $('list').addEventListener('click', async e => {
   } catch(err){ toast(err.message, 5000); e.target.disabled = false; }
 });
 $('find').addEventListener('input', () => render());
+/* the clear button: shown while there is something to clear, and it clears it */
+(function(){
+  const box = $('find'), x = $('findClear');
+  if (!box || !x) return;
+  const sync = () => { x.hidden = !box.value; };
+  box.addEventListener('input', sync);
+  /* other code empties the box directly (a stage tab, Show only these), which
+     fires no input event - so check again after any click on the page too */
+  document.addEventListener('click', () => setTimeout(sync, 0));
+  x.addEventListener('click', e => { e.stopPropagation(); box.value = ''; sync(); render(); box.focus(); });
+  box.addEventListener('keydown', e => { if (e.key === 'Escape' && box.value){ box.value = ''; sync(); render(); } });
+  sync();
+})();
 
 /* The pick list stays however you left it. Shut by default - a long table
    between the dashboard and the ticket list meant every visit began with a

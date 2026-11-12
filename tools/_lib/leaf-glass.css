@@ -15,39 +15,35 @@
    glowing through while the colour stays the colour. */
 /* ---- colours: tokens first, so every rule a tool already has picks them up */
 html[data-cat][data-look="leaf"]{
-  /* THE ACCENT TOKENS ARE NOT SET HERE, and they were, with !important.
+  /* THE ACCENT TOKENS ARE NOT SET HERE, and this bundle set them again.
 
      --accent, --accentB, --accentT, --accentD and --accent-ink belong to
      the family: category.css owns them, and the 8 November identity pin
-     is the reason the directory tile and the tool it opens are the same
-     green. A look may change everything else about a page; it may not
-     change what the page IS.
+     is why the directory tile and the tool it opens are the same green.
+     A look may change everything else about a page; it may not change
+     what the page IS. They were stripped on 11 November and the canvas
+     copy, which predates that, reinstated them.
 
-     Removing them cost almost nothing, measured against category.css:
+     Measured against category.css before removing them, both times:
 
        DARK   all five were already byte-identical to the pin.
-              #81D67B, #A2E59C, #A2E59C, #569252, #071307.
-              Setting them was a no-op with an !important on it.
+              #81D67B, #A2E59C, #A2E59C, #569252, #071307 - a no-op
+              with an !important on it.
 
-       LIGHT  three differ, and only three:
+       LIGHT  three differ:
                 --accent   #0B6B2A -> #006400   dE 13.6
                 --accentB  #004E00 -> #006400   dE 12.6
                 --accentT  #004E00 -> #006400   dE 12.6
-              --accentD and --accent-ink were already identical.
 
-     All still the same dark green, and contrast does not suffer - the
-     filled primary button with white ink goes from 6.67 to 7.44, which
-     is better, not worse. The only real loss is --accentT as text on
-     white dropping from 10.05 to 7.44, and 7.44 is a long way clear of
-     the 4.5 floor.
+     Contrast does not suffer - the filled primary button with white ink
+     goes 6.67 -> 7.44 - and leaving #0B6B2A in put TWO greens on the
+     light page, because the hardcoded literals below now read
+     var(--accent) while the token did not.
 
-     A NOTE ON THE GUARD, because it did not catch this. family.test.js
-     reads tools/<tool>/index.html, access.js, category.css and
-     theme.css. It never opened this file, so it passed with the
-     overrides in place - tested, not assumed. It governs tool pages, and
-     this is a _lib stylesheet, which is a shape it had not seen before.
-     A check is extended alongside this change so the next one cannot
-     slip through the same gap. */
+     family.test.js cannot catch this: it reads tool pages, access.js,
+     category.css and theme.css, and never opens a _lib stylesheet. That
+     blind spot is recorded in the decisions doc. Until it is closed,
+     this comment is the guard. */
   --glow:rgba(129,214,123,.3) !important; --glowSoft:rgba(129,214,123,.14) !important;
   --bar:#142C1F !important; --navy:#142C1F !important; --barFill:#1C3A29 !important;
   --barLine:#3E6150 !important; --barInk:#F4FBF5 !important; --barDim:#C6DACB !important;
@@ -56,38 +52,6 @@ html[data-cat][data-look="leaf"]{
   --card:rgba(20,44,31,.72) !important; --card-2:rgba(28,58,41,.55) !important;
   --line:rgba(196,240,196,.20) !important; --line3:rgba(196,240,196,.36) !important;
   --text:#F4FBF5 !important; --muted:#C6DACB !important;
-
-  /* THE DISPOSED RED IS category.css's, AND THAT IS A DECISION.
-
-     This block briefly set --badT to #f0afbc - the lightened pink that
-     clears 4.5 on the glass. Sithuwaaa looked at it on the live page and
-     asked for the old red back, and the old red is what category.css
-     already gives: #e2607a here, #BE3C59 in light. So nothing is set.
-
-     What that costs, measured on the rendered page through the panel's
-     real backdrop-filter, worst ground at any scroll position:
-
-       dark   struck-through code  2.58     Disposed chip  3.51
-       light  struck-through code  2.89     Disposed chip  4.02
-
-     Four figures under the 4.5 floor, knowingly. The struck-through code
-     was under before this look existed too - 4.02 dark and 4.37 light -
-     so two of the four are older than the glass and two are the glass
-     deepening them.
-
-     WHAT THE FLOOR WOULD COST, priced against those same grounds. In
-     light a full saturation crimson does clear it as ink: #9e0020 at
-     4.65 and 6.47. In dark nothing red clears it as ink - not even a
-     full saturation hot pink, #ff99be, which reaches only 4.40 on the
-     code. The ground there is mid-olive and caps the luminance from
-     both directions at once. A deep red in dark is only reachable as a
-     solid fill, the way the Disposed segment button below does it at
-     5.23. Costed and declined, not unexamined.
-
-     (An earlier draft of this note quoted 2.87 / 3.78 / 3.09 / 4.14 and
-     said #ff99be cleared. Those came from a solver holding grounds from
-     a different run, which were kinder than the page's. The numbers
-     above are read off the rendered page.) */
   --chipType:#B4F0AE; --chipVendor:#F2DFB4; --chipAttr:#BEE3DD;
   --g-sheen:linear-gradient(155deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.04) 34%,rgba(255,255,255,0) 58%,rgba(162,229,156,.07) 100%);
   --g-base:rgba(20,44,31,.72); --g-solid:rgba(16,36,25,.94);
@@ -105,21 +69,16 @@ html[data-cat][data-look="leaf"][data-theme="light"]{
   --card:rgba(208,244,222,.80) !important; --card-2:rgba(236,251,241,.6) !important;
   --line:rgba(11,107,42,.18) !important; --line3:rgba(11,107,42,.34) !important;
   --text:#08170D !important; --muted:#23392B !important;
-
-  /* --okT ONLY. --badT IS LEFT TO category.css - see the dark block.
-
-     category.css sets --okT #007D4D, chosen against a solid white card.
-     This panel is not solid: at .80 over the photograph the worst ground
-     an Active chip sits on is rgb(219,231,220), where #007D4D measures
-     3.96. Deepened along the same hue until it clears with margin:
-
-       --okT  #006e44   4.98   dE 6.9
-
-     --badT is deliberately not set. The Disposed red is the one Sithuwaaa
-     asked to keep as it was, under the floor, for the reasons written out
-     in the dark block above. */
-  --okT:#006e44 !important;
   --chipType:#14561A; --chipVendor:#5E4317; --chipAttr:#1F4C49;
+  /* --okT ONLY. --badT is left to category.css on purpose: Sithuwaaa asked
+     for the old Disposed reds back on 11 November, knowingly under the
+     floor, and the costings are in the commit that did it.
+
+     category.css sets --okT #007D4D against a solid white card. This panel
+     is not solid: at .80 over the photograph the worst ground an Active
+     chip sits on measured rgb(219,231,220), where #007D4D is 3.96.
+     Deepened along the same hue until it clears with margin - 4.98. */
+  --okT:#006e44 !important;
   --g-sheen:linear-gradient(155deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.10) 36%,rgba(255,255,255,0) 60%,rgba(255,255,255,.12) 100%);
   --g-base:rgba(208,244,222,.80); --g-solid:rgba(232,250,239,.96);
   --g-edge:rgba(255,255,255,.9);
@@ -199,29 +158,25 @@ html[data-look="leaf"]:not([data-theme="light"]) .mini{
 html[data-look="leaf"]:not([data-theme="light"]) .btn.pri,html[data-look="leaf"]:not([data-theme="light"]) .bm{
   background:#81D67B !important;border:1px solid #81D67B !important;color:#071307 !important}
 html[data-look="leaf"][data-theme="light"] .btn:not(.pri):not(.ok),html[data-look="leaf"][data-theme="light"] .mini{
-  background:rgba(255,255,255,.55) !important;border:1.5px solid var(--accent) !important;color:#0B4A1D !important}
+  background:rgba(255,255,255,.55) !important;border:1.5px solid #0B6B2A !important;color:#0B4A1D !important}
 html[data-look="leaf"][data-theme="light"] .btn.pri,html[data-look="leaf"][data-theme="light"] .bm{
-  background:var(--accent) !important;border:1px solid var(--accent) !important;color:#FFFFFF !important}
+  background:#0B6B2A !important;border:1px solid #0B6B2A !important;color:#FFFFFF !important}
 /* the filter strip: the chosen one is the filled green */
 html[data-look="leaf"] .seg button.on{background:var(--accent) !important;color:var(--accent-ink) !important}
-html[data-look="leaf"] .seg button+button{border-left-color:var(--line) !important}
 /* ---- EXCEPT DISPOSED, WHICH IS RED AND WAS GREEN ----
 
-   The rule above paints every chosen segment with the accent, and it
-   carries !important, so it beat .seg button.on.bad in index.html and
-   turned the Disposed filter green. Disposed is a state, not a choice:
-   it has been red since the filter shipped and the page says so in its
-   own stylesheet. This puts it back, at a specificity that wins.
+   The rule above paints every chosen segment with the accent and carries
+   !important, so it beat .seg button.on.bad in index.html and turned the
+   Disposed filter green. Disposed is a state, not a choice: it has been
+   red since the filter shipped and the page says so in its own
+   stylesheet. This puts it back at a specificity that wins.
 
-   The fill is --bad and the ink is --badInk, untouched, which is the
-   decision already recorded: darken the ink, never repaint a chosen
-   fill. Both are opaque, so the photograph underneath does not reach
-   them and these numbers hold at every scroll position:
-
-     dark   #2b0f16 on #e2607a   5.23
-     light  #ffffff on #c2405c   5.02 */
+   Fill and ink are --bad and --badInk untouched - darken the ink, never
+   repaint a chosen fill. Both opaque, so the photograph does not reach
+   them: 5.23 dark, 5.02 light. */
 html[data-look="leaf"] .seg button.on.bad{
   background:var(--bad) !important;color:var(--badInk) !important;border-color:var(--bad) !important}
+html[data-look="leaf"] .seg button+button{border-left-color:var(--line) !important}
 
 /* ---- the numbers and codes in the leaf green */
 html[data-look="leaf"]:not([data-theme="light"]) .mono{color:inherit}
@@ -270,24 +225,138 @@ html[data-look="leaf"] .fv.on .box{background:var(--accent) !important}
 html[data-look="leaf"] .cpb{font-weight:600;text-shadow:none !important}
 html[data-look="leaf"]:not([data-theme="light"]) .cpb.primary{background:#81D67B !important;border-color:#81D67B !important;color:#071307 !important}
 html[data-look="leaf"]:not([data-theme="light"]) .cpb:not(.primary){background:rgba(16,36,25,.4) !important;border:1.5px solid #A2E59C !important;color:#E6F7E4 !important}
-html[data-look="leaf"][data-theme="light"] .cpb.primary{background:var(--accent) !important;border-color:var(--accent) !important;color:#FFFFFF !important}
-html[data-look="leaf"][data-theme="light"] .cpb:not(.primary){background:rgba(255,255,255,.6) !important;border:1.5px solid var(--accent) !important;color:#0B4A1D !important}
-/* ---- THE ACCOUNT MENU IS NOT GLASS ----
-
-   access.js builds the signed-in chip and its menu with
-   background:var(--card). Everywhere else on the site --card is opaque,
-   so that was a solid panel. This look redefines --card as the glass -
-   rgba(20,44,31,.72) and rgba(208,244,222,.80) - and the menu inherited
-   it, which put the results list and the Code buttons straight through
-   the middle of it. The menu has no backdrop-filter of its own, so it
-   was not even blurred glass: it was plain transparency over sharp text.
-
-   A dropdown is not a surface you look through. It gets the look's panel
-   colour at full opacity. The border, the text and the hover tint still
-   come from the leaf tokens, so it still belongs to the page. */
-html[data-look="leaf"] .acc-menu{background:#142C1F !important}
-html[data-look="leaf"][data-theme="light"] .acc-menu{background:#D0F4DE !important}
-
+html[data-look="leaf"][data-theme="light"] .cpb.primary{background:#0B6B2A !important;border-color:#0B6B2A !important;color:#FFFFFF !important}
+html[data-look="leaf"][data-theme="light"] .cpb:not(.primary){background:rgba(255,255,255,.6) !important;border:1.5px solid #0B6B2A !important;color:#0B4A1D !important}
 /* the detail popup reads on its own */
 html[data-look="leaf"] .mhead{background:linear-gradient(rgba(162,229,156,.16),rgba(162,229,156,.06)) !important}
 html[data-look="leaf"][data-theme="light"] .modal .ddesc,html[data-look="leaf"][data-theme="light"] .modal .f .v{color:#08170D}
+
+/* ===========================================================================
+   WH24 - colour to tell the parts of a ticket apart
+   =========================================================================== */
+/* the account menu is a plain solid panel, never glass */
+html[data-look="leaf"] .acc-menu{background:#142C1F !important;background-image:none !important;
+  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;border-color:rgba(196,240,196,.28) !important}
+html[data-look="leaf"][data-theme="light"] .acc-menu{background:#D0F4DE !important;border-color:rgba(11,107,42,.25) !important}
+
+/* "Collected today" - the one action on the page - in warm gold, apart from
+   every other button */
+html[data-look="leaf"]:not([data-theme="light"]) .mini.go,html[data-look="leaf"]:not([data-theme="light"]) .mini.go-today{
+  background:#27A300 !important;border:1px solid #27A300 !important;color:#FFFFFF !important;font-weight:700}
+html[data-look="leaf"][data-theme="light"] .mini.go,html[data-look="leaf"][data-theme="light"] .mini.go-today{
+  background:#27A300 !important;border:1px solid #27A300 !important;color:#FFFFFF !important;font-weight:700}
+html[data-look="leaf"] .mini.go:hover,html[data-look="leaf"] .mini.go-today:hover{filter:brightness(1.08)}
+/* Download in sky blue, filled, so it reads as a different kind of action */
+html[data-look="leaf"] .mini.dl{background:#27A300 !important;border:1px solid #27A300 !important;color:#FFFFFF !important;font-weight:700}
+html[data-look="leaf"] .mini.dl::before{content:'\2193  '}
+
+/* inside an open ticket, each block gets its own tint and label colour */
+html[data-look="leaf"] .tkb .cardtitle{background:rgba(111,168,255,.10) !important;border-color:rgba(111,168,255,.38) !important}
+html[data-look="leaf"] .tkb .cardtitle i{color:#9EC3FF}
+html[data-look="leaf"][data-theme="light"] .tkb .cardtitle{background:rgba(31,95,196,.08) !important;border-color:rgba(31,95,196,.30) !important}
+html[data-look="leaf"][data-theme="light"] .tkb .cardtitle i{color:#1F4E99}
+
+html[data-look="leaf"] .facts i{color:#8FD6C8}
+html[data-look="leaf"][data-theme="light"] .facts i{color:#1F6B5E}
+
+html[data-look="leaf"] .got{background:rgba(242,193,78,.09) !important;border-color:rgba(242,193,78,.42) !important}
+html[data-look="leaf"] .got .lbl{color:#F2C14E}
+html[data-look="leaf"][data-theme="light"] .got{background:rgba(138,90,0,.07) !important;border-color:rgba(138,90,0,.32) !important}
+html[data-look="leaf"][data-theme="light"] .got .lbl{color:#7A5200}
+
+html[data-look="leaf"] .docs{background:rgba(190,150,255,.10) !important;border-color:rgba(190,150,255,.38) !important}
+html[data-look="leaf"] .docs .h{color:#C9B0FF}
+html[data-look="leaf"][data-theme="light"] .docs{background:rgba(91,60,153,.07) !important;border-color:rgba(91,60,153,.30) !important}
+html[data-look="leaf"][data-theme="light"] .docs .h{color:#5B3C99}
+
+/* the stage trail: past stages soft, the current one green */
+html[data-look="leaf"] .stp{background:rgba(255,255,255,.04)}
+html[data-look="leaf"] .stp.open{background:rgba(129,214,123,.14);border-color:#81D67B}
+html[data-look="leaf"][data-theme="light"] .stp.open{background:rgba(11,107,42,.10);border-color:#0B6B2A}
+
+/* the materials table: a green header, codes in the leaf green */
+html[data-look="leaf"] .tkb th{background:rgba(129,214,123,.16) !important;color:#DDF6DA}
+html[data-look="leaf"][data-theme="light"] .tkb th{background:rgba(11,107,42,.12) !important;color:#0B3A17}
+html[data-look="leaf"] .tkb td.m:first-child{color:#B4F0AE}
+html[data-look="leaf"][data-theme="light"] .tkb td.m:first-child{color:#0A5A1E}
+
+/* the "last synced" panel from the bar: roomier, so the feed reads at a glance */
+html[data-look="leaf"] .newspop{width:520px !important;padding:18px 20px 16px !important;font-size:14.5px;border-radius:16px}
+html[data-look="leaf"] .newspop .nhd b{font-size:16.5px}
+html[data-look="leaf"] .newspop p,html[data-look="leaf"] .newspop dl,html[data-look="leaf"] .newspop li{font-size:14px;line-height:1.55}
+html[data-look="leaf"] .newspop h4{font-size:12px}
+html[data-look="leaf"] .newspop .nact .btn{padding:11px 16px}
+
+/* DARK MODE KEEPS THE PHOTO DARK, the way What To Do does: one even veil over
+   the waterfront (What To Do uses rgba(11,3,6,.75) over its rain photo; this
+   is the same depth, leaning green). Light mode keeps its photo as it is. */
+html[data-look="leaf"]:not([data-theme="light"]) .scene::after{content:'' !important;position:absolute;inset:0;
+  background:rgba(3,10,6,.75) !important}
+
+/* THE TILES USE THE WHOLE WIDTH. The page used to stop at 1400px (WH24) or
+   1600px (Material Codes) and centre, which left a strip of bare photo down
+   both sides on a wide screen. Now it runs edge to edge with the same 24px
+   margin the nav bar has. */
+html[data-look="leaf"] main{max-width:none !important;padding-left:24px !important;padding-right:24px !important}
+@media (max-width:760px){html[data-look="leaf"] main{padding-left:14px !important;padding-right:14px !important}}
+
+/* WH24's FIND BAR HOLDS ITS SHAPE, in two fixed rows that never reflow:
+     1) the search box on the left, the stage tabs on the right - one line,
+        always. The search box takes whatever the tabs leave; on a window too
+        narrow for every tab the strip scrolls sideways instead of dropping
+        under the search.
+     2) the source tabs, Export Excel and Select shown, from the left. */
+html[data-look="leaf"] .sbar{display:grid !important;align-items:center;gap:10px;
+  grid-template-columns:minmax(220px,1fr) minmax(0,max-content)}
+html[data-look="leaf"] .sbar .findwrap{grid-column:1;grid-row:1;min-width:0;position:relative;display:flex}
+html[data-look="leaf"] .sbar #find{flex:1;min-width:0;width:100%;padding-right:46px !important}
+/* the clear cross, inside the right end of the search box */
+html[data-look="leaf"] .findx{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;
+  border-radius:50%;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font:700 20px/1 'Hanken Grotesk',sans-serif;padding:0;text-shadow:none;
+  background:rgba(255,255,255,.14);color:#FFFFFF}
+html[data-look="leaf"] .findx:hover{background:#E64562;color:#FFFFFF}
+html[data-look="leaf"] .findx:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+html[data-look="leaf"][data-theme="light"] .findx{background:rgba(11,107,42,.12);color:#0B3A17}
+html[data-look="leaf"][data-theme="light"] .findx:hover{background:#E64562;color:#FFFFFF}
+html[data-look="leaf"] .sbar #seg{grid-column:2;grid-row:1;justify-self:end;max-width:100%;min-width:0}
+html[data-look="leaf"] .sbar .sbar2{grid-column:1 / -1;grid-row:2;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+@media (max-width:760px){
+  html[data-look="leaf"] .sbar{grid-template-columns:1fr}
+  html[data-look="leaf"] .sbar #seg{grid-column:1;grid-row:2;justify-self:stretch}
+  html[data-look="leaf"] .sbar .sbar2{grid-row:3}
+}
+
+/* THE FIND BAR'S LETTERS STAND OUT. Tabs, counts, buttons and the search
+   placeholder were mid-weight on see-through glass, so the photo pulled at
+   them. Heavier letters, stronger ink, a denser strip under them. */
+html[data-look="leaf"] .sbar .seg button{font-weight:700 !important;font-size:15px}
+html[data-look="leaf"] .sbar .seg button b{opacity:1 !important;font-weight:700}
+html[data-look="leaf"] .sbar .btn{font-weight:700 !important}
+html[data-look="leaf"]:not([data-theme="light"]) .sbar .seg{background:var(--g-sheen),rgba(14,32,22,.88) !important}
+html[data-look="leaf"]:not([data-theme="light"]) .sbar .seg button:not(.on){color:#FFFFFF !important;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+html[data-look="leaf"]:not([data-theme="light"]) .sbar .seg button:not(.on) b{color:#B4F0AE}
+html[data-look="leaf"]:not([data-theme="light"]) .sbar #find{color:#FFFFFF}
+html[data-look="leaf"]:not([data-theme="light"]) .sbar #find::placeholder{color:#D6E6DA;opacity:1}
+html[data-look="leaf"][data-theme="light"] .sbar .seg{background:var(--g-sheen),rgba(236,251,241,.94) !important}
+html[data-look="leaf"][data-theme="light"] .sbar .seg button:not(.on){color:#06140B !important}
+html[data-look="leaf"][data-theme="light"] .sbar .seg button:not(.on) b{color:#0B6B2A}
+html[data-look="leaf"][data-theme="light"] .sbar #find{color:#06140B;background:rgba(255,255,255,.94) !important}
+html[data-look="leaf"][data-theme="light"] .sbar #find::placeholder{color:#3A4D40;opacity:1}
+html[data-look="leaf"] .sbar .seg button.on b{color:inherit}
+/* the source tabs start on the same left edge as everything above and below */
+html[data-look="leaf"] .sbar .seg.src{margin-left:0 !important}
+
+/* the two numbers on a Goods Issue Note, each with its small label */
+html[data-look="leaf"] .docs .ix{display:inline-flex;align-items:baseline;gap:7px}
+html[data-look="leaf"] .docs .ix i{font:700 10px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;font-style:normal;color:#C9B0FF}
+html[data-look="leaf"][data-theme="light"] .docs .ix i{color:#5B3C99}
+html[data-look="leaf"] .docs .ix .mono{font-weight:700;font-size:13.5px}
+
+/* the "Can collect now" number is always the Collected-today green, in both
+   modes and whether or not the data is stale - the warning line under it
+   still says when a sync is due */
+html[data-look="leaf"] .board .tile.hero .v,
+html[data-look="leaf"] .board .tile.hero.s-bad .v,
+html[data-look="leaf"] .board .tile.hero.s-never .v,
+html[data-look="leaf"] .board .tile.hero.s-warn .v{color:#27A300 !important}
