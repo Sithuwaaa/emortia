@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-cat="design">
+<html lang="en" data-cat="design" data-look="leaf">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -208,8 +208,66 @@
 <script src="../_lib/ask.js?v=1" defer></script>
 <link rel="stylesheet" href="../_lib/nav.css?v=7">
 <link rel="stylesheet" href="../_lib/category.css?v=13">
+<!-- the Material Codes look: leaf green on liquid glass, over the waterfront photo -->
+<link rel="stylesheet" href="../_lib/leaf-glass.css?v=3">
+<style>
+  /* GIN Extractor on the leaf look. Panels are the big soft glass tiles of
+     What To Do: 32px corners, a wide sheen, the photo glowing through. */
+  html[data-look="leaf"] main{max-width:none;padding:22px 24px 18px}
+  html[data-look="leaf"] .card{
+    background:var(--g-sheen),var(--g-base) !important;
+    -webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);
+    border:1px solid var(--g-edge) !important;border-radius:32px;
+    box-shadow:var(--g-shadow) !important;margin-bottom:18px}
+  html[data-look="leaf"] .card-pad{padding:22px}
+  /* the drop zone: a second, lighter layer inside the tile */
+  html[data-look="leaf"] #drop{border-radius:22px;border:2px dashed var(--line3);
+    background:rgba(255,255,255,.05);padding:44px 16px}
+  html[data-look="leaf"][data-theme="light"] #drop{background:rgba(255,255,255,.55)}
+  html[data-look="leaf"] #drop:hover,html[data-look="leaf"] #drop.over{border-color:var(--accent);background:var(--glowSoft)}
+  html[data-look="leaf"] #drop .big{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;letter-spacing:-.01em}
+  html[data-look="leaf"] #drop .hint{color:var(--muted);font-size:13.5px}
+  html[data-look="leaf"] .frow{background:rgba(255,255,255,.06);border-color:var(--line);border-radius:14px}
+  html[data-look="leaf"][data-theme="light"] .frow{background:rgba(255,255,255,.6)}
+  /* tile headers */
+  html[data-look="leaf"] .bar{padding:18px 22px;border-bottom:1px solid var(--line)}
+  html[data-look="leaf"] .bar h2{font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700;letter-spacing:-.01em}
+  html[data-look="leaf"] .count{color:var(--muted);font-family:'Space Mono',monospace;font-size:11.5px;letter-spacing:.04em}
+  /* B1 buttons */
+  html[data-look="leaf"] button.btn{border-radius:999px;padding:9px 18px}
+  html[data-look="leaf"] button.btn.primary.pri,html[data-look="leaf"][data-theme="light"] button.btn.primary.pri{
+    background:#27A300 !important;border:1.5px solid #27A300 !important;color:#FFFFFF !important;text-shadow:none}
+  html[data-look="leaf"] button.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+  html[data-look="leaf"] .ghost{background:transparent !important;border:1.5px solid var(--accentB) !important;color:var(--text) !important}
+  html[data-look="leaf"][data-theme="light"] .ghost{border-color:#0B6B2A !important;color:#0B4A1D !important}
+  /* tables: clear on the glass, a green header band, soft zebra rows */
+  html[data-look="leaf"] .tablebox{padding:0 10px 12px}
+  html[data-look="leaf"] th{background:transparent;color:var(--accentB);font-family:'Space Mono',monospace;
+    font-size:10.5px;letter-spacing:.07em;border-bottom:1.5px solid var(--line3);position:static}
+  html[data-look="leaf"] td{border-bottom:1px solid var(--line);color:var(--text)}
+  html[data-look="leaf"] tbody tr:nth-child(even) td{background:rgba(255,255,255,.035)}
+  html[data-look="leaf"][data-theme="light"] tbody tr:nth-child(even) td{background:rgba(0,100,0,.04)}
+  html[data-look="leaf"] tbody tr:hover td{background:var(--glowSoft)}
+  html[data-look="leaf"] td.mono:first-child{color:var(--accentB);font-weight:700}
+  /* the empty-table line is text, not a glass tile */
+  html[data-look="leaf"] td.empty{background:none !important;border:0 !important;box-shadow:none !important;
+    -webkit-backdrop-filter:none !important;backdrop-filter:none !important;color:var(--muted)}
+  /* the footer line sits on the photo, so it is light with a soft lift in both modes */
+  html[data-look="leaf"] footer{color:#E6F7E4 !important;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:4px 0 14px}
+  /* back to top: a glass pill, bottom right. It only appears once the page
+     has been scrolled 500px, so with a short table it never shows. */
+  .totop{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;align-items:center;gap:10px;
+    padding:6px 16px 6px 6px;border-radius:999px;cursor:pointer;font:inherit;font-size:13px;font-weight:600;
+    color:var(--text);border:1px solid var(--line);transition:border-color .18s ease,transform .18s ease}
+  .totop[hidden]{display:none !important}
+  .totop:hover{border-color:var(--accent) !important;transform:translateY(-1px)}
+  .totop span{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:17px;font-weight:700;background:#27A300;color:#071307;text-shadow:none}
+  @media (max-width:640px){ .totop{right:14px;bottom:14px} }
+</style>
 </head>
 <body>
+<div class="scene" aria-hidden="true"></div>
 <header class="hdr">
   <a class="brand" href="../../" title="Emortia · back to the site" aria-label="Emortia · back to the site">
     <span class="logo"><i></i><i></i><i></i><i></i></span>
@@ -236,7 +294,7 @@
       <h2>Good Issue Notes</h2>
       <span class="count" id="count">0 rows</span>
       <button class="btn ghost" id="clearBtn" disabled>Clear</button>
-      <button class="btn primary" id="exportBtn" disabled>Download Excel</button>
+      <button class="btn primary pri" id="exportBtn" disabled>Download Excel</button>
     </div>
     <div class="tablebox">
       <table aria-label="Extracted GIN materials">
@@ -256,7 +314,7 @@
       <h2>Equipment / Asset Movement</h2>
       <span class="count" id="mCount">0 rows</span>
       <button class="btn ghost" id="mClearBtn" disabled>Clear</button>
-      <button class="btn primary" id="mExportBtn" disabled>Download Excel</button>
+      <button class="btn primary pri" id="mExportBtn" disabled>Download Excel</button>
     </div>
     <div class="tablebox">
       <table aria-label="Extracted asset movements">
@@ -592,6 +650,18 @@ render();
    served everything from its cache for ever. The site has one at the root
    now; the file that used to be here is a stub whose only job is to remove
    the old registration, and nothing re-registers it. */
+</script>
+<button class="totop" id="totop" type="button" hidden><span>↑</span>Back to top</button>
+<script>
+/* back to top: shown after 500px of scroll; passive so it never holds up a scroll */
+(function(){
+  const b = document.getElementById('totop'); if (!b) return;
+  addEventListener('scroll', () => {
+    const on = (window.scrollY || document.documentElement.scrollTop) > 500;
+    if (on === !b.hidden) return; b.hidden = !on;
+  }, { passive: true });
+  b.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+})();
 </script>
 </body>
 </html>
