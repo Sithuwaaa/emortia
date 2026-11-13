@@ -30,6 +30,17 @@
 # node runs with </dev/null. A command inside a `while read` loop that
 # reads stdin swallows the loop's own input, which is the classic cause
 # of exactly that signature.
+#
+# EVERY grep CAPTURE ENDS IN "|| true", AND THAT IS LOAD-BEARING. GitHub
+# runs each step with bash -eo pipefail. grep exits 1 when it matches
+# nothing, pipefail makes the whole pipeline 1, and -e then kills the
+# step. A test file that bails before running anything - bom.test.js
+# missing its workbook - prints no "N passed, M failed" line, so the
+# capture found nothing and the run died mid-loop with no error of its
+# own. Runs 1 to 5 all died exactly there, at file 19 of 44.
+#
+# Files 1 to 18 all print a summary, which is why it always looked like
+# bom.test.js was the problem. It was the first file to print nothing.
 
 name: Tests
 
@@ -69,9 +80,9 @@ jobs:
             echo "--> [$files/$expected] $f"
 
             if out=$(node "$f" 2>&1 </dev/null); then code=0; else code=$?; fi
-            summary=$(printf '%s\n' "$out" | grep -E '[0-9]+ passed, [0-9]+ failed' | tail -1)
-            passed=$(printf '%s' "$summary" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
-            failed=$(printf '%s' "$summary" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+')
+            summary=$(printf '%s\n' "$out" | grep -E '[0-9]+ passed, [0-9]+ failed' | tail -1 || true)
+            passed=$(printf '%s' "$summary" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || true)
+            failed=$(printf '%s' "$summary" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+' || true)
 
             if [ "$code" -eq 2 ]; then
               skipped=$((skipped + 1))
