@@ -1,0 +1,81 @@
+# Run the whole suite on every push, and fail the build when it fails.
+#
+# WHY THIS EXISTS. Every guard in this repository was advisory until now.
+# The suite ran when somebody typed the command, which means a guard only
+# fired if the person about to break it chose to run it - and the entry in
+# docs/wh24-decisions.md about rules living in the head of whoever is
+# about to break them describes exactly that. A check that has to be
+# remembered is a rule wearing a test's clothes.
+#
+# backup.yml already proves Actions works on this repository.
+#
+# No network is needed. Checked before writing this: nothing under
+# tools/**/*.test.js makes a request. The one `fetch(` in bom.test.js is
+# a string in a formula the test expects to be REFUSED, and the
+# "reachable" tests only mention fetching in a comment.
+
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Matches the version the suite is developed against, so a failure
+      # here is a real failure and not a runtime difference.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run every test file
+        run: |
+          set -uo pipefail
+          fail=0
+          files=0
+          total=0
+
+          # A test file reports failure two ways and BOTH are honoured:
+          # a non-zero exit, and a non-zero count on its summary line. The
+          # second matters because a test file that forgets process.exit
+          # would otherwise report its own failures and still pass the
+          # build - silence that nobody would notice.
+          while IFS= read -r f; do
+            files=$((files + 1))
+            if out=$(node "$f" 2>&1); then code=0; else code=$?; fi
+            summary=$(printf '%s\n' "$out" | grep -E '[0-9]+ passed, [0-9]+ failed' | tail -1)
+            passed=$(printf '%s' "$summary" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
+            failed=$(printf '%s' "$summary" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+')
+            total=$((total + ${passed:-0}))
+
+            if [ "$code" -ne 0 ] || [ "${failed:-0}" -ne 0 ]; then
+              fail=$((fail + 1))
+              echo "::group::FAIL $f  (exit $code, ${failed:-?} failed)"
+              printf '%s\n' "$out" | tail -40
+              echo "::endgroup::"
+              echo "::error file=$f::suite failed in $f"
+            else
+              echo "ok   $f  (${passed:-?} passed)"
+            fi
+          done < <(find tools -name '*.test.js' | sort)
+
+          echo
+          echo "$files test files, $total assertions passed"
+
+          # A run that found no test files is a broken runner, not a pass.
+          if [ "$files" -eq 0 ]; then
+            echo "::error::no test files were found - the runner is wrong, not the code"
+            exit 1
+          fi
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::$fail test file(s) failed"
+            exit 1
+          fi
+          echo "suite green"
