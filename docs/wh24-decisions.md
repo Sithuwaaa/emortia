@@ -3084,6 +3084,44 @@ them in the clear would be a test that publishes exactly what it exists
 to keep out. Each is a SHA-256 prefix instead: the count is the debt,
 visible and countable, and removing a hash is how it gets paid.
 
+**And the surface is wider than git.** GitHub Pages serves every file in
+the repository — not just the pages. Checked on 13 November: the test
+files return HTTP 200 at emortia.com, as do `docs/`, `supabase/`,
+`README.md` and even `.gitattributes`. Only `.github/` is withheld. A
+fixture pushed with real data is not merely in version control where
+somebody would have to look for it; it is on the public web at a
+guessable URL. Any exposure assessment from here covers both surfaces,
+and "it is only a test file" was never a mitigation.
+
+### Why it happened three times, which is not three lapses
+
+It is tempting to file this under carelessness and resolve to be more
+careful. That explains nothing and predicts nothing, and it happened
+again *after* the resolution, in the file written to enforce it.
+
+The mechanism is specific. **A file documenting a forbidden pattern has
+to illustrate the pattern, and the most convincing illustration is a real
+instance.** Writing "no real identifiers" needs an example of what a real
+identifier looks like; an invented one is, by construction, the weaker
+demonstration. The same pull produced all three: a fixture reproducing a
+live export exactly, so the assertion would be exact; a comment
+illustrating four shapes, so the reader would recognise them. In every
+case the reach for the real value *was* the diligence.
+
+So the pull toward the real thing is strongest exactly where the stakes
+are highest — in the specification, in the test, in the document that
+exists to forbid it. That is not a character flaw to be resisted harder;
+it is a property of the task.
+
+Two consequences, and they are the whole fix:
+
+- **The guard scans its own source.** That is the part of this that
+  matters. Nothing is exempt because it is the thing doing the checking —
+  and the first run after it was committed caught two faults in itself.
+- **Generated illustrations beat pasted ones.** An example built from the
+  allowed range cannot be a real value. Where the file needs to show a
+  shape, it should construct one rather than quote one.
+
 The second general point, because it is the same shape as the backup
 rule two entries up: **the instinct after being caught is to add another
 rule.** The rule already existed. What was missing was something that
@@ -3121,3 +3159,61 @@ evidence.
 the measuring instrument needs its own known answers from outside.** The
 breaks prove the guard notices. Only the browser could say whether what
 it noticed was true.
+
+## Disclosure: three real identifiers in fa1a01e, not purged
+
+**What.** Three real Dialog identifiers — one material code, one GI
+number, one reservation — appeared as illustrative examples in the
+comment at the top of `tools/_lib/identifiers.test.js`. No site code, no
+serial, no site name: the fixture values from the earlier draft were
+caught before they were committed, and these three were the ones that
+reached origin.
+
+**Where.** Commit `fa1a01e`, pushed 12 November 2026. They are in git
+history and, because Pages serves every file in the repository, they
+were also live at `emortia.com/tools/_lib/identifiers.test.js` until the
+next deploy.
+
+**Fixed.** Replaced with generated examples from the allowed ranges in
+`88988d4`. The working tree has been clean of all three since `473f330`,
+verified by `git grep` over every committed file.
+
+**Not purged, deliberately.** No history rewrite was done, for two
+reasons.
+
+The first is that it would not accomplish the thing. A force-push does
+not delete anything on GitHub: the objects stay reachable by SHA through
+the API and any fork or cached view, and a repository that has been
+public for a day has to be assumed read. Rewriting would buy the
+appearance of removal and not the fact of it.
+
+The second is that this document cites commit SHAs throughout, as the
+record of why each decision was taken. A rewrite renames every commit
+after the rewrite point and silently invalidates those citations — the
+decisions log would start pointing at nothing, which costs something real
+to remove something already gone.
+
+So the disclosure is the remedy: written down, dated, and specific about
+what was exposed and for how long. The three values are not reproduced
+here, for the same reason they are held as hashes in the guard.
+
+**What actually changed as a result** is that the rule now has a check
+that runs over every committed file including its own source, and that
+"not served" is no longer assumed about anything — see the entry above.
+
+## The scene div, and checking what an arrangement does
+
+The RF Jumper handoff said the scene div is the first element in
+`<body>`. The patch put it third, after `.dust-layer` and
+`.aurora-layer`. The obvious move is to "fix" the patch to match the
+prose.
+
+Reading first: all three are `position:fixed` at `z-index:0`, so among
+siblings the later one paints on top. Third means the photo covers the
+two decorative layers. First would have put them back over the photo —
+breaking the one thing the same handoff asked to verify, that the photo
+shows "with nothing over it".
+
+The patch was right and the sentence was loose. **A described arrangement
+and what that arrangement does are two different claims, and only one of
+them is testable.** Match the behaviour, not the description of it.
