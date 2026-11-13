@@ -499,17 +499,41 @@ console.log('\n--- every tool opens light ---');
    default, not an accident. */
 console.log('\n--- every token a tool reads is defined somewhere ---');
 {
-  const sheets = ['category.css', 'theme.css', 'nav.css', 'motion.css', 'lookup.css']
-    .map(f => path.join(TOOLS, '_lib', f)).filter(p => fs.existsSync(p))
-    .map(p => fs.readFileSync(p, 'utf8')).join('\n');
+  /* THE SHEETS A PAGE ACTUALLY LINKS, not a list kept here by hand.
+
+     This read a hardcoded five - category, theme, nav, motion, lookup -
+     and so reported every token of leaf-glass.css as undefined the first
+     time a page relied on that stylesheet instead of carrying its own
+     copies. Material Codes and WH24 never tripped it because they also
+     define the glass tokens inline; GIN Extractor does not, and five
+     perfectly well-defined names came back dangling.
+
+     Same shape as the accent blind spot recorded on 11 November: a check
+     that knows where to look is wrong the moment something moves. It now
+     reads whatever each page links, via the same resolver pin.test.js
+     uses, so a new shared stylesheet is covered the day it is used. */
   const names = s => new Set([...s.matchAll(/--([a-zA-Z0-9_-]+)\s*:/g)].map(m => m[1]));
-  const shared = names(sheets);
-  is('the shared stylesheets were actually read', shared.size > 10, true);
+  const CASCADE = require('./cascade.js');
+
+  let sheetCount = 0;
+  const definedFor = tool => {
+    const page = path.join(TOOLS, tool, 'index.html');
+    const out = new Set();
+    for (const sheet of CASCADE.sheetsFor(page)) {
+      if (sheet.external) continue;
+      sheetCount++;
+      for (const n of names(sheet.css)) out.add(n);
+    }
+    return out;
+  };
+  is('the stylesheets a page links were actually read',
+     definedFor(mapping[0].tool).size > 10, true);
 
   const dangling = [];
   for (const row of mapping) {
     const src = fs.readFileSync(path.join(TOOLS, row.tool, 'index.html'), 'utf8');
     const own = names(src);
+    const shared = definedFor(row.tool);
     for (const m of src.matchAll(/var\(\s*--([a-zA-Z0-9_-]+)\s*([,)])/g)) {
       if (m[2] === ',') continue;                       /* has a fallback */
       if (!own.has(m[1]) && !shared.has(m[1])) dangling.push(row.tool + ' --' + m[1]);
@@ -517,7 +541,7 @@ console.log('\n--- every token a tool reads is defined somewhere ---');
   }
   is('no tool reads an undefined custom property', [...new Set(dangling)], []);
   /* Sensitivity: the check must see a name that is genuinely absent. */
-  is('and it would notice one', shared.has('definitely-not-a-token'), false);
+  is('and it would notice one', definedFor(mapping[0].tool).has('definitely-not-a-token'), false);
 }
 
 /* ---- 3e. text on a painted background, measured, in both themes ----
