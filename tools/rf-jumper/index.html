@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-cat="field">
+<html lang="en" data-cat="field" data-look="glass">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -242,8 +242,120 @@
 </style>
 <link rel="stylesheet" href="../_lib/nav.css?v=7">
 <link rel="stylesheet" href="../_lib/category.css?v=13">
+<style>
+  /* =====================================================================
+     GLASS LOOK, 12 Nov 2026 - the What To Do treatment in this tool's blue.
+     The waterfront in blue: the DAY photo behind DARK mode, under a deep
+     blue veil, and the NIGHT photo behind LIGHT mode, the picture itself
+     run at brightness .55 with nothing laid over it (the approved light-
+     mode rule). Every panel is frosted glass over it.
+     ===================================================================== */
+  html[data-look="glass"],html[data-look="glass"] body{background:#070b1a !important}
+  html[data-look="glass"] .scene{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:#070b1a center/cover no-repeat;
+    background-image:image-set(url('img/scene-day-1280.webp') 1x,url('img/scene-day-1672.webp') 2x)}
+  /* dark mode: the original sunset photo, no veil or tint over it */
+  html[data-look="glass"] .scene::after{content:none}
+  html[data-look="glass"][data-theme="light"] .scene{
+    background-image:image-set(url('img/scene-night-1280.webp') 1x,url('img/scene-night-1672.webp') 2x);
+    filter:none}
+  /* light mode: the original night photo, no dimming or layer over it */
+  html[data-look="glass"][data-theme="light"] .scene::after{content:none}
+  html[data-look="glass"] main,html[data-look="glass"] footer{position:relative;z-index:1}
+  html[data-look="glass"] .aurora-layer,html[data-look="glass"] .dust-layer{display:none}
+
+  /* the glass: tokens per theme */
+  html[data-look="glass"]{
+    --gg:rgba(16,26,56,.56); --gg-solid:rgba(14,22,48,.94);
+    --gg-edge:rgba(190,210,255,.26);
+    --gg-sheen:linear-gradient(155deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 38%,rgba(255,255,255,0) 62%,rgba(150,180,255,.06));
+    --gg-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.25),0 22px 48px -24px rgba(0,0,0,.8);
+    --text:#F2F5FF !important; --muted:#C2CBE6 !important;
+    --line:rgba(190,210,255,.18) !important; --line3:rgba(190,210,255,.34) !important}
+  html[data-look="glass"][data-theme="light"]{
+    --gg:rgba(236,242,255,.74); --gg-solid:rgba(244,247,255,.97);
+    --gg-edge:rgba(255,255,255,.85);
+    --gg-sheen:linear-gradient(155deg,rgba(255,255,255,.6),rgba(255,255,255,.16) 40%,rgba(255,255,255,0) 64%);
+    --gg-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 rgba(20,40,110,.08),0 22px 48px -26px rgba(0,10,40,.55);
+    --text:#0D1530 !important; --muted:#36446B !important;
+    --line:rgba(30,60,150,.16) !important; --line3:rgba(30,60,150,.32) !important}
+
+  html[data-look="glass"] main{max-width:none;padding:22px 24px 90px}
+  html[data-look="glass"] .gl,html[data-look="glass"] .group,html[data-look="glass"] .sc{
+    background:var(--gg-sheen),var(--gg) !important;
+    -webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6);
+    border:1px solid var(--gg-edge) !important;border-radius:22px;box-shadow:var(--gg-shadow)}
+  html[data-look="glass"] .intro{padding:22px 24px 6px}
+  html[data-look="glass"] .intro .tabs{border-bottom:0;margin-bottom:10px}
+  html[data-look="glass"] .ctl{padding:16px 18px 12px;margin-top:14px}
+  html[data-look="glass"] .group{padding:16px 18px 18px;margin-top:16px}
+  html[data-look="glass"] .ghead{border-bottom-color:var(--line)}
+  /* the combination cards sit inside a glass panel: a quieter second layer */
+  html[data-look="glass"] .combo{background:rgba(255,255,255,.06);border-color:var(--line);border-radius:14px}
+  html[data-look="glass"][data-theme="light"] .combo{background:rgba(255,255,255,.62)}
+  html[data-look="glass"] .combo:hover{border-color:var(--accentB)}
+  html[data-look="glass"] #q,html[data-look="glass"] .band{background:rgba(0,0,0,.22);border-color:var(--line3)}
+  html[data-look="glass"][data-theme="light"] #q,html[data-look="glass"][data-theme="light"] .band{background:rgba(255,255,255,.82)}
+  html[data-look="glass"] #q{border-radius:12px}
+  html[data-look="glass"] .modal{background:var(--gg-sheen),var(--gg-solid);border-color:var(--gg-edge);border-radius:22px;
+    -webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px)}
+  html[data-look="glass"]:not([data-theme="light"]) body{text-shadow:0 1px 2px rgba(0,0,0,.45)}
+  html[data-look="glass"] .btn,html[data-look="glass"] .tab.on,html[data-look="glass"] table.grid th{text-shadow:none}
+
+  /* ---- THE GRID HEADER NO LONGER SHARES A COLOUR WITH THE CHART.
+     SEC 1-4 sat on white, directly on top of rows that are themselves
+     white, so a white first row merged into the header and could not be
+     seen. The header is now a dark ink band with white letters and a
+     gap under it, and every white cell carries its own dark outline. */
+  /* crisp lines: one 1px solid navy rule between every cell, shared rather
+     than doubled, no translucent edges and no inner shadows to smear it */
+  table.grid{border-collapse:collapse;border-spacing:0}
+  table.grid th{background:#16203F !important;color:#FFFFFF !important;
+    border:1px solid #16203F !important;border-bottom:2px solid #16203F !important;
+    font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-shadow:none !important}
+  table.grid td{border:1px solid #1E2A4A !important;box-shadow:none !important}
+  table.grid td.none{border:0 !important;background:transparent !important}
+  /* the card holding the grid sits still and unblurred, so its lines land
+     on whole pixels */
+  html[data-look="glass"] .combo,html[data-look="glass"] .modal{text-shadow:none;transform:none;animation:none}
+  html[data-look="glass"] .combo:hover{transform:none}
+  table.grid.big th{font-size:11.5px}
+  /* the count pill in the bar was a fixed pale violet, invisible on the light bar */
+  html[data-theme="light"] .hdr .pill{color:var(--barDim,#36446B)}
+  /* the page ends close under the last panel - no long empty strip */
+  html[data-look="glass"] main{padding-bottom:18px !important}
+  html[data-look="glass"] footer#foot{padding-top:0 !important;padding-bottom:calc(env(safe-area-inset-bottom) + 6px) !important;min-height:0 !important}
+  /* back to top: a glass pill, bottom right, shown after a 500px scroll */
+  .totop{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;align-items:center;gap:10px;
+    padding:6px 16px 6px 6px;border-radius:999px;cursor:pointer;font:inherit;font-size:13px;font-weight:600;
+    color:var(--text);background:var(--gg-sheen),var(--gg);border:1px solid var(--gg-edge);
+    -webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+    box-shadow:var(--gg-shadow);transition:border-color .18s ease,transform .18s ease}
+  .totop[hidden]{display:none}
+  .totop:hover{border-color:#8FA8FF;transform:translateY(-1px)}
+  .totop span{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:17px;font-weight:700;background:#8FA8FF;color:#0B1330}
+  html[data-theme="light"] .totop{color:#0E1733}
+  html[data-theme="light"] .totop:hover{border-color:#16207A}
+  html[data-theme="light"] .totop span{background:#16207A;color:#FFFFFF}
+  @media (max-width:640px){ .totop{right:14px;bottom:14px} }
+  /* the nav bar: SOLID, clean - one flat colour, no sheen, blur, glow or line.
+     Deep navy #131C3B in dark mode, pastel blue #D6E0FB in light mode. */
+  html[data-look="glass"] header.hdr,html[data-look="glass"] .hdr{
+    background:#131C3B !important;background-image:none !important;
+    -webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+    border:0 !important;box-shadow:none !important;outline:0 !important}
+  html[data-look="glass"] .hdr::before,html[data-look="glass"] .hdr::after{content:none !important}
+  html[data-look="glass"][data-theme="light"] header.hdr,html[data-look="glass"][data-theme="light"] .hdr{
+    background:#D6E0FB !important;color:#0E1733 !important}
+  html[data-look="glass"][data-theme="light"] .hdr h1,html[data-look="glass"][data-theme="light"] .hdr .bname{color:#0E1733 !important}
+  html[data-look="glass"] .acc-menu{background:#131C3B !important;background-image:none !important;
+    -webkit-backdrop-filter:none !important;backdrop-filter:none !important}
+  html[data-look="glass"][data-theme="light"] .acc-menu{background:#D6E0FB !important}
+</style>
 </head>
 <body>
+<div class="scene" aria-hidden="true"></div>
 
 <header class="hdr">
   <a class="brand" href="../../" title="Emortia · back to the site" aria-label="Emortia · back to the site">
@@ -257,6 +369,7 @@
 </header>
 
 <main>
+  <div class="intro gl">
   <div class="kick">Site reference</div>
   <h2 class="ttl">RF Jumpers Label Narration</h2>
   <p class="lede">The colour code for every band combination in the chart, sector by sector, and the four
@@ -266,8 +379,10 @@
     <button class="tab on" data-tab="codes" type="button" role="tab">Colour codes<i id="nCodes">48</i></button>
     <button class="tab" data-tab="scen" type="button" role="tab">Labelling scenarios<i>4</i></button>
   </div>
+  </div>
 
   <section id="codes">
+    <div class="ctl gl">
     <div class="tools">
       <div class="searchwrap">
         <span class="ic">⌕</span>
@@ -284,11 +399,12 @@
     </div>
     <div class="bands" id="bands"></div>
     <div class="status" id="status"></div>
+    </div>
     <div id="groups"></div>
   </section>
 
   <section id="scen" hidden>
-    <div class="tools" style="justify-content:space-between">
+    <div class="tools gl ctl" style="justify-content:space-between">
       <div class="scenTitle">RF Jumper Labeling Scenarios</div>
       <div style="display:flex;gap:9px">
         <button class="btn" id="scenXls" type="button">Excel</button>
@@ -758,6 +874,17 @@
   paint();
   paintScen();
 })();
+
+/* back to top: appears after 500px of scroll; passive so it never holds up a scroll */
+addEventListener('DOMContentLoaded', function(){
+  const b = document.getElementById('totop'); if (!b) return;
+  addEventListener('scroll', () => {
+    const on = (window.scrollY || document.documentElement.scrollTop) > 500;
+    if (on === !b.hidden) return; b.hidden = !on;
+  }, { passive: true });
+  b.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 </script>
+<button class="totop" id="totop" type="button" hidden><span>↑</span>Back to top</button>
 </body>
 </html>
