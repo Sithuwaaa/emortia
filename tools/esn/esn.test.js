@@ -29,7 +29,13 @@ console.log('\nfinding a site by what someone actually types');
   if (!fs.existsSync(DATA)){
     console.log('  skipped - no site list at ' + DATA);
     console.log('  (export one from the Site Access tool if you need to run this)');
-    process.exit(0);
+    /* 2 - COULD NOT RUN, not a pass. This was exit(0) until 13 November, so
+       on every clean checkout the 83 assertions below did not run and the file
+       reported success. CI printed 'ok  ? passed' for it and went green.
+       Nothing here can run without the site list, so saying 'could not run'
+       is the only honest exit code. See .github/workflows/test.yml, which
+       fails the build on any skip that is not declared there. */
+    process.exit(2);
   }
   const ds = JSON.parse(fs.readFileSync(DATA, 'utf8'));
   const t0 = Date.now();

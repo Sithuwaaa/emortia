@@ -9,10 +9,11 @@
 # "failing":
 #
 #   exit 0 + "0 failed"  passed
-#   exit 2               COULD NOT RUN - a deliberate third state. Two
-#                        tests need real Dialog workbooks under .work/,
-#                        which is gitignored because neither a design
-#                        sheet nor a costed BOM belongs on a public site.
+#   exit 2               COULD NOT RUN - a deliberate third state. Three
+#                        tests need real Dialog data under .work/, which is
+#                        gitignored because neither a design sheet, a costed
+#                        BOM, nor the purged site list belongs on a public
+#                        site - Pages serves every file in the repository.
 #                        They can never run here. Treated as skipped,
 #                        reported loudly, and PINNED below - a new skip
 #                        fails the build, because a test that quietly
@@ -41,6 +42,18 @@
 #
 # Files 1 to 18 all print a summary, which is why it always looked like
 # bom.test.js was the problem. It was the first file to print nothing.
+#
+# THAT SAME UNPARSEABLE SUMMARY HAD A SECOND OUTCOME, AND IT WAS SILENT.
+# On the exit-2 path it killed the step, loudly. On the exit-0 path the
+# ${passed:-?} fallback printed "ok  ? passed" and the build went green -
+# run 6, file 23, esn/esn.test.js, which bailed with exit(0) on a missing
+# site list. 83 assertions did not run and the file reported success, on
+# its exit code alone. That is precisely the check this runner exists to
+# make, skipped by the runner itself.
+#
+# So "ran, result unreadable" is now the third fatal state, beside "no
+# files found" and "the loop ended early", and no ":-?" fallback is left.
+# A file either prints the summary line or is a declared skip above.
 
 name: Tests
 
@@ -68,13 +81,13 @@ jobs:
 
           # Tests that cannot run on a clean checkout, by design. Anything
           # skipping that is not on this list is a failure.
-          EXPECTED_SKIPS="tools/bom/bom.test.js tools/design-extractor/parser.test.js"
+          EXPECTED_SKIPS="tools/bom/bom.test.js tools/design-extractor/parser.test.js tools/esn/esn.test.js"
 
           expected=$(find tools -name '*.test.js' | wc -l)
           echo "expecting $expected test files"
           echo
 
-          fail=0; skipped=0; files=0; total=0; unexpected_skip=0
+          fail=0; skipped=0; files=0; total=0; unexpected_skip=0; unreadable=0
           while IFS= read -r f; do
             files=$((files + 1))
             echo "--> [$files/$expected] $f"
@@ -87,7 +100,7 @@ jobs:
             if [ "$code" -eq 2 ]; then
               skipped=$((skipped + 1))
               case " $EXPECTED_SKIPS " in
-                *" $f "*) echo "    SKIPPED - needs a workbook that is not in the repository" ;;
+                *" $f "*) echo "    SKIPPED - needs data that is not in the repository" ;;
                 *) unexpected_skip=$((unexpected_skip + 1))
                    echo "::error file=$f::this test stopped running and is not an expected skip"
                    printf '%s\n' "$out" | tail -20 ;;
@@ -95,15 +108,25 @@ jobs:
               continue
             fi
 
-            total=$((total + ${passed:-0}))
-            if [ "$code" -ne 0 ] || [ "${failed:-0}" -ne 0 ]; then
+            # Ran, and the result cannot be read. Fatal, because the
+            # fallbacks that used to print "?" here let a file pass on its
+            # exit code alone.
+            if [ -z "$passed" ] || [ -z "$failed" ]; then
+              unreadable=$((unreadable + 1))
+              echo "::error file=$f::ran and exited $code, but printed no readable 'N passed, M failed' line, so its result cannot be checked"
+              printf '%s\n' "$out" | tail -20
+              continue
+            fi
+
+            total=$((total + passed))
+            if [ "$code" -ne 0 ] || [ "$failed" -ne 0 ]; then
               fail=$((fail + 1))
-              echo "::group::FAIL $f  (exit $code, ${failed:-?} failed)"
+              echo "::group::FAIL $f  (exit $code, $failed failed)"
               printf '%s\n' "$out" | tail -40
               echo "::endgroup::"
               echo "::error file=$f::suite failed in $f"
             else
-              echo "    ok  ${passed:-?} passed"
+              echo "    ok  $passed passed"
             fi
           done < <(find tools -name '*.test.js' | sort)
 
@@ -118,6 +141,10 @@ jobs:
           fi
           if [ "$files" -ne "$expected" ]; then
             echo "::error::the loop ended early - $files of $expected files ran. The last line above names where it stopped."
+            bad=1
+          fi
+          if [ "$unreadable" -ne 0 ]; then
+            echo "::error::$unreadable test file(s) ran but printed no readable result, so nothing checked them"
             bad=1
           fi
           if [ "$unexpected_skip" -ne 0 ]; then

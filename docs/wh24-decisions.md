@@ -3337,3 +3337,58 @@ runs. A resolver validated against a browser. A runner validated under
 the deploying shell's flags. A guard that scans its own source. The
 failure mode each time was a gap between the two, and the gap was always
 invisible from inside the copy.
+
+### The same condition had a second outcome, and that one went green
+
+Run 6 passed. 44 of 44 files, 2,925 assertions, "suite green". One line
+in it read:
+
+    --> [23/44] tools/esn/esn.test.js
+         ok  ? passed
+
+The only `?` in forty-four result lines. It is the **same unparseable
+summary** that killed the step on the exit-2 path — `grep` matched
+nothing, `passed` came back empty, and `${passed:-?}` printed a question
+mark. On that path the `|| true` I had just added stopped it being
+fatal, and the file passed on its exit code alone.
+
+`esn.test.js` bails with `process.exit(0)` when the purged site list is
+not under `.work/`. So on every clean checkout its 83 assertions did not
+run, and the file reported success — the exact check the runner exists to
+make, skipped by the runner itself. **One condition, two branches: on one
+it was loud enough to stop the build, on the other it was the thing that
+let the build pass.** The loud one got fixed first because it was the one
+that hurt.
+
+Fixed in two places, not one:
+
+- `esn.test.js` now exits **2** — could not run. It is the third declared
+  skip, beside `bom.test.js` and `parser.test.js`.
+- "Ran, result unreadable" is now a **third fatal state** in the runner,
+  beside "no files found" and "the loop ended early". No `:-?` fallback
+  is left anywhere. A file either prints the summary line or is on the
+  declared-skip list; anything else fails the build with the filename.
+
+Proved by breaking it: a file that runs, exits 0 and prints nothing now
+takes the build down and is named in the annotation. Under the old
+version it printed `ok  ? passed` and the build was green.
+
+### The arithmetic had already said so
+
+I reported the local/CI gap as 176 assertions and attributed it to the
+two workbook tests. **That was wrong, and the numbers were in front of
+me when I wrote it:**
+
+    bom.test.js        66
+    parser.test.js     27
+                       --
+                       93      not 176
+
+The missing 83 was `esn.test.js`. 66 + 27 + 83 = 176 exactly, and the
+subtraction that would have exposed it is one line. I had both halves —
+the gap and the two counts — and never put them together, because the
+explanation sounded right and the total was never checked against it.
+
+**A number that matches is evidence. An explanation that sounds right is
+not.** The gap itself was the evidence, and it named the file two commits
+before the CI log did.
