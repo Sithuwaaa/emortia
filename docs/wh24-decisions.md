@@ -3217,3 +3217,69 @@ shows "with nothing over it".
 The patch was right and the sentence was loose. **A described arrangement
 and what that arrangement does are two different claims, and only one of
 them is testable.** Match the behaviour, not the description of it.
+
+## Every "3,101 passed" was a fact about one laptop
+
+The suite reports 3,101 assertions here. A clean checkout of the same
+commit reports **2,925**, and that number is the real one — it is what
+anybody else, and CI, actually gets.
+
+The gap is `tools/bom/bom.test.js` and
+`tools/design-extractor/parser.test.js`. Both need real Dialog workbooks
+at `.work/design.xlsx` and `.work/bom.xlsx`. `.work/` is gitignored,
+correctly: Pages serves every file in this repository, and neither a
+design sheet nor a costed BOM is something to publish. Those two tests
+cannot run anywhere but on a machine that already has the private data,
+and they never will.
+
+So 176 assertions were being counted in every report, in commit messages
+and in conversation, that no other checkout could reproduce. The figure
+was not wrong about this machine. It was being offered as a fact about
+the code.
+
+**This is the largest instance this week of an instrument reporting its
+own state as the world's**, and it is the one that hid the longest,
+because it hid behind a number that was going up. 2,816 then 2,829 then
+3,101 reads like a suite being extended. Some of that was real and some
+of it was local data, and nothing in the report distinguished them.
+
+The tell was available the whole time and was never looked at: **the
+suite had never been run anywhere but here.** A number that has only one
+source is a measurement of that source.
+
+What fixes it is not a resolution to remember. The runner now states what
+it skipped, on its own line, and excludes skipped files from the
+assertion count — so "2,925 passed, 2 skipped" cannot be read as the same
+claim as "3,101 passed". The skips are pinned, so a test that quietly
+stops running fails the build rather than shrinking the total.
+
+### The green that was not a pass
+
+The same workflow had a worse version of the same disease. A command
+inside a `while read` loop that reads stdin consumes the loop's input.
+With a probe that does exactly that, the first runner printed:
+
+    1 test files, 1 assertions passed
+    suite green
+
+One file of forty-five, exit 0. Not an early exit that failed — an early
+exit that **passed**. The fifth failing-toward-green defect this week,
+inside the workflow written to catch the other four.
+
+**The rule, now applied in three places: a check must prove it ran, not
+just report what it found.** The runner counts the files it expects
+before the loop and compares afterwards. deploy-check refuses a range
+where nothing is served. identifiers.test.js refuses to be exempt from
+itself. In each case the previous version's answer to "I could not tell"
+was silence, and silence rendered as success.
+
+### And CI fires per push, not per commit
+
+Three commits went up in one push on 13 November; the workflow ran once,
+against the tip. `317d627` and `9b17fe9` never ran on their own. **So
+"every commit has a green suite" is not a claim this workflow can
+support** — only "every pushed tip has one". Saying the first while
+having built the second is the same error in miniature as the 3,101: a
+stronger claim than the instrument can carry. Pushing one commit at a
+time is the cheap fix, and is what was done for the commit that repaired
+this.
