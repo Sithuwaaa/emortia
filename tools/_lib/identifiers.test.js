@@ -9,12 +9,15 @@
 
    So the rule gets a check instead of a reminder.
 
-   WHAT COUNTS AS REAL. Four shapes, as WorkHub and SAP write them:
+   WHAT COUNTS AS REAL. Four shapes, as WorkHub and SAP write them -
+   illustrated here with invented values, because the first draft of this
+   comment illustrated them with real ones and this test failed on its own
+   documentation the first time it ran against a committed copy of itself:
 
-     site         two letters + four digits        AB1234
-     material     ten digits beginning 1000        1000024106
-     GI number    ten digits beginning 49          4932229472
-     reservation  seven digits beginning 1         1780406
+     site         two letters + four digits        ZZ1234
+     material     ten digits beginning 1000        1000000123
+     GI number    ten digits beginning 49          4900000123
+     reservation  seven digits beginning 1         1700123
 
    WHAT IS ALLOWED. An invented range per shape, so a new fixture has an
    obvious place to live and this test never has to be argued with:
@@ -52,10 +55,16 @@ const is = (name, got, want) => {
 
 const h = v => crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 12);
 
+/* The allowed material prefix is assembled rather than written out. Spelled
+   in full it is a seven-digit run beginning 1, which is the reservation
+   shape - so the literal would make this file fail its own check. It did,
+   on the first run after it was committed. */
+const MAT_OK = '1000' + '000';
+
 /* Shapes that look like the real thing. */
 const SHAPES = [
   { kind: 'site code',     rx: /\b([A-Z]{2}\d{4})\b/g,  ok: v => /^ZZ/.test(v) },
-  { kind: 'material code', rx: /\b(1000\d{6})\b/g,      ok: v => /^1000000\d{3}$/.test(v) },
+  { kind: 'material code', rx: /\b(1000\d{6})\b/g,      ok: v => v.startsWith(MAT_OK) && v.length === 10 },
   { kind: 'GI number',     rx: /\b(49\d{8})\b/g,        ok: v => /^49[03]0000\d{3}$/.test(v) },
   { kind: 'reservation',   rx: /\b(1\d{6})\b/g,         ok: v => /^1700\d{3}$/.test(v) },
 ];
@@ -128,7 +137,7 @@ if (offenders.length) {
     console.log('    ' + o.kind.padEnd(15) + o.file + ':' + o.line + '   sha ' + o.hash);
   }
   console.log('\n  If the value is invented, move it into the allowed range:');
-  console.log('    site ZZ####   material 1000000###   GI 4900000###   reservation 1700###');
+  console.log('    site ZZ####   material ' + MAT_OK + '###   GI 4900000###   reservation 1700###');
   console.log('  If it is real, it does not belong in a public repository.');
 }
 is('no new real-pattern identifier is committed', offenders.length, 0);
