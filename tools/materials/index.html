@@ -120,16 +120,28 @@
   .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:16px;display:flex;flex-direction:column;gap:12px;flex-shrink:0}
   .tile.cat{position:relative;z-index:5}
-  /* LIQUID GLASS SCROLLBARS, AUTO-HIDING: the sidebar and the dropdown.
+  /* LIQUID GLASS SCROLLBARS, AUTO-HIDING: the dropdown panel.
      Invisible at rest, so the glass is not cut by a bar nobody is using;
-     any scroll puts .sbon on the scroller for a second, and hovering the
-     panel shows its own. No scrollbar-width/color outside @supports -
-     Chrome ignores the ::-webkit-scrollbar rules when either is set.
+     hovering the panel shows its own. No scrollbar-width/color outside
+     @supports - Chrome ignores the ::-webkit-scrollbar rules when either
+     is set.
 
      The html rules are here for completeness and do nothing: nav.css
      loads after this block and hides the page's own bar outright. That
-     is why the page has a DRAWN bar instead, #pgbar, further down. */
-  html::-webkit-scrollbar,.side::-webkit-scrollbar{width:12px}
+     is why the page has a DRAWN bar instead, #pgbar, further down.
+
+     THE SIDEBAR NO LONGER HAS ONE. .side is a scroll container of its
+     own - sticky, max-height 100vh - so it carried a real 12px native
+     bar, measured as offsetWidth - clientWidth on the rendered page.
+     That put two vertical bars on screen at once: the sidebar's, at the
+     left edge of the list, and the drawn #pgbar. Every other scroller on
+     this site has its native bar hidden by nav.css (.wrap, .scroller,
+     .acc-menu, pre, textarea, [data-scroll]); .side was the one element
+     outside that rule, and it was the only one that showed. It scrolls
+     the same as before - only the bar is gone. The .sbon and :hover
+     rules below keep working for .ddpan, which is still a real one. */
+  .side::-webkit-scrollbar{width:0;height:0;display:none}
+  html::-webkit-scrollbar{width:12px}
   .ddpan::-webkit-scrollbar{width:9px}
   html::-webkit-scrollbar-track,.side::-webkit-scrollbar-track,.ddpan::-webkit-scrollbar-track{
     margin:10px 0;border-radius:99px;background:transparent;border:1px solid transparent}
@@ -155,7 +167,8 @@
   html[data-theme="light"] .ddpan::-webkit-scrollbar-thumb:hover{
     background-image:linear-gradient(180deg,rgba(31,138,62,.7),rgba(31,138,62,.45))}
   @supports (-moz-appearance:none){
-    html,.side,.ddpan{scrollbar-width:thin;scrollbar-color:transparent transparent}
+    html,.ddpan{scrollbar-width:thin;scrollbar-color:transparent transparent}
+    .side{scrollbar-width:none}
     html.sbon,.side.sbon,.side:hover,.ddpan.sbon,.ddpan:hover{scrollbar-color:rgba(180,240,180,.5) rgba(16,34,18,.45)}
     html[data-theme="light"].sbon,html[data-theme="light"] .side.sbon,html[data-theme="light"] .side:hover,
     html[data-theme="light"] .ddpan.sbon,html[data-theme="light"] .ddpan:hover{scrollbar-color:rgba(31,138,62,.45) rgba(255,255,255,.45)}
