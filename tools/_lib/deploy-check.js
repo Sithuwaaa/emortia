@@ -55,10 +55,33 @@ const range = REF.indexOf('..') > -1 ? REF : REF + '~1..' + REF;
 const touched = git('diff', '--name-only', '--diff-filter=ACMR', range)
   .split('\n').map(s => s.trim()).filter(Boolean);
 
-/* Files the site never serves: tests, SQL, docs, anything outside the
-   published tree. They are listed as skipped rather than dropped, so the
-   output accounts for every file in the commit. */
-const NOT_SERVED = /(^supabase\/|^docs\/|^\.|\.test\.js$|^README)/;
+/* WHAT THE SITE SERVES, MEASURED RATHER THAN ASSUMED.
+
+   This used to read:
+
+     /(^supabase\/|^docs\/|^\.|\.test\.js$|^README)/
+
+   - tests, SQL, docs and dotfiles were assumed private because of what
+   they are for. Four of those five categories are served. Checked against
+   the live site on 13 November 2026, every one returning HTTP 200:
+
+     tools/wh24/wh24.test.js        200
+     tools/_lib/identifiers.test.js 200
+     docs/wh24-decisions.md         200
+     supabase/036_wh24.sql          200
+     README.md                      200
+     .gitattributes                 200
+     .github/workflows/backup.yml   404   <- the only one withheld
+
+   GitHub Pages publishes the repository, not a selected subset of it.
+   Only .github/ is held back. 96 committed files sat in that blind spot,
+   and a commit touching nothing else reported "0 served ... every served
+   file in this commit is live" while verifying nothing at all.
+
+   The lesson is narrower than "the regex was wrong": served-ness is a
+   property of the host, which can be measured, and it was being inferred
+   from the role of the file, which cannot. */
+const NOT_SERVED = /^\.github\//;
 const serve = touched.filter(f => !NOT_SERVED.test(f));
 const skip  = touched.filter(f =>  NOT_SERVED.test(f));
 
@@ -163,6 +186,26 @@ function uncloudflare(html) {
 (async () => {
   console.log('deploy-check  ' + range + '  ->  ' + SITE);
   console.log(touched.length + ' file(s) in the commit, ' + serve.length + ' served\n');
+
+  /* A RUN THAT CHECKS NOTHING IS A FAILURE, NOT A PASS. Reaching here with
+     an empty list means either the range is wrong or every file in it was
+     classified away - and on this repository, where Pages serves all but
+     .github/, both of those are tool faults rather than clean commits.
+     Four separate defects in this tool this week all resolved to green,
+     which is what made its output worth less than it looked. Unknown now
+     fails. */
+  if (!touched.length) {
+    console.log('NOTHING IN RANGE - ' + range + ' names no changed files.');
+    console.log('If you meant a single commit, the left side of a..b is EXCLUDED;');
+    console.log('pass the last already-verified commit there, or just the SHA.');
+    process.exit(1);
+  }
+  if (!serve.length) {
+    for (const f of skip) console.log('-          ' + f + '   (not served)');
+    console.log('\nNOTHING TO CHECK - every file in this range was classified as not served.');
+    console.log('Pages serves everything except .github/, so this is almost certainly wrong.');
+    process.exit(1);
+  }
 
   let bad = 0;
   for (const f of serve) {
