@@ -3283,3 +3283,57 @@ having built the second is the same error in miniature as the 3,101: a
 stronger claim than the instrument can carry. Pushing one commit at a
 time is the cheap fix, and is what was done for the commit that repaired
 this.
+
+## An instrument that destroys its own evidence
+
+The CI runner buffers each file's output into a variable:
+
+    out=$(node "$f" 2>&1 </dev/null)
+
+so that a pass prints one line and a failure can print forty. That is the
+right shape for every failure it was built to anticipate.
+
+It is the wrong shape for the failure it had. When the capture itself is
+what dies, the buffer dies with it — and the buffer is where the
+explanation was. Five runs produced, between them, a single usable fact:
+the `-->` line for file 19 printed and nothing after it.
+
+**Previous entries in this file are instruments reporting the wrong
+thing: a stale photograph, a cached theme, a resolver answering about the
+wrong element. This one is different in kind. It reported nothing,
+because the act of reporting was inside the thing that failed.**
+
+The specific bug is small. GitHub runs each step under `bash -eo
+pipefail`. `grep` exits 1 when it matches nothing; `pipefail` promotes
+that to the pipeline; `-e` kills the step. `bom.test.js` bails before
+running a single assertion, so it prints no `N passed, M failed` line,
+the summary capture matched nothing, and the shell died mid-assignment.
+Files 1 to 18 all print a summary — which is the only reason file 19
+looked guilty. It was simply the first file to print none.
+
+### The reason it survived five runs
+
+The local harness was a **hand-copy** of the step, run under `set -uo
+pipefail`. No `-e`. It differed from the deployed script in exactly the
+one flag that caused the failure, so every local run was green and every
+remote run was red, and both were honest about different programs.
+
+Three wrong theories were tested first and each was eliminated against
+the local copy — stdin swallowing, the `.work/` fixtures, case
+sensitivity. All three were plausible, all three were cheap, and none of
+them could have been right, because the artefact being tested did not
+have the defect.
+
+**The rule: test the artefact that ships, not a copy of it.** The step
+body is now extracted from the workflow file and run under the same
+flags GitHub uses. Under those flags the old version reproduced the
+failure on the first attempt, and `bash -x` named the line in one more.
+The whole diagnosis took two commands once the right thing was under
+test.
+
+The general form, which has now appeared in three guises this week: a
+check is only as good as the fidelity between what you validate and what
+runs. A resolver validated against a browser. A runner validated under
+the deploying shell's flags. A guard that scans its own source. The
+failure mode each time was a gap between the two, and the gap was always
+invisible from inside the copy.
