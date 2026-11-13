@@ -1,18 +1,35 @@
 # Run the whole suite on every push, and fail the build when it fails.
 #
-# WHY THIS EXISTS. Every guard in this repository was advisory until now.
-# The suite ran when somebody typed the command, which means a guard only
-# fired if the person about to break it chose to run it - and the entry in
-# docs/wh24-decisions.md about rules living in the head of whoever is
-# about to break them describes exactly that. A check that has to be
-# remembered is a rule wearing a test's clothes.
+# WHY THIS EXISTS. Every guard in this repository was advisory until this
+# workflow. The suite ran when somebody typed the command, which means a
+# guard only fired if the person about to break it chose to run it.
 #
-# backup.yml already proves Actions works on this repository.
+# WHAT IT KNOWS ABOUT, hard-won on 13 November when the first three runs
+# all failed silently and were reported here as "unproven" rather than
+# "failing":
 #
-# No network is needed. Checked before writing this: nothing under
-# tools/**/*.test.js makes a request. The one `fetch(` in bom.test.js is
-# a string in a formula the test expects to be REFUSED, and the
-# "reachable" tests only mention fetching in a comment.
+#   exit 0 + "0 failed"  passed
+#   exit 2               COULD NOT RUN - a deliberate third state. Two
+#                        tests need real Dialog workbooks under .work/,
+#                        which is gitignored because neither a design
+#                        sheet nor a costed BOM belongs on a public site.
+#                        They can never run here. Treated as skipped,
+#                        reported loudly, and PINNED below - a new skip
+#                        fails the build, because a test that quietly
+#                        stops running is the thing this file exists to
+#                        prevent.
+#   anything else        failed
+#
+# The runner also proves it ran everything: it counts the files it
+# expects before the loop and fails if the loop produced fewer. The first
+# three runs died mid-loop after 18 of 44 files with no error and no
+# summary, and nothing noticed because the step's own reporting never
+# reached the end. "The loop ended early" is a third failure mode and it
+# is no longer silent.
+#
+# node runs with </dev/null. A command inside a `while read` loop that
+# reads stdin swallows the loop's own input, which is the classic cause
+# of exactly that signature.
 
 name: Tests
 
@@ -26,11 +43,10 @@ permissions:
 jobs:
   suite:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      # Matches the version the suite is developed against, so a failure
-      # here is a real failure and not a runtime difference.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -38,23 +54,37 @@ jobs:
       - name: Run every test file
         run: |
           set -uo pipefail
-          fail=0
-          files=0
-          total=0
 
-          # A test file reports failure two ways and BOTH are honoured:
-          # a non-zero exit, and a non-zero count on its summary line. The
-          # second matters because a test file that forgets process.exit
-          # would otherwise report its own failures and still pass the
-          # build - silence that nobody would notice.
+          # Tests that cannot run on a clean checkout, by design. Anything
+          # skipping that is not on this list is a failure.
+          EXPECTED_SKIPS="tools/bom/bom.test.js tools/design-extractor/parser.test.js"
+
+          expected=$(find tools -name '*.test.js' | wc -l)
+          echo "expecting $expected test files"
+          echo
+
+          fail=0; skipped=0; files=0; total=0; unexpected_skip=0
           while IFS= read -r f; do
             files=$((files + 1))
-            if out=$(node "$f" 2>&1); then code=0; else code=$?; fi
+            echo "--> [$files/$expected] $f"
+
+            if out=$(node "$f" 2>&1 </dev/null); then code=0; else code=$?; fi
             summary=$(printf '%s\n' "$out" | grep -E '[0-9]+ passed, [0-9]+ failed' | tail -1)
             passed=$(printf '%s' "$summary" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+')
             failed=$(printf '%s' "$summary" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+')
-            total=$((total + ${passed:-0}))
 
+            if [ "$code" -eq 2 ]; then
+              skipped=$((skipped + 1))
+              case " $EXPECTED_SKIPS " in
+                *" $f "*) echo "    SKIPPED - needs a workbook that is not in the repository" ;;
+                *) unexpected_skip=$((unexpected_skip + 1))
+                   echo "::error file=$f::this test stopped running and is not an expected skip"
+                   printf '%s\n' "$out" | tail -20 ;;
+              esac
+              continue
+            fi
+
+            total=$((total + ${passed:-0}))
             if [ "$code" -ne 0 ] || [ "${failed:-0}" -ne 0 ]; then
               fail=$((fail + 1))
               echo "::group::FAIL $f  (exit $code, ${failed:-?} failed)"
@@ -62,20 +92,30 @@ jobs:
               echo "::endgroup::"
               echo "::error file=$f::suite failed in $f"
             else
-              echo "ok   $f  (${passed:-?} passed)"
+              echo "    ok  ${passed:-?} passed"
             fi
           done < <(find tools -name '*.test.js' | sort)
 
           echo
-          echo "$files test files, $total assertions passed"
+          echo "ran $files of $expected files, $skipped skipped, $total assertions passed"
+          echo "(the assertion count excludes skipped files - they ran nothing)"
 
-          # A run that found no test files is a broken runner, not a pass.
+          bad=0
           if [ "$files" -eq 0 ]; then
             echo "::error::no test files were found - the runner is wrong, not the code"
-            exit 1
+            bad=1
+          fi
+          if [ "$files" -ne "$expected" ]; then
+            echo "::error::the loop ended early - $files of $expected files ran. The last line above names where it stopped."
+            bad=1
+          fi
+          if [ "$unexpected_skip" -ne 0 ]; then
+            echo "::error::$unexpected_skip test file(s) stopped running that are expected to run"
+            bad=1
           fi
           if [ "$fail" -ne 0 ]; then
             echo "::error::$fail test file(s) failed"
-            exit 1
+            bad=1
           fi
+          [ "$bad" -eq 0 ] || exit 1
           echo "suite green"
