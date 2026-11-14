@@ -2148,99 +2148,218 @@ html.pp-on main{padding:0 !important;max-width:none !important;}
    styles, so it takes !important to answer them. */
 html.pp-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
 
-/* ---- tools: one shelf at a time ----
-   The same answer the poem page gives. The page itself does not scroll at
-   all; the wheel turns the shelf, and the cards arrive in the same places
-   every time rather than carrying the reader down a long column. A group
-   with more tools than fit on one shelf takes as many shelves as it needs. */
+/* ---- tools: the spotlight ----
+
+   Signed in, the tools page is one tool at a time. A glass panel in that
+   tool's own family colour carries its name, what it does and the way in;
+   every tool this visitor may open sits in a dock under it. Click a tile,
+   or move along them with the arrow keys or the wheel. The page itself
+   never scrolls.
+
+   This replaced the shelf on 14 November - three cards at a time with a
+   search box, page dots, arrows and a hint. The list behind it did not
+   change: it is still TOOLGROUPS, filtered by may() and grouped by
+   Access.grouped, so the dock is exactly as long as this person's own
+   list and the owner's seventeen is not written down anywhere here.
+
+   Colour comes from the tool's own .tool-* class, which the panel and its
+   tile both wear: --tcBand, --tc and --tcRGB are read from the one place
+   they are declared rather than from a second copy of the palette. The
+   family mark reads --gc off the .tgrp-* class the same way. */
 html.tl-on,html.tl-on body{overflow:hidden;height:100%;}
 html.tl-on main{padding:0 !important;max-width:none !important;}
 html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
+/* One calm blend behind it, no patches: burgundy at the top fading to
+   near-black, a touch warmer on the left. The halo and the ring step out
+   of the way the way they already do for poetry, and the fade with them -
+   it is a left-hand wash written for a page with a column down the left. */
+html.tl-on .ground .g-sky{background:
+  linear-gradient(90deg,rgba(74,18,34,.38) 0%,rgba(40,10,20,.16) 50%,rgba(0,0,0,0) 100%),
+  linear-gradient(180deg,#2b0d17 0%,#1f0910 45%,#14060b 75%,#0d0407 100%);}
+html.tl-on .ground .g-halo,html.tl-on .ground .g-mark,html.tl-on .ground .g-fade{opacity:0;}
 /* Height written out as well as top/bottom: a transformed ancestor anywhere
    above makes a fixed box measure against that ancestor instead of the
-   viewport, and the shelf then collapses to nothing. */
+   viewport, and the stage then collapses to nothing. */
 .tl-stage{position:fixed;left:0;right:0;top:var(--ppTop,64px);bottom:var(--ppBot,0px);
   height:calc(100vh - var(--ppTop,64px) - var(--ppBot,0px));
-  z-index:30;display:flex;overflow:hidden;}
+  z-index:30;display:flex;overflow:hidden;
+  /* --slN, --slDiv and --slGaps are written on the element by the render,
+     because they are counts of what this visitor can see. */
+  --slG:clamp(8px,1vw,18px);
+  --slT:clamp(38px,calc((100vw - 150px - var(--slGaps) * var(--slG)) / var(--slDiv)),58px);}
 @supports (height:100dvh){
   .tl-stage{height:calc(100dvh - var(--ppTop,64px) - var(--ppBot,0px));}
 }
-.tl-inner{flex:1;min-height:0;width:min(1180px,100%);margin:0 auto;box-sizing:border-box;
-  padding:clamp(12px,2.4vh,26px) 28px clamp(10px,1.6vh,18px);
-  display:flex;flex-direction:column;gap:clamp(10px,1.8vh,20px);}
-.tl-grp{display:flex;align-items:baseline;gap:10px;padding-bottom:9px;
-  border-bottom:1px solid var(--line);}
-/* the search sits at the far end of the group line, on the shelf itself;
-   the line is raised so the suggestions open over the cards, not under them */
-.tl-grp{position:relative;z-index:5;}
-.tl-findw{position:relative;margin-left:auto;align-self:center;width:min(280px,42vw);}
-.tl-sug{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:40;
-  display:flex;flex-direction:column;gap:2px;padding:6px;max-height:300px;overflow-y:auto;
-  background:rgba(23,13,16,.97);border:1px solid var(--line2);border-radius:14px;
-  box-shadow:0 22px 48px -18px rgba(0,0,0,.85);backdrop-filter:blur(10px);}
-.tl-sug button{display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;
-  padding:9px 11px;border-radius:9px;color:var(--dim);
-  font-family:'Bricolage Grotesque',sans-serif;font-size:14.5px;font-weight:600;letter-spacing:-.005em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  transition:background .15s ease,color .15s ease;}
-.tl-sug button b{color:var(--accentB);font-weight:800;}
-.tl-sug button:hover,.tl-sug button.on{background:rgba(209,88,115,.14);color:var(--text);}
-.tl-find{width:100%;box-sizing:border-box;
-  font-family:'Space Mono',monospace;font-size:12.5px;color:var(--text);
-  background:rgba(23,13,16,.55);border:1px solid var(--line2);border-radius:999px;
-  padding:8px 14px;outline:none;transition:border-color .2s ease,background .2s ease;}
-.tl-find::placeholder{color:var(--mute);letter-spacing:.06em;}
-.tl-find:focus{border-color:var(--accent);background:rgba(23,13,16,.85);}
-.tl-row{flex:1;min-height:0;display:grid;gap:16px;
-  grid-template-columns:repeat(var(--tlPer,3),minmax(0,1fr));}
-.tl-row .term-card{height:100%;min-height:0;}
-/* The shelf gives each card whatever height is left, so the seven-line box
-   the grid uses is the wrong rule here. It takes the room it is given and
-   what does not fit fades out rather than being cut through a line. */
-.tl-row .tdesc{height:auto;flex:1;min-height:0;display:block;overflow:hidden;
-  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 76%,transparent 100%);
-  mask-image:linear-gradient(180deg,#000 0%,#000 76%,transparent 100%);}
-/* Every card on the shelf pops in when the shelf turns - a small spring from
-   under size, a breath apart, so the row arrives as a row. */
-@keyframes tlPopA{0%{opacity:0;transform:scale(.88);}62%{opacity:1;transform:scale(1.025);}100%{opacity:1;transform:none;}}
-@keyframes tlPopB{0%{opacity:0;transform:scale(.88);}62%{opacity:1;transform:scale(1.025);}100%{opacity:1;transform:none;}}
-/* Two names for one movement. The row's class alternates every turn, and an
-   animation only starts again if its NAME changed - the same name on the same
-   node is the same animation, already finished. Backwards fill, not both, so
-   once it has played the card's own hover lift is free to move it again. */
-/* .62s with a long overshoot, and a stagger on top, meant the last card
-   was still settling two thirds of a second after the shelf turned - which
-   reads as the page being slow rather than the card being lively. Shorter,
-   with less bounce to settle out of, and the stagger halved. */
-.tl-in-a .term-card{animation:tlPopA .34s cubic-bezier(.22,1.2,.36,1) backwards;}
-.tl-in-b .term-card{animation:tlPopB .34s cubic-bezier(.22,1.2,.36,1) backwards;}
-.tl-row .term-card:nth-child(2){animation-delay:.035s;}
-.tl-row .term-card:nth-child(3){animation-delay:.07s;}
+.sl-spot{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;
+  padding:clamp(8px,1.6vh,18px) clamp(18px,2.4vw,34px) clamp(8px,1.2vh,16px);}
+
+/* the panel: one frosted sheet tinted with the family colour, evenly - not
+   a coloured glow in a corner */
+.sl-hero{position:relative;flex:1;min-height:0;border-radius:30px;overflow:hidden;
+  display:grid;grid-template-columns:1.15fr 1fr;
+  background:linear-gradient(150deg,rgba(255,255,255,.12),rgba(255,255,255,.03) 40%,rgba(255,255,255,0) 62%,rgba(255,255,255,.05)),
+             linear-gradient(rgba(var(--tcRGB),.24),rgba(var(--tcRGB),.24)),rgba(10,6,10,.35);
+  -webkit-backdrop-filter:blur(30px) saturate(1.6);backdrop-filter:blur(30px) saturate(1.6);
+  border:1px solid rgba(var(--tcRGB),.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(0,0,0,.3),
+    inset 0 20px 40px -30px rgba(255,255,255,.4),0 30px 60px -34px rgba(var(--tcRGB),.7);
+  transition:border-color .5s ease;}
+/* the words live in a darker inner sheet of their own */
+.sl-l{position:relative;margin:clamp(18px,3vh,36px) 0 clamp(18px,3vh,36px) clamp(20px,2.4vw,36px);
+  padding:clamp(22px,3vh,36px) clamp(28px,3vw,44px);border-radius:24px;
+  display:flex;flex-direction:column;justify-content:center;gap:14px;min-width:0;
+  background:rgba(10,4,8,.28);border:1px solid rgba(255,255,255,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);}
+/* one line, always: a long family-and-tag wrapped to two at 1000px and
+   pushed the title and the Open button down with it, which is the one
+   thing this layout must not do. Block rather than inline-flex, so
+   text-overflow has something to work on. */
+.sl-fam{display:block;max-width:100%;font-family:'Space Mono',monospace;
+  font-size:11px;line-height:1.45;letter-spacing:.18em;text-transform:uppercase;color:var(--tc);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sl-fam .gmark{color:var(--gc,var(--tc));margin-right:9px;vertical-align:baseline;}
+.sl-name{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+  font-size:clamp(34px,5vw,66px);letter-spacing:-.03em;line-height:1;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* the description always takes four lines of room, so the label above it,
+   the name and the Open button below it do not move when the tool changes */
+.sl-desc{margin:0;color:var(--dim);font-size:16px;line-height:1.65;max-width:620px;
+  height:calc(1.65em * 4);display:-webkit-box;-webkit-line-clamp:4;
+  -webkit-box-orient:vertical;overflow:hidden;}
+.sl-go{align-self:flex-start;margin-top:8px;padding:13px 24px;border-radius:999px;
+  font-weight:700;font-size:14px;color:#fff;text-decoration:none;white-space:nowrap;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;
+  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%),var(--tcBand);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 12px 26px -14px rgba(var(--tcRGB),.9);
+  transition:transform .3s cubic-bezier(.34,1.4,.64,1),filter .2s ease;}
+.sl-go:hover{transform:translateY(-2px);filter:brightness(1.08);}
+.sl-r{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;}
+.sl-big{width:min(70%,320px);aspect-ratio:1;border-radius:56px;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(155deg,rgba(255,255,255,.30),rgba(255,255,255,.06) 45%,rgba(255,255,255,0) 65%),rgba(var(--tcRGB),.55);
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.35);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.45),inset 0 -2px 0 rgba(0,0,0,.25),
+    inset 0 30px 50px -30px rgba(255,255,255,.5),0 34px 60px -30px rgba(var(--tcRGB),.9);}
+.sl-big svg{width:50%;height:50%;stroke:#fff;stroke-width:1.2;fill:none;
+  stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 6px rgba(0,0,0,.25));}
+
+/* Moving between tools: the words slide in from the side you moved towards
+   and the icon follows them. Four names for two movements - an animation
+   only starts again if its NAME changed, so forwards twice in a row needs
+   two names to play twice. The render alternates a/b on every step. */
+@keyframes slWfa{from{opacity:0;transform:translateX(60px);}}
+@keyframes slWfb{from{opacity:0;transform:translateX(60px);}}
+@keyframes slWba{from{opacity:0;transform:translateX(-60px);}}
+@keyframes slWbb{from{opacity:0;transform:translateX(-60px);}}
+@keyframes slBfa{from{opacity:0;transform:translateX(80px) scale(.9);}}
+@keyframes slBfb{from{opacity:0;transform:translateX(80px) scale(.9);}}
+@keyframes slBba{from{opacity:0;transform:translateX(-80px) scale(.9);}}
+@keyframes slBbb{from{opacity:0;transform:translateX(-80px) scale(.9);}}
+.sl-fw-a .sl-l>*{animation:slWfa .65s cubic-bezier(.22,1,.36,1) backwards;}
+.sl-fw-b .sl-l>*{animation:slWfb .65s cubic-bezier(.22,1,.36,1) backwards;}
+.sl-bk-a .sl-l>*{animation:slWba .65s cubic-bezier(.22,1,.36,1) backwards;}
+.sl-bk-b .sl-l>*{animation:slWbb .65s cubic-bezier(.22,1,.36,1) backwards;}
+.sl-hero .sl-l>*:nth-child(2){animation-delay:.05s;}
+.sl-hero .sl-l>*:nth-child(3){animation-delay:.1s;}
+.sl-hero .sl-l>*:nth-child(4){animation-delay:.15s;}
+.sl-fw-a .sl-big{animation:slBfa .7s cubic-bezier(.34,1.4,.64,1) backwards;}
+.sl-fw-b .sl-big{animation:slBfb .7s cubic-bezier(.34,1.4,.64,1) backwards;}
+.sl-bk-a .sl-big{animation:slBba .7s cubic-bezier(.34,1.4,.64,1) backwards;}
+.sl-bk-b .sl-big{animation:slBbb .7s cubic-bezier(.34,1.4,.64,1) backwards;}
+
+/* the dock: solid family-colour tiles standing on the page, no bar behind
+   them, a short name under each. The size follows the screen so that every
+   tool always fits - the counts in --slDiv and --slGaps are this visitor's,
+   not the owner's seventeen. */
+.sl-dock{flex:none;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
+  gap:var(--slG);row-gap:30px;max-width:100%;padding:0 0 28px;}
+.sl-sep{width:1px;height:calc(var(--slT) * .7);background:rgba(255,255,255,.12);flex:none;}
+.sl-dk{flex:none;position:relative;width:var(--slT);height:var(--slT);padding:0;
+  border-radius:calc(var(--slT) * .29);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transform-origin:50% 100%;
+  background:linear-gradient(155deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%),rgba(var(--tcRGB),.55);
+  border:1px solid rgba(255,255,255,.18);
+  transition:transform .35s cubic-bezier(.34,1.4,.64,1),background-color .3s ease,
+    border-color .3s ease,box-shadow .3s ease;}
+.sl-dk svg{width:calc(var(--slT) * .44);height:calc(var(--slT) * .44);stroke:#fff;
+  stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.sl-dk:hover{transform:translateY(-6px) scale(1.08);}
+.sl-dk .sl-lb{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  font-size:clamp(9px,calc(var(--slT) * .18),10.5px);font-weight:600;color:#E9DFE4;
+  white-space:nowrap;max-width:calc(var(--slT) + var(--slG) - 2px);
+  overflow:hidden;text-overflow:ellipsis;pointer-events:none;transition:opacity .25s ease;}
+.sl-dk .sl-fn{display:none;}
+/* the picked tool grows by TRANSFORM only, never width or height, so its box
+   - and so the dock, the panel above it and the whole page - never changes
+   size: nothing else on the page moves when it is picked */
+.sl-dk.on{z-index:3;transform:translateY(-4px) scale(1.25);
+  background:linear-gradient(155deg,rgba(255,255,255,.35),rgba(255,255,255,0) 55%),var(--tcBand);
+  border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.18),0 12px 24px -10px rgba(var(--tcRGB),.9);}
+.sl-dk.on:hover{transform:translateY(-6px) scale(1.25);}
+.sl-dk.on .sl-lb{display:none;}
+.sl-dk.on .sl-fn{display:block;position:absolute;top:calc(100% + 5px);left:50%;
+  transform:translateX(-50%);z-index:4;white-space:nowrap;
+  font-size:clamp(9.5px,calc(var(--slT) * .19),11.2px);font-weight:700;color:#fff;
+  letter-spacing:-.01em;padding:4px 12px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0)),rgba(var(--tcRGB),.55);
+  border:1px solid rgba(255,255,255,.35);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  box-shadow:0 8px 18px -8px rgba(0,0,0,.8);animation:slPop .35s cubic-bezier(.22,1,.36,1);}
+@keyframes slPop{from{opacity:0;transform:translate(-50%,6px);}}
+/* the short names either side step aside so the full name reads cleanly -
+   including across a family divider, where the two are not siblings */
+.sl-dk.on + .sl-dk .sl-lb,
+.sl-dk:has(+ .sl-dk.on) .sl-lb,
+.sl-dk.on + .sl-sep + .sl-dk .sl-lb,
+.sl-dk:has(+ .sl-sep + .sl-dk.on) .sl-lb{opacity:0;}
+@media (max-width:1100px){
+  /* a laptop at 125%, or a split window: the dock takes two rows rather than
+     running off the edge, with Design & materials on the first */
+  .tl-stage{--slT:52px;--slG:12px;}
+  .sl-dock>.sl-sep:first-of-type{flex-basis:100%;width:0;height:0;}
+}
+@media (max-width:900px){
+  .sl-hero{grid-template-columns:1fr;}
+  .sl-hero .sl-r{display:none;}
+  .sl-l{margin:14px;padding:18px 20px;}
+}
+/* a short window: the panel tightens so the Open button stays in view */
+@media (max-height:780px){
+  .sl-name{font-size:clamp(28px,6vh,52px);}
+  .sl-desc{font-size:14px;-webkit-line-clamp:3;height:calc(1.6em * 3);line-height:1.6;}
+  .sl-l{gap:10px;margin:16px 0 16px 20px;padding:20px 26px;}
+  .sl-big{width:min(52%,200px);border-radius:40px;}
+  .sl-go{padding:10px 20px;margin-top:2px;}
+}
 @media (prefers-reduced-motion:reduce){
-  .tl-in-a .term-card,.tl-in-b .term-card{animation:none;}
+  .sl-hero .sl-l>*,.sl-hero .sl-big,.sl-dk.on .sl-fn{animation:none;}
+  .sl-dk,.sl-go,.sl-hero{transition:none;}
 }
-.tl-foot{display:flex;align-items:center;gap:14px;font-family:'Space Mono',monospace;}
-.tl-dots{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-.tl-dot{width:9px;height:9px;padding:0;border-radius:50%;cursor:pointer;
-  border:1px solid rgba(247,237,240,.30);background:transparent;
-  transition:background .25s ease,border-color .25s ease,transform .25s ease;}
-.tl-dot:hover{border-color:var(--accentB);}
-.tl-dot.on{background:var(--accent);border-color:var(--accent);transform:scale(1.25);}
-.tl-arw{width:34px;height:34px;border-radius:50%;cursor:pointer;flex:none;
-  border:1px solid var(--line2);background:rgba(23,13,16,.55);color:var(--dim);
-  font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;
-  transition:color .2s ease,border-color .2s ease,background .2s ease;}
-.tl-arw:hover{color:var(--text);border-color:var(--accent);background:rgba(23,13,16,.85);}
-.tl-arw.off{opacity:.3;cursor:default;pointer-events:none;}
-.tl-hint{margin-left:auto;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--mute);}
-@media (max-width:760px){
-  .tl-inner{padding:14px 18px 12px;}
-  .tl-hint{display:none;}
-  /* on a phone the search takes a line of its own above the group name,
-     rather than squeezing the name into a corner */
-  .tl-grp{flex-wrap:wrap;row-gap:10px;}
-  .tl-findw{order:-1;width:100%;margin-left:0;}
+
+/* ---- the nav bubble ----
+   The current page is held in a water-drop bubble that slides to whichever
+   link is clicked. The words never move: the bubble is a separate box
+   behind them, and only its width and its transform change. Placed by
+   navBub(), which measures the button rather than guessing at the text. */
+.site-nav{position:relative;}
+.site-nav>button{position:relative;z-index:1;}
+.nav-bub{position:absolute;z-index:0;top:0;left:0;width:0;height:0;
+  border-radius:999px;pointer-events:none;opacity:0;
+  background:radial-gradient(120% 140% at 30% 0%,rgba(255,255,255,.34),rgba(255,255,255,.08) 45%,rgba(255,255,255,.02) 70%),var(--glowSoft);
+  -webkit-backdrop-filter:blur(10px) saturate(1.8);backdrop-filter:blur(10px) saturate(1.8);
+  border:1px solid rgba(255,255,255,.42);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.75),inset 0 -2px 4px rgba(255,255,255,.12),
+    inset 0 0 12px rgba(255,255,255,.10),0 6px 16px -8px rgba(0,0,0,.7);
+  transition:transform .6s cubic-bezier(.34,1.4,.64,1),width .6s cubic-bezier(.34,1.4,.64,1),opacity .3s ease;}
+.nav-bub.on{opacity:1;}
+.site-nav>button[data-on="1"]{color:var(--text);}
+@media (max-width:940px){
+  /* stacked in the drop-down menu there is nothing for a bubble to slide
+     along, so the current page is simply marked */
+  .nav-bub{display:none;}
+  .site-nav>button[data-on="1"]{background:rgba(244,239,230,0.07);}
 }
+@media (prefers-reduced-motion:reduce){.nav-bub{transition:none;}}
 .pp-art{position:absolute;inset:-6%;background-position:50% 40%;background-size:cover;
   background-repeat:no-repeat;animation:ppDrift 30s ease-in-out infinite;
   transition:opacity .9s ease;}
@@ -2915,7 +3034,10 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   <div class="dust-layer" aria-hidden="true">{{ dustField }}</div>
 
 
-  <header style="position:sticky;top:0;z-index:40;backdrop-filter:blur(14px);background:var(--bar);border-bottom:1px solid var(--line);">
+  <!-- The nav sits on the page itself: no band behind it and no rule under
+       it, so the background runs to the top. (14 Nov 2026, with the new
+       Tools page - it is the shared nav, so this is every page.) -->
+  <header style="position:sticky;top:0;z-index:40;">
     <div class="hdr-inner" style="width:100%;margin:0;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
       <!-- Installed, there is no browser chrome to go back with, and the
            iPhone edge swipe is not dependable inside a PWA. So the app
@@ -2936,12 +3058,13 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
         <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.02em;">Emortia</div>
       </div>
       <nav class="{{ navClass }}" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+        <!-- the water-drop bubble the current page sits in. One box behind
+             the links, placed by navBub() off the button it belongs to, so
+             the words themselves never move when it slides. -->
+        <span class="nav-bub" aria-hidden="true"></span>
         <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="7">
-          <button onClick="{{ item.onClick }}" style="position:relative;background:none;border:none;color:var(--navText);font-size:14.5px;font-weight:500;padding:8px 13px;cursor:pointer;border-radius:8px;letter-spacing:0.01em;" style-hover="color:var(--text);background:rgba(244,239,230,0.05);">
+          <button onClick="{{ item.onClick }}" data-on="{{ item.on }}" style="position:relative;background:none;border:none;color:var(--navText);font-size:14.5px;font-weight:500;padding:8px 13px;cursor:pointer;border-radius:8px;letter-spacing:0.01em;" style-hover="color:var(--text);background:rgba(244,239,230,0.05);">
             {{ item.label }}
-            <sc-if value="{{ item.active }}" hint-placeholder-val="{{ false }}">
-              <span style="position:absolute;left:13px;right:13px;bottom:2px;height:2px;background:var(--accentB);border-radius:2px;box-shadow:0 0 10px var(--accentB);animation:navBreathe 2.6s ease-in-out infinite;"></span>
-            </sc-if>
           </button>
         </sc-for>
         <!-- who is signed in, and the way out -->
@@ -3346,60 +3469,39 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
     </section>
     </sc-if>
 
-    <!-- The shelf. One group's cards at a time, in the same places, with the
-         wheel turning the shelf instead of scrolling the page. -->
+    <!-- The spotlight. One tool at a time in a panel of its own family
+         colour, with every tool this visitor may open in the dock under it.
+         The counts in the style attribute are theirs, not the owner's: the
+         tile size is worked out from how many tiles there actually are. -->
     <sc-if value="{{ isToolsStage }}" hint-placeholder-val="{{ false }}">
-    <div class="tl-stage">
-      <div class="tl-inner">
-        <div class="tl-grp grp-head {{ tlTgrp }}">
-          <span class="{{ tlGlyph }}" aria-hidden="true"></span>
-          <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.01em;">{{ tlName }}</span>
-          <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--mute);">{{ tlCount }}</span>
-          <div class="tl-findw">
-            <input class="tl-find" type="search" value="{{ tlQuery }}" onInput="{{ tlOnFind }}" onFocus="{{ tlOnFocus }}" onBlur="{{ tlOnBlur }}" placeholder="Search tools" aria-label="Search tools" autocomplete="off" spellcheck="false" />
-            <!-- the tools whose names match, as you type; the part you typed is
-                 the part in bold, and pressing one opens it -->
-            <sc-if value="{{ tlSugShow }}" hint-placeholder-val="{{ false }}">
-            <div class="tl-sug" role="listbox" aria-label="Matching tools">
-              <sc-for list="{{ tlSugs }}" as="g" hint-placeholder-count="3">
-                <button type="button" class="{{ g.cls }}" onMouseDown="{{ g.pick }}" role="option" aria-selected="{{ g.sel }}">{{ g.pre }}<b>{{ g.hit }}</b>{{ g.post }}</button>
-              </sc-for>
+    <div class="tl-stage" style="--slN:{{ slN }};--slDiv:{{ slDiv }};--slGaps:{{ slGaps }};">
+      <div class="sl-spot">
+        <div class="{{ slHeroClass }}">
+          <div class="sl-l">
+            <span class="sl-fam"><span class="{{ slGlyph }}" aria-hidden="true"></span>{{ slFam }}</span>
+            <h2 class="sl-name">{{ slName }}</h2>
+            <p class="sl-desc">{{ slDesc }}</p>
+            <a class="sl-go" href="{{ slHref }}" target="{{ toolTarget }}" rel="noopener">{{ slOpen }}</a>
+          </div>
+          <div class="sl-r">
+            <div class="sl-big">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ slIcon }}"></path></svg>
             </div>
+          </div>
+        </div>
+        <div class="sl-dock" role="toolbar" aria-label="All tools">
+          <sc-for list="{{ slDock }}" as="d" hint-placeholder-count="17">
+            <sc-if value="{{ d.isSep }}" hint-placeholder-val="{{ false }}">
+              <span class="sl-sep" aria-hidden="true"></span>
             </sc-if>
-          </div>
-        </div>
-        <div class="{{ tlRowClass }}">
-        <sc-for list="{{ tlCards }}" as="tool" hint-placeholder-count="3">
-          <a href="{{ tool.href }}" target="{{ toolTarget }}" rel="noopener" class="term-card {{ tool.cls }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;border:1px solid var(--tcLine);border-radius:10px;background:var(--tcBg);overflow:hidden;position:relative;">
-            <div style="position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--tcBand,var(--tc));z-index:2;"></div>
-            <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;right:-64px;bottom:-48px;width:260px;height:260px;stroke:var(--tc);stroke-width:0.5;opacity:.12;z-index:0;pointer-events:none;"><path d="{{ tool.icon }}"></path></svg>
-            <div style="position:relative;overflow:hidden;flex:none;height:50px;background:var(--tcBand,var(--tc));color:var(--tcInk,var(--tcOn));display:flex;align-items:center;padding:0 18px 0 100px;">
-              <div style="position:absolute;top:0;bottom:0;left:0;width:35%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));animation:tcSweep 5.5s ease-in-out infinite;"></div>
-              <div style="position:relative;font-family:'Space Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ tool.tag }}</div>
-            </div>
-            <div style="position:absolute;left:24px;top:16px;width:62px;height:62px;box-sizing:border-box;border-radius:17px;background:radial-gradient(circle,rgba(var(--tcRGB),.30),rgba(var(--tcRGB),.06) 45%,rgba(var(--tcRGB),0) 70%),var(--tcBg);border:2px solid var(--tc);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -8px rgba(0,0,0,.8);z-index:3;">
-              <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:32px;height:32px;stroke:var(--tc);stroke-width:1.6;filter:drop-shadow(0 0 4px rgba(var(--tcRGB),.6));"><path d="{{ tool.icon }}"></path></svg>
-            </div>
-            <div style="position:relative;padding:40px 18px 18px 28px;display:flex;flex-direction:column;flex:1;min-height:0;">
-              <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:25px;line-height:1.12;letter-spacing:-0.02em;color:var(--text);margin-bottom:10px;">{{ tool.name }}</div>
-              <div class="tdesc">{{ tool.desc }}</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:16px;border-top:1px solid var(--line);">
-                <span style="font-size:13.5px;font-weight:600;color:var(--tcB);">Open tool &#8594;</span>
-                <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--mute);">{{ tool.code }}</span>
-              </div>
-            </div>
-          </a>
-        </sc-for>
-        </div>
-        <div class="tl-foot">
-          <button class="{{ tlPrevCls }}" onClick="{{ tlPrev }}" aria-disabled="{{ tlAtStart }}" aria-label="Previous shelf">&#8592;</button>
-          <button class="{{ tlNextCls }}" onClick="{{ tlNext }}" aria-disabled="{{ tlAtEnd }}" aria-label="Next shelf">&#8594;</button>
-          <div class="tl-dots">
-            <sc-for list="{{ tlDots }}" as="d" hint-placeholder-count="5">
-              <button class="{{ d.cls }}" onClick="{{ d.go }}" title="{{ d.label }}" aria-label="{{ d.label }}"></button>
-            </sc-for>
-          </div>
-          <span class="tl-hint">Scroll or &#8592; &#8594;</span>
+            <sc-if value="{{ d.isTool }}" hint-placeholder-val="{{ true }}">
+              <button type="button" class="{{ d.cls }}" onClick="{{ d.pick }}" title="{{ d.name }}" aria-label="{{ d.name }}" aria-pressed="{{ d.on }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ d.icon }}"></path></svg>
+                <span class="sl-lb">{{ d.short }}</span>
+                <span class="sl-fn">{{ d.name }}</span>
+              </button>
+            </sc-if>
+          </sc-for>
         </div>
       </div>
     </div>
@@ -3504,7 +3606,8 @@ html.tl-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   <div>{{ profilePanel }}</div>
   <div>{{ syncPanel }}</div>
 
-  <footer style="position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--bar2);backdrop-filter:blur(16px);border-top:1px solid var(--line2);">
+  <!-- and the player with it: no dark band, no rule above it -->
+  <footer style="position:fixed;left:0;right:0;bottom:0;z-index:50;">
     <div class="player-inner" style="max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:18px;">
       <div style="display:flex;align-items:center;gap:13px;flex:1;min-width:0;">
         <sc-if value="{{ curArtReady }}" hint-placeholder-val="{{ false }}">
@@ -3594,13 +3697,6 @@ const SORTS = [
   ['dur',    'Duration'],
 ];
 class Component extends DCLogic {
-  /* How many tool cards one shelf holds: three across where three read, two on
-     a tablet, one on a phone - where one card at a time, swiped through, is
-     better than three squeezed into a column. */
-  static toolsPer(){
-    const w = window.innerWidth || 1200;
-    return w >= 1000 ? 3 : w >= 640 ? 2 : 1;
-  }
   /* Owner mode belongs to the account, and signing in is the only way to get
      it on the real site. Off the real site - a local copy, a preview - there
      is no account to sign into, so "?owner=1" stands in for one, purely so
@@ -3649,9 +3745,9 @@ class Component extends DCLogic {
       /* installed and running without browser chrome - read once here and
          watched, because it changes when the app is launched from the icon */
       standalone: Component.standalone(),
-      /* which shelf of tools is showing, a tick to restart its arrival, and
-         how many cards a shelf holds at this width */
-      tlIdx:0, tlTick:0, tlPer:Component.toolsPer(), tlQuery:'', tlSugOpen:false, tlSugAt:0,
+      /* which tool the spotlight is on, which way the last move went, and a
+         tick so the slide plays again when the same direction is taken twice */
+      slAt:0, slDir:1, slTick:0,
       /* which sleeve the front page is offering, and the one it was offering
          a moment ago, which stays underneath for the crossfade */
       shuf:0, shufPrev:null, queue:[], rowMenu:null,
@@ -4023,7 +4119,7 @@ class Component extends DCLogic {
       this.setState({ toolsIn: A.signedIn(), isOwner: A.isOwner(), accErr: '', accBusy: false });
     };
     document.addEventListener('emortia:signedin', this._onGateIn);
-    this.tlBind();
+    this.slBind();
     fetch('media/poems/poems.txt').then(r=>r.ok?r.text():Promise.reject()).then(t=>{
       this.setState({poems:this.parsePoems(t), poemsLoaded:true});
     }).catch(()=>this.setState({poems:[], poemsLoaded:true}));
@@ -4034,11 +4130,11 @@ class Component extends DCLogic {
     const on = (this.state.page === 'poetry');
     document.documentElement.classList.toggle('pp-on', on);
     if(on) this._ppFit();
-    /* The same for the tools shelf: the page holds still and the shelf turns. */
+    /* The same for the tools page: it holds still and the spotlight moves. */
     const tl = this.toolsStaged();
     document.documentElement.classList.toggle('tl-on', tl);
-    if(tl){ this._ppFit();
-      document.documentElement.style.setProperty('--tlPer', String(this.state.tlPer || 3)); }
+    if(tl) this._ppFit();
+    this.navBub();
   }
   componentWillUnmount(){
     clearInterval(this._shufT);
@@ -4047,11 +4143,12 @@ class Component extends DCLogic {
     if(this._onPpResize) window.removeEventListener('resize', this._onPpResize);
     if(this._ppRO) this._ppRO.disconnect();
     if(this._onGateIn) document.removeEventListener('emortia:signedin', this._onGateIn);
-    if(this._tlKey) window.removeEventListener('keydown', this._tlKey);
-    if(this._tlWheel) window.removeEventListener('wheel', this._tlWheel);
-    if(this._tlDown) window.removeEventListener('touchstart', this._tlDown);
-    if(this._tlUp) window.removeEventListener('touchend', this._tlUp);
-    if(this._tlResize) window.removeEventListener('resize', this._tlResize);
+    if(this._slKey) window.removeEventListener('keydown', this._slKey);
+    if(this._slWheel) window.removeEventListener('wheel', this._slWheel);
+    if(this._slDown) window.removeEventListener('touchstart', this._slDown);
+    if(this._slUp) window.removeEventListener('touchend', this._slUp);
+    if(this._slResize) window.removeEventListener('resize', this._slResize);
+    clearTimeout(this._navBubT);
     document.documentElement.classList.remove('tl-on');
     clearTimeout(this._ppFitT);
     if(this._onKey) window.removeEventListener('keydown', this._onKey);
@@ -4446,74 +4543,22 @@ class Component extends DCLogic {
     window.addEventListener('touchend', this._ppUp, { passive: true });
   }
 
-  /* ================= the tools shelf =================
+  /* ================= the tools spotlight =================
 
-     Signed in, the tools page is a shelf rather than a column: one group's
-     cards at a time, in the same places, and the wheel turns the shelf
-     instead of scrolling the page. Signed out it stays a page, because the
-     sign-in card needs the room and a shelf of one sign-in card is not a
-     shelf. The rule lives here, once, and both the render and the page lock
-     ask it. */
+     Signed in, the tools page is one tool at a time rather than a column of
+     cards. Signed out it stays a page, because the sign-in card needs the
+     room and a spotlight on a sign-in card is not a spotlight. The rule
+     lives here, once, and both the render and the page lock ask it. */
   toolsStaged(){
-    /* counted before the search: a search that finds nothing is still the
-       shelf, saying so - not the page falling back to a column */
-    return this.state.page === 'tools' && !!this.state.toolsIn && (this._tlAllCount || 0) > 0;
+    return this.state.page === 'tools' && !!this.state.toolsIn &&
+           (this._slAll || []).length > 0;
   }
-  /* The search is a search for a tool by its name, and nothing else. Looking
-     through the descriptions as well turned up tools for a word they only
-     mention in passing - "site" found half the shelf - when what was being
-     typed was the name of the one wanted. The groups stay, only the tools
-     whose names match stay in them, and a group left empty goes. Every word
-     typed has to be in the name, so "site data" is Site Data Lookup and not
-     Site Access as well. */
-  tlWords(q){ return String(q || '').toLowerCase().split(/\s+/).filter(Boolean); }
-  tlNameHit(name, words){
-    const n = String(name).toLowerCase();
-    return words.every(w => n.indexOf(w) > -1);
-  }
-  tlFilter(groups, q){
-    const words = this.tlWords(q);
-    if (!words.length) return groups;
-    return groups.map(g => {
-      const tools = g.tools.filter(t => this.tlNameHit(t.name, words));
-      return { name:g.name, tools, count: tools.length + (tools.length === 1 ? ' tool' : ' tools') };
-    }).filter(g => g.tools.length);
-  }
-  /* The suggestions: the names that match, best first - a name that starts
-     with what was typed, then one with a word that starts with it, then one
-     that merely contains it - and the typed part marked in each. */
-  tlSuggest(groups, q){
-    const words = this.tlWords(q);
-    if (!words.length) return [];
-    const first = words[0];
-    const all = [];
-    groups.forEach(g => g.tools.forEach(t => { if (this.tlNameHit(t.name, words)) all.push(t); }));
-    const rank = t => {
-      const n = t.name.toLowerCase();
-      if (n.indexOf(first) === 0) return 0;
-      if (n.split(/[\s\-&]+/).some(p => p.indexOf(first) === 0)) return 1;
-      return 2;
-    };
-    return all.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name)).slice(0, 7)
-      .map(t => {
-        const at = t.name.toLowerCase().indexOf(first);
-        return { name:t.name, href:t.href,
-          pre:t.name.slice(0, at), hit:t.name.slice(at, at + first.length), post:t.name.slice(at + first.length) };
-      });
-  }
-  /* A tool opens in a tab of its own, the same as its card does, so the site
-     - and whatever is playing on it - stays where it was. Resolved against the
-     page's base, like the cards' links: the address may be /tools/, and a bare
-     "tools/bom/" would otherwise land on /tools/tools/bom/. */
-  tlOpen(href){
-    if (!href) return;
-    const url = new URL(href, document.baseURI).href;
-    /* Installed, a new window is a window with no history: back from it has
-       nowhere to go, so it closes and the app looks like it has quit. In a
-       browser a tool still gets its own tab. */
-    if (Component.standalone()) location.href = url;
-    else window.open(url, '_blank', 'noopener');
-    this.setState({ tlSugOpen:false });
+  /* The name a dock tile wears under it. What a tool IS lives in the first
+     word or two; "Builder", "Extractor", "Lookup" and "Material Checker"
+     are what it does with it, and the panel above says that in full. What
+     is still too long for a tile is cut by the tile, not here. */
+  static slShort(name){
+    return String(name || '').replace(/ (Lookup|Material Checker|Extractor|Builder)$/, '');
   }
   /* ---- a tool's own colours, asked of the stylesheet ----
 
@@ -4567,156 +4612,115 @@ class Component extends DCLogic {
              navigator.standalone === true;
     } catch(e){ return navigator.standalone === true; }
   }
-  tlFind(q){
-    const before = (this._tlShelves || [])[this._tlAt || 0];
-    const after = this.tlShelves(this.tlFilter(this._tlAllGroups || [], q), this.state.tlPer || 3)[0];
-    const sig = s => s ? s.cards.map(c => c.name).join('|') : '';
-    /* the cards pop in when what is on the shelf changes, not on every key -
-       a spring restarting under each letter typed is a shelf that shivers */
-    const moved = sig(before) !== sig(after);
-    this.setState({ tlQuery:q, tlIdx:0, tlSugOpen:true, tlSugAt:0,
-      tlTick:this.state.tlTick + (moved ? 1 : 0) });
-  }
-  /* Shelves are groups cut to the width: a group with more tools than one
-     shelf holds takes as many shelves as it needs, and says which one this is. */
-  tlShelves(groups, per){
-    const out = [];
-    groups.forEach(g => {
-      const parts = Math.max(1, Math.ceil(g.tools.length / per));
-      for (let p = 0; p < parts; p++){
-        out.push({ name:g.name, cards:g.tools.slice(p * per, p * per + per),
-          glyph:g.glyph, tgrp:g.tgrp,
-          count: g.count + (parts > 1 ? ' · ' + (p + 1) + ' of ' + parts : ''),
-          label: g.name + (parts > 1 ? ' ' + (p + 1) + ' of ' + parts : '') });
-      }
-    });
-    return out;
-  }
-  tlGo(i){
-    const n = this._tlShelfCount || 0;
+  /* Move the spotlight. It wraps at both ends - seventeen tools in a row
+     have no natural end, and stopping dead at one is a dead key. The tick
+     restarts the slide; the direction decides which side it comes in from. */
+  slGo(k, dir){
+    const n = (this._slAll || []).length;
     if (!n) return;
-    const to = Math.max(0, Math.min(n - 1, i));
-    if (to === (this._tlAt != null ? this._tlAt : this.state.tlIdx)) return;
-    this.setState({ tlIdx:to, tlTick:this.state.tlTick + 1 });
+    const to = ((k % n) + n) % n;
+    const at = this._slAt != null ? this._slAt : (this.state.slAt || 0);
+    if (to === at) return;
+    this.setState({ slAt:to, slDir:dir || 1, slTick:(this.state.slTick || 0) + 1 });
   }
-  /* from the shelf actually showing, which the render has clamped to the
-     shelves there are - not from a remembered index that may point past them */
-  tlStep(d){ this.tlGo((this._tlAt != null ? this._tlAt : this.state.tlIdx) + d); }
-  tlBind(){
-    if (this._tlBound) return;
-    this._tlBound = true;
-    this._tlCool = 0;
+  /* from the tool actually showing, which the render has wrapped into range -
+     not from a remembered index that may point past the list */
+  slStep(d){ this.slGo((this._slAt != null ? this._slAt : (this.state.slAt || 0)) + d, d); }
+  slBind(){
+    if (this._slBound) return;
+    this._slBound = true;
     const live = () => this.toolsStaged();
-    /* One turn per gesture. A trackpad sends a long tail of small wheel events
-       for one flick; without the cooldown one flick would throw three shelves
-       past. */
-    /* One flick, one shelf - but the second flick must not have to wait.
 
-       The old rule was half a second on the clock, which eats the momentum
-       tail a trackpad keeps sending after the fingers lift, and eats a
-       deliberate second flick with it. The gesture is what matters, not the
-       clock: events arriving in an unbroken run are one flick, and a gap
-       means the hand has come back. So a run turns one shelf however long
-       it coasts, and a new run turns immediately.
-
-       The 150ms floor is only for the thumb and the keyboard, which have no
-       tail to ignore and no reason to fire twice in that time. */
-    const turn = (d) => {
-      const now = Date.now();
-      if (this._tlSpent) return;
-      if (now - this._tlCool < 150) return;
-      this._tlSpent = true;
-      this._tlCool = now;
-      this.tlStep(d);
-    };
-    this._tlKey = (e) => {
+    this._slKey = (e) => {
       if (!live()) return;
       const t = e.target;
-      /* In the search box the keys are for typing - apart from the ones that
-         work the suggestions: up and down move through them, Enter opens the
-         one marked, and Escape shuts them, then empties the box. */
-      if (t && t.classList && t.classList.contains('tl-find')){
-        const sugs = this._tlSugs || [];
-        const open = this.state.tlSugOpen && sugs.length > 0;
-        const at = Math.min(this.state.tlSugAt || 0, Math.max(0, sugs.length - 1));
-        if (e.key === 'ArrowDown' && open){ e.preventDefault(); this.setState({ tlSugAt:(at + 1) % sugs.length }); }
-        else if (e.key === 'ArrowUp' && open){ e.preventDefault(); this.setState({ tlSugAt:(at - 1 + sugs.length) % sugs.length }); }
-        else if (e.key === 'ArrowDown' && sugs.length){ e.preventDefault(); this.setState({ tlSugOpen:true, tlSugAt:0 }); }
-        else if (e.key === 'Enter' && sugs.length){ e.preventDefault(); this.tlOpen(sugs[open ? at : 0].href); }
-        else if (e.key === 'Escape'){
-          if (open){ e.preventDefault(); this.setState({ tlSugOpen:false }); }
-          else if (this.state.tlQuery){ e.preventDefault(); this.tlFind(''); this.setState({ tlSugOpen:false }); }
-        }
-        return;
-      }
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      /* "/" goes to the search, the way it does on most sites with one */
-      if (e.key === '/'){
-        const f = document.querySelector('.tl-find');
-        if (f){ e.preventDefault(); f.focus(); }
-        return;
-      }
-      const k = e.key;
-      if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown'){ e.preventDefault(); this.tlStep(1); }
-      else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp'){ e.preventDefault(); this.tlStep(-1); }
-      else if (k === 'Home'){ e.preventDefault(); this.tlGo(0); }
-      else if (k === 'End'){ e.preventDefault(); this.tlGo((this._tlShelfCount || 1) - 1); }
+      if (e.key === 'ArrowRight'){ e.preventDefault(); this.slStep(1); }
+      else if (e.key === 'ArrowLeft'){ e.preventDefault(); this.slStep(-1); }
     };
-    /* the volume control keeps the wheel for itself, as it does everywhere */
-    this._tlWheel = (e) => {
+    /* The wheel moves along the tools the way the arrow keys do: one tool per
+       notch. preventDefault, so the page never scrolls behind it.
+
+       A trackpad does not send notches - it sends a long tail of small
+       deltas for one flick - so they are added up and a step is taken only
+       once the total passes 40, and not within 230ms of the last one. The
+       total is thrown away after 260ms of quiet, which is what separates
+       one flick from the next. */
+    let acc = 0, last = 0, prev = 0;
+    this._slWheel = (e) => {
       if (!live()) return;
-      if (e.target && e.target.closest && e.target.closest('.player-vol,footer,.tl-sug')) return;
-      /* Every event counts towards deciding whether this is still the same
-         flick, including the small ones the tail is made of - which is why
-         this is read before the size test below throws them away. */
+      /* the volume slider keeps the wheel for itself, as it does everywhere */
+      if (e.target && e.target.closest && e.target.closest('.player-vol,footer')) return;
+      e.preventDefault();
+      const d = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
       const now = Date.now();
-      if (now - (this._tlLast || 0) > 120) this._tlSpent = false;
-      this._tlLast = now;
-      const dx = e.deltaX, dy = e.deltaY;
-      const v = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
-      if (Math.abs(v) < 12) return;
-      turn(v > 0 ? 1 : -1);
+      if (now - prev > 260) acc = 0;
+      prev = now; acc += d;
+      if (Math.abs(acc) < 40 || now - last < 230) return;
+      const dir = acc > 0 ? 1 : -1;
+      acc = 0; last = now;
+      this.slStep(dir);
     };
-    /* a thumb: a swipe either way turns it - up or left for the next shelf,
-       the way a phone turns everything else */
-    this._tlTouch = null;
-    this._tlDown = (e) => {
-      this._tlTouch = null;
-      /* a finger down is unmistakably a new gesture, whatever the wheel was
-         doing a moment ago */
-      this._tlSpent = false;
+    /* a thumb: a swipe either way moves along them, the way a phone moves
+       along everything else */
+    this._slTouch = null;
+    this._slDown = (e) => {
+      this._slTouch = null;
       if (!live() || !e.touches || e.touches.length !== 1) return;
       const t = e.target;
-      if (!t || !t.closest || !t.closest('.tl-stage') || t.closest('button')) return;
+      if (!t || !t.closest || !t.closest('.tl-stage') || t.closest('button,a')) return;
       const p = e.touches[0];
-      this._tlTouch = { x:p.clientX, y:p.clientY, at:Date.now() };
+      this._slTouch = { x:p.clientX, y:p.clientY, at:Date.now() };
     };
-    this._tlUp = (e) => {
-      const s = this._tlTouch;
-      this._tlTouch = null;
-      if (!s || !live()) return;
+    this._slUp = (e) => {
+      const st = this._slTouch;
+      this._slTouch = null;
+      if (!st || !live()) return;
       const p = e.changedTouches && e.changedTouches[0];
-      if (!p || Date.now() - s.at > 900) return;
-      const dx = p.clientX - s.x, dy = p.clientY - s.y;
+      if (!p || Date.now() - st.at > 900) return;
+      const dx = p.clientX - st.x, dy = p.clientY - st.y;
       const v = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
       if (Math.abs(v) < 48) return;
-      turn(v < 0 ? 1 : -1);
+      this.slStep(v < 0 ? 1 : -1);
     };
-    /* the width decides how many cards a shelf holds; keep the reader on the
-       tools they were looking at when that changes */
-    this._tlResize = () => {
-      const per = Component.toolsPer();
-      if (per === this.state.tlPer) return;
-      const was = (this._tlShelves || [])[this.state.tlIdx];
-      const next = this.tlShelves(this._tlGroups || [], per);
-      const at = was ? next.findIndex(s => s.name === was.name) : 0;
-      this.setState({ tlPer:per, tlIdx:Math.max(0, at), tlTick:this.state.tlTick + 1 });
-    };
-    window.addEventListener('keydown', this._tlKey);
-    window.addEventListener('wheel', this._tlWheel, { passive: true });
-    window.addEventListener('touchstart', this._tlDown, { passive: true });
-    window.addEventListener('touchend', this._tlUp, { passive: true });
-    window.addEventListener('resize', this._tlResize);
+    /* the bubble is measured, so it is re-measured whenever the thing it is
+       measuring can have moved: a resize, and the webfont arriving late and
+       changing how wide every link is */
+    this._slResize = () => { clearTimeout(this._navBubT);
+      this._navBubT = setTimeout(() => this.navBub(true), 60); };
+    window.addEventListener('keydown', this._slKey);
+    window.addEventListener('wheel', this._slWheel, { passive: false });
+    window.addEventListener('touchstart', this._slDown, { passive: true });
+    window.addEventListener('touchend', this._slUp, { passive: true });
+    window.addEventListener('resize', this._slResize);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.navBub(true));
+  }
+  /* ---- the nav bubble ----
+
+     The current page sits in a water-drop bubble that slides to whichever
+     link is clicked. It is a box of its own behind the links, so the words
+     never move - only the bubble's width and its transform change.
+
+     Measured off the button rather than guessed at: the links are different
+     widths, the set of them changes with who is signed in, and the webfont
+     arrives after the first paint. Placed without a transition the first
+     time, or it would fly in from the left edge on every page load. */
+  navBub(instant){
+    const nav = document.querySelector('nav.site-nav');
+    if (!nav) return;
+    const bub = nav.querySelector('.nav-bub');
+    if (!bub) return;
+    const on = nav.querySelector('button[data-on="1"]');
+    /* stacked in the drop-down menu there is nothing to slide along */
+    if (!on || (window.innerWidth || 1200) <= 940){ bub.classList.remove('on'); return; }
+    const first = instant || !bub.classList.contains('on');
+    if (first) bub.style.transition = 'none';
+    bub.style.width = on.offsetWidth + 'px';
+    bub.style.height = on.offsetHeight + 'px';
+    bub.style.top = on.offsetTop + 'px';
+    bub.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+    bub.classList.add('on');
+    if (first){ bub.offsetWidth; bub.style.transition = ''; }
   }
   /* ================= a poem, as a picture =================
 
@@ -6728,62 +6732,67 @@ class Component extends DCLogic {
          its place on both pages without either list being reordered by hand. */
       toolGroups: TOOLGROUPS,
       ...(() => {
-        const per = s.tlPer || 3;
-        const q = s.tlQuery || '';
-        const groups = this.tlFilter(TOOLGROUPS, q);
-        const shelves = this.tlShelves(groups, per);
-        /* remembered for the handlers and the page lock, which ask outside a render */
-        this._tlAllGroups = TOOLGROUPS;
-        this._tlAllCount = this.tlShelves(TOOLGROUPS, per).length;
-        this._tlGroups = groups;
-        this._tlShelves = shelves;
-        this._tlShelfCount = shelves.length;
+        /* One flat list, in family order, built from the same TOOLGROUPS the
+           plain page uses - already filtered by may() and grouped by
+           Access.grouped. So the dock holds exactly the tools this visitor
+           may open: the owner's seventeen, a guest's few, and nothing is
+           written down here twice. */
+        const flat = [];
+        TOOLGROUPS.forEach(g => g.tools.forEach(t =>
+          flat.push({ ...t, fam:g.name, tgrp:g.tgrp, gglyph:g.glyph })));
+        this._slAll = flat;
+        const count = flat.length;
+        const at = count ? (((s.slAt || 0) % count) + count) % count : 0;
+        this._slAt = at;
+        const cur = flat[at] || null;
         const staged = this.toolsStaged();
-        const i = Math.max(0, Math.min(shelves.length - 1, s.tlIdx || 0));
-        this._tlAt = i;
-        /* nothing matched: the shelf says so in its own heading, and the search
-           stays where it is so the next letter can put it right */
-        const sh = shelves[i] || { name: q.trim() ? 'Nothing matches “' + q.trim() + '”' : '',
-          count: q.trim() ? 'Esc to clear' : '', cards:[], glyph:'', tgrp:'' };
-        const last = Math.max(0, shelves.length - 1);
-        const sugs = this.tlSuggest(TOOLGROUPS, q);
-        this._tlSugs = sugs;
-        const sAt = Math.min(s.tlSugAt || 0, Math.max(0, sugs.length - 1));
+        /* The dock is the same list with a divider between families. A flat
+           row rather than a wrapper per family, so the tile beside the picked
+           one is its DOM sibling even across a divider - which is what lets
+           its short name step aside for the full name in CSS. */
+        const dock = [];
+        let k = 0;
+        TOOLGROUPS.forEach((g, gi) => {
+          if (gi) dock.push({ isSep:true, isTool:false });
+          g.tools.forEach(t => {
+            const i = k++;
+            dock.push({ isSep:false, isTool:true, name:t.name, icon:t.icon,
+              short: Component.slShort(t.name),
+              on: i === at ? 'true' : 'false',
+              cls: 'sl-dk ' + t.cls + (i === at ? ' on' : ''),
+              pick: () => this.slGo(i, i < at ? -1 : 1) });
+          });
+        });
+        /* the tile size is worked out from these, in CSS: as many tiles as
+           there are, plus a gap for each divider */
+        const fams = TOOLGROUPS.length;
+        const half = (s.slDir || 1) < 0 ? 'sl-bk-' : 'sl-fw-';
         return {
-          tlQuery: q,
-          tlOnFind: (e) => this.tlFind(e && e.target ? e.target.value : ''),
-          tlOnFocus: () => { if (!s.tlSugOpen) this.setState({ tlSugOpen:true, tlSugAt:0 }); },
-          /* shut on the way out of the box - a suggestion is taken on the press,
-             before the box loses focus, so this never swallows a choice */
-          tlOnBlur: () => this.setState({ tlSugOpen:false }),
-          tlSugShow: !!s.tlSugOpen && sugs.length > 0,
-          tlSugs: sugs.map((g, k) => ({ ...g, sel: k === sAt ? 'true' : 'false',
-            cls: k === sAt ? 'on' : '',
-            pick: (e) => { if (e && e.preventDefault) e.preventDefault(); this.tlOpen(g.href); } })),
           isToolsPlain: s.page === 'tools' && !staged,
           isToolsStage: staged,
-          tlName: sh.name,
-          tlGlyph: sh.glyph || '',
-          tlTgrp: sh.tgrp || '',
-          tlCount: sh.count,
-          tlCards: sh.cards,
-          /* the class alternates every turn so the pop plays again */
-          tlRowClass: 'tl-row ' + ((s.tlTick || 0) % 2 ? 'tl-in-b' : 'tl-in-a'),
-          tlPrev: () => this.tlStep(-1),
-          tlNext: () => this.tlStep(1),
-          /* a class rather than the disabled attribute: a template writes an
-             attribute's value as text, and disabled="false" is still disabled */
-          tlAtStart: i <= 0 ? 'true' : 'false',
-          tlAtEnd: i >= last ? 'true' : 'false',
-          tlPrevCls: 'tl-arw' + (i <= 0 ? ' off' : ''),
-          tlNextCls: 'tl-arw' + (i >= last ? ' off' : ''),
-          tlDots: shelves.map((x, k) => ({ cls:'tl-dot' + (k === i ? ' on' : ''),
-            label:x.label, go:() => this.tlGo(k) }))
+          slN: String(count),
+          slDiv: String(count + 0.35),
+          slGaps: String(Math.max(0, count + fams - 2)),
+          /* the tool's own palette class and its family's, so --tcBand, --tc,
+             --tcRGB and --gc all come off the rules that declare them */
+          slHeroClass: 'sl-hero' + (cur ? ' ' + cur.cls + ' ' + cur.tgrp : '') +
+            ' ' + half + ((s.slTick || 0) % 2 ? 'b' : 'a'),
+          slGlyph: cur ? cur.gglyph : '',
+          slFam: cur ? cur.fam + ' \u00b7 ' + cur.tag : '',
+          slName: cur ? cur.name : '',
+          slDesc: cur ? cur.desc : '',
+          slHref: cur ? cur.href : '#',
+          slIcon: cur ? cur.icon : '',
+          slOpen: cur ? 'Open ' + cur.name + ' \u2192' : '',
+          slDock: dock
         };
       })(),
       page:s.page,
 
-      navItems: navDefs.map(([k,label])=>({ key:k, label, active:s.page===k, onClick:this.go(k) })),
+      /* 'on' as well as 'active': the bubble is found by an attribute, and a
+         template writes an attribute's value as text, so it needs a string */
+      navItems: navDefs.map(([k,label])=>({ key:k, label, active:s.page===k,
+        on: s.page===k ? '1' : '0', onClick:this.go(k) })),
       showAccount: s.toolsIn,
       accountName: s.toolsIn && window.Access ? window.Access.currentUser() : '',
       accountTitle: (()=>{ const A=window.Access; if(!A||!s.toolsIn) return 'Sign out';
