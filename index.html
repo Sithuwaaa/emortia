@@ -3007,6 +3007,56 @@ html.tl-on .ground .g-halo,html.tl-on .ground .g-mark,html.tl-on .ground .g-fade
 .lyrics-box::-webkit-scrollbar{display:none;}
 .lyrics-line{transition:color .25s ease,opacity .25s ease,font-size .2s ease,font-weight .2s ease;}
 .lyrics-line:hover{color:var(--text) !important;opacity:1 !important;}
+/* ===========================================================================
+   SITE-WIDE CALM BACKGROUND + READABLE NAV AND PLAYER (approved 15 Nov 2026)
+   Paste at the end of the last style block in index.html, the one that
+   closes just above the body tag.
+   =========================================================================== */
+
+/* 1. The Tools page background on every page: one calm blend, no patches.
+      Burgundy at the top fading to near-black, a touch warmer on the left.
+      The halo, the ring and the left-hand wash step out of the way on every
+      page now, exactly as they already do on Tools. The EMORTIA letters stay. */
+.ground .g-sky{background:
+  linear-gradient(90deg,rgba(74,18,34,.38) 0%,rgba(40,10,20,.16) 50%,rgba(0,0,0,0) 100%),
+  linear-gradient(180deg,#2b0d17 0%,#1f0910 45%,#14060b 75%,#0d0407 100%);}
+.ground .g-halo,.ground .g-mark,.ground .g-fade{opacity:0 !important;}
+[data-section]{background:#0d0407 !important;}
+
+/* 2. The nav stays bar-less while the page is at the top. Once the page is
+      scrolled, a soft frosted veil fades in behind it, in the same burgundy
+      as the top of the page and fading out at its lower edge - so pictures
+      and text scrolling underneath never sit behind the links. No hard band,
+      no rule. html.scrolled is set by the script in site-calm.js. */
+header{isolation:isolate;}
+header::before{content:'';position:absolute;left:0;right:0;top:0;bottom:-26px;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(43,13,23,.94) 0%,rgba(43,13,23,.82) 62%,rgba(43,13,23,0) 100%);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 60%,transparent 100%);
+          mask-image:linear-gradient(180deg,#000 0%,#000 60%,transparent 100%);
+  opacity:0;transition:opacity .35s ease;}
+html.scrolled header::before{opacity:1;}
+
+/* 3. The player: still no band and no rule, but whatever scrolls under it
+      fades out into the page colour instead of showing through between the
+      controls. The fade starts a little above the player and ends in the same
+      near-black as the bottom of the background, so on a page with nothing
+      under it, it cannot be seen at all. */
+footer{isolation:isolate;}
+footer::before{content:'';position:absolute;left:0;right:0;bottom:0;top:-34px;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(13,4,7,0) 0%,rgba(13,4,7,.86) 34%,#0d0407 62%);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 36%);
+          mask-image:linear-gradient(180deg,transparent 0%,#000 36%);}
+/* ...but not on Tools. The stage is fixed between the header and the
+   player, so nothing ever scrolls under it and the fade has nothing to
+   hide. What it did instead, measured at 1600x900: it starts at y=782,
+   the dock's short names reach 796 and the picked tile's name pill 808,
+   so the bottom of the dock sat inside it and was dimmed and blurred.
+   The page is meant to look exactly as it did on 14 November. */
+html.tl-on footer::before{display:none;}
+@media (prefers-reduced-motion:reduce){ header::before{transition:none;} }
+
 </style>
 </helmet>
 
@@ -7229,5 +7279,21 @@ class Component extends DCLogic {
   });
 })();
 </script>
+<script>
+/* the nav's veil: on as soon as the page has moved, off again at the top.
+   Passive, and it only touches the class when the answer changes. */
+(function(){
+  var on = null;
+  function sync(){
+    var y = window.scrollY || document.documentElement.scrollTop || 0;
+    var now = y > 6;
+    if (now !== on){ on = now; document.documentElement.classList.toggle('scrolled', now); }
+  }
+  addEventListener('scroll', sync, { passive: true });
+  addEventListener('load', sync);
+  sync();
+})();
+</script>
+
 </body>
 </html>
