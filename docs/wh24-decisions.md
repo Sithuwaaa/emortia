@@ -3224,13 +3224,29 @@ The suite reports 3,101 assertions here. A clean checkout of the same
 commit reports **2,925**, and that number is the real one — it is what
 anybody else, and CI, actually gets.
 
-The gap is `tools/bom/bom.test.js` and
-`tools/design-extractor/parser.test.js`. Both need real Dialog workbooks
-at `.work/design.xlsx` and `.work/bom.xlsx`. `.work/` is gitignored,
+**Corrected 14 November — this said two files, and it is three.** What
+was written here was "the gap is bom.test.js and parser.test.js". Those
+two are 93 assertions, not 176; the entry never checked its own
+subtraction. The third is `tools/esn/esn.test.js`, which was bailing
+with `exit(0)` and so reported success rather than a skip. Measured
+with the data present:
+
+    tools/bom/bom.test.js                    66
+    tools/design-extractor/parser.test.js    27
+    tools/esn/esn.test.js                    83
+                                            ---
+                                            176
+
+All three need real Dialog data under `.work/` — the two workbooks at
+`.work/design.xlsx` and `.work/bom.xlsx`, and the purged site list at
+`.work/removed-data/site-access-data.json`. `.work/` is gitignored,
 correctly: Pages serves every file in this repository, and neither a
-design sheet nor a costed BOM is something to publish. Those two tests
-cannot run anywhere but on a machine that already has the private data,
-and they never will.
+design sheet, a costed BOM nor the site list is something to publish.
+None of the three can run on a checkout without that data.
+
+See "The same condition had a second outcome" below for how esn hid, and
+for the rule: a number that matches is evidence, an explanation that
+sounds right is not.
 
 So 176 assertions were being counted in every report, in commit messages
 and in conversation, that no other checkout could reproduce. The figure
@@ -3249,7 +3265,7 @@ source is a measurement of that source.
 
 What fixes it is not a resolution to remember. The runner now states what
 it skipped, on its own line, and excludes skipped files from the
-assertion count — so "2,925 passed, 2 skipped" cannot be read as the same
+assertion count — so "2,925 passed, 3 skipped" cannot be read as the same
 claim as "3,101 passed". The skips are pinned, so a test that quietly
 stops running fails the build rather than shrinking the total.
 
