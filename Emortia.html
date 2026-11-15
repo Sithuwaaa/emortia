@@ -3085,6 +3085,100 @@ html.tl-on footer{background:transparent;}
 html.tl-on footer::before{display:none;}
 
 
+/* ===========================================================================
+   CONTACT - same layout and spacing as before, in glass (approved 15 Nov 2026)
+   Goes at the end of the last style block in index.html.
+   =========================================================================== */
+/* holds still: the page takes exactly the room between the nav and the
+   player, like Tools and Poetry, and nothing scrolls */
+html.ct-on,html.ct-on body{overflow:hidden;height:100%;}
+html.ct-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
+.ct-wrap{--rgb:230,69,98;--band:#E64562;--tc:#FF8BA0;
+  position:fixed;left:0;right:0;top:var(--ppTop,64px);bottom:var(--ppBot,0px);
+  height:calc(100vh - var(--ppTop,64px) - var(--ppBot,0px));z-index:30;
+  display:flex;align-items:center;overflow:hidden;animation:fadeUp .5s ease;}
+@supports (height:100dvh){ .ct-wrap{height:calc(100dvh - var(--ppTop,64px) - var(--ppBot,0px));} }
+
+/* the same box, columns and gaps as the old section */
+.ct-inner{width:100%;max-width:1180px;margin:0 auto;padding:0 28px;box-sizing:border-box;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:48px;align-items:start;}
+.ct-kick{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.2em;color:var(--accent);text-transform:uppercase;}
+.ct-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(40px,min(6vw,9vh),72px);
+  letter-spacing:-.03em;margin:6px 0 22px;}
+.ct-lede{color:var(--dim);font-size:16px;line-height:1.6;max-width:380px;margin:0 0 28px;}
+
+/* the socials: glass tiles, brand mark in colour, the name under each */
+.ct-socials>div{gap:14px !important;flex-wrap:wrap;align-items:flex-start !important;}
+.ct-socials .social-pill{flex-direction:column;gap:9px;padding:0;border:0 !important;background:none !important;width:76px;
+  font-family:'Hanken Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--dim);letter-spacing:0;
+  transition:transform .3s cubic-bezier(.34,1.4,.64,1),color .2s ease;}
+.ct-socials .social-pill .sp-mark{position:relative;width:66px !important;height:66px !important;flex:none !important;border-radius:20px;
+  background:linear-gradient(155deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%),rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 22px -12px rgba(0,0,0,.8);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  transition:border-color .25s ease,background-color .25s ease,box-shadow .3s ease;}
+.ct-socials .social-pill .sp-mark svg{width:30px;height:30px;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);}
+.ct-socials .social-pill .sp-mono{opacity:0 !important;}
+.ct-socials .social-pill .sp-colour{opacity:1 !important;}
+.ct-socials .social-pill:hover,.ct-socials .social-pill:focus-visible{transform:translateY(-5px);color:#fff;}
+.ct-socials .social-pill:hover .sp-mark,.ct-socials .social-pill:focus-visible .sp-mark{
+  border-color:var(--hb);background-color:var(--hbg);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 14px 28px -10px var(--hb);}
+
+/* the form: the old card's size and padding, now rose-tinted frosted glass */
+.ct-form{border-radius:20px;padding:28px;
+  background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 50%),linear-gradient(rgba(var(--rgb),.16),rgba(var(--rgb),.16)),rgba(14,6,10,.45);
+  border:1px solid rgba(var(--rgb),.4);
+  -webkit-backdrop-filter:blur(26px) saturate(1.5);backdrop-filter:blur(26px) saturate(1.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.25),0 40px 80px -40px rgba(var(--rgb),.8);}
+.ct-form form{display:flex;flex-direction:column;gap:16px;}
+.ct-field{display:flex;flex-direction:column;gap:7px;}
+.ct-field>span{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--mute);text-transform:uppercase;}
+.ct-field input,.ct-field textarea{width:100%;box-sizing:border-box;font:inherit;font-size:15px;color:var(--text);outline:none;
+  padding:13px 14px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.13);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.35);transition:border-color .2s ease,box-shadow .25s ease,background .2s ease;}
+.ct-field textarea{resize:vertical;}
+.ct-field input::placeholder,.ct-field textarea::placeholder{color:rgba(233,223,228,.42);}
+.ct-field input:focus,.ct-field textarea:focus{border-color:rgba(var(--rgb),.75);background:rgba(0,0,0,.36);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.35),0 0 0 4px rgba(var(--rgb),.16);}
+.ct-send{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;padding:15px;border:0;border-radius:11px;
+  cursor:pointer;font:inherit;font-weight:700;font-size:15px;color:#fff;
+  background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 55%),var(--band);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 14px 28px -12px rgba(var(--rgb),.95);
+  transition:transform .3s cubic-bezier(.34,1.4,.64,1),filter .2s ease;}
+.ct-send b{transition:transform .3s ease;}
+.ct-send:hover{transform:translateY(-2px);filter:brightness(1.08);}
+.ct-send:hover b{transform:translateX(4px);}
+
+.ct-done{text-align:center;padding:40px 10px;}
+.ct-tick{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;margin:0 auto 18px;
+  background:linear-gradient(155deg,rgba(255,255,255,.3),rgba(255,255,255,0) 60%),var(--band);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 16px 30px -12px rgba(var(--rgb),.9);}
+.ct-done-t{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:24px;}
+.ct-done-p{color:var(--dim);font-size:15px;margin-top:6px;}
+.ct-done-m{color:var(--mute);font-size:13px;margin-top:14px;font-family:'Space Mono',monospace;}
+.ct-done-m a{color:var(--tc);text-decoration:none;}
+
+/* a short laptop window: a touch tighter so it still sits above the player */
+@media (max-height:820px){
+  .ct-title{margin:4px 0 14px;}
+  .ct-lede{margin:0 0 18px;}
+  .ct-form{padding:22px;}
+  .ct-form form{gap:11px;}
+  .ct-field input,.ct-field textarea{padding:11px 13px;}
+  .ct-send{padding:13px;}
+  .ct-socials .social-pill .sp-mark{width:56px !important;height:56px !important;border-radius:17px;}
+  .ct-socials .social-pill{width:66px;}
+}
+/* phones: the two halves stack, and here the page may scroll */
+@media (max-width:700px){
+  .ct-wrap{align-items:flex-start;overflow:auto;padding:16px 0;}
+  .ct-inner{gap:28px;padding:0 16px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .ct-wrap{animation:none;}
+  .ct-socials .social-pill,.ct-send,.ct-send b{transition:none;}
+}
+
 </style>
 </helmet>
 
@@ -3626,43 +3720,47 @@ html.tl-on footer::before{display:none;}
     </section>
     </sc-if>
 
-    <!-- ============ CONTACT ============ -->
+    <!-- ============ CONTACT ============
+         Same layout and spacing as before (15 Nov 2026), in glass: the form on a
+         rose-tinted frosted card, the socials as glass tiles with the name
+         under each, like the Tools dock. The page holds still - it takes the
+         room between the nav and the player and does not scroll. -->
     <sc-if value="{{ isContact }}" hint-placeholder-val="{{ false }}">
-    <section style="animation:fadeUp 0.5s ease;padding:40px 0 60px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:48px;align-items:start;">
-      <div>
-        <div style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.2em;color:var(--accent);text-transform:uppercase;">Say hello</div>
-        <h2 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(40px,6vw,72px);letter-spacing:-0.03em;margin:6px 0 22px;">Let's make<br>something loud.</h2>
-        <p style="color:var(--dim);font-size:16px;line-height:1.6;max-width:380px;margin:0 0 28px;">Bookings, collaborations, or just to send a track you think I'd like – the inbox is open.</p>
-        <div style="display:flex;flex-direction:column;gap:12px;font-family:'Space Mono',monospace;font-size:14px;color:var(--text2);">
-          {{ socialLinks }}
+    <section class="ct-wrap">
+      <div class="ct-inner">
+        <div>
+          <div class="ct-kick">Say hello</div>
+          <h2 class="ct-title">Let's make<br>something loud.</h2>
+          <p class="ct-lede">Bookings, collaborations, or just to send a track you think I'd like – the inbox is open.</p>
+          <div class="ct-socials">{{ socialLinks }}</div>
         </div>
-      </div>
-      <div style="border:1px solid var(--line);border-radius:20px;background:var(--panelS);padding:28px;">
-        <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
-          <form onSubmit="{{ onSubmit }}" style="display:flex;flex-direction:column;gap:16px;">
-            <label style="display:flex;flex-direction:column;gap:7px;">
-              <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--mute);text-transform:uppercase;">Name</span>
-              <input value="{{ cName }}" onChange="{{ onField.name }}" placeholder="Your name" style="background:var(--bg);border:1px solid var(--line3);border-radius:10px;padding:13px 14px;color:var(--text);font-size:15px;outline:none;" style-focus="border-color:var(--accent);"></input>
-            </label>
-            <label style="display:flex;flex-direction:column;gap:7px;">
-              <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--mute);text-transform:uppercase;">Email</span>
-              <input value="{{ cEmail }}" onChange="{{ onField.email }}" placeholder="you@email.com" style="background:var(--bg);border:1px solid var(--line3);border-radius:10px;padding:13px 14px;color:var(--text);font-size:15px;outline:none;" style-focus="border-color:var(--accent);"></input>
-            </label>
-            <label style="display:flex;flex-direction:column;gap:7px;">
-              <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.1em;color:var(--mute);text-transform:uppercase;">Message</span>
-              <textarea value="{{ cMsg }}" onChange="{{ onField.msg }}" placeholder="What's on your mind?" rows="4" style="background:var(--bg);border:1px solid var(--line3);border-radius:10px;padding:13px 14px;color:var(--text);font-size:15px;outline:none;resize:vertical;" style-focus="border-color:var(--accent);"></textarea>
-            </label>
-            <button type="submit" style="background:var(--accent);color:var(--bg);border:none;font-weight:700;font-size:15px;padding:15px;border-radius:11px;cursor:pointer;margin-top:4px;" style-hover="background:var(--accentB);">Send it →</button>
-          </form>
-        </sc-if>
-        <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
-          <div style="text-align:center;padding:40px 10px;">
-            <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);display:grid;place-items:center;margin:0 auto 18px;"><svg width="26" height="26" viewBox="0 0 24 24"><polyline points="5,13 10,18 19,6" fill="none" stroke="var(--bg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline></svg></div>
-            <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:24px;">Over to your mail.</div>
-            <div style="color:var(--dim);font-size:15px;margin-top:6px;">Your message is written and addressed – press send there and I'll get back to you between sessions.</div>
-            <div style="color:var(--mute);font-size:13px;margin-top:14px;font-family:'Space Mono',monospace;">or write to <a href="mailto:emortiamusic@gmail.com" style="color:var(--accent);text-decoration:none;">emortiamusic@gmail.com</a></div>
-          </div>
-        </sc-if>
+        <div class="ct-form">
+          <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+            <form onSubmit="{{ onSubmit }}">
+              <label class="ct-field">
+                <span>Name</span>
+                <input value="{{ cName }}" onChange="{{ onField.name }}" placeholder="Your name"></input>
+              </label>
+              <label class="ct-field">
+                <span>Email</span>
+                <input value="{{ cEmail }}" onChange="{{ onField.email }}" placeholder="you@email.com"></input>
+              </label>
+              <label class="ct-field">
+                <span>Message</span>
+                <textarea value="{{ cMsg }}" onChange="{{ onField.msg }}" placeholder="What's on your mind?" rows="4"></textarea>
+              </label>
+              <button type="submit" class="ct-send">Send it <b>→</b></button>
+            </form>
+          </sc-if>
+          <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+            <div class="ct-done">
+              <div class="ct-tick"><svg width="26" height="26" viewBox="0 0 24 24"><polyline points="5,13 10,18 19,6" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline></svg></div>
+              <div class="ct-done-t">Over to your mail.</div>
+              <div class="ct-done-p">Your message is written and addressed – press send there and I'll get back to you between sessions.</div>
+              <div class="ct-done-m">or write to <a href="mailto:emortiamusic@gmail.com">emortiamusic@gmail.com</a></div>
+            </div>
+          </sc-if>
+        </div>
       </div>
     </section>
     </sc-if>
@@ -4212,6 +4310,10 @@ class Component extends DCLogic {
     const tl = this.toolsStaged();
     document.documentElement.classList.toggle('tl-on', tl);
     if(tl) this._ppFit();
+    /* and Contact: it holds still between the nav and the player */
+    const ct = (this.state.page === 'contact');
+    document.documentElement.classList.toggle('ct-on', ct);
+    if(ct) this._ppFit();
     this.navBub();
   }
   componentWillUnmount(){
@@ -4228,6 +4330,7 @@ class Component extends DCLogic {
     if(this._slResize) window.removeEventListener('resize', this._slResize);
     clearTimeout(this._navBubT);
     document.documentElement.classList.remove('tl-on');
+    document.documentElement.classList.remove('ct-on');
     clearTimeout(this._ppFitT);
     if(this._onKey) window.removeEventListener('keydown', this._onKey);
     if(this._checkHash) window.removeEventListener('hashchange', this._checkHash);
