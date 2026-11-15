@@ -1410,7 +1410,7 @@ function renderDashboard(){
    Reading a table on a page is one thing; doing anything with it is another.
    Both exports write a real .xlsx rather than a CSV, so the Sinhala names and
    the leading zeros on a site id survive the trip - a spreadsheet opening a
-   CSV will happily turn KI0023 into a number and a date into whatever it
+   CSV will happily turn ZZ0023 into a number and a date into whatever it
    fancies. */
 function xlName(n, used){
   // Excel refuses : \ / ? * [ ] and anything past 31 characters
@@ -1470,7 +1470,7 @@ function renderExport(){
   let h = '<div class="panel"><h2><span class="dot"></span>Take the data away' +
     '<span class="tag">' + ds().label + (SAVED ? ' · updated ' + SAVED : '') + '</span></h2>' +
     '<div class="note" style="margin-bottom:14px">Real Excel files, not CSV - Sinhala names survive the trip ' +
-    'and nothing decides a site ID like KI0023 is a number.</div>' +
+    'and nothing decides a site ID like ZZ0023 is a number.</div>' +
     '<div class="exlist">';
 
   h += '<div class="exrow whole"><div><div class="exname">Everything</div>' +
