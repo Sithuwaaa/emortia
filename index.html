@@ -3653,7 +3653,7 @@ html.tl-on footer::before{display:none;}
             <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);display:grid;place-items:center;margin:0 auto 18px;"><svg width="26" height="26" viewBox="0 0 24 24"><polyline points="5,13 10,18 19,6" fill="none" stroke="var(--bg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline></svg></div>
             <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:24px;">Over to your mail.</div>
             <div style="color:var(--dim);font-size:15px;margin-top:6px;">Your message is written and addressed – press send there and I'll get back to you between sessions.</div>
-            <div style="color:var(--mute);font-size:13px;margin-top:14px;font-family:'Space Mono',monospace;">or write to <a href="mailto:emortiamusix@gmail.com" style="color:var(--accent);text-decoration:none;">emortiamusix@gmail.com</a></div>
+            <div style="color:var(--mute);font-size:13px;margin-top:14px;font-family:'Space Mono',monospace;">or write to <a href="mailto:emortiamusic@gmail.com" style="color:var(--accent);text-decoration:none;">emortiamusic@gmail.com</a></div>
           </div>
         </sc-if>
       </div>
@@ -7219,7 +7219,7 @@ class Component extends DCLogic {
         const c=this.state.contact||{};
         const subject='Emortia – '+((c.name||'').trim()||'a message from the site');
         const body=(c.msg||'')+'\n\n— '+((c.name||'').trim()||'anonymous')+((c.email||'').trim()?' <'+c.email.trim()+'>':'');
-        window.location.href='mailto:emortiamusix@gmail.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+        window.location.href='mailto:emortiamusic@gmail.com?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
         this.setState({sent:true});
       },
     };
