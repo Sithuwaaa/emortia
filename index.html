@@ -3179,6 +3179,37 @@ html.ct-on [data-section]{min-height:0 !important;padding-bottom:0 !important;}
   .ct-socials .social-pill,.ct-send,.ct-send b{transition:none;}
 }
 
+/* ===========================================================================
+   THE PLAYER ROW SHOWS THE REAL BACKGROUND (approved 16 Nov 2026)
+   Goes at the end of the last style block in index.html, after everything
+   else, so it wins over the earlier footer rules.
+
+   The row was painted solid rgb(7,2,4), which hid what scrolled under it
+   but read as a black band - Tools, with nothing scrolling under it, shows
+   the page's own burgundy there instead. Now the row and its lead-in are
+   painted WITH THE PAGE'S OWN BACKGROUND - the same sky gradients and
+   vignette the .ground layer draws - pinned to the viewport with
+   background-attachment:fixed, so every pixel matches the page behind it
+   exactly. It still covers anything scrolling under it, but there is no
+   band to see: on every page the player sits on the same colour as Tools.
+   The lead-in is the same paint faded in with a mask, so text and pictures
+   dissolve into the background above the player instead of into black.
+   =========================================================================== */
+footer,footer::before{
+  background:
+    radial-gradient(130% 98% at 50% 36%,transparent 48%,rgba(0,0,0,.26) 86%,rgba(0,0,0,.44) 100%),
+    linear-gradient(90deg,rgba(74,18,34,.38) 0%,rgba(40,10,20,.16) 50%,rgba(0,0,0,0) 100%),
+    linear-gradient(180deg,#2b0d17 0%,#1f0910 45%,#14060b 75%,#0d0407 100%) !important;
+  background-attachment:fixed,fixed,fixed !important;
+  background-size:100vw 100vh,100vw 100vh,100vw 100vh !important;}
+footer::before{height:90px !important;
+  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.55) 45%,#000 100%) !important;
+          mask-image:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.55) 45%,#000 100%) !important;}
+/* Tools keeps nothing, exactly as before: its stage never scrolls under */
+html.tl-on footer{background:transparent !important;}
+html.tl-on footer::before{display:none !important;}
+
 </style>
 </helmet>
 
