@@ -349,44 +349,47 @@ html[data-theme="light"] [style*="rgba(5,10,28,.25)"]{background:#f2f5fb !import
 html[data-theme="light"] .ac .add{color:#6A3FC4}
 html[data-theme="light"] .tab .n.p{background:#efe6fd;color:#6A3FC4}
 html[data-theme="light"] 
-/* ============ PRINTED DISPATCH NOTE ============ */
+.npj{display:flex;gap:6px;margin-top:6px;align-items:center}.f .npj .in{flex:1;width:auto;min-width:0;padding:7px 10px}
+/* ============ PRINTED DISPATCH NOTE · design 4 "Blue header" (approved 17 Nov 2026) ============ */
 #printArea{display:none}
-.pn{font-family:'Hanken Grotesk',Arial,sans-serif;color:#1b2340;background:#fff;width:190mm;margin:0 auto}
-.dn-head{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
-.dn-mark{width:58px;height:58px;border-radius:50%;border:2.5px solid #1b2340;display:grid;place-items:center;font-family:'Bricolage Grotesque';font-weight:800;font-size:22px;letter-spacing:-.04em}
-.dn-co{font-family:'Bricolage Grotesque';font-weight:800;font-size:27px;letter-spacing:-.01em;line-height:1.05}
-.dn-addr{display:flex;gap:18px;font-size:11.5px;margin-top:5px;color:#2d3658}
-.dn-no{text-align:right}
-.dn-no small{display:block;font-family:'Space Mono';font-size:9px;letter-spacing:.14em;color:#6a7395}
-.dn-no b{font-family:'Space Mono';font-size:20px;letter-spacing:.04em}
-.dn-title{-webkit-print-color-adjust:exact;print-color-adjust:exact;display:block;width:max-content;margin:10px auto 12px;background:#1b2340;color:#fff;border-radius:999px;padding:5px 26px;font-weight:600;font-size:14px;letter-spacing:.02em}
-.dn-f{display:grid;grid-template-columns:1fr 1fr;gap:3px 30px;font-size:12px;margin-bottom:10px}
-.dn-f div{display:flex;gap:6px;align-items:flex-end}
-.dn-f label{white-space:nowrap;color:#2d3658}
-.dn-f span{flex:1;border-bottom:1px dotted #6a7395;min-height:18px;font-family:'Caveat',cursive;font-size:17px;color:#1d3a9a;line-height:1;padding-left:4px}
-.pn table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
-.pn th{position:static;background:#fff;color:#1b2340;font-family:'Hanken Grotesk';font-size:11.5px;letter-spacing:0;text-transform:none;text-align:center;border:1.4px solid #1b2340;padding:5px 4px;font-weight:600;white-space:normal}
-.pn td{border:1px solid #1b2340;border-top:0;height:24.5px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pn td:first-child{text-align:center;color:#2d3658;font-size:11px}
-.pn td.hw{font-family:'Caveat',cursive;font-size:16px;color:#1d3a9a;line-height:1}
-.pn td.c{text-align:center}
-.pn tr:hover td{background:none}
-.dn-sig{display:grid;grid-template-columns:1fr 1fr;gap:16px 30px;margin-top:16px;font-size:12px}
-.dn-sig .g{display:grid;grid-template-columns:80px 1fr;gap:8px;align-items:center}
-.dn-sig .g > b{font-weight:600}
-.dn-sig .g div div{display:flex;gap:6px;margin:5px 0}
-.dn-sig .g div div span{flex:1;border-bottom:1px dotted #6a7395;font-family:'Caveat',cursive;font-size:17px;color:#1d3a9a;min-height:18px;line-height:1;padding-left:4px}
-.dn-foot{display:flex;justify-content:space-between;margin-top:10px;font-family:'Space Mono';font-size:8.5px;color:#7d86a6}
-.dn-page{page-break-after:always}
-.dn-page:last-child{page-break-after:auto}
-@page{size:A4;margin:10mm}
+.pn{--n:#1f3f8c;--b:#296d98;--t:#eef3fb;--l:#c9d2e4;--m:#4b5571;--d:#8a92a8;--hw:#1d3a9a;
+  position:relative;width:190mm;margin:0 auto;background:#fff;color:#16203a;font-family:'Hanken Grotesk',Arial,sans-serif;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pn .hd{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;padding:16px 22px;border-radius:10px 10px 0 0;
+  background:linear-gradient(110deg,var(--n) 0%,var(--b) 100%);color:#fff}
+.pn .hd:after{content:'';position:absolute;right:-50px;top:-70px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07)}
+.pn .lg{background:#fff;border-radius:11px;padding:5px 7px;flex:none}.pn .lg img{height:58px;display:block}
+.pn .co{font:800 23px 'Hanken Grotesk',Arial,sans-serif;letter-spacing:-.005em}
+.pn .ad{display:flex;gap:14px;font-size:10px;opacity:.88;margin-top:3px}
+.pn .sub{display:flex;justify-content:space-between;align-items:center;padding:9px 22px;background:var(--t);border:1px solid var(--l);border-top:0}
+.pn .sub h3{margin:0;font:800 13px 'Hanken Grotesk',Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--n)}
+.pn .sub span{font-size:10.5px;color:var(--m)}
+.pn .g{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--l);border-radius:8px;overflow:hidden;margin:10px 0}
+.pn .g div{padding:3px 8px 4px;border-right:1px solid var(--l);border-top:1px solid var(--l);min-height:33px;overflow:hidden}
+.pn .g div:nth-child(4n){border-right:0}.pn .g div:nth-child(-n+4){border-top:0}
+.pn .g label{display:block;font:700 7.5px 'Space Mono',monospace;letter-spacing:.1em;color:var(--d);text-transform:uppercase}
+.pn .hw{font-family:'Caveat',cursive;color:var(--hw);font-size:16px;line-height:1.05;white-space:nowrap}
+.pn .wm{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);width:86mm;opacity:.06;filter:grayscale(1);pointer-events:none}
+.pn table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--l);border-radius:8px;overflow:hidden}
+.pn th{position:static;background:var(--b);color:#fff;font:700 10px 'Hanken Grotesk',Arial,sans-serif;letter-spacing:0;text-transform:none;text-align:center;
+  padding:6px 3px;border-right:1px solid rgba(255,255,255,.3);white-space:normal;line-height:1.15}
+.pn th:last-child{border-right:0}
+.pn td{border-right:1px solid var(--l);border-top:1px solid var(--l);height:25.5px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+.pn td:last-child{border-right:0}
+.pn td.n{text-align:center;color:var(--m);background:var(--t)}.pn td.c{text-align:center}
+.pn td.hw{font-size:16px}.pn td.hw.s{font-size:15px}
+.pn tr:hover td{background:none}.pn tr:hover td.n{background:var(--t)}
+.pn .sig{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:11px}
+.pn .sig div{background:var(--t);border-radius:8px;padding:6px 9px;height:62px;font-size:10px;color:var(--m);display:flex;flex-direction:column}
+.pn .sig b{color:var(--n);font-size:10.5px}.pn .sig i{font-style:normal;margin-top:auto;border-top:1px dotted var(--d);padding-top:3px}
+.pn .ft{display:flex;justify-content:space-between;margin-top:8px;font:8.5px 'Space Mono',monospace;color:var(--d)}
+.dn-page{page-break-after:always}.dn-page:last-child{page-break-after:auto}
+@page{size:A4;margin:8mm 10mm}
 @media print{
   html,body{height:auto;overflow:visible;background:#fff !important}
   body > *:not(#printArea){display:none !important}
   #printArea{display:block !important}
-  .pn{width:auto}
 }
-
 /* ============ ACCOUNT MENU · glass style A "Frosted navy" ============
    The menu itself is the shared one access.js builds (it is appended to
    <body>), so it is restyled here, on this page only. */
@@ -407,7 +410,7 @@ html[data-tool="warehouse"][data-theme="dark"] .acc-menu .acc-swatch{box-shadow:
 <div class="loading" id="loading">Loading the warehouse…</div>
 
 
-<header class="top">
+<header class="top hdr">
   <a class="logo" href="../../" title="Emortia" style="color:inherit;text-decoration:none"><i><b><s style="height:8px"></s><s style="height:14px"></s><s style="height:10px"></s><s style="height:15px"></s></b></i>Emortia</a>
   <div class="sep"></div>
   <h1 class="ttl" style="margin:0">Tooway Warehouse</h1>
