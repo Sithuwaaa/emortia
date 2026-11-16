@@ -57,9 +57,13 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* top bar */
 .top{height:64px;display:flex;align-items:center;gap:16px;padding:0 24px}
-.logo{display:flex;align-items:center;gap:10px;font-family:'Bricolage Grotesque';font-weight:800;font-size:20px}
-.logo i{width:34px;height:34px;border-radius:50%;background:#b03a56;display:grid;place-items:center}
-.logo i b{display:flex;gap:2px;align-items:center}.logo i b s{display:block;width:3px;border-radius:2px;background:#170d10}
+/* The brand is nav.css's, not this page's. It owns .brand, .logo and
+   .bname, and header.hdr .logo is a 34px square whose four bare <i>
+   children are the bars. This page used to nest them in <i><b><s> inside
+   an anchor that also held the wordmark, so nav.css clamped the anchor to
+   34px, shrank the badge to a 3px sliver, and "Emortia" printed on top of
+   the title. Matching the contract is the fix; overriding the width would
+   have kept a second brand in the codebase. */
 .sep{width:1px;height:26px;background:var(--line)}
 .ttl{font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;display:flex;align-items:center;gap:10px;white-space:nowrap}
 .ttl em{font-style:normal;font-family:'Space Mono';font-size:11px;letter-spacing:.12em;color:var(--accentB);border:1px solid rgba(117,155,235,.35);border-radius:999px;padding:3px 10px;background:rgba(117,155,235,.08)}
@@ -411,8 +415,8 @@ html[data-tool="warehouse"][data-theme="dark"] .acc-menu .acc-swatch{box-shadow:
 
 
 <header class="top hdr">
-  <a class="logo" href="../../" title="Emortia" style="color:inherit;text-decoration:none"><i><b><s style="height:8px"></s><s style="height:14px"></s><s style="height:10px"></s><s style="height:15px"></s></b></i>Emortia</a>
-  <div class="sep"></div>
+  <a class="brand" href="../../" title="Emortia"><span class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bname">Emortia</span></a>
+  <span class="sep hsep"></span>
   <h1 class="ttl" style="margin:0">Tooway Warehouse</h1>
   <div class="sp"></div>
   <!-- access.js puts the account chip (and its menu, styled as glass A below) here, as on every tool -->
