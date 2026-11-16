@@ -105,7 +105,7 @@ drop trigger if exists wh_materials_touch on wh_materials;
 create trigger wh_materials_touch before update on wh_materials for each row execute function wh_touch();
 
 -- ---------------------------------------------------------------- the gate
-insert into feature_locks(feature, tier, unlocked) values ('tool:warehouse','mine',false)
+insert into feature_locks(feature, tier) values ('tool:warehouse','mine')  -- unlocked is GENERATED ALWAYS AS (tier <> 'mine')
   on conflict (feature) do nothing;
 
 alter table wh_counters  enable row level security;   -- no policies: only wh_next() touches it
