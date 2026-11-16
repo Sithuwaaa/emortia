@@ -45,7 +45,7 @@
 <script src="tools/_lib/owner-config.js" defer></script>
 <script src="tools/_lib/owner.js" defer></script>
 <script src="tools/_lib/supabase-config.js" defer></script>
-<script src="tools/_lib/db.js?v=4" defer></script>
+<script src="tools/_lib/db.js?v=5" defer></script>
 <script src="tools/_lib/access-config.js" defer></script>
 <script src="tools/_lib/access.js" defer></script>
 <script src="tools/_lib/ask.js?v=1" defer></script>
@@ -1607,6 +1607,10 @@ header,footer{--accent:#b03a56;--accentB:#d15873;--accentD:#87213c;--glow:rgba(1
 .tool-rf{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
 .tool-esn{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
 .tool-field{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
+/* Tooway Warehouse wears the Field operations blues, the same as Austin
+   SWAP whose place it takes. .tool-swap stays: the folder and its records
+   are still there, only unlisted. */
+.tool-wh{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
 .tool-swap{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
 .tool-update{--tc:#8598F4;--tcB:#FFFFFF;--tcBand:#3C57D6;--tcInk:#FFFFFF;--tcGrid:rgba(60,87,214,.10);--tcLine:rgba(60,87,214,.45);--tcBg:#0B1026;--tcRGB:60,87,214;--text:#FFFFFF;--dim:#E3DEEA;}
 .tool-team{--tc:#A35FD0;--tcB:#FFFFFF;--tcBand:#6708A5;--tcInk:#FFFFFF;--tcGrid:rgba(103,8,165,.10);--tcLine:rgba(103,8,165,.45);--tcBg:#12011D;--tcRGB:103,8,165;--text:#FFFFFF;--dim:#E3DEEA;}
@@ -4770,7 +4774,10 @@ class Component extends DCLogic {
      are what it does with it, and the panel above says that in full. What
      is still too long for a tile is cut by the tile, not here. */
   static slShort(name){
-    return String(name || '').replace(/ (Lookup|Material Checker|Extractor|Builder)$/, '');
+    return String(name || '')
+      .replace(/ (Lookup|Material Checker|Extractor|Builder)$/, '')
+      /* and a leading company, so Tooway Warehouse reads "Warehouse" on a tile */
+      .replace(/^Tooway /, '');
   }
   /* ---- a tool's own colours, asked of the stylesheet ----
 
@@ -4804,7 +4811,7 @@ class Component extends DCLogic {
     return ({ 'design-extractor':'design', 'materials':'mat', 'bom':'bom',
       'gin-extractor':'gin', 'wh24':'wh24', 'site-data':'data', 'site-access':'access',
       'project-update':'update', 'rf-jumper':'rf', 'esn':'esn',
-      'field-config':'field', 'swap':'swap', 'whattodo':'todo',
+      'field-config':'field', 'swap':'swap', 'warehouse':'wh', 'whattodo':'todo',
       'team':'team', 'attendance':'att', 'lyric-video':'lyric', 'goals':'goals' })[dir] || '';
   }
   static toolGlyph(cls){
@@ -6807,6 +6814,10 @@ class Component extends DCLogic {
                 "WH",
                 "M3 8l9-5 9 5v9l-9 5-9-5z M3 8l9 5 9-5 M12 13v9 M15.5 15.5l1.5 1.5 3-3.5"
           ],
+          "wh": [
+                "TW",
+                "M3.5 3.5v17 M20.5 3.5v17 M3.5 9.5h17 M3.5 15h17 M6.5 6h4v3.5h-4z M12 11.5h5.5V15H12z M6.5 17.3h3.5v3.2H6.5z M13.5 17.3h4v3.2h-4z"
+          ],
           "swap": [
                 "SW",
                 "M4 8.5h15 M15.5 5L19 8.5 15.5 12 M20 15.5H5 M8.5 12L5 15.5 8.5 19"
@@ -6867,8 +6878,8 @@ class Component extends DCLogic {
          desc:'Makes the two things a song needs to go out. The lyric video: cover art swaying behind a dark gradient, the words lighting one at a time on the beat they are sung, rendered to MP4 rather than filmed off the screen. The artwork: the photograph at full strength with the title on solid ink beneath it, square for the stores and 16:9 for YouTube. Both take the same picture and the same title, so neither is asked for twice.'},
         {name:'Daily Attendance', initial:'A', tag:'Tooway · who was on site', href:'tools/attendance/', feature:'tool:attendance',
          desc:'A photo at each end of the shift is the record. Whoever holds the shared phone takes one picture of everyone starting, and the time and the place are stamped on it there and then rather than typed in afterwards. The office ticks the faces it can see and the sheet fills itself in – present, late, hours, and the half that matters, who did not come. Export the day as Excel.'},
-        {name:'Austin SWAP', initial:'S', tag:'Dialog · Airtel swap removals', href:'tools/swap/', feature:'tool:swap',
-         desc:'What came off a site on the Austin swap, filed as a sheet: a site ID that fills its own name, then a row for every material – code and description off the Material Codes list, quantity and unit, the serial scanned off the label with the camera, and three photographs kept with it, the serial and two of the unit. Cable and jumper lines say N/A rather than a serial. The inventory adds it all up by material or by site, and where each piece is now – with the team, at the warehouse, or mapped onto another site – is mine to keep. Excel for the warehouse.'},
+        {name:'Tooway Warehouse', initial:'W', tag:'Tooway · stock in and out', href:'tools/warehouse/', feature:'tool:warehouse',
+         desc:'Every item in the warehouse and where it went. Inbound new stock and site returns, outbound to sites and 3rd parties with a printed note, cable drums by reading.'},
         {name:'ESN Sharing', initial:'E', tag:'Dialog · ESN + serials', href:'tools/esn/', feature:'tool:esn',
          desc:'The team files an ESN from the field: type a site ID and the name arrives on its own, paste the print screens straight out of the clipboard, list the card types and their serials. Tick Run O&M Script and the O&M IP slot opens. Everything lands in one place and comes out as Excel.'},
         {name:'What To Do', initial:'W', tag:'Jobs · reminders', href:'tools/whattodo/', feature:'tool:whattodo',
@@ -6895,7 +6906,7 @@ class Component extends DCLogic {
          whether it is drawn. Each page checks again on its way in - a card
          that is not drawn is not a lock, only a tidy list. */
       ].filter(t=>!t.feature || may(t.feature))
-       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap','wh24':'wh24','goals':'goals'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
+       .map(t=>({...t, cmd:'$ '+t.href.replace(/^tools\//,'').replace(/\/$/,'')+' --open', cls:'tool-'+({'design-extractor':'design','bom':'bom','esn':'esn','lyric-video':'lyric','whattodo':'todo','project-update':'update','site-access':'access','site-data':'data','gin-extractor':'gin','team':'team','field-config':'field','materials':'mat','attendance':'att','rf-jumper':'rf','swap':'swap','warehouse':'wh','wh24':'wh24','goals':'goals'}[t.href.replace(/^tools\//,'').replace(/\/$/,'')]||'access'),
                   group: (A && A.groupOf) ? A.groupOf(t.feature) : 'Other'}))
        .map(t=>{
          const ic = TOOLICON[t.cls.replace('tool-','')];

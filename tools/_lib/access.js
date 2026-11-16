@@ -1183,7 +1183,13 @@
     { key:'tool:attendance', name:'Daily Attendance', since:'2026-09-05', tier:'tooway', group:'People & work',
       what:'Who was on site, from a photo at each end of the shift. Anyone who can open it can clock in and name faces; the roster is mine.' },
     { key:'tool:swap', name:'Austin SWAP', since:'2026-09-22', tier:'tooway', group:'Field operations',
+      unlisted:'2026-11-16: Tooway Warehouse took its place on the Tools page. The folder, the switch and everything already filed stay exactly where they are, so old links still open and the records are still readable - it is off the directory, not gone.',
       what:'The swap removals. Whoever can open it can file what came off a tower.' },
+    /* Austin SWAP stays here, and its folder stays where it is - unlisted on
+       the Tools page from 16 November, so old links and everything already
+       filed still work. */
+    { key:'tool:warehouse', name:'Tooway Warehouse', since:'2026-11-16', tier:'mine', group:'Field operations',
+      what:'The Tooway warehouse: stock in and out, notes, drums. Whoever can open it can file and issue stock.' },
     { key:'tool:esn', name:'ESN Sharing', since:'2026-08-17', tier:'tooway', group:'Field operations',
       what:'Filing an ESN from the field.' },
     { key:'tool:design-extractor', name:'Design Extractor', since:'2026-08-13', tier:'tooway', group:'Design & materials',

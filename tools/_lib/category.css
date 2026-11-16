@@ -197,6 +197,31 @@ html[data-cat] .hdr .hsep{background:var(--barLine) !important}
         --badT     #c2405c    4.32   4.54
         --infoT    #2f6fd0    4.19   4.53
 
+   THREE MORE, ADDED 16 NOVEMBER FOR TOOWAY WAREHOUSE, SOLVED THE SAME WAY:
+
+        --newT     #C49BFF    1.90   4.50
+        --siteT    #F7A86B    1.67   4.50
+        --tpT      #5CC8D6    1.69   4.53
+
+   WHY THEY ARE NOT --ok / --bad / --warn / --info / --err. Those five are
+   STATES: something is fine, something is wrong, something needs looking
+   at. These three are not states.
+
+        --siteT   a LOCATION - the item is out at a site
+        --tpT     a LOCATION - the item is with a 3rd party
+        --newT    a CATALOGUE FACT - this code is not on Material Codes yet
+
+   None of the three is good or bad news. An item at a site is not a
+   warning; it is where the item is. Written down because --siteT is orange
+   and so is --warnT, and in six months the resemblance is the only thing
+   left of this decision - somebody maps "at site" onto --warn, and then
+   every item in the field reads as a problem.
+
+   --tpT's hue moved 2.27 degrees where the other two held inside 0.03:
+   that cyan runs out of sRGB on the way down and the walk clips. Recorded
+   rather than hidden, because "never re-hued" is the rule above and this
+   is the one place it bends, by a hair, against the gamut.
+
    IN DARK MODE EVERY BASE ALREADY PASSES - 4.53 to 7.37 against the darkest
    card - so the dark variants are the base colours themselves. The split
    exists for the light column only, and saying so here stops someone
@@ -216,9 +241,13 @@ html[data-cat]{
   --okT:var(--ok, #34c98b) !important;    --warnT:var(--warn, #f2a33a) !important;
   --badT:var(--bad, #e2607a) !important;  --infoT:var(--info, #4f9bf0) !important;
   --errT:var(--err, var(--warn, #f2a33a)) !important;
+  --newT:var(--new, #C49BFF) !important;  --siteT:var(--site, #F7A86B) !important;
+  --tpT:var(--tp, #5CC8D6) !important;
 }
 html[data-cat][data-theme="light"]{
   --okT:#007D4D !important;      --warnT:#B74A21 !important;
   --badT:#BE3C59 !important;     --infoT:#2969CA !important;
   --errT:#B74A21 !important;
+  --newT:#8158B6 !important;     --siteT:#A25A16 !important;
+  --tpT:#007785 !important;
 }

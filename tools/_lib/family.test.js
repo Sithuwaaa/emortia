@@ -43,11 +43,20 @@ const is = (name, got, want) => {
 const ACCESS = fs.readFileSync(path.join(TOOLS, '_lib/access.js'), 'utf8');
 const FEATURES = [];
 {
-  const rx = /\{\s*key:'tool:([a-z0-9-]+)'[^}]*?group:'([^']+)'/g;
+  /* The whole entry is captured, not two fields out of it, so a field
+     added later can be read here without this regex being rewritten for
+     each one. 'unlisted' was the first and it was silently dropped. */
+  const rx = /\{\s*key:'tool:([a-z0-9-]+)'([^}]*)\}/g;
   let m;
-  while ((m = rx.exec(ACCESS))) FEATURES.push({ key: m[1], group: m[2] });
+  while ((m = rx.exec(ACCESS))) {
+    const body = m[2];
+    const g = body.match(/group:'([^']+)'/);
+    const un = body.match(/unlisted:\s*'([^']*)'/);
+    if (!g) continue;
+    FEATURES.push({ key: m[1], group: g[1], unlisted: un ? un[1] : null });
+  }
 }
-is('every tool in access.js was found', FEATURES.length, 17);
+is('every tool in access.js was found', FEATURES.length, 18);
 
 /* group name -> the family key used in CSS. The one place the two
    vocabularies meet, and it is five lines rather than sixteen. */
@@ -71,7 +80,12 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
    but not one colour may move without this failing and saying so.
 
    Hash is over the declarations with every comment and all whitespace
-   stripped, so prose is free and values are frozen. */
+   stripped, so prose is free and values are frozen.
+
+   Re-pinned 16 November: --newT, --siteT and --tpT were added for Tooway
+   Warehouse, dark and light. Three tokens arrived, not one existing value
+   moved - the diff beside this commit is the evidence, and that is the
+   only reason a new hash is allowed to be written here. */
 {
   const crypto = require('crypto');
   const values = NAV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').trim();
@@ -90,7 +104,7 @@ const NAV = fs.readFileSync(path.join(TOOLS, '_lib/category.css'), 'utf8');
         18 Oct adds --okT/--warnT/--badT/--infoT/--errT and moves no
         existing colour. Nothing was subtracted, which the governed-token
         assertions below still confirm independently of this hash. */
-     'ad3ad8a068eba1c57e2973b663b0c6122ec202014969a507d6887c2359544054');
+     '64e9571378d7e149a31bdaca6eda83c3b8736afe67a9df032489574a0f3d7ba4');
 
   /* ---- THE BAR FLIPS WITH THE THEME ----
 
@@ -827,9 +841,21 @@ console.log('\n--- the mapping ---');
   const featureKeys = FEATURES.map(f => f.key);
   const cardKeys = cards.map(c => c.feature.replace(/^tool:/, ''));
 
+  /* A feature with no card is either an oversight or a decision. The only
+     way to tell them apart is for the decision to be written down, so a
+     feature may drop off the directory only by saying in access.js WHY -
+     and the check runs both ways, so a stale 'unlisted' on something that
+     is still on the page fails too. Austin SWAP is the first: Tooway
+     Warehouse took its place on 16 November and the folder stayed. */
+  const unlisted = FEATURES.filter(f => f.unlisted).map(f => f.key).sort();
   const noCard = featureKeys.filter(k => !cardKeys.includes(k)).sort();
   const noFeature = cardKeys.filter(k => !featureKeys.includes(k)).sort();
-  is('every feature has a card on the directory', noCard, []);
+  is('every feature has a card, or says why it has none',
+     noCard.filter(k => !unlisted.includes(k)), []);
+  is('and nothing claims to be unlisted while still on the directory',
+     unlisted.filter(k => cardKeys.includes(k)), []);
+  is('every unlisted feature gives a reason, not just a flag',
+     FEATURES.filter(f => f.unlisted && String(f.unlisted).trim().length < 20).map(f => f.key), []);
   is('every card has a feature behind it', noFeature, []);
 
   /* ---- the two class maps must agree ---- */

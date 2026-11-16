@@ -57,7 +57,7 @@ const tools = fs.readdirSync(TOOLS)
   })
   .filter(r => r.cat);
 
-is('every tool page carries a category', tools.length, 17);
+is('every tool page carries a category', tools.length, 18);
 
 console.log('\n--- the accent family is category.css\'s, on every page, in both themes ---');
 for (const { tool, cat, look } of tools) {

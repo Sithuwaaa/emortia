@@ -178,6 +178,11 @@
         "file": "047_project_update_projects.sql",
         "table": "pu_reports",
         "col": "n_done"
+      },
+      {
+        "file": "048_tooway_warehouse.sql",
+        "table": "wh_counters",
+        "col": null
       }
     ],
     "unverifiable": [

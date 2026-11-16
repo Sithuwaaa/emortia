@@ -1263,6 +1263,80 @@
       fn);
   }
 
+  /* ------------------------------------------------------ Tooway Warehouse
+
+     Reads are plain selects behind may_read('tool:warehouse'). Saving a note
+     is ONE rpc - wh_inbound / wh_outbound - so the note number, every stock
+     move and every drum reading land together or not at all. The server
+     rechecks everything the page checks, so two people saving at once cannot
+     take the same number and a drum cannot be cut past its lower reading.
+     Migration: supabase/048_tooway_warehouse.sql. */
+  const WH_OFF = 'Tooway Warehouse is not switched on yet – run the warehouse migration.';
+  function whErr(e){
+    const m = (e && e.message) || String(e);
+    return /does not exist|schema cache|could not find the (table|function)/i.test(m) ? WH_OFF
+         : /jwt|not authenticated/i.test(m) ? 'Your sign-in has run out. Reload the page and sign in again.'
+         : /row-level security|permission|not allowed/i.test(m) ? 'This account cannot change the warehouse.'
+         : m;
+  }
+  async function whAll(c, table, order){
+    const PAGE = 1000; let from = 0, out = [];
+    for(;;){
+      const { data, error } = await c.from(table).select('*').order(order).range(from, from + PAGE - 1);
+      if (error) throw error;
+      out = out.concat(data || []);
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
+    return out;
+  }
+  async function whLoad(){
+    const c = await client(); if (!c) return { error: noClient().message };
+    try {
+      const [notes, items, lines, materials, parties, projects] = await Promise.all([
+        whAll(c, 'wh_notes', 'id'), whAll(c, 'wh_items', 'id'), whAll(c, 'wh_lines', 'id'),
+        whAll(c, 'wh_materials', 'code'), whAll(c, 'wh_parties', 'name'), whAll(c, 'wh_projects', 'name')]);
+      return { notes, items, lines, materials, parties, projects, error: null };
+    } catch(e){ return { error: whErr(e) }; }
+  }
+  async function whRpc(fn, args){
+    const c = await client(); if (!c) throw noClient();
+    const s = await session(); if (!s) throw new Error('Sign in first.');
+    const { data, error } = await c.rpc(fn, args);
+    if (error) throw new Error(whErr(error));
+    return data;
+  }
+  const whInbound  = p => whRpc('wh_inbound',  { p });
+  const whOutbound = p => whRpc('wh_outbound', { p });
+  const whNext     = k => whRpc('wh_next',     { k });     /* 'DMY' gives the next dummy SN */
+  async function whWrite(q){ const { error } = await q; if (error) throw new Error(whErr(error)); }
+  async function whSetSN(id, sn){ const c = await client(); if (!c) throw noClient();
+    return whWrite(c.from('wh_items').update({ sn }).eq('id', id)); }
+  async function whRename(code, name){ const c = await client(); if (!c) throw noClient();
+    return whWrite(c.from('wh_items').update({ name }).eq('code', code).eq('is_new', true)); }
+  async function whPin(code, pinned){ const c = await client(); if (!c) throw noClient();
+    return whWrite(c.from('wh_materials').upsert({ code, pinned }, { onConflict: 'code' })); }
+  async function whMin(code, min_qty){ const c = await client(); if (!c) throw noClient();
+    return whWrite(c.from('wh_materials').upsert({ code, min_qty }, { onConflict: 'code' })); }
+  async function whAddProject(name){ const c = await client(); if (!c) throw noClient();
+    return whWrite(c.from('wh_projects').upsert({ name }, { onConflict: 'name', ignoreDuplicates: true })); }
+  /* Owner only (materials_write is is_owner()). Puts the code on Material
+     Codes, then clears the "new" flag on every warehouse item carrying it. */
+  async function whAddMaterial(code, descr, type){
+    const c = await client(); if (!c) throw noClient();
+    await whWrite(c.from('materials').upsert({ code, descr, type }, { onConflict: 'code' }));
+    return whWrite(c.from('wh_items').update({ is_new: false }).eq('code', code));
+  }
+  async function whSubscribe(fn){
+    const c = await client(); if (!c) return;
+    return liveChannel(
+      (hit, status) => c.channel('wh_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'wh_items' }, hit)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'wh_notes' }, hit)
+        .subscribe(status),
+      fn);
+  }
+
   /* ------------------------------------------------ WH24 Material Checker
 
      Two tables, because two different people write them: wh24_tickets is
@@ -2988,6 +3062,8 @@
                 designFingerprints, designLoad, designPublish, designBatches, designSubscribe,
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
+                whLoad, whInbound, whOutbound, whNext, whSetSN, whRename, whPin, whMin,
+                whAddProject, whAddMaterial, whSubscribe,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 goalsLoad: goalsLoad, goalsWrite: goalsWrite, goalsRemove: goalsRemove,
                 goalsCurrency: goalsCurrency, goalsSubscribe: goalsSubscribe,
