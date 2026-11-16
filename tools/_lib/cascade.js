@@ -79,7 +79,15 @@ function rules(css, sheetName) {
   while (i < s.length) {
     const brace = s.indexOf('{', i);
     if (brace < 0) break;
-    const head = s.slice(i, brace).trim();
+    /* An at-rule's own closing brace sits between the last rule inside it
+       and the next rule outside it, and nothing above consumes it - the
+       stack only remembers where the block ENDS. Left in place it became
+       the first character of the next selector, which then would not parse,
+       and that rule dropped out of the cascade: one lost rule per @media
+       block, 109 across the tool pages, every one of them invisible to the
+       guards built on this resolver. Stripped here, where the head is read;
+       the stack below still pops by position. */
+    const head = s.slice(i, brace).replace(/^[\s}]+/, '').trim();
     if (head.startsWith('@')) {
       const name = head.split(/[\s({]/)[0].toLowerCase();
       if (name === '@media' || name === '@supports' || name === '@layer') {
