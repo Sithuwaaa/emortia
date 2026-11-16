@@ -62,11 +62,30 @@ const h = v => crypto.createHash('sha256').update(String(v)).digest('hex').slice
 const MAT_OK = '1000' + '000';
 
 /* Shapes that look like the real thing. */
+/* NOT \b. An underscore is a word character, so \b never fires between a
+   site code and an underscore that follows it - and a WorkHub export is
+   named exactly that way, code then underscores then GI number then .pdf.
+   Both identifiers in such a filename were invisible to this guard while
+   it reported the repository clean, which is the worst shape a check can
+   take: not wrong, blind, and reassuring about the region it cannot see.
+
+   The boundary actually wanted is "not touching another character of the
+   same alphabet". For a site code that is a letter or a digit, which also
+   stops a radio model yielding a false site code. For the numeric shapes
+   it has to include hex letters as well, because the hash list below is
+   full of digit runs that would otherwise read as reservations - this
+   file failing on its own debt register, which is the third way it has
+   now found to fail on its own contents.
+
+   Illustrations here are deliberately synthetic. Writing the real
+   filename into the comment explaining the bug is how the last three
+   leaks happened, and the guard caught this one on the first run. */
+const HEXW = '0-9A-Fa-f';
 const SHAPES = [
-  { kind: 'site code',     rx: /\b([A-Z]{2}\d{4})\b/g,  ok: v => /^ZZ/.test(v) },
-  { kind: 'material code', rx: /\b(1000\d{6})\b/g,      ok: v => v.startsWith(MAT_OK) && v.length === 10 },
-  { kind: 'GI number',     rx: /\b(49\d{8})\b/g,        ok: v => /^49[03]0000\d{3}$/.test(v) },
-  { kind: 'reservation',   rx: /\b(1\d{6})\b/g,         ok: v => /^1700\d{3}$/.test(v) },
+  { kind: 'site code',     rx: /(?<![A-Za-z0-9])([A-Z]{2}\d{4})(?![A-Za-z0-9])/g,     ok: v => /^ZZ/.test(v) },
+  { kind: 'material code', rx: new RegExp(`(?<![${HEXW}])(1000\\d{6})(?![${HEXW}])`, 'g'), ok: v => v.startsWith(MAT_OK) && v.length === 10 },
+  { kind: 'GI number',     rx: new RegExp(`(?<![${HEXW}])(49\\d{8})(?![${HEXW}])`, 'g'),   ok: v => /^49[03]0000\d{3}$/.test(v) },
+  { kind: 'reservation',   rx: new RegExp(`(?<![${HEXW}])(1\\d{6})(?![${HEXW}])`, 'g'),    ok: v => /^1700\d{3}$/.test(v) },
 ];
 
 /* Not identifiers at all, and nothing to do with Dialog:

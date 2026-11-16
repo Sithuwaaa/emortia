@@ -110,16 +110,22 @@
      It is in the card title, in the same scheme PH1 uses - two letters, four
      digits - inside a string like
 
-       INH_Western_CM2738_St_Lawrence_Rd_AP Upgrades_New Site Installation_AP_2025_2158_Austin Project
-       INH_Southern_MR5051_MW_Weliketiya_Lamp_WIBAS_2026_1822
-       INH__CM5521_Kalapaluwawa_South_Lamp_MW_MW Link Implementation_MW_2026_2238
-       INH_NW_KU5128_MW_Maraluwawa_Lamp_WIBAS_2026_1529
+       INH_Western_ZZ0038_Example_Road_AP Upgrades_New Site Installation_AP_2025_2158_Austin Project
+       INH_Southern_ZZ0052_MW_Sampleville_Lamp_WIBAS_2026_1822
+       INH__ZZ0021_Sample_North_Lamp_MW_MW Link Implementation_MW_2026_2238
+       INH_NW_ZZ0028_MW_Placeholder_Lamp_WIBAS_2026_1529
+
+     Those four are synthetic, and every structural feature the parser reads
+     is preserved: the empty region segment, the two-letter one, the MW_
+     division prefix, both tail shapes and the spaces inside a phase name.
+     They were real titles until 16 November; a site name locates a site as
+     precisely as its code does, so neither belongs in a public file.
 
      The region segment is sometimes empty and sometimes two letters, so
      NOTHING here counts fields from the left. The site code is found by its
      shape; everything else is measured from it.
 
-     Three trims, in this order, each from a real title above:
+     Three trims, in this order, each taken from a real title of this shape:
        - the tail, _AP_2025_2158 or _WIBAS_2026_1822, and whatever follows it
        - a leading division, MW_ or AP_, which sits before the name on some
          cards and after it on others

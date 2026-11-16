@@ -301,7 +301,7 @@ function addsOf(files, table) {
 
    <a download="…"> IS IGNORED CROSS-ORIGIN. The signed URL is on supabase.co
    and the page is not, so the browser threw the computed name away and saved
-   every file under its storage path - CM5736____4931212559.pdf. The attribute
+   every file under its storage path - ZZ0036____4900000123.pdf. The attribute
    was correct, the render was correct, and the test that asserted the
    attribute passed. The browser disagreed, and it is the only one that counts.
 
