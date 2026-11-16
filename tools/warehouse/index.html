@@ -64,6 +64,16 @@ button,input,select,textarea{font:inherit;color:inherit}
    34px, shrank the badge to a 3px sliver, and "Emortia" printed on top of
    the title. Matching the contract is the fix; overriding the width would
    have kept a second brand in the codebase. */
+/* nav.css sizes the mark and the bars; category.css paints the wordmark
+   with --barInk. Everything left is this page's own colour, which is the
+   approved navy design's brand: the rose disc and near-black bars. Do not
+   reach for theme.css to get them - that sheet carries the burgundy site
+   chrome with it and would repaint this header. */
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
+.brand:hover .logo{box-shadow:0 0 22px rgba(176,58,86,.55)}
+.logo{border-radius:50%;background:#b03a56;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo i{display:block;border-radius:2px;background:#170d10}
+.bname{font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;white-space:nowrap}
 .sep{width:1px;height:26px;background:var(--line)}
 .ttl{font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;display:flex;align-items:center;gap:10px;white-space:nowrap}
 .ttl em{font-style:normal;font-family:'Space Mono';font-size:11px;letter-spacing:.12em;color:var(--accentB);border:1px solid rgba(117,155,235,.35);border-radius:999px;padding:3px 10px;background:rgba(117,155,235,.08)}
