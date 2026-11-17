@@ -1334,6 +1334,12 @@
      supabase/050_warehouse_delete_edit.sql. */
   const whDeleteNote = id => whRpc('wh_delete_note', { p_id: id });
   const whDeleteItem = id => whRpc('wh_delete_item', { p_id: id });
+  /* one line off a note, undone exactly as deleting the note would undo it */
+  const whDeleteLine = lineId => whRpc('wh_delete_line', { p_line_id: lineId });
+  /* correcting one item. Words always; quantity and readings only while it
+     is still here and has never gone out - the note is the record of what
+     was sent, and the server says so by name when it refuses. */
+  const whUpdateItem = p => whRpc('wh_update_item', { p });
   /* the words on a note, never its stock */
   const whUpdateNote = p => whRpc('wh_update_note', { p });
   async function whSubscribe(fn){
@@ -3073,7 +3079,7 @@
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 whLoad, whInbound, whOutbound, whNext, whSetSN, whRename, whPin, whMin,
                 whAddProject, whAddMaterial, whSubscribe,
-                whDeleteNote, whDeleteItem, whUpdateNote,
+                whDeleteNote, whDeleteItem, whUpdateNote, whDeleteLine, whUpdateItem,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 goalsLoad: goalsLoad, goalsWrite: goalsWrite, goalsRemove: goalsRemove,
                 goalsCurrency: goalsCurrency, goalsSubscribe: goalsSubscribe,

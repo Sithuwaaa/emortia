@@ -21,6 +21,8 @@ const PURPOSES=['Repair','Return to vendor','Loan','Transfer','Testing','Scrap']
 const CONDS=['Good','Faulty','Scrap'];
 const NEWPJ='+ New project…';
 let PROJECTS=[], PARTIES=[], SITES={};
+/* note id + item id -> wh_lines.id, filled as the notes are read */
+const LID=new Map();
 const pad=(n,w=2)=>String(n).padStart(w,'0');
 let lines=[], tickets=[], pins=new Set(), mins={}, newMats=new Map(), proj='';
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
@@ -56,10 +58,17 @@ function fromDB(d){
     removed:n.removed_on||'',dest:n.dest||'site',party:n.party||'',purpose:n.purpose||'',partyRef:n.party_ref||'',by:n.by_name||'',requestedBy:n.requested_by||'',
     receiver:n.receiver||'',vehicle:n.vehicle||'',driver:n.driver||'',driverNic:n.driver_nic||'',contact:n.contact||'',issuedBy:n.issued_by||'',issuedContact:n.issued_contact||'',items:[]}));
   const tb=new Map(tickets.map(t=>[t.id,t]));
+  /* stale entries would point at lines that no longer exist */
+  LID.clear();
   d.lines.slice().sort((a,b)=>a.line_no-b.line_no).forEach(x=>{ const t=tb.get(x.note_id), L=byId.get(x.item_id); if(!t||!L) return;
+    /* LID maps an item id to the id of the LINE that put it on this note.
+       An inbound note's items are bare ids and an outbound note's are
+       objects; taking one line off needs the line's own id either way,
+       and wh_lines.id is the only thing that identifies a line. */
+    LID.set(t.id+'|'+L.id, x.id);
     if(t.type!=='DN'){ t.items.push(L.id); return; }
     const cut=x.cut_from!=null?{from:+x.cut_from,to:+x.cut_to}:null;
-    t.items.push({lineId:L.id,qty:+x.qty,cut,remarks:x.remarks||''});
+    t.items.push({lineId:L.id,lid:x.id,qty:+x.qty,cut,remarks:x.remarks||''});
     if(L.drum&&cut) L.drum.cuts.push({ticket:t.id,date:t.date,site:t.site||t.party,from:cut.from,to:cut.to,len:+x.qty}); });
   pins=new Set(d.materials.filter(m=>m.pinned).map(m=>m.code));
   mins={}; d.materials.forEach(m=>{ if(+m.min_qty>0) mins[m.code]=+m.min_qty; });
@@ -245,8 +254,8 @@ function showInbound(t){
   <div class="pbody">
     ${t.type==='RT'?`<div class="box rt"><h4>Site return details</h4><div class="fh five">${kv('Site ID',`<span class="mono">${t.site}</span>`)}${kv('Site name',esc(t.siteName))}${kv('Removed on',t.removed?dshort(t.removed):'<span style="color:var(--dim)">not known</span>')}${kv('Inbound date',dshort(t.date))}${kv('Returned by',esc(t.by))}</div><div class="fh">${kv('Return note',esc(t.ref))}${kv('Project',esc(t.project))}</div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">${kv('Inbound date',dshort(t.date))}${kv('Project',esc(t.project))}${kv('Reservation no',`<span class="mono">${esc(t.res)}</span>`)}${kv('Received by',esc(t.by))}</div><div class="fh">${kv('Supplier DN / PO',esc(t.ref))}</div></div>`}
-    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:240px">Current location</th></tr></thead><tbody>
-    ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td></tr>`}).join('')}
+    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:240px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
+    ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -354,8 +363,8 @@ function showDispatch(t){
     <div class="box"><h4>Outbound details</h4><div class="fh five">
       ${[['Date',dshort(t.date)],...(t.dest==='party'?[['3rd party',t.party],['Purpose',t.purpose],['Their ref / PO',t.partyRef]]:[]),['Project',t.project],['Requested by',t.requestedBy],['Issued by',t.issuedBy],['Receiver',t.receiver],['Vehicle no',t.vehicle],['Driver name',t.driver],['Driver NIC',t.driverNic],['Contact no',t.contact],['Issuer contact',t.issuedContact],['Items',t.items.length+(t.items.length===1?' line':' lines')]].map(([k,v])=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${esc(v)||'<span style="color:var(--dim)">—</span>'}</div></div>`).join('')}
     </div></div>
-    <div class="rows"><table><thead><tr><th style="width:36px">No</th><th style="width:120px">Code</th><th>Items &amp; description</th><th style="width:60px">Unit</th><th style="width:80px;text-align:right">Issued</th><th style="width:110px">Remarks</th><th style="width:200px">Current location</th></tr></thead><tbody>
-    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${r.L.drum?'#ffd9a8':w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${r.L.drum?'cut from '+esc(r.L.drum.name):esc(w.top)}</td></tr>`}).join('')}
+    <div class="rows"><table><thead><tr><th style="width:36px">No</th><th style="width:120px">Code</th><th>Items &amp; description</th><th style="width:60px">Unit</th><th style="width:80px;text-align:right">Issued</th><th style="width:110px">Remarks</th><th style="width:200px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
+    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${r.L.drum?'#ffd9a8':w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${r.L.drum?'cut from '+esc(r.L.drum.name):esc(w.top)}</td><td>${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -610,5 +619,33 @@ async function delItem(id,label){
   ]);
   if(!ok) return;
   try{ await DB.whDeleteItem(id); toast('Deleted'); await reload(); }
+  catch(e){ toast(e.message||String(e)); }
+}
+
+/* ---- one line off a note ------------------------------------------
+
+   Deleting the whole note is the wrong size of tool when one row of five
+   is wrong. This takes that row off and undoes exactly that row: the item
+   comes back into stock, or its drum cut is given back, or - if it only
+   ever existed as part of this note - it goes with the line.
+
+   The last line is refused by the server: a note with no lines is not a
+   note, it is a number with a date on it, and deleting the note is what
+   that actually means. */
+function rowDel(t,itemId,label){
+  const lid=LID.get(t.id+'|'+itemId);
+  if(!lid||!OWNER()) return '';
+  return `<button class="rdel" title="Take this line off ${esc(t.id)}" onclick="delLine('${esc(t.id)}',${lid},'${esc(String(label)).replace(/'/g,"&#39;")}')">✕</button>`;
+}
+async function delLine(noteId,lineId,label){
+  const ok=await window.Ask.twice([
+    { title:'Take '+label+' off '+noteId+'?',
+      body:'Only this line. Whatever it moved is put back - into stock, or onto its drum - and the rest of the note is untouched.',
+      no:'Cancel', yes:'Continue' },
+    { title:'Remove '+label+'?', body:'The other lines stay. This cannot be undone from here.',
+      no:'No, keep it', yes:'Remove it' }
+  ]);
+  if(!ok) return;
+  try{ const r=await DB.whDeleteLine(lineId); toast((r&&r.what?r.what:label)+' removed from '+noteId); await reload(); }
   catch(e){ toast(e.message||String(e)); }
 }
