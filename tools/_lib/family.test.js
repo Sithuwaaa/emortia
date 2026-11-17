@@ -41,6 +41,26 @@ const is = (name, got, want) => {
 
 /* ---- the source of truth, read out of access.js itself ---- */
 const ACCESS = fs.readFileSync(path.join(TOOLS, '_lib/access.js'), 'utf8');
+/* ---- pages that stand on their own -------------------------------
+
+   One named page, with the reason, and everything else about it still
+   checked. Tooway Warehouse carries a complete self-contained navy
+   glass stylesheet. Conforming it on 16 November added the two shared
+   sheets and renamed ten tokens onto governed names; the links were
+   nearly free, but taking --accent and --accentB from category.css
+   handed the page the Field operations blues instead of its own and
+   repainted it. That reached main and was reverted on 17 November.
+
+   Exempted here: the accent-of-its-own rule, the governed-token rule,
+   the shared-sheet version rules and the status-token split - every one
+   of which exists BECAUSE category.css supplies the other half, and a
+   page that does not load it cannot satisfy them.
+
+   NOT exempted: the 4.5:1 contrast floor. That one is about readers,
+   not about which stylesheet a page loads, and it applies to any
+   design. */
+const STANDALONE = { warehouse: 'its own navy glass design; conforming it on 16 Nov repainted the page and was reverted on 17 Nov' };
+
 const FEATURES = [];
 {
   /* The whole entry is captured, not two fields out of it, so a field
@@ -290,6 +310,7 @@ const OWN = /--(accent-ink|accentB|accentD|accent|glowSoft|glow|ink)\s*:/;
 for (const row of mapping) {
   const src = fs.readFileSync(path.join(TOOLS, row.tool, 'index.html'), 'utf8');
   const hits = (src.match(new RegExp(OWN.source, 'g')) || []);
+  if (STANDALONE[row.tool]) { is(row.tool + ' owns its accent, and says why', STANDALONE[row.tool].length > 30, true); continue; }
   is(row.tool + ' defines no accent of its own', hits, []);
 }
 
@@ -441,7 +462,7 @@ console.log('\n--- no ungoverned chrome anywhere ---');
     }
     const declared = new Set(DECLARED[row.tool] || []);
     for (const p of [...props].sort())
-      if (!GOVERNED.has(p) && !STATUS.test(p) && !declared.has(p))
+      if (!GOVERNED.has(p) && !STATUS.test(p) && !declared.has(p) && !STANDALONE[row.tool])
         left.push(row.tool + ' --' + p);
   }
   /* A SCAN THAT READS NOTHING PASSES EVERYTHING. Assert it found the blocks
@@ -607,10 +628,32 @@ console.log('\n--- text on a painted background ---');
      tree before it), and status keeps its own colours by instruction. They
      are listed rather than filtered by a pattern, so a NEW one cannot hide
      behind the exemption. */
+  /* AND ONE THAT IS NOT A COLOUR PROBLEM AT ALL - it is this scan's own
+     blind spot, measured and written down rather than designed around.
+
+     The scan takes the background and the colour out of ONE rule body.
+     A theme override lives in a different rule - html[data-theme="light"]
+     th - and those are filtered out above. So for warehouse|light|th it
+     paired the light value of --acc2 with the BASE rule's dark
+     background, which the browser never paints: the light rule replaces
+     the background too.
+
+         what it reports   #2F55B0 on #16224a   2.24   never rendered
+         what dark paints  #9DB8F5 on #16224a   7.79
+         what light paints #2F55B0 on #e9eff9   5.97
+
+     On 16 November this number was 'fixed' by restructuring the page's
+     CSS to suit it. The measurement was the thing that was wrong, and
+     the page has since gone back to its approved design. A proper fix -
+     resolving each selector's background per theme - was tried on the
+     17th and made the scan worse, turning up sixteen pairs including two
+     tools that were fine, so it was reverted rather than tuned until the
+     number went green. Listed here until that is done properly. */
   const ACCEPTED = new Set([
     'lyric-video|dark|.btn.rec', 'field-config|dark|.toast.bad', 'rf-jumper|dark|.toast.bad',
     'team|dark|.toast.bad', 'attendance|dark|.bell .badge', 'attendance|dark|.ask .btns .yes',
-    'attendance|dark|.tag-late', 'whattodo|light|.btn.stop', 'field-config|light|.none code'
+    'attendance|dark|.tag-late', 'whattodo|light|.btn.stop', 'field-config|light|.none code',
+    'warehouse|light|th'
   ]);
 
   const bad = [];
@@ -658,6 +701,14 @@ for (const sheet of ['nav', 'category']) {
   for (const row of mapping) {
     const src = fs.readFileSync(path.join(TOOLS, row.tool, 'index.html'), 'utf8');
     const m = src.match(new RegExp('_lib\\/' + sheet + '\\.css\\?v=(\\d+)'));
+    /* A page that stands on its own has no version to agree with. It has to
+       load NEITHER sheet, not just miss one - a page that lost a single link
+       by accident is a bug, and the list must not cover it. */
+    if (STANDALONE[row.tool]) {
+      const links = [...src.matchAll(/<link[^>]+_lib\/(nav|category)\.css/g)].map(x => x[1]);
+      is(row.tool + ' stands on its own and loads neither shared sheet', links, []);
+      continue;
+    }
     vers.add(m ? m[1] : 'MISSING');
     /* The LINK TAGS, not the first mention of the name anywhere in the file -
        a comment in a tool's own stylesheet that says "category.css" is not a
@@ -795,7 +846,7 @@ console.log('\n--- the directory carries the same five hues ---');
       .replace(/\/\*[\s\S]*?\*\//g, ' ');
     for (const t of ['ok', 'warn', 'bad', 'err', 'info']) {
       /* a bare colour: on a base token - should be the T variant */
-      if (new RegExp('(?<![a-z-])color\\s*:\\s*var\\(--' + t + '\\)').test(src))
+      if (!STANDALONE[d] && new RegExp('(?<![a-z-])color\\s*:\\s*var\\(--' + t + '\\)').test(src))
         strayText.push(d + ' --' + t);
       /* a T variant used as a fill or a border - the wrong way round */
       if (new RegExp('(background|border)[a-z-]*\\s*:[^;{}]*var\\(--' + t + 'T\\)').test(src))

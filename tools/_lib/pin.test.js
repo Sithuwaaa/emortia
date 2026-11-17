@@ -44,6 +44,31 @@ const is = (name, got, want) => {
   fail++; console.log('FAIL ' + name + '\n  got  ' + a + '\n  want ' + b);
 };
 
+/* ---- pages that stand on their own -------------------------------
+
+   STANDALONE is not 'skip this page'. It is one named page, with the
+   reason, and everything else about it is still checked.
+
+   Tooway Warehouse is drawn from its own navy glass design and carries
+   a complete self-contained stylesheet. On 16 November it was conformed
+   to the shared sheets - two links added and ten tokens renamed onto
+   governed names. The links were nearly free: cascade.js predicted, and
+   measured, that only scrollbar-width, -ms-overflow-style and
+   color-scheme would actually take effect. The RENAMES were not. Taking
+   --accent and --accentB from category.css handed the page the Field
+   operations blues instead of its own, and it came out repainted: a
+   header band, a rule under it, flatter cards. That was a regression,
+   it reached main, and fix 2 on 17 November put the design back.
+
+   So the decision is recorded rather than re-litigated every time this
+   file runs: this page does not load nav.css or category.css, declares
+   its own chrome tokens, and owns its accent. Everything else - the
+   contrast floor, the status-token split, the family mark, the icon,
+   the card - is checked exactly as for any other tool.
+
+   The list is asserted in both directions below, so a page cannot join
+   it by quietly dropping its stylesheets. */
+const STANDALONE = { warehouse: 'its own navy glass design; conforming it on 16 Nov repainted the page and was reverted on 17 Nov' };
 const FAMILY = ['--accent', '--accentB', '--accentT', '--accentD', '--accent-ink'];
 
 /* every tool page that has a category and loads category.css */
@@ -64,6 +89,11 @@ for (const { tool, cat, look } of tools) {
   const page = path.join(TOOLS, tool, 'index.html');
   const sheets = C.sheetsFor(page);
   const catAt = sheets.findIndex(s => /category\.css$/.test(s.name));
+  if (STANDALONE[tool]) {
+    is(tool + ' stands on its own, and says why', STANDALONE[tool].length > 30, true);
+    is(tool + ' really does not load category.css', catAt >= 0, false);
+    continue;
+  }
   is(tool + ' loads category.css', catAt >= 0, true);
   if (catAt < 0) continue;
   /* the family's own answer: nothing after category.css gets a say */

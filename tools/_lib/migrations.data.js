@@ -183,6 +183,11 @@
         "file": "048_tooway_warehouse.sql",
         "table": "wh_counters",
         "col": null
+      },
+      {
+        "file": "049_warehouse_note_fields.sql",
+        "table": "wh_notes",
+        "col": "driver_nic"
       }
     ],
     "unverifiable": [
