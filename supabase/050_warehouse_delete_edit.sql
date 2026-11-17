@@ -37,10 +37,16 @@
 -- act and the person who typed it is the person who should fix it.
 
 -- ------------------------------------------------------------ delete a note
+/* The loop variable is rec, not L. It was L, and these queries alias
+   wh_lines as l - plpgsql folds identifiers to lower case, so l.* and
+   l.note_id resolved to the declared variable rather than the alias, and
+   every delete died with: record "l" is not assigned yet. The variable is
+   renamed rather than the alias, because l for wh_lines reads naturally in
+   the SQL and the next person would write it again. */
 create or replace function wh_delete_note(p_id text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
-  n wh_notes; L record; freed int := 0; removed int := 0; restored int := 0;
+  n wh_notes; rec record; freed int := 0; removed int := 0; restored int := 0;
 begin
   if not is_owner() then raise exception 'Only the owner can delete a note.'; end if;
   select * into n from wh_notes where id = p_id for update;
@@ -49,54 +55,54 @@ begin
   if n.kind = 'OBN' then
     /* give everything back, newest line first so a drum cut twice on one
        note unwinds in the order it was cut */
-    for L in select l.*, i.id as iid, i.sn, i.name, i.source, i.out_note,
+    for rec in select l.*, i.id as iid, i.sn, i.name, i.source, i.out_note,
                     i.drum_name, i.drum_cur, i.drum_lower, i.drum_upper
              from wh_lines l join wh_items i on i.id = l.item_id
              where l.note_id = p_id order by l.line_no desc loop
-      if L.source = 'direct' and L.out_note = p_id then
-        delete from wh_lines where item_id = L.iid;
-        delete from wh_items where id = L.iid;
+      if rec.source = 'direct' and rec.out_note = p_id then
+        delete from wh_lines where item_id = rec.iid;
+        delete from wh_items where id = rec.iid;
         removed := removed + 1;
-      elsif L.drum_name is not null then
-        if L.drum_cur + L.qty > L.drum_upper then
+      elsif rec.drum_name is not null then
+        if rec.drum_cur + rec.qty > rec.drum_upper then
           raise exception 'Drum % cannot take % m back: it reads % and the drum ends at %. Undo the later cut first.',
-            L.drum_name, L.qty, L.drum_cur, L.drum_upper;
+            rec.drum_name, rec.qty, rec.drum_cur, rec.drum_upper;
         end if;
-        update wh_items set drum_cur = drum_cur + L.qty,
-                            qty = drum_cur + L.qty - drum_lower
-         where id = L.iid;
+        update wh_items set drum_cur = drum_cur + rec.qty,
+                            qty = drum_cur + rec.qty - drum_lower
+         where id = rec.iid;
         freed := freed + 1;
       else
-        if L.out_note is distinct from p_id then
+        if rec.out_note is distinct from p_id then
           raise exception '% is not on this note any more - it went out on %.',
-            coalesce(L.sn, L.name), coalesce(L.out_note, 'another note');
+            coalesce(rec.sn, rec.name), coalesce(rec.out_note, 'another note');
         end if;
         update wh_items set status = 'in', out_note = null, out_date = null,
                             site_id = null, site_name = null, party = null
-         where id = L.iid;
+         where id = rec.iid;
         restored := restored + 1;
       end if;
     end loop;
 
   else   /* GRN or SRN: the items it created go, if they are all still here */
-    for L in select i.* from wh_lines l join wh_items i on i.id = l.item_id
+    for rec in select i.* from wh_lines l join wh_items i on i.id = l.item_id
              where l.note_id = p_id loop
-      if L.in_note is distinct from p_id then
-        raise exception '% was not booked in on this note.', coalesce(L.sn, L.name);
+      if rec.in_note is distinct from p_id then
+        raise exception '% was not booked in on this note.', coalesce(rec.sn, rec.name);
       end if;
-      if L.status = 'out' then
+      if rec.status = 'out' then
         raise exception '% has already gone out on %. Delete that note first.',
-          coalesce(L.sn, L.name), coalesce(L.out_note, 'an outbound note');
+          coalesce(rec.sn, rec.name), coalesce(rec.out_note, 'an outbound note');
       end if;
-      if L.drum_name is not null and L.drum_cur is distinct from L.drum_upper then
+      if rec.drum_name is not null and rec.drum_cur is distinct from rec.drum_upper then
         raise exception 'Drum % has been cut - it reads % and came in at %. Undo the cut first.',
-          L.drum_name, L.drum_cur, L.drum_upper;
+          rec.drum_name, rec.drum_cur, rec.drum_upper;
       end if;
     end loop;
-    for L in select i.id from wh_lines l join wh_items i on i.id = l.item_id
+    for rec in select i.id from wh_lines l join wh_items i on i.id = l.item_id
              where l.note_id = p_id loop
-      delete from wh_lines where item_id = L.id;
-      delete from wh_items where id = L.id;
+      delete from wh_lines where item_id = rec.id;
+      delete from wh_items where id = rec.id;
       removed := removed + 1;
     end loop;
   end if;
