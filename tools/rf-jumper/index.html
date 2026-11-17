@@ -70,7 +70,7 @@
     --swatchEdge:#1c1c1c;}
 
   /* the chart's own fills, the same in both themes - they are the information */
-  :root{--c-green:#00b050;--c-red:#ff0000;--c-yellow:#ffff00;--c-blue:#558ed5;--c-white:#ffffff;
+  :root{--c-green:#00b050;--c-red:#ff0000;--c-yellow:#ffff00;--c-blue:#558ed5;--c-purple:#7030a0;--c-white:#ffffff;
     }
 
   *{box-sizing:border-box;margin:0;padding:0}
@@ -160,7 +160,7 @@
   .band.on{border-color:var(--accent);background:var(--glowSoft)}
   .sw{display:inline-block;width:15px;height:15px;border:1px solid var(--swatchEdge);flex:none}
   .sw.green{background:var(--c-green)} .sw.red{background:var(--c-red)} .sw.yellow{background:var(--c-yellow)}
-  .sw.blue{background:var(--c-blue)} .sw.white{background:var(--c-white)}
+  .sw.blue{background:var(--c-blue)} .sw.purple{background:var(--c-purple)} .sw.white{background:var(--c-white)}
 
   .status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 4px;
     font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
@@ -194,7 +194,7 @@
   table.grid td.none{border:0;background:transparent}
   table.grid td.green{background:var(--c-green)} table.grid td.red{background:var(--c-red)}
   table.grid td.yellow{background:var(--c-yellow)} table.grid td.blue{background:var(--c-blue)}
-  table.grid td.white{background:var(--c-white)}
+  table.grid td.white{background:var(--c-white)} table.grid td.purple{background:var(--c-purple)}
   table.grid.big th{font-size:11px;padding:4px 0}
   table.grid.big td{height:28px}
 
@@ -245,19 +245,15 @@
 <style>
   /* =====================================================================
      GLASS LOOK, 12 Nov 2026 - the What To Do treatment in this tool's blue.
-     The waterfront in blue: the DAY photo behind DARK mode, under a deep
-     blue veil, and the NIGHT photo behind LIGHT mode, the picture itself
-     run at brightness .55 with nothing laid over it (the approved light-
-     mode rule). Every panel is frosted glass over it.
+     The photographs are gone (17 Nov 2026): the ground is the family-theme
+     blend set further down, in #family-theme.
      ===================================================================== */
   html[data-look="glass"],html[data-look="glass"] body{background:#070b1a !important}
   html[data-look="glass"] .scene{position:fixed;inset:0;z-index:0;pointer-events:none;
-    background:#070b1a center/cover no-repeat;
-    background-image:image-set(url('img/scene-day-1280.webp') 1x,url('img/scene-day-1672.webp') 2x)}
+    background:#070b1a}
   /* dark mode: the original sunset photo, no veil or tint over it */
   html[data-look="glass"] .scene::after{content:none}
   html[data-look="glass"][data-theme="light"] .scene{
-    background-image:image-set(url('img/scene-night-1280.webp') 1x,url('img/scene-night-1672.webp') 2x);
     filter:none}
   /* light mode: the original night photo, no dimming or layer over it */
   html[data-look="glass"][data-theme="light"] .scene::after{content:none}
@@ -353,6 +349,79 @@
     -webkit-backdrop-filter:none !important;backdrop-filter:none !important}
   html[data-look="glass"][data-theme="light"] .acc-menu{background:#D6E0FB !important}
 </style>
+<style id="family-theme">
+  /* =====================================================================
+     FAMILY THEME B · Field operations blue (approved 17 Nov 2026)
+     No photographs. The main site's own blend, in this family's blue: the
+     same four stops, warmer left side and vignette as Home and Tools, only
+     the hue changed (option B). Panels are clear smoky glass with a top
+     sheen and a fine light edge. The nav bar has no band; the blend runs to
+     the top. Replaces the waterfront photos and the solid navy bar.
+     ===================================================================== */
+  html[data-look="glass"],html[data-look="glass"] body{background:#080d1a !important}
+  html[data-look="glass"] .scene,html[data-look="glass"][data-theme] .scene{filter:none !important;background:
+      radial-gradient(130% 98% at 50% 36%,transparent 48%,rgba(0,0,0,.26) 86%,rgba(0,0,0,.44) 100%),
+      linear-gradient(90deg,rgba(23,45,95,.38) 0%,rgba(23,45,95,.16) 50%,rgba(0,0,0,0) 100%),
+      linear-gradient(180deg,#111c37 0%,#0c1428 45%,#080d1a 75%,#050911 100%) !important}
+  html[data-look="glass"][data-theme="light"],html[data-look="glass"][data-theme="light"] body{background:#eef2fb !important}
+  html[data-look="glass"][data-theme="light"] .scene{background:
+      radial-gradient(130% 98% at 50% 36%,transparent 55%,rgba(20,40,110,.06) 100%),
+      linear-gradient(90deg,rgba(60,90,200,.14) 0%,rgba(60,90,200,.05) 55%,rgba(255,255,255,0) 100%),
+      linear-gradient(180deg,#e2e9f8 0%,#e9eefa 45%,#f0f3fb 75%,#f5f7fc 100%) !important}
+  html[data-look="glass"] .scene::after{content:none !important}
+  html[data-look="glass"]:not([data-theme="light"]) body{text-shadow:none}
+  /* smoky glass */
+  html[data-look="glass"]{
+    --gg:rgba(0,0,0,.20); --gg-solid:rgba(10,16,34,.96);
+    --gg-edge:rgba(255,255,255,.10);
+    --gg-sheen:linear-gradient(160deg,rgba(255,255,255,.085),rgba(255,255,255,.025) 45%,rgba(255,255,255,.04));
+    --gg-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 16px 34px -20px rgba(0,0,0,.85);
+    --line:rgba(255,255,255,.10) !important; --line3:rgba(255,255,255,.18) !important}
+  html[data-look="glass"][data-theme="light"]{
+    --gg:rgba(255,255,255,.55); --gg-solid:rgba(250,251,255,.97);
+    --gg-edge:rgba(255,255,255,.95);
+    --gg-sheen:linear-gradient(160deg,rgba(255,255,255,.7),rgba(255,255,255,.3) 45%,rgba(255,255,255,.4));
+    --gg-shadow:inset 0 1px 0 #fff,0 16px 34px -22px rgba(20,40,110,.30);
+    --line:rgba(20,40,110,.12) !important; --line3:rgba(20,40,110,.24) !important}
+  html[data-look="glass"] .gl,html[data-look="glass"] .group,html[data-look="glass"] .sc{
+    -webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
+  html[data-look="glass"] .combo{background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.09)}
+  html[data-look="glass"][data-theme="light"] .combo{background:rgba(255,255,255,.7);border-color:rgba(20,40,110,.10)}
+  /* the nav bar: stays put (sticky) with no band and no line. The page
+     scrolls under it and fades away softly - no hard edge. The bar and a
+     28px fade below it paint the SAME blend as the scene, pinned to the
+     viewport (background-attachment:fixed), so they match the background
+     exactly and simply hide what passes beneath. Never give .hdr a
+     backdrop-filter or transform: either breaks the fixed background. */
+  html[data-look="glass"] header.hdr,html[data-look="glass"] .hdr{
+    position:sticky !important;top:0 !important;overflow:visible !important;
+    background:radial-gradient(130% 98% at 50% 36%,transparent 48%,rgba(0,0,0,.26) 86%,rgba(0,0,0,.44) 100%),
+      linear-gradient(90deg,rgba(23,45,95,.38) 0%,rgba(23,45,95,.16) 50%,rgba(0,0,0,0) 100%),
+      linear-gradient(180deg,#111c37 0%,#0c1428 45%,#080d1a 75%,#050911 100%) !important;
+    background-attachment:fixed !important;
+    -webkit-backdrop-filter:none !important;backdrop-filter:none !important;
+    border:0 !important;box-shadow:none !important}
+  html[data-look="glass"][data-theme="light"] header.hdr,html[data-look="glass"][data-theme="light"] .hdr{
+    background:radial-gradient(130% 98% at 50% 36%,transparent 55%,rgba(20,40,110,.06) 100%),
+      linear-gradient(90deg,rgba(60,90,200,.14) 0%,rgba(60,90,200,.05) 55%,rgba(255,255,255,0) 100%),
+      linear-gradient(180deg,#e2e9f8 0%,#e9eefa 45%,#f0f3fb 75%,#f5f7fc 100%) !important;
+    background-attachment:fixed !important}
+  html[data-look="glass"] header.hdr::after{content:'' !important;position:absolute;left:0;right:0;top:100%;height:28px;
+    pointer-events:none;opacity:0;transition:opacity .2s;background:radial-gradient(130% 98% at 50% 36%,transparent 48%,rgba(0,0,0,.26) 86%,rgba(0,0,0,.44) 100%),
+      linear-gradient(90deg,rgba(23,45,95,.38) 0%,rgba(23,45,95,.16) 50%,rgba(0,0,0,0) 100%),
+      linear-gradient(180deg,#111c37 0%,#0c1428 45%,#080d1a 75%,#050911 100%);background-attachment:fixed;
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent);mask-image:linear-gradient(180deg,#000,transparent)}
+  html[data-look="glass"] header.hdr.under::after{opacity:1}
+  html[data-look="glass"][data-theme="light"] header.hdr::after{background:radial-gradient(130% 98% at 50% 36%,transparent 55%,rgba(20,40,110,.06) 100%),
+      linear-gradient(90deg,rgba(60,90,200,.14) 0%,rgba(60,90,200,.05) 55%,rgba(255,255,255,0) 100%),
+      linear-gradient(180deg,#e2e9f8 0%,#e9eefa 45%,#f0f3fb 75%,#f5f7fc 100%);background-attachment:fixed}
+  /* no status dot after the page title (motion.css adds one) */
+  html .hdr h1::after{content:none !important;display:none !important}
+  /* the account menu: frosted navy glass, as on Tooway Warehouse */
+  html[data-look="glass"] .acc-menu{background:linear-gradient(180deg,rgba(40,56,110,.62),rgba(18,26,58,.72)) !important;
+    border:1px solid rgba(170,195,255,.28) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 30px 70px rgba(0,0,0,.45) !important;
+    -webkit-backdrop-filter:blur(22px) saturate(160%) !important;backdrop-filter:blur(22px) saturate(160%) !important}
+</style>
 </head>
 <body>
 <div class="scene" aria-hidden="true"></div>
@@ -364,7 +433,7 @@
   </a>
   <span class="hsep" aria-hidden="true"></span>
   <h1>RF Jumper Codes</h1>
-  <span class="pill" id="pill"><b>48</b> combinations · <b>4</b> scenarios</span>
+  <span class="pill" id="pill"><b>49</b> combinations · <b>4</b> scenarios</span>
   <button class="theme" id="themeBtn" type="button" aria-label="Toggle theme">☾</button>
 </header>
 
@@ -460,14 +529,14 @@
 
   /* ------------------------------------------------------------- the data */
 
-  var NAME = { green:'Green', red:'Red', yellow:'Yellow', blue:'Blue', white:'White' };
-  var HEX = { green:'#00b050', red:'#ff0000', yellow:'#ffff00', blue:'#558ed5', white:'#ffffff' };
+  var NAME = { green:'Green', red:'Red', yellow:'Yellow', blue:'Blue', purple:'Purple', white:'White' };
+  var HEX = { green:'#00b050', red:'#ff0000', yellow:'#ffff00', blue:'#558ed5', purple:'#7030a0', white:'#ffffff' };
   /* the eight single bands, in the order the chart gives them, each wearing the
      colour its own grid is drawn in */
   var BANDS = [
     { k:'TDD', colour:'green' }, { k:'GSM', colour:'red' }, { k:'DCS', colour:'yellow' },
     { k:'3G', label:'UMTS (3G)', colour:'blue' }, { k:'L2600', colour:'green' },
-    { k:'L900', colour:'red' }, { k:'FDD', colour:'yellow' }, { k:'L2100', colour:'blue' }
+    { k:'L900', colour:'red' }, { k:'FDD', colour:'yellow' }, { k:'L2100', colour:'blue' }, { k:'L850', colour:'purple' }
   ];
   var ALIAS = { 'umts(3g)':'3G', umts:'3G', '3g':'3G', wcdma:'3G' };
   BANDS.forEach(function(b){ ALIAS[b.k.toLowerCase()] = b.k; });
@@ -875,6 +944,13 @@
   paintScen();
 })();
 
+/* nav fade: only once the page has scrolled, so at the top it never
+   softens the first card's edge */
+(() => {
+  const h = document.querySelector('header.hdr'); if (!h) return;
+  const set = () => h.classList.toggle('under', (window.scrollY || document.documentElement.scrollTop) > 2);
+  addEventListener('scroll', set, { passive: true }); set();
+})();
 /* back to top: appears after 500px of scroll; passive so it never holds up a scroll */
 addEventListener('DOMContentLoaded', function(){
   const b = document.getElementById('totop'); if (!b) return;

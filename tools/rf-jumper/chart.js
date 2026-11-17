@@ -62,6 +62,15 @@ window.RFJ = {
       [null, null, "blue", "blue"],
       [null, null, null, "blue"]
     ] },
+    /* L850 - added 17 Nov 2026 by Sithara, not on the SOP pages: one white
+       line, then purple staircasing 1 to 4, the same shape as L2100. */
+    { name: "L850", page: null, rows: [
+      ["white", "white", "white", "white"],
+      ["purple", "purple", "purple", "purple"],
+      [null, "purple", "purple", "purple"],
+      [null, null, "purple", "purple"],
+      [null, null, null, "purple"]
+    ] },
     { name: "TDD+L2600", page: 88, rows: [
       ["green", "green", "green", "green"],
       ["white", "green", "green", "green"],
