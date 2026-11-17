@@ -234,6 +234,14 @@
       {
         "file": "043_wh24_clear_bad_docs.sql",
         "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
+      },
+      {
+        "file": "050_warehouse_delete_edit.sql",
+        "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
+      },
+      {
+        "file": "051_warehouse_obn_from_0001.sql",
+        "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
       }
     ]
   };

@@ -1327,6 +1327,15 @@
     await whWrite(c.from('materials').upsert({ code, descr, type }, { onConflict: 'code' }));
     return whWrite(c.from('wh_items').update({ is_new: false }).eq('code', code));
   }
+  /* Deleting a note UNDOES it: the stock it moved goes back, and that and
+     the delete are one transaction. One rpc, because half an undo is worse
+     than none. The server refuses by name - which item, which note - so the
+     page can say why rather than just "failed". Migration:
+     supabase/050_warehouse_delete_edit.sql. */
+  const whDeleteNote = id => whRpc('wh_delete_note', { p_id: id });
+  const whDeleteItem = id => whRpc('wh_delete_item', { p_id: id });
+  /* the words on a note, never its stock */
+  const whUpdateNote = p => whRpc('wh_update_note', { p });
   async function whSubscribe(fn){
     const c = await client(); if (!c) return;
     return liveChannel(
@@ -3064,6 +3073,7 @@
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 whLoad, whInbound, whOutbound, whNext, whSetSN, whRename, whPin, whMin,
                 whAddProject, whAddMaterial, whSubscribe,
+                whDeleteNote, whDeleteItem, whUpdateNote,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 goalsLoad: goalsLoad, goalsWrite: goalsWrite, goalsRemove: goalsRemove,
                 goalsCurrency: goalsCurrency, goalsSubscribe: goalsSubscribe,

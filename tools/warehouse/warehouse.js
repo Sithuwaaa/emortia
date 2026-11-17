@@ -241,7 +241,7 @@ function openTicket(id){
 function showInbound(t){
   const items=t.items.map(lById);
   const kv=(k,v)=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${v||'—'}</div></div>`;
-  $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3><div class="sp"></div><button class="btn sm">Print note</button></div>
+  $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print note</button><button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and remove what it booked in">Delete note</button></div>
   <div class="pbody">
     ${t.type==='RT'?`<div class="box rt"><h4>Site return details</h4><div class="fh five">${kv('Site ID',`<span class="mono">${t.site}</span>`)}${kv('Site name',esc(t.siteName))}${kv('Removed on',t.removed?dshort(t.removed):'<span style="color:var(--dim)">not known</span>')}${kv('Inbound date',dshort(t.date))}${kv('Returned by',esc(t.by))}</div><div class="fh">${kv('Return note',esc(t.ref))}${kv('Project',esc(t.project))}</div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">${kv('Inbound date',dshort(t.date))}${kv('Project',esc(t.project))}${kv('Reservation no',`<span class="mono">${esc(t.res)}</span>`)}${kv('Received by',esc(t.by))}</div><div class="fh">${kv('Supplier DN / PO',esc(t.ref))}</div></div>`}
@@ -292,7 +292,7 @@ function drawRows(){
     <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}</td>
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" value="${esc(r.loc||'')}" placeholder="default" oninput="nIn.rows[${i}].loc=this.value"></td>
-    <td><button class="btn sm" style="padding:6px 9px" onclick="nIn.rows.splice(${i},1);drawRows()">✕</button></td></tr>
+    <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nIn.rows[${i}].ok=!nIn.rows[${i}].ok;drawRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nIn.rows.splice(${i},1);drawRows()">✕</button></td></tr>
     ${c?`<tr class="drumrow"><td colspan="${ncol}"><div class="drumbox">
       <div><label>Start reading (m)</label><input class="in mono" style="text-align:right" value="${r.ra??''}" placeholder="marking at one end" oninput="nIn.rows[${i}].ra=this.value;rCabLen(${i})"></div>
       <div><label>End reading (m)</label><input class="in mono" style="text-align:right" value="${r.rb??''}" placeholder="marking at the other" oninput="nIn.rows[${i}].rb=this.value;rCabLen(${i})"></div>
@@ -349,7 +349,7 @@ function noteRows(t){ // one printed line per item; drums print their cut
 }
 function showDispatch(t){
   const R=noteRows(t);
-  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button></div>
+  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button><button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and put its stock back">Delete note</button></div>
   <div class="pbody">
     <div class="box"><h4>Outbound details</h4><div class="fh five">
       ${[['Date',dshort(t.date)],...(t.dest==='party'?[['3rd party',t.party],['Purpose',t.purpose],['Their ref / PO',t.partyRef]]:[]),['Project',t.project],['Requested by',t.requestedBy],['Issued by',t.issuedBy],['Receiver',t.receiver],['Vehicle no',t.vehicle],['Driver name',t.driver],['Driver NIC',t.driverNic],['Contact no',t.contact],['Issuer contact',t.issuedContact],['Items',t.items.length+(t.items.length===1?' line':' lines')]].map(([k,v])=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${esc(v)||'<span style="color:var(--dim)">—</span>'}</div></div>`).join('')}
@@ -395,7 +395,7 @@ function drawDRows(){
     <td><input class="in mono" id="dq${i}" style="text-align:right" value="${cab?(r.qty||''):(r.qty??1)}" ${cab||(L&&!L.drum)?'readonly':''} placeholder="${cab?'from readings':''}" oninput="nDn.rows[${i}].qty=+this.value"></td>
     <td><input class="in mono" value="${esc(r.sn||'')}" ${ro||cab?'readonly':''} placeholder="${cab?'—':'scan or type'}" oninput="nDn.rows[${i}].sn=this.value" style="${isDummy(r.sn)?'color:#F2B05E':''}">${L||cab?'':`<button class="nosn" onclick="wDummy(nDn.rows[${i}],drawDRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}</td>
     <td><input class="in" value="${esc(r.remarks||'')}" oninput="nDn.rows[${i}].remarks=this.value"></td>
-    <td><button class="btn sm" style="padding:6px 9px" onclick="nDn.rows.splice(${i},1);drawDRows()">✕</button></td></tr>
+    <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nDn.rows[${i}].ok=!nDn.rows[${i}].ok;drawDRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nDn.rows.splice(${i},1);drawDRows()">✕</button></td></tr>
     ${cab?cableRow(i,r,L):''}`}).join('');
 }
 function cableRow(i,r,L){
@@ -485,8 +485,8 @@ function noteHTML(t){
     <div class="sub"><h3>Material Dispatch / Return Note</h3><span>${esc(dt)}${t.project?' · '+esc(t.project):''}</span></div>
     <img class="wm" src="${TOOWAY_LOGO}" alt="">
     <div class="dt">
-      <div class="site"><label>${party?'Issued to':'Going to'}</label>
-        <div class="big">${esc(party?t.party:t.site)}</div><div class="nm">${esc(party?(t.purpose||'3rd party'):t.siteName)}</div>
+      <div class="site"><label>${t.type==='IN'?'Received from':t.type==='RT'?'Returned from':party?'Issued to':'Going to'}</label>
+        <div class="big">${esc(t.type==='IN'?(t.ref||'New stock'):party?t.party:t.site)}</div><div class="nm">${esc(t.type==='IN'?(t.res?'Reservation '+t.res:''):party?(t.purpose||'3rd party'):t.siteName)}</div>
         <div class="pj">${[t.project,dt].filter(Boolean).map(esc).join(' · ')}</div></div>
       <div class="req"><h4>Requested</h4>${row('Requested by',t.requestedBy)}</div>
       <div class="ho"><h4>Hand-over</h4>${row('Receiver',t.receiver)}${row('Vehicle no',t.vehicle)}${row('Driver name',t.driver)}${row('Driver NIC',t.driverNic)}${row('Contact no',t.contact)}</div>
@@ -563,3 +563,52 @@ window.today=today;
   newInbound(); newDispatch(); go('ov');
   try{ DB.whSubscribe(()=>reload()); }catch(e){}
 })();
+
+/* ---- deleting ------------------------------------------------------
+
+   A note is not a record of itself, it is the reason the stock moved, so
+   deleting one UNDOES it: everything it sent comes back, every drum cut
+   is given back, and anything that only existed because of the note goes
+   with it. The server does all of that and the delete in one transaction
+   - half an undo would be worse than none - and refuses by name when it
+   cannot, so the reason is on screen rather than in a log.
+
+   The note NUMBER is not given back. OBN-26-1117 is spent whether or not
+   the note survives, the same as a spoiled page in the paper book. Two
+   notes with one number is the thing worth avoiding; a gap is not. */
+async function delNote(id){
+  const t=(tickets||[]).find(x=>x.id===id);
+  const n=t?t.items.length:0;
+  const back=t&&t.kind==='OBN'
+    ? 'Everything on it comes back into stock, and any drum cut is given back.'
+    : 'The items it booked in are removed. If any of them has already gone out, nothing is deleted and it will say which.';
+  const ok=await window.Ask.twice([
+    { title:'Delete '+id+'?', body:back, no:'Cancel', yes:'Continue' },
+    { title:'Delete '+id+' for good?',
+      body:(n?n+(n===1?' line goes':' lines go')+' with it. ':'')+'The note number is not re-used.',
+      no:'No, keep it', yes:'Delete it' }
+  ]);
+  if(!ok) return;
+  try{
+    const r=await DB.whDeleteNote(id);
+    const bits=[];
+    if(r&&r.restored) bits.push(r.restored+' back in stock');
+    if(r&&r.drums) bits.push(r.drums+' drum'+(r.drums===1?'':'s')+' restored');
+    if(r&&r.removed) bits.push(r.removed+' removed');
+    toast(id+' deleted'+(bits.length?' · '+bits.join(' · '):''));
+    await reload();
+  }catch(e){ toast(e.message||String(e)); }
+}
+
+/* One thing on its own - a row typed twice, a dummy that should not be
+   there. The server refuses anything that has moved, and says where it
+   went, because the right answer then is to delete that note instead. */
+async function delItem(id,label){
+  const ok=await window.Ask.twice([
+    { title:'Delete '+(label||'this item')+'?', body:'It leaves the warehouse list. If it has already gone out, nothing is deleted and it will say where it went.', no:'Cancel', yes:'Continue' },
+    { title:'Delete '+(label||'this item')+' for good?', body:'This cannot be undone from here.', no:'No, keep it', yes:'Delete it' }
+  ]);
+  if(!ok) return;
+  try{ await DB.whDeleteItem(id); toast('Deleted'); await reload(); }
+  catch(e){ toast(e.message||String(e)); }
+}

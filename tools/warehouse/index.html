@@ -26,6 +26,7 @@
 <script src="../_lib/db.js?v=5"></script>
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
+<script src="../_lib/ask.js?v=1"></script>
 <script>Access.protect({ feature: 'tool:warehouse' });</script>
 <style>
 :root{
@@ -337,6 +338,19 @@ html[data-theme="light"] [style*="rgba(5,10,28,.25)"]{background:#f2f5fb !import
 html[data-theme="light"] .ac .add{color:#6A3FC4}
 html[data-theme="light"] .tab .n.p{background:#efe6fd;color:#6A3FC4}
 html[data-theme="light"] 
+/* the row tick: a row you have finished typing, marked so you can see
+   which are done at a glance. It does NOT save - nothing reaches the
+   database until Save outbound - and saying otherwise would be a lie
+   about where the data is. Press again to unlock. */
+.rowx{white-space:nowrap}
+.tick{width:28px;height:28px;margin-right:6px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:rgba(5,10,28,.35);color:var(--dim);
+  font-size:14px;line-height:1;vertical-align:middle;transition:all .15s ease}
+.tick:hover{border-color:var(--ok);color:var(--ok)}
+.tick.on{background:rgba(94,211,154,.16);border-color:var(--ok);color:var(--ok);font-weight:700}
+tr:has(> .rowx .tick.on) .in{opacity:.72}
+.btn.danger{border-color:rgba(242,112,126,.5);color:var(--bad)}
+.btn.danger:hover{background:rgba(242,112,126,.12);border-color:var(--bad)}
 .npj{display:flex;gap:6px;margin-top:6px;align-items:center}.f .npj .in{flex:1;width:auto;min-width:0;padding:7px 10px}
 /* ============ PRINTED DISPATCH NOTE · design 4 "Blue header" (approved 17 Nov 2026) ============ */
 #printArea{display:none}
@@ -532,6 +546,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=3"></script>
+<script src="warehouse.js?v=4"></script>
 </body>
 </html>
