@@ -231,7 +231,7 @@ function renderInv(hiId){
   } else {
     let rows=lines.filter(inProj).filter(L=>(!cat||L.cat===cat)&&(!q||[L.code,L.name,L.sn,L.site,L.siteName,L.fromSite,L.loc,L.inTicket,L.outTicket,L.drum&&L.drum.name,L.party,L.res].join(' ').toLowerCase().includes(q)));
     if(fSt==='in') rows=rows.filter(L=>L.status==='in'); if(fSt==='out') rows=rows.filter(L=>L.status==='out'); if(fSt==='rt') rows=rows.filter(L=>L.source==='return'); if(fSt==='pend') rows=rows.filter(L=>L.pending); if(fSt==='tp') rows=rows.filter(L=>L.party);
-    if(fPin==='1') rows=rows.filter(L=>pins.has(L.code)); if(fPin==='s') rows=rows.filter(L=>(S.get(L.code)||{}).state==='short'); if(fPin==='d') rows=rows.filter(L=>isDummy(L.sn));
+    if(fPin==='1') rows=rows.filter(L=>pins.has(L.code)); if(fPin==='s') rows=rows.filter(L=>(S.get(L.code)||{}).state==='short'); if(fPin==='d') rows=rows.filter(L=>isDummy(L.sn)); if(fPin==='u') rows=rows.filter(L=>!L.code);
     rows.sort((a,b)=>(b.outDate||b.inDate).localeCompare(a.outDate||a.inDate));
     $('#tbl').innerHTML=`<thead><tr>${OWNER()?'<th style="width:34px"><input type="checkbox" class="tickbox" onchange="selAllShown(this.checked)" title="Select every row shown"></th>':''}<th style="width:44px">Pin</th><th>Material code</th><th>Material name</th><th>Category</th><th>Site ID / party</th><th>Site name</th><th>Project</th><th>UoM</th><th style="text-align:right">Qty</th><th>SN / drum</th><th>Inbound date</th><th>Inbound ref</th><th>Reservation no</th><th>Current location</th><th>Outbound date</th><th>Outbound ref</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody>${
       rows.map(L=>{ const site=L.status==='out'?(L.party||L.site):L.fromSite, sname=L.status==='out'?L.siteName:L.fromSiteName;
@@ -316,7 +316,7 @@ function drawRows(){
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code or name" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
       <button class="dbtn ${d?'on':''}" onclick="toggleDrum(${i})">${d?'● Drum':'+ Drum'}</button>${RT?` <button class="dbtn ${c?'on':''}" onclick="toggleRCable(${i})">${c?'● Cable':'+ Cable'}</button>`:''}<div class="ac" id="ac${i}" hidden></div></td>
     <td><input class="in" value="${esc(r.name||'')}" placeholder="${r.code&&!r.known?'type the material name':'fills from Material Codes'}" ${r.known?'readonly':''} oninput="nIn.rows[${i}].name=this.value"></td>
-    <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">pick…</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
+    <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" onchange="nIn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="iq${i}" style="text-align:right" value="${d?Math.max(0,(d.upper||0)-(d.lower||0)):c?cl:(r.qty||1)}" ${d||c?'readonly':''} placeholder="${c?'readings':''}" oninput="nIn.rows[${i}].qty=+this.value"></td>
     <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
@@ -354,7 +354,14 @@ function newCode(i,code){ Object.assign(nIn.rows[i],{code,q:code,name:'',cat:'',
 async function saveInbound(){
   keepHead(); const ok=nIn.rows.filter(r=>r.code||r.name); const msg=$('#nMsg');
   if(!ok.length){toast('Add at least one material');return}
-  if(ok.find(r=>!r.known&&(!r.name||!r.cat))){msg.innerHTML='<b style="color:var(--new)">A new code needs its name and category first.</b>';return}
+  /* A NAME, AND NOTHING ELSE, IS ENOUGH. This used to demand a category
+     for any code it did not recognise, which fought the person loading a
+     warehouse from paper at exactly the moment they had least to go on -
+     and it contradicted the New materials tab, which exists to categorise
+     things later. The category defaults to Other below and the row can be
+     corrected from Inventory with the pencil. A name is still wanted,
+     because a line with no name is not a record of anything. */
+  if(ok.find(r=>!r.name||!String(r.name).trim())){msg.innerHTML='<b style="color:var(--new)">Every row needs a material name. Everything else can wait.</b>';return}
   if(ok.find(r=>r.drum&&(!r.drum.name||!(+r.drum.upper>+r.drum.lower)))){msg.innerHTML='<b style="color:var(--warn)">Each drum needs a name, and the upper reading must be above the lower.</b>';return}
   if(ok.find(r=>r.cable&&(r.ra==null||r.rb==null||r.ra===''||r.rb===''))){msg.innerHTML='<b style="color:var(--warn)">A returned cable piece needs its start and end readings.</b>';return}
   if(nIn.type==='RT'&&!nIn.site){msg.innerHTML='<b style="color:var(--new)">A site return needs the site ID it came from.</b>';return}
@@ -420,7 +427,7 @@ function drawDRows(){
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code, SN or name" oninput="dAc(${i},this)" onblur="setTimeout(()=>dClose(${i},this),180)">${st}
       ${L?'':`<button class="dbtn ${cab?'on':''}" onclick="toggleCable(${i})">${cab?'● Cable':'+ Cable'}</button>`}<div class="ac" id="dac${i}" hidden></div></td>
     <td><input class="in" value="${esc(r.name||'')}" placeholder="${has?'type the material name':'fills in, or type it'}" ${L||r.known?'readonly':''} oninput="nDn.rows[${i}].name=this.value"></td>
-    <td>${L||r.known?`<input class="in" readonly value="${esc(r.cat||'')}">`:`<select class="in" onchange="nDn.rows[${i}].cat=this.value"><option value="">pick…</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
+    <td>${L||r.known?`<input class="in" readonly value="${esc(r.cat||'')}">`:`<select class="in" onchange="nDn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" ${L?'disabled':''} onchange="nDn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX','PKT'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="dq${i}" style="text-align:right" value="${cab?(r.qty||''):(r.qty??1)}" ${cab||(L&&!L.drum)?'readonly':''} placeholder="${cab?'from readings':''}" oninput="nDn.rows[${i}].qty=+this.value"></td>
     <td><input class="in mono" value="${esc(r.sn||'')}" ${ro||cab?'readonly':''} placeholder="${cab?'—':'scan or type'}" oninput="nDn.rows[${i}].sn=this.value;snWarn(${i},1)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${L||cab?'':`<button class="nosn" onclick="wDummy(nDn.rows[${i}],drawDRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw1_${i}">${L?'':(dtw?twinSays(dtw):'')}</span></td>
