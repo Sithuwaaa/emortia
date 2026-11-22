@@ -219,6 +219,7 @@ let invMode='lines', fSt='all', fPin='0';
 function setSeg(sel,val){ document.querySelectorAll(sel+' button').forEach(b=>b.classList.toggle('on',Object.values(b.dataset)[0]===val)); }
 function setInvMode(m){ invMode=m; setSeg('#invMode',m); renderInv(); }
 function renderInv(hiId){
+  selSync();
   const q=$('#q').value.trim().toLowerCase(), cat=$('#fCat').value; const S=stock();
   if(invMode==='stock'){
     let rows=[...S.values()].filter(s=>(!cat||s.cat===cat)&&(!q||(s.code+' '+s.name).toLowerCase().includes(q)));
@@ -232,14 +233,15 @@ function renderInv(hiId){
     if(fSt==='in') rows=rows.filter(L=>L.status==='in'); if(fSt==='out') rows=rows.filter(L=>L.status==='out'); if(fSt==='rt') rows=rows.filter(L=>L.source==='return'); if(fSt==='pend') rows=rows.filter(L=>L.pending); if(fSt==='tp') rows=rows.filter(L=>L.party);
     if(fPin==='1') rows=rows.filter(L=>pins.has(L.code)); if(fPin==='s') rows=rows.filter(L=>(S.get(L.code)||{}).state==='short'); if(fPin==='d') rows=rows.filter(L=>isDummy(L.sn));
     rows.sort((a,b)=>(b.outDate||b.inDate).localeCompare(a.outDate||a.inDate));
-    $('#tbl').innerHTML=`<thead><tr><th style="width:44px">Pin</th><th>Material code</th><th>Material name</th><th>Category</th><th>Site ID / party</th><th>Site name</th><th>Project</th><th>UoM</th><th style="text-align:right">Qty</th><th>SN / drum</th><th>Inbound date</th><th>Inbound ref</th><th>Reservation no</th><th>Current location</th><th>Outbound date</th><th>Outbound ref</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody>${
+    $('#tbl').innerHTML=`<thead><tr>${OWNER()?'<th style="width:34px"><input type="checkbox" class="tickbox" onchange="selAllShown(this.checked)" title="Select every row shown"></th>':''}<th style="width:44px">Pin</th><th>Material code</th><th>Material name</th><th>Category</th><th>Site ID / party</th><th>Site name</th><th>Project</th><th>UoM</th><th style="text-align:right">Qty</th><th>SN / drum</th><th>Inbound date</th><th>Inbound ref</th><th>Reservation no</th><th>Current location</th><th>Outbound date</th><th>Outbound ref</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody>${
       rows.map(L=>{ const site=L.status==='out'?(L.party||L.site):L.fromSite, sname=L.status==='out'?L.siteName:L.fromSiteName;
         const where=L.status==='out'?(L.party?`<span class="loc-tp">3P · ${esc(L.party)}</span>`:`<span class="loc-site">Site ${L.site}</span>`):esc(L.loc);
         const st=L.drum?`<span class="st wh">ON DRUM</span>`:L.pending?'<span class="st low">DIRECT ISSUE · NOT RECEIVED</span>':L.party?'<span class="st tp">WITH 3RD PARTY</span>'+condChip(L.cond):L.status==='out'?'<span class="st out">ISSUED TO SITE</span>':L.source==='return'?'<span class="st rt">RETURNED · IN STOCK</span>'+condChip(L.cond):'<span class="st wh">IN STOCK</span>';
         const sn=L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> <span style="color:var(--dim)">${L.drum.lower}–${L.drum.cur}</span>`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:(editSn===L.id?`<input class="in mono" style="padding:4px 8px;width:190px" placeholder="real SN" onkeydown="if(event.key==='Enter')setSN(${L.id},this.value)" onblur="setSN(${L.id},this.value)" autofocus>`:snHtml(L.sn)+(isDummy(L.sn)?`<button class="fixsn" onclick="editSn=${L.id};renderInv(${L.id})">set real SN</button>`:''));
         const out=L.drum?(L.drum.cuts.length?L.drum.cuts.map(c=>tkChip(c.ticket)).join(' '):'—'):tkChip(L.outTicket);
-        return `<tr class="${L.id===hiId?'hl':''}"><td>${pinBtn(L.code)}</td><td class="code">${L.code}${L.isNew?'<span class="newtag">NEW</span>':''}</td><td class="name" title="${esc(L.name)}">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td class="code" style="color:${L.party?'var(--tp)':L.status==='out'?'var(--site)':'var(--ink)'}">${site||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(sname)||'<span style="color:var(--dim)">—</span>'}</td><td><span class="chip pj">${esc(L.project)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.qty)}</td><td class="sn">${sn}</td><td class="dt">${L.inDate}</td><td>${tkChip(L.inTicket)}</td><td class="rsv">${L.res||'<span style="color:var(--dim)">—</span>'}</td><td class="dt">${where}</td><td class="dt">${L.outDate||(L.drum&&L.drum.cuts.length?'cuts →':'—')}</td><td>${out}</td><td>${st}</td><td>${rowEdit(L.id,L.sn||L.code||L.name)}</td></tr>`}).join('')}</tbody>`;
+        return `<tr data-row="${L.id}" class="${L.id===hiId?'hl':''}${selIds.has(L.id)?' sel':''}">${OWNER()?`<td>${tickBox(L)}</td>`:''}<td>${pinBtn(L.code)}</td><td class="code">${L.code}${L.isNew?'<span class="newtag">NEW</span>':''}</td><td class="name" title="${esc(L.name)}">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td class="code" style="color:${L.party?'var(--tp)':L.status==='out'?'var(--site)':'var(--ink)'}">${site||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(sname)||'<span style="color:var(--dim)">—</span>'}</td><td><span class="chip pj">${esc(L.project)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.qty)}</td><td class="sn">${sn}</td><td class="dt">${L.inDate}</td><td>${tkChip(L.inTicket)}</td><td class="rsv">${L.res||'<span style="color:var(--dim)">—</span>'}</td><td class="dt">${where}</td><td class="dt">${L.outDate||(L.drum&&L.drum.cuts.length?'cuts →':'—')}</td><td>${out}</td><td>${st}</td><td>${rowEdit(L.id,L.sn||L.code||L.name)}</td></tr>`}).join('')}</tbody>`;
   }
+  drawSelBar();
   $('#nInv').textContent=lines.length;
 }
 let editSn=null;
@@ -725,6 +727,89 @@ function editItem(id){
 }
 const noteEditBtn=t=>`<button class="btn sm" onclick="editNote('${esc(t.id)}')" title="Correct the words on ${esc(t.id)}">✎ Edit</button>`;
 const rowEdit=(itemId,label)=>`<button class="redit" title="Correct ${esc(String(label))}" onclick="editItem(${itemId})">✎</button>`;
+
+/* ---- taking several off at once -------------------------------------
+
+   Loading a real warehouse by hand means typing things twice, and one
+   row at a time is not a tool for cleaning that up.
+
+   ONE RPC PER ROW, ON PURPOSE, AND THE REFUSALS ARE REPORTED PER ROW.
+   wh_delete_item refuses by name - it went out on OBN-26-0004, its drum
+   has been cut, it is on two other notes - and every one of those is a
+   fact about one item. A single batch call would have to either roll the
+   whole lot back because of one bad row, or drop the reasons on the
+   floor. So each row is attempted on its own, the ones that went are
+   counted, and the ones that would not are listed with exactly what the
+   server said about each. A batch that is half refused is not a failure;
+   it is the answer.
+
+   The selection is kept by id, so filtering or searching the table does
+   not quietly lose or widen it, and anything that no longer exists after
+   a reload drops out of it.
+
+   Owner only, because wh_delete_item is is_owner(). */
+let selIds=new Set();
+function selSync(){ const live=new Set(lines.map(L=>L.id));
+  for(const id of [...selIds]) if(!live.has(id)) selIds.delete(id); }
+function invTick(id,on){ on?selIds.add(id):selIds.delete(id); drawSelBar();
+  const tr=document.querySelector('#tbl tr[data-row="'+id+'"]'); if(tr) tr.classList.toggle('sel',!!on); }
+function selClear(){ selIds.clear(); renderInv(); }
+function selAllShown(on){
+  document.querySelectorAll('#tbl tbody input.tickbox').forEach(b=>{ b.checked=on;
+    const id=+b.getAttribute('data-id'); on?selIds.add(id):selIds.delete(id);
+    const tr=b.closest('tr'); if(tr) tr.classList.toggle('sel',on); });
+  drawSelBar();
+}
+function drawSelBar(){
+  const bar=$('#selBar'); if(!bar) return;
+  const n=selIds.size;
+  bar.hidden=!(n&&invMode==='lines'&&OWNER());
+  if(bar.hidden) return;
+  bar.innerHTML=`<b>${n}</b> row${n===1?'':'s'} selected<div class="sp"></div>`
+    +`<button class="btn sm" onclick="selClear()">Clear</button>`
+    +`<button class="btn sm danger" onclick="removeSelected()">Remove ${n} item${n===1?'':'s'}</button>`;
+}
+const tickBox=L=>OWNER()&&invMode==='lines'
+  ? `<input type="checkbox" class="tickbox" data-id="${L.id}"${selIds.has(L.id)?' checked':''} onchange="invTick(${L.id},this.checked)" title="Select for removal">`
+  : '';
+async function removeSelected(){
+  const ids=[...selIds]; if(!ids.length) return;
+  const label=id=>{ const L=lById(id); return L?(L.sn||(L.drum&&L.drum.name)||L.code||L.name):('item '+id); };
+  const ok=await window.Ask.twice([
+    { title:'Remove '+ids.length+' item'+(ids.length===1?'':'s')+'?',
+      body:'Each one is tried on its own. Anything that has gone out, or whose drum has been cut, is refused and left exactly as it is - the rest still go.',
+      no:'Cancel', yes:'Continue' },
+    { title:'Remove '+ids.length+' for good?',
+      body:'This cannot be undone from here. You will get a list of anything that would not go, and why.',
+      no:'No, keep them', yes:'Remove them' }
+  ]);
+  if(!ok) return;
+  const gone=[], kept=[];
+  for(const id of ids){
+    const what=label(id);
+    try{ await DB.whDeleteItem(id); gone.push(what); }
+    catch(e){ kept.push({what, why:(e&&e.message)||String(e)}); }
+  }
+  selIds.clear();
+  await reload();
+  if(!kept.length){ toast(gone.length+' removed'); return; }
+  reportSheet('Removed '+gone.length+' of '+ids.length,
+    kept.length+' '+(kept.length===1?'was':'were')+' refused, and nothing about '+(kept.length===1?'it':'them')+' has changed.',
+    kept.map(k=>`<div class="rrow"><b>${esc(k.what)}</b><span>${esc(k.why)}</span></div>`).join(''));
+}
+/* The same box as the edit sheet, with a list instead of a form. */
+function reportSheet(title,sub,html){
+  closeSheet();
+  const d=document.createElement('div'); d.id='esh'; d.className='esh';
+  d.innerHTML=`<div class="ebox" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <h3>${esc(title)}</h3><p class="esub">${esc(sub)}</p><div class="rlist">${html}</div>
+    <div class="erow"><div class="sp"></div><button class="btn pri sm" id="ecan">Close</button></div></div>`;
+  document.body.appendChild(d);
+  $('#ecan').onclick=closeSheet;
+  d.onclick=ev=>{ if(ev.target===d) closeSheet(); };
+  ESC_H=ev=>{ if(ev.key==='Escape') closeSheet(); };
+  document.addEventListener('keydown',ESC_H);
+}
 
 /* ---- deleting ------------------------------------------------------
 
