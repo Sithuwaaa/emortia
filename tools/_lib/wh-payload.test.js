@@ -1,0 +1,306 @@
+/* wh-payload.test.js - every field the warehouse page sends is a field the
+   database reads.
+
+     node tools/_lib/wh-payload.test.js
+
+   WHY THIS EXISTS. The page talks to Postgres through one rpc per action,
+   with the whole payload as a single jsonb. jsonb accepts anything. A key
+   the function never reads is not an error anywhere: not in the browser,
+   not in the SQL, not in the suite. It is dropped in silence, and the
+   field looks saved until somebody opens the note a week later and finds
+   it empty.
+
+   That has happened three times on this tool - driver_nic, issued_contact
+   and remarks were each sent by the page with nowhere to land. Each was
+   found by eye, afterwards. This is the check that was missing.
+
+   WHAT IT COMPARES
+     sent   the keys of the object each DB.wh* payload call is given, at
+            the top level and inside the per-item map
+     read   the keys each wh_* function pulls out with p->>'k', p->'k',
+            p ? 'k', it->>'k' or it->'k'
+
+   WHICH CALLS COUNT is read out of db.js, not guessed from the name: a
+   payload wrapper is one written as whRpc('wh_x', { p }). The others pass
+   named scalars (wh_delete_note, wh_next) or write to a table directly
+   (whSetSN, whPin), and neither can lose a field this way - a wrong column
+   name there is an error the client reports.
+
+   THE LAST DEFINITION WINS. A function may be rewritten by a later
+   migration - wh_inbound is written in 048 and again in 053 - so the
+   definitions are read in migration order and the last one is the one the
+   database will be running.
+
+   THE OTHER DIRECTION IS NOT AN ERROR. A function may read a key the page
+   does not send yet; that is a field waiting for a form. Only sent-but-
+   never-read loses data in silence, so only that fails.
+
+   AND IT SAYS WHAT IT CANNOT SEE. A payload call whose argument this
+   cannot parse FAILS rather than being passed over, and a payload function
+   with no call sites at all is named in the output. The @media bug in
+   cascade.js hid 109 dropped rules for weeks because the parser that could
+   not read them reported nothing at all; a guard that quietly sees less
+   than it claims to is worse than no guard. */
+
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..', '..');
+const PAGE = path.join(ROOT, 'tools', 'warehouse', 'warehouse.js');
+const DBJS = path.join(ROOT, 'tools', '_lib', 'db.js');
+const SUPA = path.join(ROOT, 'supabase');
+
+let pass = 0, fail = 0;
+const is = (name, got, want) => {
+  const a = JSON.stringify(got), b = JSON.stringify(want);
+  if (a === b) { pass++; console.log('  ok   ' + name); return; }
+  fail++; console.log('FAIL ' + name + '\n  got  ' + a + '\n  want ' + b);
+};
+
+/* ---- shared: brace matching ----------------------------------------- */
+
+/* from the opening brace to its partner, respecting strings so a } inside
+   a message or a template literal cannot end the object early */
+function blockFrom(src, open) {
+  let d = 0, inStr = null;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (inStr) { if (c === '\\') i++; else if (c === inStr) inStr = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { inStr = c; continue; }
+    if (c === '{') d++;
+    else if (c === '}') { d--; if (!d) return src.slice(open, i + 1); }
+  }
+  return null;
+}
+
+/* the keys of one object literal, at its own level only, so item keys and
+   the branches of a ternary inside a value are not taken for fields */
+function topKeys(block) {
+  const out = [];
+  let d = 0, i = 0, inStr = null;
+  while (i < block.length) {
+    const c = block[i];
+    if (inStr) { if (c === '\\') i++; else if (c === inStr) inStr = null; i++; continue; }
+    if (c === '"' || c === "'" || c === '`') { inStr = c; i++; continue; }
+    if (c === '{' || c === '[' || c === '(') { d++; i++; continue; }
+    if (c === '}' || c === ']' || c === ')') { d--; i++; continue; }
+    if (d === 1) {
+      const m = /^([a-zA-Z_][\w]*)\s*:/.exec(block.slice(i));
+      if (m && /[{,\s]/.test(block[i - 1] || '{')) { out.push(m[1]); i += m[0].length; continue; }
+    }
+    i++;
+  }
+  return out;
+}
+
+/* the expression one top-level key is given, up to the comma that ends it */
+function valueOf(block, key) {
+  let d = 0, i = 0, inStr = null;
+  const kx = new RegExp('^' + key + '\\s*:');
+  while (i < block.length) {
+    const c = block[i];
+    if (inStr) { if (c === '\\') i++; else if (c === inStr) inStr = null; i++; continue; }
+    if (c === '"' || c === "'" || c === '`') { inStr = c; i++; continue; }
+    if (c === '{' || c === '[' || c === '(') { d++; i++; continue; }
+    if (c === '}' || c === ']' || c === ')') { d--; i++; continue; }
+    if (d === 1 && kx.test(block.slice(i)) && /[{,\s]/.test(block[i - 1] || '{')) {
+      const start = i + kx.exec(block.slice(i))[0].length;
+      let j = start, dd = 0, s2 = null;
+      while (j < block.length) {
+        const k = block[j];
+        if (s2) { if (k === '\\') j++; else if (k === s2) s2 = null; j++; continue; }
+        if (k === '"' || k === "'" || k === '`') { s2 = k; j++; continue; }
+        if (k === '{' || k === '[' || k === '(') dd++;
+        else if (k === '}' || k === ']' || k === ')') { if (!dd) break; dd--; }
+        else if (k === ',' && !dd) break;
+        j++;
+      }
+      return block.slice(start, j);
+    }
+    i++;
+  }
+  return null;
+}
+
+/* THE PER-ITEM KEYS, HOWEVER THE CALLBACK IS WRITTEN. The inbound map is
+   r => ({...}); the outbound map is r => { ...; return {...}; return {...} }
+   with one shape for a row picked off stock and another for a manual row.
+   Matching only the first form read the outbound items as empty and printed
+   "0 per item" - green, and blind to the very field (remarks) that this
+   file was written about. So every returned literal is collected, and the
+   union of their keys is what the page sends. */
+function itemKeys(block) {
+  const expr = valueOf(block, 'items');
+  if (expr === null) return { keys: [], shapes: 0, present: false };
+  const keys = new Set();
+  let shapes = 0;
+  for (const m of expr.matchAll(/(?:=>\s*\(\s*|return\s+)\{/g)) {
+    const b = blockFrom(expr, expr.indexOf('{', m.index + m[0].length - 1));
+    if (!b) continue;
+    shapes++;
+    for (const k of topKeys(b)) keys.add(k);
+  }
+  return { keys: [...keys], shapes, present: true };
+}
+
+/* ---- 1. which wrappers carry a payload, per db.js -------------------- */
+
+function payloadWrappers() {
+  const src = fs.readFileSync(DBJS, 'utf8');
+  const out = new Map();                       // whInbound -> wh_inbound
+  for (const m of src.matchAll(/const\s+(wh[A-Za-z]+)\s*=\s*p\s*=>\s*whRpc\(\s*'(wh_[a-z_]+)'\s*,\s*\{\s*p\s*\}\s*\)/g))
+    out.set(m[1], m[2]);
+  return out;
+}
+
+/* ---- 2. what the SQL reads ------------------------------------------ */
+
+function readSide() {
+  const files = fs.readdirSync(SUPA).filter(f => /^\d+_.*\.sql$/.test(f))
+    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  const defs = new Map();
+  for (const f of files) {
+    const sql = fs.readFileSync(path.join(SUPA, f), 'utf8');
+    const rx = /create\s+or\s+replace\s+function\s+(wh_[a-z_]+)\s*\(([^)]*)\)([\s\S]*?)\$\$;/gi;
+    let m;
+    while ((m = rx.exec(sql))) defs.set(m[1].toLowerCase(), { args: m[2], body: m[3], from: f });
+  }
+  const out = new Map();
+  for (const [name, d] of defs) {
+    const p = new Set(), it = new Set();
+    for (const mm of d.body.matchAll(/\bp\s*(?:->>|->|\?)\s*'([a-zA-Z_]\w*)'/g)) p.add(mm[1]);
+    for (const mm of d.body.matchAll(/\bit\s*(?:->>|->|\?)\s*'([a-zA-Z_]\w*)'/g)) it.add(mm[1]);
+    out.set(name, { p, it, from: d.from, jsonb: /\bp\s+jsonb\b/i.test(d.args) });
+  }
+  return out;
+}
+
+/* ---- 3. what the page sends ----------------------------------------- */
+
+/* Every call site of every payload wrapper. The argument is either an
+   object literal written in place, or the name of one built just above. */
+function sentSide(wrappers) {
+  const src = fs.readFileSync(PAGE, 'utf8');
+  const found = [], unreadable = [];
+  for (const [wrapper, fn] of wrappers) {
+    const rx = new RegExp('DB\\.' + wrapper + '\\s*\\(', 'g');
+    let m;
+    while ((m = rx.exec(src))) {
+      const argAt = m.index + m[0].length;
+      const rest = src.slice(argAt);
+      let block = null, how = '';
+      const inline = /^\s*\{/.exec(rest);
+      const named = /^\s*([A-Za-z_$][\w$]*)\s*\)/.exec(rest);
+      if (inline) { block = blockFrom(src, argAt + inline[0].length - 1); how = 'in place'; }
+      else if (named) {
+        /* the object it names, built just above in the same function */
+        const decl = src.lastIndexOf('const ' + named[1] + '={', m.index);
+        const decl2 = src.lastIndexOf('const ' + named[1] + ' = {', m.index);
+        const at = Math.max(decl, decl2);
+        if (at !== -1) { block = blockFrom(src, src.indexOf('{', at)); how = 'via ' + named[1]; }
+      }
+      const line = src.slice(0, m.index).split('\n').length;
+      if (!block) { unreadable.push(wrapper + ' at warehouse.js:' + line); continue; }
+      const it = itemKeys(block);
+      if (it.present && !it.shapes) unreadable.push(wrapper + ' at warehouse.js:' + line + ' - its items map returns nothing this can read');
+      found.push({ wrapper, fn, line, how, top: topKeys(block).filter(k => k !== 'items'),
+                   items: it.keys, shapes: it.shapes, hasItems: it.present });
+    }
+  }
+  return { found, unreadable };
+}
+
+/* ---- 4. compare ------------------------------------------------------ */
+
+const WRAP = payloadWrappers();
+const READ = readSide();
+const { found: SENT, unreadable } = sentSide(WRAP);
+
+console.log('--- every field the warehouse page sends is a field the database reads ---');
+console.log('  payload wrappers in db.js: ' + [...WRAP.keys()].join(', '));
+console.log('  wh_ functions in supabase/: ' + [...READ.keys()].sort().join(', '));
+for (const s of SENT)
+  console.log('  warehouse.js:' + s.line + '  ' + s.fn + ' (' + s.how + ')  '
+    + s.top.length + ' fields, ' + s.items.length + ' per item across '
+    + s.shapes + ' item shape' + (s.shapes === 1 ? '' : 's'));
+const silent = [...WRAP.values()].filter(fn => !SENT.some(s => s.fn === fn));
+if (silent.length) console.log('  no call site yet: ' + silent.join(', ') + '  (nothing to compare)');
+console.log('');
+
+/* A SCAN THAT READS NOTHING PASSES EVERYTHING. */
+is('db.js still routes payloads through whRpc(.., { p })', WRAP.size >= 4, true);
+is('the migrations still define the wh_ functions', READ.size >= 8, true);
+is('every payload wrapper names a function that exists',
+   [...WRAP.values()].filter(fn => !READ.has(fn)), []);
+is('every payload function really takes p jsonb',
+   [...WRAP.values()].filter(fn => READ.has(fn) && !READ.get(fn).jsonb), []);
+is('no payload call site was skipped as unparseable', unreadable, []);
+is('the page still files notes', SENT.filter(s => s.fn === 'wh_inbound' || s.fn === 'wh_outbound').length >= 2, true);
+/* both note payloads carry items, so an empty item list here means the
+   scan went blind, not that the page sends bare notes */
+is('both note payloads were read with their items',
+   SENT.filter(s => (s.fn === 'wh_inbound' || s.fn === 'wh_outbound') && s.items.length)
+       .map(s => s.fn).sort(), ['wh_inbound', 'wh_outbound']);
+
+const orphans = [];
+for (const s of SENT) {
+  const r = READ.get(s.fn);
+  for (const k of s.top) if (!r.p.has(k)) orphans.push(s.fn + ' <- ' + k + '  (warehouse.js:' + s.line + ', never read)');
+  for (const k of s.items) if (!r.it.has(k)) orphans.push(s.fn + ' <- items[].' + k + '  (warehouse.js:' + s.line + ', never read)');
+}
+if (orphans.length) {
+  console.log('\n  SENT WITH NOWHERE TO LAND:');
+  for (const o of orphans) console.log('    ' + o);
+  console.log('  Either the function should read it, or the page should stop sending it.\n');
+}
+is('nothing is sent that the database never reads', orphans, []);
+
+/* ---- 5. prove it by breaking ---------------------------------------- */
+
+/* A checker green on a clean tree has said nothing until it is shown
+   failing on a dirty one. Every arm of it, in memory. */
+console.log('\n  --- and the same machinery against inputs that are wrong ---');
+{
+  const r = READ.get('wh_inbound');
+  const caught = ['kind', 'nowhere_to_land'].filter(k => !r.p.has(k));
+  is('a top-level key the function never reads is caught', caught, ['nowhere_to_land']);
+}
+{
+  const r = READ.get('wh_inbound');
+  const caught = ['code', 'bogus_item_field'].filter(k => !r.it.has(k));
+  is('an item key the function never reads is caught', caught, ['bogus_item_field']);
+}
+{
+  /* the two that really were lost, as the tree looked before 049 */
+  const r = READ.get('wh_outbound');
+  const before049 = new Set([...r.p].filter(k => k !== 'driver_nic' && k !== 'issued_contact'));
+  is('the fields 049 had to add would have been caught',
+     ['driver_nic', 'issued_contact'].filter(k => !before049.has(k)),
+     ['driver_nic', 'issued_contact']);
+}
+{
+  /* an unparseable call site must fail, not vanish */
+  const src = "DB.whUpdateItem(buildIt(row))";
+  const argAt = src.indexOf('(') + 1;
+  const rest = src.slice(argAt);
+  const readable = /^\s*\{/.test(rest) || /^\s*([A-Za-z_$][\w$]*)\s*\)/.test(rest);
+  is('a payload built by a call, not a literal, is reported unreadable', readable, false);
+}
+{
+  /* and the healthy shapes stay readable */
+  for (const shape of ['DB.whUpdateItem({id:1,name:"x"})', 'DB.whInbound(p)']) {
+    const argAt = shape.indexOf('(') + 1, rest = shape.slice(argAt);
+    const readable = /^\s*\{/.test(rest) || /^\s*([A-Za-z_$][\w$]*)\s*\)/.test(rest);
+    is('"' + shape + '" is readable', readable, true);
+  }
+}
+{
+  /* a key the SQL reads but the page does not send yet is allowed */
+  const r = READ.get('wh_inbound');
+  const unsent = [...r.p].filter(k => !SENT.some(s => s.fn === 'wh_inbound' && s.top.includes(k)));
+  is('a field the SQL reads but no form fills yet is not an error',
+     orphans.some(o => unsent.some(u => o.includes('<- ' + u + ' '))), false);
+}
+
+console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
+process.exit(fail ? 1 : 0);
