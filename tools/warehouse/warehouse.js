@@ -27,6 +27,25 @@ const pad=(n,w=2)=>String(n).padStart(w,'0');
 let lines=[], tickets=[], pins=new Set(), mins={}, newMats=new Map(), proj='';
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
 const isDummy=sn=>/^DMY-/.test(sn||'');
+/* A serial that is already on something else. THIS WARNS AND DOES NOT
+   REFUSE, deliberately. The same serial really does come back: a unit
+   returned and booked in again, a label misread off a worn plate, two
+   units from one batch stamped alike. wh_items_sn is a plain index and
+   not a unique one for that reason, and the warehouse has to be able to
+   write down what it is actually holding rather than what would validate.
+   So this says where the other one is and lets the entry stand.
+   Dummies are skipped: wh_next('DMY') hands out a fresh number each
+   time, so two of those matching would be noise, not news. */
+const snTwin=(sn,exceptId)=>{ const v=(sn||'').trim().toLowerCase();
+  if(!v||isDummy(sn)) return null;
+  return lines.find(L=>L.sn&&L.sn.trim().toLowerCase()===v&&L.id!==exceptId)||null; };
+const twinSays=t=>`<span class="mstate" style="color:var(--warn)">● serial already on ${esc(t.code||t.name)}${t.inTicket?' · '+esc(t.inTicket):''} - saved anyway</span>`;
+/* Updated in place rather than by redrawing the table. drawRows() replaces
+   the whole tbody, so calling it from the serial box would destroy the
+   element the user is tabbing into. */
+function snWarn(i,which){ const rows=which?nDn.rows:nIn.rows, r=rows[i]; if(!r) return;
+  const e=$('#snw'+which+'_'+i); if(!e) return;
+  const t=snTwin(r.sn, r.lineId||undefined); e.innerHTML=t?twinSays(t):''; }
 const snHtml=sn=>isDummy(sn)?`<span class="dmy">${esc(sn)}</span>`:esc(sn||'—');
 const today=()=>{ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10); };
 const ME=()=>{ try{ return (window.Access&&Access.currentUser&&Access.currentUser())||''; }catch(e){ return ''; } };
@@ -289,7 +308,7 @@ function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date'
 function drawRows(){
   $('#nBody').innerHTML=nIn.rows.map((r,i)=>{
     const st=!r.code?'':r.known?'<span class="mstate ok">✓ in Material Codes</span>':'<span class="mstate nw">● new code → New materials</span>';
-    const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=RT?10:9;
+    const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=RT?10:9, tw=snTwin(r.sn);
     const cl=c&&r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null?Math.abs(+r.rb-+r.ra):'';
     return `<tr><td class="dt">${i+1}</td>
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code or name" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
@@ -298,7 +317,7 @@ function drawRows(){
     <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">pick…</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" onchange="nIn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="iq${i}" style="text-align:right" value="${d?Math.max(0,(d.upper||0)-(d.lower||0)):c?cl:(r.qty||1)}" ${d||c?'readonly':''} placeholder="${c?'readings':''}" oninput="nIn.rows[${i}].qty=+this.value"></td>
-    <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}</td>
+    <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" value="${esc(r.loc||'')}" placeholder="default" oninput="nIn.rows[${i}].loc=this.value"></td>
     <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nIn.rows[${i}].ok=!nIn.rows[${i}].ok;drawRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nIn.rows.splice(${i},1);drawRows()">✕</button></td></tr>
@@ -394,7 +413,7 @@ function drawDRows(){
     const L=r.lineId?lById(r.lineId):null, ro=L?'readonly':'';
     const has=r.code||r.name;
     const st=!has?'':L?`<span class="mstate ok">✓ in stock · ${esc(L.drum?'drum '+L.drum.name:L.loc)}</span>`:`<span class="mstate" style="color:var(--warn)">● direct issue · receive later${r.code&&!r.known?' · new code':''}</span>`;
-    const cab=r.cable;
+    const cab=r.cable, dtw=snTwin(r.sn, r.lineId||undefined);
     return `<tr><td class="dt">${i+1}</td>
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code, SN or name" oninput="dAc(${i},this)" onblur="setTimeout(()=>dClose(${i},this),180)">${st}
       ${L?'':`<button class="dbtn ${cab?'on':''}" onclick="toggleCable(${i})">${cab?'● Cable':'+ Cable'}</button>`}<div class="ac" id="dac${i}" hidden></div></td>
@@ -402,7 +421,7 @@ function drawDRows(){
     <td>${L||r.known?`<input class="in" readonly value="${esc(r.cat||'')}">`:`<select class="in" onchange="nDn.rows[${i}].cat=this.value"><option value="">pick…</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" ${L?'disabled':''} onchange="nDn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX','PKT'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="dq${i}" style="text-align:right" value="${cab?(r.qty||''):(r.qty??1)}" ${cab||(L&&!L.drum)?'readonly':''} placeholder="${cab?'from readings':''}" oninput="nDn.rows[${i}].qty=+this.value"></td>
-    <td><input class="in mono" value="${esc(r.sn||'')}" ${ro||cab?'readonly':''} placeholder="${cab?'—':'scan or type'}" oninput="nDn.rows[${i}].sn=this.value" style="${isDummy(r.sn)?'color:#F2B05E':''}">${L||cab?'':`<button class="nosn" onclick="wDummy(nDn.rows[${i}],drawDRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}</td>
+    <td><input class="in mono" value="${esc(r.sn||'')}" ${ro||cab?'readonly':''} placeholder="${cab?'—':'scan or type'}" oninput="nDn.rows[${i}].sn=this.value;snWarn(${i},1)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${L||cab?'':`<button class="nosn" onclick="wDummy(nDn.rows[${i}],drawDRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw1_${i}">${L?'':(dtw?twinSays(dtw):'')}</span></td>
     <td><input class="in" value="${esc(r.remarks||'')}" oninput="nDn.rows[${i}].remarks=this.value"></td>
     <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nDn.rows[${i}].ok=!nDn.rows[${i}].ok;drawDRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nDn.rows.splice(${i},1);drawDRows()">✕</button></td></tr>
     ${cab?cableRow(i,r,L):''}`}).join('');
