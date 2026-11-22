@@ -170,7 +170,33 @@ function readSide() {
     const p = new Set(), it = new Set();
     for (const mm of d.body.matchAll(/\bp\s*(?:->>|->|\?)\s*'([a-zA-Z_]\w*)'/g)) p.add(mm[1]);
     for (const mm of d.body.matchAll(/\bit\s*(?:->>|->|\?)\s*'([a-zA-Z_]\w*)'/g)) it.add(mm[1]);
+    /* A DYNAMIC STATEMENT READS p TOO, AND THE PATTERN ABOVE IS BLIND TO
+       IT. wh_update_note sets driver_nic and issued_contact through an
+       EXECUTE with p bound as a parameter, so inside the quoted statement
+       they read $2->>''driver_nic'' and not p->>'driver_nic'. Matching
+       only the latter made the scan report those two as never read -
+       which is how the first version of this file behaved, and they are
+       two of the three fields it was written about. Counted only when p
+       is actually in the USING list, so this cannot invent a read. */
+    if (/\busing\b[^;]*\bp\b/i.test(d.body))
+      for (const mm of d.body.matchAll(/\$\d+\s*(?:->>|->|\?)\s*''?([a-zA-Z_]\w*)''?/g)) p.add(mm[1]);
     out.set(name, { p, it, from: d.from, jsonb: /\bp\s+jsonb\b/i.test(d.args) });
+  }
+  return out;
+}
+
+/* WHAT THE PAGE DECLARES IT MAY SEND. An edit payload is assembled from
+   whichever boxes the typist changed, so there is no single literal to
+   read and this file will not guess at one. The page therefore states
+   its own surface as const WH_SENDS_<function> = { ... }, and that is
+   what gets compared here. The page's whOnly() throws at runtime on a
+   key outside its declaration, so the two cannot drift apart quietly. */
+function declaredSide() {
+  const src = fs.readFileSync(PAGE, 'utf8');
+  const out = new Map();
+  for (const m of src.matchAll(/const\s+WH_SENDS_(wh_[a-z_]+)\s*=\s*\{/g)) {
+    const b = blockFrom(src, m.index + m[0].length - 1);
+    if (b) out.set(m[1], topKeys(b));
   }
   return out;
 }
@@ -200,9 +226,9 @@ function sentSide(wrappers) {
         if (at !== -1) { block = blockFrom(src, src.indexOf('{', at)); how = 'via ' + named[1]; }
       }
       const line = src.slice(0, m.index).split('\n').length;
-      if (!block) { unreadable.push(wrapper + ' at warehouse.js:' + line); continue; }
+      if (!block) { unreadable.push({ fn, at: wrapper + ' at warehouse.js:' + line }); continue; }
       const it = itemKeys(block);
-      if (it.present && !it.shapes) unreadable.push(wrapper + ' at warehouse.js:' + line + ' - its items map returns nothing this can read');
+      if (it.present && !it.shapes) unreadable.push({ fn, at: wrapper + ' at warehouse.js:' + line + ' - its items map returns nothing this can read' });
       found.push({ wrapper, fn, line, how, top: topKeys(block).filter(k => k !== 'items'),
                    items: it.keys, shapes: it.shapes, hasItems: it.present });
     }
@@ -214,7 +240,11 @@ function sentSide(wrappers) {
 
 const WRAP = payloadWrappers();
 const READ = readSide();
-const { found: SENT, unreadable } = sentSide(WRAP);
+const DECL = declaredSide();
+const { found: SENT, unreadable: RAW_UNREADABLE } = sentSide(WRAP);
+/* A call site this cannot parse is forgiven only when the page has
+   declared that function's key set instead. Nothing is simply skipped. */
+const unreadable = RAW_UNREADABLE.filter(u => !DECL.has(u.fn)).map(u => u.at);
 
 console.log('--- every field the warehouse page sends is a field the database reads ---');
 console.log('  payload wrappers in db.js: ' + [...WRAP.keys()].join(', '));
@@ -223,7 +253,9 @@ for (const s of SENT)
   console.log('  warehouse.js:' + s.line + '  ' + s.fn + ' (' + s.how + ')  '
     + s.top.length + ' fields, ' + s.items.length + ' per item across '
     + s.shapes + ' item shape' + (s.shapes === 1 ? '' : 's'));
-const silent = [...WRAP.values()].filter(fn => !SENT.some(s => s.fn === fn));
+for (const [fn, keys] of DECL)
+  console.log('  declared by the page: ' + fn + '  may send ' + keys.length + ' keys');
+const silent = [...WRAP.values()].filter(fn => !SENT.some(s => s.fn === fn) && !DECL.has(fn));
 if (silent.length) console.log('  no call site yet: ' + silent.join(', ') + '  (nothing to compare)');
 console.log('');
 
@@ -242,11 +274,23 @@ is('both note payloads were read with their items',
    SENT.filter(s => (s.fn === 'wh_inbound' || s.fn === 'wh_outbound') && s.items.length)
        .map(s => s.fn).sort(), ['wh_inbound', 'wh_outbound']);
 
+/* The dynamic-EXECUTE reads must actually be found, or the fix above is
+   dead code and the scan is back to being blind about them. */
+is('wh_update_note is seen to read the two fields it sets dynamically',
+   ['driver_nic', 'issued_contact'].filter(k => !READ.get('wh_update_note').p.has(k)), []);
+
+is('every declared key set names a function that exists',
+   [...DECL.keys()].filter(fn => !READ.has(fn)), []);
+
 const orphans = [];
 for (const s of SENT) {
   const r = READ.get(s.fn);
   for (const k of s.top) if (!r.p.has(k)) orphans.push(s.fn + ' <- ' + k + '  (warehouse.js:' + s.line + ', never read)');
   for (const k of s.items) if (!r.it.has(k)) orphans.push(s.fn + ' <- items[].' + k + '  (warehouse.js:' + s.line + ', never read)');
+}
+for (const [fn, keys] of DECL) {
+  const r = READ.get(fn); if (!r) continue;
+  for (const k of keys) if (!r.p.has(k)) orphans.push(fn + ' <- ' + k + '  (declared by the page, never read)');
 }
 if (orphans.length) {
   console.log('\n  SENT WITH NOWHERE TO LAND:');
@@ -293,6 +337,26 @@ console.log('\n  --- and the same machinery against inputs that are wrong ---');
     const readable = /^\s*\{/.test(rest) || /^\s*([A-Za-z_$][\w$]*)\s*\)/.test(rest);
     is('"' + shape + '" is readable', readable, true);
   }
+}
+{
+  /* a declared key that no function reads is caught the same way */
+  const r = READ.get('wh_update_item');
+  is('a declared key the function never reads is caught',
+     ['id', 'name', 'not_a_column'].filter(k => !r.p.has(k)), ['not_a_column']);
+}
+{
+  /* AND THE DYNAMIC-EXECUTE FIX IS SHOWN TO BE WHAT FINDS THEM. The
+     p->>'k' pattern alone, run over the migration that defines
+     wh_update_note, does not contain either field - so if the $n rule
+     above ever stops matching, the assertion that they ARE read is a
+     real failure and not a formality. */
+  const sql = fs.readFileSync(path.join(SUPA, '050_warehouse_delete_edit.sql'), 'utf8');
+  const plainOnly = new Set([...sql.matchAll(/\bp\s*(?:->>|->|\?)\s*'([a-zA-Z_]\w*)'/g)].map(m => m[1]));
+  is('the plain p->> pattern alone really is blind to those two',
+     ['driver_nic', 'issued_contact'].filter(k => plainOnly.has(k)), []);
+  const dyn = new Set([...sql.matchAll(/\$\d+\s*(?:->>|->|\?)\s*''?([a-zA-Z_]\w*)''?/g)].map(m => m[1]));
+  is('and the $n pattern is what sees them',
+     ['driver_nic', 'issued_contact'].filter(k => !dyn.has(k)), []);
 }
 {
   /* a key the SQL reads but the page does not send yet is allowed */

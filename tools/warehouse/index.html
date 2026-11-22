@@ -350,6 +350,29 @@ html[data-theme="light"]
   transition:all .15s ease}
 tr:hover .rdel{opacity:1}
 .rdel:hover{border-color:var(--bad);color:var(--bad);background:rgba(242,112,126,.12)}
+/* the row pencil, same quiet-until-hovered manners as the delete beside
+   it, but it leads to a form that can be cancelled, so it reads as the
+   accent rather than as a warning */
+.redit{width:26px;height:26px;border-radius:7px;cursor:pointer;opacity:.25;margin-right:4px;
+  border:1px solid var(--line);background:transparent;color:var(--dim);font-size:12px;line-height:1;
+  transition:all .15s ease}
+tr:hover .redit{opacity:1}
+.redit:hover{border-color:var(--acc);color:var(--acc2);background:rgba(117,155,235,.12)}
+/* the edit sheet - one form used by both note panes and the Inventory tab */
+.esh{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:20px;
+  background:rgba(4,8,22,.62);backdrop-filter:blur(6px);animation:eshIn .14s ease}
+@keyframes eshIn{from{opacity:0}to{opacity:1}}
+.ebox{width:min(640px,100%);max-height:88vh;overflow:auto;border-radius:16px;padding:20px 22px 18px;
+  border:1px solid var(--line);background:var(--glass2);backdrop-filter:blur(18px);
+  box-shadow:0 24px 60px rgba(2,6,20,.5)}
+.ebox h3{margin:0 0 4px;font-size:17px}
+.ebox .esub{margin:0 0 14px;color:var(--soft);font-size:12.5px;line-height:1.5}
+.ebox .egrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ebox .eerr{margin:14px 0 0;padding:10px 12px;border-radius:10px;font-size:12.5px;line-height:1.5;
+  color:var(--bad);border:1px solid var(--bad);background:rgba(242,112,126,.1)}
+.ebox .erow{display:flex;align-items:center;gap:10px;margin-top:16px}
+.ebox .erow .sp{flex:1}
+@media (max-width:620px){.ebox .egrid{grid-template-columns:1fr}}
 .tick{width:28px;height:28px;margin-right:6px;border-radius:8px;cursor:pointer;
   border:1px solid var(--line);background:rgba(5,10,28,.35);color:var(--dim);
   font-size:14px;line-height:1;vertical-align:middle;transition:all .15s ease}
@@ -553,6 +576,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=6"></script>
+<script src="warehouse.js?v=7"></script>
 </body>
 </html>

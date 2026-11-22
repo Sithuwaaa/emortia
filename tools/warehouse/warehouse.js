@@ -232,13 +232,13 @@ function renderInv(hiId){
     if(fSt==='in') rows=rows.filter(L=>L.status==='in'); if(fSt==='out') rows=rows.filter(L=>L.status==='out'); if(fSt==='rt') rows=rows.filter(L=>L.source==='return'); if(fSt==='pend') rows=rows.filter(L=>L.pending); if(fSt==='tp') rows=rows.filter(L=>L.party);
     if(fPin==='1') rows=rows.filter(L=>pins.has(L.code)); if(fPin==='s') rows=rows.filter(L=>(S.get(L.code)||{}).state==='short'); if(fPin==='d') rows=rows.filter(L=>isDummy(L.sn));
     rows.sort((a,b)=>(b.outDate||b.inDate).localeCompare(a.outDate||a.inDate));
-    $('#tbl').innerHTML=`<thead><tr><th style="width:44px">Pin</th><th>Material code</th><th>Material name</th><th>Category</th><th>Site ID / party</th><th>Site name</th><th>Project</th><th>UoM</th><th style="text-align:right">Qty</th><th>SN / drum</th><th>Inbound date</th><th>Inbound ref</th><th>Reservation no</th><th>Current location</th><th>Outbound date</th><th>Outbound ref</th><th>Status</th></tr></thead><tbody>${
+    $('#tbl').innerHTML=`<thead><tr><th style="width:44px">Pin</th><th>Material code</th><th>Material name</th><th>Category</th><th>Site ID / party</th><th>Site name</th><th>Project</th><th>UoM</th><th style="text-align:right">Qty</th><th>SN / drum</th><th>Inbound date</th><th>Inbound ref</th><th>Reservation no</th><th>Current location</th><th>Outbound date</th><th>Outbound ref</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody>${
       rows.map(L=>{ const site=L.status==='out'?(L.party||L.site):L.fromSite, sname=L.status==='out'?L.siteName:L.fromSiteName;
         const where=L.status==='out'?(L.party?`<span class="loc-tp">3P · ${esc(L.party)}</span>`:`<span class="loc-site">Site ${L.site}</span>`):esc(L.loc);
         const st=L.drum?`<span class="st wh">ON DRUM</span>`:L.pending?'<span class="st low">DIRECT ISSUE · NOT RECEIVED</span>':L.party?'<span class="st tp">WITH 3RD PARTY</span>'+condChip(L.cond):L.status==='out'?'<span class="st out">ISSUED TO SITE</span>':L.source==='return'?'<span class="st rt">RETURNED · IN STOCK</span>'+condChip(L.cond):'<span class="st wh">IN STOCK</span>';
         const sn=L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> <span style="color:var(--dim)">${L.drum.lower}–${L.drum.cur}</span>`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:(editSn===L.id?`<input class="in mono" style="padding:4px 8px;width:190px" placeholder="real SN" onkeydown="if(event.key==='Enter')setSN(${L.id},this.value)" onblur="setSN(${L.id},this.value)" autofocus>`:snHtml(L.sn)+(isDummy(L.sn)?`<button class="fixsn" onclick="editSn=${L.id};renderInv(${L.id})">set real SN</button>`:''));
         const out=L.drum?(L.drum.cuts.length?L.drum.cuts.map(c=>tkChip(c.ticket)).join(' '):'—'):tkChip(L.outTicket);
-        return `<tr class="${L.id===hiId?'hl':''}"><td>${pinBtn(L.code)}</td><td class="code">${L.code}${L.isNew?'<span class="newtag">NEW</span>':''}</td><td class="name" title="${esc(L.name)}">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td class="code" style="color:${L.party?'var(--tp)':L.status==='out'?'var(--site)':'var(--ink)'}">${site||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(sname)||'<span style="color:var(--dim)">—</span>'}</td><td><span class="chip pj">${esc(L.project)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.qty)}</td><td class="sn">${sn}</td><td class="dt">${L.inDate}</td><td>${tkChip(L.inTicket)}</td><td class="rsv">${L.res||'<span style="color:var(--dim)">—</span>'}</td><td class="dt">${where}</td><td class="dt">${L.outDate||(L.drum&&L.drum.cuts.length?'cuts →':'—')}</td><td>${out}</td><td>${st}</td></tr>`}).join('')}</tbody>`;
+        return `<tr class="${L.id===hiId?'hl':''}"><td>${pinBtn(L.code)}</td><td class="code">${L.code}${L.isNew?'<span class="newtag">NEW</span>':''}</td><td class="name" title="${esc(L.name)}">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td class="code" style="color:${L.party?'var(--tp)':L.status==='out'?'var(--site)':'var(--ink)'}">${site||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(sname)||'<span style="color:var(--dim)">—</span>'}</td><td><span class="chip pj">${esc(L.project)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.qty)}</td><td class="sn">${sn}</td><td class="dt">${L.inDate}</td><td>${tkChip(L.inTicket)}</td><td class="rsv">${L.res||'<span style="color:var(--dim)">—</span>'}</td><td class="dt">${where}</td><td class="dt">${L.outDate||(L.drum&&L.drum.cuts.length?'cuts →':'—')}</td><td>${out}</td><td>${st}</td><td>${rowEdit(L.id,L.sn||L.code||L.name)}</td></tr>`}).join('')}</tbody>`;
   }
   $('#nInv').textContent=lines.length;
 }
@@ -269,12 +269,12 @@ function openTicket(id){
 function showInbound(t){
   const items=t.items.map(lById);
   const kv=(k,v)=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${v||'—'}</div></div>`;
-  $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print note</button><button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and remove what it booked in">Delete note</button></div>
+  $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print note</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and remove what it booked in">Delete note</button></div>
   <div class="pbody">
     ${t.type==='RT'?`<div class="box rt"><h4>Site return details</h4><div class="fh five">${kv('Site ID',`<span class="mono">${t.site}</span>`)}${kv('Site name',esc(t.siteName))}${kv('Removed on',t.removed?dshort(t.removed):'<span style="color:var(--dim)">not known</span>')}${kv('Inbound date',dshort(t.date))}${kv('Returned by',esc(t.by))}</div><div class="fh">${kv('Return note',esc(t.ref))}${kv('Project',esc(t.project))}</div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">${kv('Inbound date',dshort(t.date))}${kv('Project',esc(t.project))}${kv('Reservation no',`<span class="mono">${esc(t.res)}</span>`)}${kv('Received by',esc(t.by))}</div><div class="fh">${kv('Supplier DN / PO',esc(t.ref))}</div></div>`}
     <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:240px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
-    ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
+    ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowEdit(L.id,L.sn||L.name)}${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -377,13 +377,13 @@ function noteRows(t){ // one printed line per item; drums print their cut
 }
 function showDispatch(t){
   const R=noteRows(t);
-  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button><button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and put its stock back">Delete note</button></div>
+  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and put its stock back">Delete note</button></div>
   <div class="pbody">
     <div class="box"><h4>Outbound details</h4><div class="fh five">
       ${[['Date',dshort(t.date)],...(t.dest==='party'?[['3rd party',t.party],['Purpose',t.purpose],['Their ref / PO',t.partyRef]]:[]),['Project',t.project],['Requested by',t.requestedBy],['Issued by',t.issuedBy],['Receiver',t.receiver],['Vehicle no',t.vehicle],['Driver name',t.driver],['Driver NIC',t.driverNic],['Contact no',t.contact],['Issuer contact',t.issuedContact],['Items',t.items.length+(t.items.length===1?' line':' lines')]].map(([k,v])=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${esc(v)||'<span style="color:var(--dim)">—</span>'}</div></div>`).join('')}
     </div></div>
     <div class="rows"><table><thead><tr><th style="width:36px">No</th><th style="width:120px">Code</th><th>Items &amp; description</th><th style="width:60px">Unit</th><th style="width:80px;text-align:right">Issued</th><th style="width:110px">Remarks</th><th style="width:200px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
-    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${r.L.drum?'#ffd9a8':w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${r.L.drum?'cut from '+esc(r.L.drum.name):esc(w.top)}</td><td>${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
+    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${r.L.drum?'#ffd9a8':w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${r.L.drum?'cut from '+esc(r.L.drum.name):esc(w.top)}</td><td>${rowEdit(r.L.id,r.L.sn||r.L.name)}${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -591,6 +591,140 @@ window.today=today;
   newInbound(); newDispatch(); go('ov');
   try{ DB.whSubscribe(()=>reload()); }catch(e){}
 })();
+
+/* ---- editing -------------------------------------------------------
+
+   ONE SHEET, FOUR PLACES. The same form is wanted on a GRN, an SRN, an
+   OBN and in the Inventory tab, and three of those draw their own pane.
+   One sheet used by all four is less code than four inline edit modes
+   and cannot drift between them.
+
+   ONLY WHAT CHANGED IS SENT, AND THAT IS LOAD-BEARING. wh_update_item
+   decides whether an edit touches stock by whether the KEY is there:
+   p ? 'qty'. Posting the whole form every time would make every edit a
+   stock edit, so correcting a name on something that had already gone
+   out would come back "the quantity of X cannot change" - refused for a
+   field the typist never touched. Sending only the boxes that actually
+   changed keeps a word edit a word edit. The server's rules are not
+   softened by this; the payload is smaller, the guards are the same.
+
+   NOTHING HERE PRE-JUDGES WHAT MAY CHANGE. Every refusal comes from the
+   function, by name, and is shown inside the sheet rather than as a
+   toast that slides away while the person is still reading it.
+
+   EDITING IS may_read, NOT is_owner, matching 050: a mistyped driver's
+   name is for whoever typed it to fix. Deleting stays owner-only. */
+let ESC_H=null;
+function closeSheet(){ const e=$('#esh'); if(e) e.remove();
+  if(ESC_H){ document.removeEventListener('keydown',ESC_H); ESC_H=null; } }
+function editSheet(o){
+  closeSheet();
+  const fld=f=>{
+    const hint=f.hint?`<small>${esc(f.hint)}</small>`:'';
+    if(f.type==='select') return `<div class="f"><label>${esc(f.label)}</label><select class="in" data-k="${f.k}">${f.opts.map(v=>`<option${String(f.v||'')===String(v)?' selected':''}>${esc(v)}</option>`).join('')}</select>${hint}</div>`;
+    return `<div class="f"><label>${esc(f.label)}</label><input class="in${f.mono?' mono':''}" type="${f.type||'text'}" data-k="${f.k}" value="${esc(f.v==null?'':String(f.v))}"${f.ph?` placeholder="${esc(f.ph)}"`:''}>${hint}</div>`;
+  };
+  const d=document.createElement('div');
+  d.id='esh'; d.className='esh';
+  d.innerHTML=`<div class="ebox" role="dialog" aria-modal="true" aria-label="${esc(o.title)}">
+    <h3>${esc(o.title)}</h3>${o.sub?`<p class="esub">${esc(o.sub)}</p>`:''}
+    <div class="egrid">${o.fields.map(fld).join('')}</div>
+    <p class="eerr" id="eerr" hidden></p>
+    <div class="erow"><button class="btn sm" id="ecan">Cancel</button><div class="sp"></div><button class="btn pri sm" id="esav">Save changes</button></div></div>`;
+  document.body.appendChild(d);
+  const box=d.querySelector('.ebox');
+  const was=new Map(o.fields.map(f=>[f.k,f.v==null?'':String(f.v)]));
+  const say=m=>{ const e=$('#eerr'); e.textContent=m||''; e.hidden=!m; };
+  $('#ecan').onclick=closeSheet;
+  d.onclick=ev=>{ if(ev.target===d) closeSheet(); };
+  ESC_H=ev=>{ if(ev.key==='Escape') closeSheet(); };
+  document.addEventListener('keydown',ESC_H);
+  $('#esav').onclick=async()=>{
+    const changed={};
+    box.querySelectorAll('[data-k]').forEach(e=>{ const k=e.getAttribute('data-k');
+      if(e.value!==was.get(k)) changed[k]=e.value; });
+    if(!Object.keys(changed).length){ say('Nothing has been changed.'); return; }
+    const b=$('#esav'); b.disabled=true; say('');
+    try{ await o.save(changed); closeSheet(); await reload(); if(o.after) o.after(); }
+    catch(e2){ say(e2.message||String(e2)); b.disabled=false; }
+  };
+  const first=box.querySelector('.in'); if(first) first.focus();
+}
+
+/* WHAT EACH EDIT MAY SEND, DECLARED. The payload is assembled from
+   whichever boxes changed, so there is no one object literal holding the
+   key set - and wh-payload.test.js refuses to guess at a payload built by
+   a function call, which is the right answer for a checker. So the page
+   states its side here: these are the only keys either edit can send.
+   The test compares these declarations against the keys wh_update_note
+   and wh_update_item actually read, and whOnly() below throws on a key
+   that is not declared, so the declaration cannot drift from what is
+   sent without something saying so. */
+const WH_SENDS_wh_update_note={id:1,note_date:1,project:1,ref:1,reservation_no:1,site_name:1,
+  removed_on:1,purpose:1,party_ref:1,by_name:1,requested_by:1,receiver:1,vehicle:1,driver:1,
+  driver_nic:1,contact:1,issued_by:1,issued_contact:1};
+const WH_SENDS_wh_update_item={id:1,name:1,code:1,cat:1,uom:1,bin:1,sn:1,cond:1,project:1,
+  drum_name:1,drum_lower:1,drum_upper:1,read_start:1,read_end:1,qty:1};
+function whOnly(declared,p,fn){
+  for(const k in p) if(!declared[k])
+    throw new Error('The page tried to send "'+k+'", which '+fn+' does not read. That is a fault in the page, not in anything you typed.');
+  return p;
+}
+
+/* The note's own words. site_id, destination and party are NOT offered:
+   wh_update_note does not change them, because they are what the note
+   moved stock to rather than how it was written up. */
+const NOTE_F={
+  IN:[['date','Inbound date','date'],['project','Project'],['res','Reservation no'],['ref','Supplier DN / PO'],['siteName','Site name'],['by','Received by']],
+  RT:[['date','Inbound date','date'],['project','Project'],['ref','Return note no'],['siteName','Site name'],['removed','Removed on','date'],['by','Returned by']],
+  DN:[['date','Issue date','date'],['project','Project'],['siteName','Site name'],['purpose','Purpose'],['partyRef','Third-party ref'],['requestedBy','Requested by'],['receiver','Receiver'],['vehicle','Vehicle'],['driver','Driver'],['driverNic','Driver NIC'],['contact','Driver contact'],['issuedBy','Issued by'],['issuedContact','Issued-by contact']]
+};
+const NOTE_COL={date:'note_date',project:'project',res:'reservation_no',ref:'ref',siteName:'site_name',
+  removed:'removed_on',by:'by_name',purpose:'purpose',partyRef:'party_ref',requestedBy:'requested_by',
+  receiver:'receiver',vehicle:'vehicle',driver:'driver',driverNic:'driver_nic',contact:'contact',
+  issuedBy:'issued_by',issuedContact:'issued_contact'};
+function editNote(id){
+  const t=tById(id); if(!t) return;
+  editSheet({
+    title:'Edit '+id, sub:'The words on the note. Nothing here moves stock.',
+    fields:(NOTE_F[t.type]||NOTE_F.IN).map(([k,label,type])=>({k,label,type,v:t[k]||'',mono:type==='date'||k==='res'||k==='ref'})),
+    save:async ch=>{ const p={id}; for(const k in ch) p[NOTE_COL[k]]=ch[k];
+      await DB.whUpdateNote(whOnly(WH_SENDS_wh_update_note,p,'wh_update_note')); toast(id+' updated'); },
+    after:()=>{ const t2=tById(id); if(t2) (t2.type==='DN'?showDispatch:showInbound)(t2); }
+  });
+}
+
+/* One item. The keys here ARE the keys wh_update_item reads - bin, not
+   loc - so the sheet and the function cannot disagree about a name. */
+function editItem(id){
+  const L=lById(id); if(!L) return;
+  const f=[{k:'name',label:'Material name',v:L.name},
+    {k:'code',label:'Material code',v:L.code,mono:true,hint:'empty leaves it uncategorised - it shows on New materials'},
+    {k:'cat',label:'Category',type:'select',opts:CATS,v:L.cat},
+    {k:'uom',label:'Unit',type:'select',opts:['EA','M','SET','ROLL','BOX','PKT'],v:L.uom},
+    {k:'bin',label:'Bin / location',v:L.loc,mono:true},
+    {k:'sn',label:'Serial',v:L.sn,mono:true},
+    {k:'project',label:'Project',v:L.project,hint:'empty for a local purchase that belongs to no project'}];
+  if(L.cond||L.source==='return') f.push({k:'cond',label:'Condition',type:'select',opts:['Good','Faulty','Scrap'],v:L.cond||'Good'});
+  if(L.drum){ f.push({k:'drum_name',label:'Drum name',v:L.drum.name,mono:true,hint:'a printed note draws this name from here, so it will read differently afterwards'},
+    {k:'drum_lower',label:'Lower reading',v:L.drum.lower,mono:true},
+    {k:'drum_upper',label:'Upper reading',v:L.drum.upper,mono:true}); }
+  else if(L.read) f.push({k:'read_start',label:'Start reading',v:L.read.start,mono:true},
+    {k:'read_end',label:'End reading',v:L.read.end,mono:true});
+  else f.push({k:'qty',label:'Quantity',v:L.qty,mono:true});
+  editSheet({
+    title:'Edit '+(L.sn||(L.drum&&L.drum.name)||L.code||L.name),
+    sub:L.status==='out'
+      ? 'This went out on '+(L.outTicket||'an outbound note')+'. The words can still be corrected; the quantity cannot - the note is the record of what was sent.'
+      : 'Correct whatever was typed wrong.',
+    fields:f,
+    save:async ch=>{ const p=Object.assign({id},ch);
+      await DB.whUpdateItem(whOnly(WH_SENDS_wh_update_item,p,'wh_update_item')); toast('Updated'); },
+    after:()=>{ if(invMode==='lines'&&$('#tbl')) renderInv(id); }
+  });
+}
+const noteEditBtn=t=>`<button class="btn sm" onclick="editNote('${esc(t.id)}')" title="Correct the words on ${esc(t.id)}">✎ Edit</button>`;
+const rowEdit=(itemId,label)=>`<button class="redit" title="Correct ${esc(String(label))}" onclick="editItem(${itemId})">✎</button>`;
 
 /* ---- deleting ------------------------------------------------------
 
