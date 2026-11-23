@@ -283,6 +283,10 @@
       {
         "file": "060_warehouse_inbound_remarks.sql",
         "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
+      },
+      {
+        "file": "061_warehouse_row_level_site_reservation.sql",
+        "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
       }
     ]
   };

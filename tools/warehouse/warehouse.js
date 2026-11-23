@@ -331,9 +331,7 @@ function drawInbound(){
   $('#rPane').innerHTML=`<div class="h"><h3>New inbound</h3><span class="k">gets its ticket no when saved</span><div class="sp"></div>
     <div class="seg"><button class="${!R?'on':''}" onclick="nIn.type='IN';keepHead();drawInbound()">New stock</button><button class="${R?'on':''}" onclick="nIn.type='RT';keepHead();drawInbound()">Return from site</button></div></div>
   <div class="pbody">
-    ${R?`<div class="box rt"><h4>Site return details</h4><div class="fh five">
-      <div class="f"><label>Site ID</label><input class="in mono" id="nSite" placeholder="e.g. ZZ0042" value="${esc(nIn.site||'')}" oninput="const n=siteLookup(this.value);if(n)$('#nSiteN').value=n"></div>
-      <div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div>
+    ${R?`<div class="box rt"><h4>Site return details</h4><div class="fh">
       <div class="f"><label>Removed on · optional</label><input class="in mono" type="date" id="nRem" value="${nIn.removed||''}"><small>leave empty if not known</small></div>
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"><small>the day it reached the warehouse</small></div>
       <div class="f"><label>Returned by</label><input class="in" id="nBy" placeholder="team / rigger" value="${esc(nIn.by||'')}"></div>
@@ -341,20 +339,19 @@ function drawInbound(){
     :`<div class="box"><h4>Delivery</h4><div class="fh">
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"></div>
       <div class="f"><label>Project</label><select class="in" id="nPj"><option value="">Pick a project…</option>${PROJECTS.map(p=>`<option>${esc(p)}</option>`).join('')}<option>${NEWPJ}</option></select></div>
-      <div class="f"><label>Reservation no</label><input class="in mono" id="nRes" placeholder="${nIn.local?'a local purchase has none':'e.g. 4900000123'}" value="${esc(nIn.res||'')}" ${nIn.local?'disabled':''}></div>
       <div class="f"><label>Local purchase</label><button class="dbtn ${nIn.local?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.local=!nIn.local;if(nIn.local){nIn.res='';nIn.wh=''}drawInbound()">${nIn.local?'● Local purchase':'Mark as local purchase'}</button></div>
       <div class="f"><label>REDEP</label><button class="dbtn ${nIn.redep?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.redep=!nIn.redep;drawInbound()">${nIn.redep?'● Redeployed':'Mark as REDEP'}</button><small>${nIn.redep?'REDEP wins over how the note itself is typed':'material moved here, no site return behind it'}</small></div>
       <div class="f"><label>Vendor · who owns it</label>${lookBox('vendor','nVen',nIn.vendor,'Dialog, Mobitel, Hutch…')}<small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
     </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Site ID <span style="opacity:.6">(optional)</span></label><input class="in mono" id="nSite" placeholder="if it came for one site" value="${esc(nIn.site||'')}" oninput="const v=siteLookup(this.value);if(v)$('#nSiteN').value=v"></div><div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div></div></div>`}
-    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">WH location</th><th style="width:170px">Remarks</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
+    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:150px">Reservation</th><th style="width:110px">Site ID</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">WH location</th><th style="width:170px">Remarks</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
     <button class="btn sm" style="margin-top:10px;margin-left:6px" onclick="openImport()">⇪ Paste from Excel</button>
   </div>
   <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="newInbound()">Clear</button><button class="btn pri" onclick="saveInbound()">Save inbound</button></div>`;
   drawRows();
 }
-function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date','nBy:by','nRef:ref','nRes:res','nWh:wh','nVen:vendor'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
+function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date','nBy:by','nRef:ref','nWh:wh','nVen:vendor'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
 /* A row only offers Drum / Roll once it IS cable - by its category, or
    by its unit. Before that the row is one line with nothing extra on
    it. The same test hides "SN unreadable": a drum has no serial that
@@ -364,7 +361,7 @@ const isCableRow=r=>!!(r.drum||r.cable)||CABLECATS.includes(r.cat)||r.uom==='M'|
 function drawRows(){
   $('#nBody').innerHTML=nIn.rows.map((r,i)=>{
     const st=!r.code?'':r.known?'<span class="mstate ok">✓ in Material Codes</span>':'<span class="mstate nw">● new code → New materials</span>';
-    const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=RT?11:10, tw=snTwin(r.sn);
+    const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=RT?13:12, tw=snTwin(r.sn);
     const cl=c&&r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null?Math.abs(+r.rb-+r.ra):'';
     return `<tr><td class="dt">${i+1}</td>
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code or name" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
@@ -373,6 +370,8 @@ function drawRows(){
     <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" onchange="nIn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="iq${i}" style="text-align:right" value="${d?Math.max(0,(d.upper||0)-(d.lower||0)):c?cl:(r.qty||1)}" ${d||c?'readonly':''} placeholder="${c?'readings':''}" oninput="nIn.rows[${i}].qty=+this.value"></td>
+    <td><input class="in mono" value="${esc(r.res||'')}" placeholder="${nIn.type==='RT'?'if there is one':'4900000123'}" oninput="nIn.rows[${i}].res=this.value"></td>
+    <td><input class="in mono" value="${esc(r.site||'')}" placeholder="${nIn.type==='RT'?'where from':'optional'}" oninput="nIn.rows[${i}].site=this.value.toUpperCase();const n=siteLookup(this.value);if(n)nIn.rows[${i}].siteName=n"></td>
     <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c||isCableRow(r)?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" list="lk_location" value="${esc(r.loc||'')}" placeholder="where it sits" oninput="nIn.rows[${i}].loc=this.value"><datalist id="lk_location">${lookList('location').map(x=>`<option>${esc(x)}</option>`).join('')}</datalist></td>
@@ -429,10 +428,14 @@ async function saveInbound(){
   const pj=$('#nPj').value; if(!pj||pj===NEWPJ){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
   keepHead();
   const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,
-    vendor:(nIn.vendor||'').trim(),source:nIn.redep?'redep':'',date:nIn.date||today(),project:pj,reservation_no:nIn.type==='RT'?'':(nIn.res||''),ref:nIn.ref||'',
+    vendor:(nIn.vendor||'').trim(),source:nIn.redep?'redep':'',date:nIn.date||today(),project:pj,ref:nIn.ref||'',
     site_id:nIn.site||'',site_name:nIn.siteName||'',removed_on:nIn.removed||'',by:nIn.by||ME(),
     items:ok.map(r=>({code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
       remarks:r.remarks||'',
+      /* 061: the row's own answer, when it has one. wh_inbound falls
+         back to the note's, so a delivery with one reservation is
+         unchanged. */
+      reservation_no:r.res||'',site_id:r.site||'',site_name:r.siteName||'',
       cond:nIn.type==='RT'?(r.cond||'Good'):null,is_new:!!(r.code&&!r.known),
       pack:r.drum?(r.pack||'drum'):null,
       drum_name:r.drum?r.drum.name.trim():null,drum_lower:r.drum?+r.drum.lower:null,drum_upper:r.drum?+r.drum.upper:null,

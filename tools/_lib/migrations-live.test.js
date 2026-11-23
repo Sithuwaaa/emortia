@@ -71,8 +71,23 @@ is('a function with no usable marker says why, rather than passing quietly',
    M.filter(m => !m.marker && !m.why).map(m => m.fn), []);
 
 /* ---- the warehouse ones, by name, because they are what this shipped for ---- */
-is('wh_inbound is marked by the remarks insert 060 added',
-   /insert into wh_lines\(note_id,item_id,line_no,qty,remarks\)/.test(by.wh_inbound.marker), true);
+/* NOT PINNED TO A MIGRATION NUMBER. This first read "marked by the
+   remarks insert 060 added", and broke the moment 061 re-emitted
+   wh_inbound - which is a function that gets re-emitted constantly. A
+   test that has to be edited every time the thing it watches changes
+   legitimately is a test people learn to edit without reading. What
+   actually matters is that the marker comes from the NEWEST definition,
+   whichever that is. */
+{
+  const newest = fs.readdirSync(SQLDIR)
+    .filter(f => /^\d+_.*\.sql$/.test(f))
+    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+    .filter(f => /create\s+or\s+replace\s+function\s+wh_inbound/i
+      .test(fs.readFileSync(path.join(SQLDIR, f), 'utf8')))
+    .pop();
+  is('wh_inbound is marked from its newest definition', by.wh_inbound.from, newest);
+  is('and that marker is real', !!by.wh_inbound.marker, true);
+}
 is('wh_outbound is marked by the one-lookup insert 059 added',
    /wh_lookups/.test(by.wh_outbound.marker), true);
 is('wh_update_item is marked by something 057 added, not something 054 had',
