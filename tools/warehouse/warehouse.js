@@ -571,7 +571,7 @@ function cableRow(i,r,L){
        which numbers to send. */
     const chip=(k,t)=>`<button class="dbtn ${how===k?'on':''}" onclick="drumHow(${i},'${k}')">${how===k?'● ':''}${t}</button>`;
     return `<tr class="drumrow"><td colspan="9"><div class="drumbox">
-      <div><label>Drum</label><input class="in mono" readonly value="${esc(d.name)} · ${fmt(d.cur-d.lower)} m left"></div>
+      <div><label>Drum</label><input class="in mono" readonly value="${esc(d.name)} · ${esc(modelOf(L.name))} · ${fmt(d.cur-d.lower)} m left" title="${esc(L.name)}"></div>
       <div style="grid-column:span 2"><label>What is going</label><div class="drumhow">${chip('upper','Cut from upper')}${chip('lower','Cut from lower')}${chip('whole','Send the whole drum')}</div></div>
       ${r.whole?'':`<div><label>Cut length (m)</label><input class="in mono" style="text-align:right" value="${r.qty||''}" placeholder="how much" oninput="nDn.rows[${i}].qty=+this.value;updCab(${i})"></div>
       <div><label>Handover reading</label><input class="in mono" readonly id="hr${i}" value="${hrText(d,r)}"></div>`}
@@ -596,7 +596,7 @@ function dAc(i,el){
   const lv=v.toLowerCase(); const sh=stockHits(v,6); const mc=[];
   for(const m of [...newMats.values(),...MC.values()]){ if(m.code.startsWith(v)||m.name.toLowerCase().includes(lv)){mc.push(m); if(mc.length>=5)break;} }
   box.innerHTML=(sh.length?'<div style="cursor:default;color:var(--ok);font-family:Space Mono;font-size:10.5px;letter-spacing:.1em">IN STOCK</div>':'')+
-    sh.map(L=>`<div onmousedown="dPickLine(${i},${L.id})"><code>${L.code}</code><span>${esc(L.name)}${L.drum?' · <b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b>':''}</span><em>${L.drum?fmt(L.qty)+' m left':esc(L.sn||fmt(L.qty)+' '+L.uom)}</em><span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')+
+    sh.map(L=>`<div onmousedown="dPickLine(${i},${L.id})"><code>${L.code}</code><span>${L.drum?'<b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b> · ':''}${esc(L.name)}</span><em>${L.drum?fmt(L.qty)+' m left':esc(L.sn||fmt(L.qty)+' '+L.uom)}</em><span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')+
     (mc.length?'<div style="cursor:default;color:var(--warn);font-family:Space Mono;font-size:10.5px;letter-spacing:.1em">NOT IN STOCK · DIRECT ISSUE, RECEIVE LATER</div>':'')+
     mc.map(m=>`<div onmousedown="dPickMC(${i},'${m.code}')"><code>${m.code}</code><span>${esc(m.name)}</span><em>${esc(shortCat(m.cat))}</em></div>`).join('')+
     `<div class="add" onmousedown="dFree(${i})"><span>Use “${esc(v)}” as typed (local purchase, no code yet)</span><em>MANUAL</em></div>`;
@@ -612,7 +612,7 @@ function dFree(i){ const r=nDn.rows[i]; Object.assign(r,{lineId:null,code:'',nam
 function pickSearch(v){
   v=v.trim(); const box=$('#pr'); if(v.length<2){box.hidden=true;return}
   const hits=stockHits(v,10);
-  box.innerHTML=hits.map(L=>`<div onmousedown="addPick(${L.id})"><code>${L.code}</code><span>${esc(L.name)}${L.drum?' · <b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b>':''}</span><em>${L.drum?fmt(L.qty)+' m left':L.sn||fmt(L.qty)+' '+L.uom}</em><span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')||'<div style="color:var(--dim);cursor:default">Not in stock. Type it in a row below to issue it directly.</div>';
+  box.innerHTML=hits.map(L=>`<div onmousedown="addPick(${L.id})"><code>${L.code}</code><span>${L.drum?'<b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b> · ':''}${esc(L.name)}</span><em>${L.drum?fmt(L.qty)+' m left':L.sn||fmt(L.qty)+' '+L.uom}</em><span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')||'<div style="color:var(--dim);cursor:default">Not in stock. Type it in a row below to issue it directly.</div>';
   box.hidden=false;
 }
 function addPick(id){ let i=nDn.rows.findIndex(r=>!r.code&&!r.name&&!r.q); if(i<0){nDn.rows.push({});i=nDn.rows.length-1} dPickLine(i,id); $('#pq').value=''; $('#pq').focus(); }
