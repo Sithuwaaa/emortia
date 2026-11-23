@@ -279,6 +279,10 @@
       {
         "file": "058_warehouse_whole_drum.sql",
         "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
+      },
+      {
+        "file": "060_warehouse_inbound_remarks.sql",
+        "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
       }
     ]
   };

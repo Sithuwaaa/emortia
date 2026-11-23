@@ -341,7 +341,7 @@ function drawInbound(){
       <div class="f"><label>Vendor · who owns it</label>${lookBox('vendor','nVen',nIn.vendor,'Dialog, Mobitel, Hutch…')}<small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
     </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Site ID <span style="opacity:.6">(optional)</span></label><input class="in mono" id="nSite" placeholder="if it came for one site" value="${esc(nIn.site||'')}" oninput="const v=siteLookup(this.value);if(v)$('#nSiteN').value=v"></div><div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div></div></div>`}
-    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">WH location</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
+    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">WH location</th><th style="width:170px">Remarks</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
   </div>
   <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="newInbound()">Clear</button><button class="btn pri" onclick="saveInbound()">Save inbound</button></div>`;
@@ -357,7 +357,7 @@ const isCableRow=r=>!!(r.drum||r.cable)||CABLECATS.includes(r.cat)||r.uom==='M'|
 function drawRows(){
   $('#nBody').innerHTML=nIn.rows.map((r,i)=>{
     const st=!r.code?'':r.known?'<span class="mstate ok">✓ in Material Codes</span>':'<span class="mstate nw">● new code → New materials</span>';
-    const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=RT?10:9, tw=snTwin(r.sn);
+    const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=RT?11:10, tw=snTwin(r.sn);
     const cl=c&&r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null?Math.abs(+r.rb-+r.ra):'';
     return `<tr><td class="dt">${i+1}</td>
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code or name" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
@@ -369,6 +369,7 @@ function drawRows(){
     <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c||isCableRow(r)?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" list="lk_location" value="${esc(r.loc||'')}" placeholder="where it sits" oninput="nIn.rows[${i}].loc=this.value"><datalist id="lk_location">${lookList('location').map(x=>`<option>${esc(x)}</option>`).join('')}</datalist></td>
+    <td><input class="in" value="${esc(r.remarks||'')}" placeholder="anything worth noting" oninput="nIn.rows[${i}].remarks=this.value"></td>
     <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nIn.rows[${i}].ok=!nIn.rows[${i}].ok;drawRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nIn.rows.splice(${i},1);drawRows()">✕</button></td></tr>
     ${c?`<tr class="drumrow"><td colspan="${ncol}"><div class="drumbox">
       <div><label>Start reading (m)</label><input class="in mono" style="text-align:right" value="${r.ra??''}" placeholder="marking at one end" oninput="nIn.rows[${i}].ra=this.value;rCabLen(${i})"></div>
@@ -424,6 +425,7 @@ async function saveInbound(){
     vendor:(nIn.vendor||'').trim(),source:nIn.redep?'redep':'',date:nIn.date||today(),project:pj,reservation_no:nIn.type==='RT'?'':(nIn.res||''),ref:nIn.ref||'',
     site_id:nIn.site||'',site_name:nIn.siteName||'',removed_on:nIn.removed||'',by:nIn.by||ME(),
     items:ok.map(r=>({code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
+      remarks:r.remarks||'',
       cond:nIn.type==='RT'?(r.cond||'Good'):null,is_new:!!(r.code&&!r.known),
       pack:r.drum?(r.pack||'drum'):null,
       drum_name:r.drum?r.drum.name.trim():null,drum_lower:r.drum?+r.drum.lower:null,drum_upper:r.drum?+r.drum.upper:null,
