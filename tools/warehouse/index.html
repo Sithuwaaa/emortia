@@ -544,7 +544,7 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
         <div class="seg" id="invMode"><button data-m="lines" class="on">Every item</button><button data-m="stock">Stock by material</button></div>
         <input class="in" id="q" style="width:300px" placeholder="Filter: code, name, SN, drum, site, ticket…">
         <select class="in" id="fCat"><option value="">All categories</option></select>
-        <div class="seg" id="fSt"><button data-s="all" class="on">All</button><button data-s="in">In stock</button><button data-s="out">Issued</button><button data-s="rt">Site returns</button><button data-s="tp">3rd party</button><button data-s="pend">Direct issue</button></div>
+        <div class="seg" id="fSt"><button data-s="all" class="on">All</button><button data-s="in">In stock</button><button data-s="out">Issued</button><button data-s="rt">Site returns</button><button data-s="tp">3rd party</button><button data-s="pend">Direct issue</button><button data-s="local">Local purchase</button><button data-s="redep">REDEP</button></div>
         <div class="seg" id="fPin"><button data-p="0" class="on">All</button><button data-p="1">📌 Pinned</button><button data-p="s">Shortage</button><button data-p="d">Dummy SN</button><button data-p="u">No code yet</button></div>
         <div style="flex:1"></div>
         <button class="btn sm">Export Excel</button>
@@ -613,6 +613,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=18"></script>
+<script src="warehouse.js?v=19"></script>
 </body>
 </html>

@@ -266,6 +266,12 @@ function renderInv(hiId){
   } else {
     let rows=lines.filter(inProj).filter(L=>(!cat||L.cat===cat)&&(!q||[L.code,L.name,L.sn,L.site,L.siteName,L.fromSite,L.loc,L.inTicket,L.outTicket,L.drum&&L.drum.name,L.party,L.res].join(' ').toLowerCase().includes(q)));
     if(fSt==='in') rows=rows.filter(L=>L.status==='in'); if(fSt==='out') rows=rows.filter(L=>L.status==='out'); if(fSt==='rt') rows=rows.filter(L=>L.source==='return'); if(fSt==='pend') rows=rows.filter(L=>L.pending); if(fSt==='tp') rows=rows.filter(L=>L.party);
+    /* 010: how it arrived, now that 056 records it. These sit with the
+       other source filters rather than in their own tabs - the Inventory
+       tab already IS the list, and a separate tab would be the same rows
+       drawn by a second piece of code that could disagree with this one. */
+    if(fSt==='local') rows=rows.filter(L=>L.source==='local');
+    if(fSt==='redep') rows=rows.filter(L=>L.source==='redep');
     if(fPin==='1') rows=rows.filter(L=>pins.has(L.code)); if(fPin==='s') rows=rows.filter(L=>(S.get(L.code)||{}).state==='short'); if(fPin==='d') rows=rows.filter(L=>isDummy(L.sn)); if(fPin==='u') rows=rows.filter(L=>!L.code);
     rows.sort((a,b)=>(b.outDate||b.inDate).localeCompare(a.outDate||a.inDate));
     $('#tbl').innerHTML=`<thead><tr>${OWNER()?'<th style="width:34px"><input type="checkbox" class="tickbox" onchange="selAllShown(this.checked)" title="Select every row shown"></th>':''}<th style="width:44px">Pin</th><th>Material code</th><th>Material name</th><th>Category</th><th>Site ID / party</th><th>Site name</th><th>Project</th><th>UoM</th><th style="text-align:right">Qty</th><th>SN / drum</th><th>Inbound date</th><th>Inbound ref</th><th>Reservation no</th><th>Current location</th><th>Outbound date</th><th>Outbound ref</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody>${
