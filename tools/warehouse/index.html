@@ -91,7 +91,37 @@ mark{background:rgba(157,184,245,.3);color:#fff;border-radius:3px;padding:0 1px}
 
 /* stage */
 .stage{height:calc(100vh - 64px - 58px);padding:0 24px 20px}
-.view{display:none;height:100%}.view.on{display:block}
+.view{display:none;height:100%}.view.on{display:block;position:relative}
+/* THE WATER DROP, ON THE PANEL. Never on the tab bar: the bar was
+   de-animated on 18 October and that was the fourth time animation had
+   been put on it. A panel arriving is a thing that just happened and is
+   over; a bar that moves whenever you look at it is a thing that keeps
+   happening, which is why it kept being taken off.
+
+   Two parts, like a drop landing: the panel settles, and a ring of
+   light spreads out from where it hit and fades. 340ms and 500ms - long
+   enough to read as one motion, short enough that the next tab is not
+   waiting for it. */
+@keyframes whDrop{
+  0%{opacity:0;transform:scale(.985) translateY(-5px);filter:blur(3px)}
+  55%{opacity:1;transform:scale(1.004) translateY(0);filter:blur(0)}
+  100%{opacity:1;transform:none;filter:none}
+}
+@keyframes whRipple{
+  0%{opacity:.85;transform:scaleY(.35)}
+  100%{opacity:0;transform:scaleY(1)}
+}
+.view.on{animation:whDrop .34s cubic-bezier(.22,.9,.3,1) both}
+.view.on::before{content:"";position:absolute;inset:0 0 auto;height:140px;pointer-events:none;z-index:0;
+  transform-origin:top center;
+  background:radial-gradient(62% 100% at 50% 0%,rgba(117,155,235,.17),transparent 72%);
+  animation:whRipple .5s ease-out both}
+html[data-theme="light"] .view.on::before{background:radial-gradient(62% 100% at 50% 0%,rgba(62,99,184,.13),transparent 72%)}
+/* and it is a drop, not a demand */
+@media (prefers-reduced-motion:reduce){
+  .view.on,.view.on::before{animation:none}
+  .view.on::before{display:none}
+}
 .gl{background:var(--glass);border:1px solid var(--line);border-radius:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 20px 50px rgba(0,0,0,.25);backdrop-filter:blur(14px)}
 .h{display:flex;align-items:center;gap:10px;padding:16px 20px 10px;flex-wrap:wrap}
 .h h3{margin:0;font-family:'Bricolage Grotesque';font-weight:800;font-size:18px}
@@ -613,6 +643,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=20"></script>
+<script src="warehouse.js?v=21"></script>
 </body>
 </html>
