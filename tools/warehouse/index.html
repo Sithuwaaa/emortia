@@ -23,7 +23,7 @@
 <script src="../_lib/owner-config.js"></script>
 <script src="../_lib/owner.js"></script>
 <script src="../_lib/supabase-config.js"></script>
-<script src="../_lib/db.js?v=5"></script>
+<script src="../_lib/db.js?v=6"></script>
 <script src="../_lib/access-config.js"></script>
 <script src="../_lib/access.js"></script>
 <script src="../_lib/ask.js?v=1"></script>
@@ -358,6 +358,15 @@ tr:hover .rdel{opacity:1}
   transition:all .15s ease}
 tr:hover .redit{opacity:1}
 .redit:hover{border-color:var(--acc);color:var(--acc2);background:rgba(117,155,235,.12)}
+/* the return grid, inside the same sheet box */
+.ebox.wide{width:min(960px,100%)}
+.rtbl{width:100%;border-collapse:collapse;margin-top:14px;font-size:12.5px}
+.rtbl th{text-align:left;padding:7px 9px;font-family:'Space Mono';font-size:10.5px;
+  text-transform:uppercase;letter-spacing:.04em;color:var(--dim);border-bottom:1px solid var(--line)}
+.rtbl th.num,.rtbl td.num{text-align:right}
+.rtbl td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:middle}
+.rtbl td small{display:block;margin-top:3px;font-size:10.5px;color:var(--acc2)}
+.rtbl tr.done td{color:var(--dim)}
 /* the batch bar, only there when something is selected. The [hidden]
    rule is not decoration: a display declaration outranks the hidden
    attribute, so without it bar.hidden=true would leave the bar on
@@ -595,6 +604,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=9"></script>
+<script src="warehouse.js?v=10"></script>
 </body>
 </html>

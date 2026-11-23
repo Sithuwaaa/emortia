@@ -1342,6 +1342,11 @@
   const whUpdateItem = p => whRpc('wh_update_item', { p });
   /* the words on a note, never its stock */
   const whUpdateNote = p => whRpc('wh_update_note', { p });
+  /* Material coming back from a site, filed AGAINST the outbound note that
+     sent it - so the link needs no matching and cannot be got wrong. The
+     server flips the original row rather than booking a second one in,
+     which is what an SRN used to do. Migration 055. */
+  const whReturn = p => whRpc('wh_return', { p });
   async function whSubscribe(fn){
     const c = await client(); if (!c) return;
     return liveChannel(
@@ -3079,7 +3084,7 @@
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 whLoad, whInbound, whOutbound, whNext, whSetSN, whRename, whPin, whMin,
                 whAddProject, whAddMaterial, whSubscribe,
-                whDeleteNote, whDeleteItem, whUpdateNote, whDeleteLine, whUpdateItem,
+                whDeleteNote, whDeleteItem, whUpdateNote, whDeleteLine, whUpdateItem, whReturn,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 goalsLoad: goalsLoad, goalsWrite: goalsWrite, goalsRemove: goalsRemove,
                 goalsCurrency: goalsCurrency, goalsSubscribe: goalsSubscribe,

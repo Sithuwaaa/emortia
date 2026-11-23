@@ -188,6 +188,11 @@
         "file": "049_warehouse_note_fields.sql",
         "table": "wh_notes",
         "col": "driver_nic"
+      },
+      {
+        "file": "055_warehouse_return.sql",
+        "table": "wh_notes",
+        "col": "reverses"
       }
     ],
     "unverifiable": [

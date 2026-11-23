@@ -23,6 +23,8 @@ const NEWPJ='+ New project…';
 let PROJECTS=[], PARTIES=[], SITES={};
 /* note id + item id -> wh_lines.id, filled as the notes are read */
 const LID=new Map();
+/* outbound wh_lines.id -> how much of it has already been returned */
+const RET=new Map();
 const pad=(n,w=2)=>String(n).padStart(w,'0');
 let lines=[], tickets=[], pins=new Set(), mins={}, newMats=new Map(), proj='';
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
@@ -72,13 +74,14 @@ function fromDB(d){
     outTicket:r.out_note||'',outDate:r.out_date||'',site:r.site_id||'',siteName:r.site_name||'',party:r.party||'',isNew:!!r.is_new,
     drum:r.drum_name?{name:r.drum_name,lower:+r.drum_lower,upper:+r.drum_upper,cur:+r.drum_cur,cuts:[]}:null,
     read:r.read_start!=null?{start:+r.read_start,end:+r.read_end}:null}));
-  const byId=new Map(lines.map(L=>[L.id,L])), K={GRN:'IN',SRN:'RT',OBN:'DN'};
+  const byId=new Map(lines.map(L=>[L.id,L])), K={GRN:'IN',SRN:'RT',OBN:'DN',RTN:'RN'};
   tickets=d.notes.map(n=>({id:n.id,type:K[n.kind],date:n.note_date,project:n.project||'',res:n.reservation_no||'',ref:n.ref||'',site:n.site_id||'',siteName:n.site_name||'',
-    removed:n.removed_on||'',dest:n.dest||'site',party:n.party||'',purpose:n.purpose||'',partyRef:n.party_ref||'',by:n.by_name||'',requestedBy:n.requested_by||'',
+    removed:n.removed_on||'',reverses:n.reverses||'',dest:n.dest||'site',party:n.party||'',purpose:n.purpose||'',partyRef:n.party_ref||'',by:n.by_name||'',requestedBy:n.requested_by||'',
     receiver:n.receiver||'',vehicle:n.vehicle||'',driver:n.driver||'',driverNic:n.driver_nic||'',contact:n.contact||'',issuedBy:n.issued_by||'',issuedContact:n.issued_contact||'',items:[]}));
   const tb=new Map(tickets.map(t=>[t.id,t]));
   /* stale entries would point at lines that no longer exist */
-  LID.clear();
+  LID.clear(); RET.clear();
+  d.lines.forEach(x=>{ if(x.returns_line!=null) RET.set(+x.returns_line,(RET.get(+x.returns_line)||0)+(+x.qty||0)); });
   d.lines.slice().sort((a,b)=>a.line_no-b.line_no).forEach(x=>{ const t=tb.get(x.note_id), L=byId.get(x.item_id); if(!t||!L) return;
     /* LID maps an item id to the id of the LINE that put it on this note.
        An inbound note's items are bare ids and an outbound note's are
@@ -271,7 +274,7 @@ function openTicket(id){
 function showInbound(t){
   const items=t.items.map(lById);
   const kv=(k,v)=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${v||'—'}</div></div>`;
-  $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print note</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and remove what it booked in">Delete note</button></div>
+  $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RN'?'Inbound · returned from site (RTN)':t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3>${t.type==='RN'&&t.reverses?`<span class="tk dn" title="the note this reverses" onclick="openTicket('${esc(t.reverses)}')" style="cursor:pointer;margin-left:8px">↩ ${esc(t.reverses)}</span>`:''}<div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print note</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and remove what it booked in">Delete note</button></div>
   <div class="pbody">
     ${t.type==='RT'?`<div class="box rt"><h4>Site return details</h4><div class="fh five">${kv('Site ID',`<span class="mono">${t.site}</span>`)}${kv('Site name',esc(t.siteName))}${kv('Removed on',t.removed?dshort(t.removed):'<span style="color:var(--dim)">not known</span>')}${kv('Inbound date',dshort(t.date))}${kv('Returned by',esc(t.by))}</div><div class="fh">${kv('Return note',esc(t.ref))}${kv('Project',esc(t.project))}</div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">${kv('Inbound date',dshort(t.date))}${kv('Project',esc(t.project))}${kv('Reservation no',`<span class="mono">${esc(t.res)}</span>`)}${kv('Received by',esc(t.by))}</div><div class="fh">${kv('Supplier DN / PO',esc(t.ref))}</div></div>`}
@@ -386,7 +389,7 @@ function noteRows(t){ // one printed line per item; drums print their cut
 }
 function showDispatch(t){
   const R=noteRows(t);
-  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and put its stock back">Delete note</button></div>
+  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button>${noteEditBtn(t)}<button class="btn sm" onclick="openReturn('${t.id}')" title="Book material back in from this note">↩ Return</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and put its stock back">Delete note</button></div>
   <div class="pbody">
     <div class="box"><h4>Outbound details</h4><div class="fh five">
       ${[['Date',dshort(t.date)],...(t.dest==='party'?[['3rd party',t.party],['Purpose',t.purpose],['Their ref / PO',t.partyRef]]:[]),['Project',t.project],['Requested by',t.requestedBy],['Issued by',t.issuedBy],['Receiver',t.receiver],['Vehicle no',t.vehicle],['Driver name',t.driver],['Driver NIC',t.driverNic],['Contact no',t.contact],['Issuer contact',t.issuedContact],['Items',t.items.length+(t.items.length===1?' line':' lines')]].map(([k,v])=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${esc(v)||'<span style="color:var(--dim)">—</span>'}</div></div>`).join('')}
@@ -735,6 +738,88 @@ function editItem(id){
 const noteEditBtn=t=>`<button class="btn sm" onclick="editNote('${esc(t.id)}')" title="Correct the words on ${esc(t.id)}">✎ Edit</button>`;
 const rowEdit=(itemId,label)=>`<button class="redit" title="Correct ${esc(String(label))}" onclick="editItem(${itemId})">✎</button>`;
 
+/* ---- material coming back -------------------------------------------
+
+   FILED AGAINST THE NOTE THAT SENT IT. The form is opened from an
+   outbound note and lists that note's own lines, so the link back to the
+   OBN is made by where you are standing rather than by matching a serial
+   afterwards. There is nothing to get wrong.
+
+   WHAT THE SERVER DOES WITH IT, so the form can be read honestly:
+   returning all of a line flips that row back into stock - the same row,
+   not a second one. Returning part of it splits the row. Returning a
+   length that was cut off a drum books a loose Cable piece, because the
+   drum is physically shorter for ever and cannot be un-cut. The form
+   says which of the three a line will take.
+
+   A line already fully returned is shown and disabled rather than
+   hidden, because "where did the other six go" is a question the note
+   should answer on its face. */
+/* Only the top level: line_id, qty, cond, bin and remarks live inside
+   items[] and are read as it->>'...', not p->>'...'. */
+const WH_SENDS_wh_return={obn:1,date:1,by:1,ref:1,items:1};
+let RTN=null;
+/* How much of each outbound line has already come back. Summed from
+   wh_lines.returns_line when the page loads, the same way the server
+   works it out, rather than kept as a second copy on the item. */
+function returnableLines(t){
+  return (t.items||[]).map(x=>{
+    const L=lById(x.lineId); if(!L) return null;
+    const back=RET.get(x.lid)||0;
+    return { lid:x.lid, L, sent:+x.qty, back, left:+x.qty-back, cut:x.cut };
+  }).filter(Boolean);
+}
+function openReturn(id){
+  const t=tById(id); if(!t) return;
+  const rows=returnableLines(t);
+  if(!rows.length){ toast('This note has no lines to return.'); return; }
+  RTN={ obn:id, date:today(), by:ME(), ref:'', rows:rows.map(r=>({...r, take:'', cond:'Good', bin:'', remarks:''})) };
+  drawReturn();
+}
+/* What a line will DO depends on how much is typed into it, so the hint
+   changes as it is typed. It is updated in place - rebuilding the sheet,
+   or even the table body, would destroy the box being typed into. */
+function rtnShape(i){
+  const r=RTN.rows[i]; if(!r) return '';
+  if(r.cut) return 'books in as a loose Cable piece - the drum stays short';
+  if(+r.take>0&&+r.take<r.left) return 'splits the row · '+fmt(r.left-(+r.take))+' stays out';
+  return 'flips the row back into stock';
+}
+function rtnHint(i){ const e=$('#rsh'+i); if(e) e.textContent=rtnShape(i); }
+function drawReturn(){
+  const t=tById(RTN.obn);
+  const body=RTN.rows.map((r,i)=>{
+    const what=r.L.sn||(r.cut?`${r.L.drum?r.L.drum.name:r.L.name} · cut ${r.cut.to}→${r.cut.from} m`:r.L.name);
+    if(r.left<=0) return `<tr class="done"><td>${esc(what)}</td><td class="num">${fmt(r.sent)}</td><td colspan="4">all of it is already back</td></tr>`;
+    return `<tr><td>${esc(what)}<small id="rsh${i}">${esc(rtnShape(i))}</small></td>
+      <td class="num">${fmt(r.left)}</td>
+      <td><input class="in mono" style="width:84px" value="${esc(r.take)}" placeholder="${fmt(r.left)}" oninput="RTN.rows[${i}].take=this.value;rtnHint(${i})"></td>
+      <td><select class="in" onchange="RTN.rows[${i}].cond=this.value">${['Good','Faulty','Scrap'].map(c=>`<option${r.cond===c?' selected':''}>${c}</option>`).join('')}</select></td>
+      <td><input class="in mono" style="width:110px" value="${esc(r.bin)}" placeholder="where it goes" oninput="RTN.rows[${i}].bin=this.value"></td>
+      <td><input class="in" value="${esc(r.remarks)}" oninput="RTN.rows[${i}].remarks=this.value"></td></tr>`;
+  }).join('');
+  const html=`<div class="egrid" style="grid-template-columns:1fr 1fr">
+      <div class="f"><label>Returned on</label><input class="in mono" type="date" value="${RTN.date}" oninput="RTN.date=this.value"></div>
+      <div class="f"><label>Returned by</label><input class="in" value="${esc(RTN.by)}" oninput="RTN.by=this.value"></div>
+      <div class="f"><label>Paper note no · optional</label><input class="in mono" value="${esc(RTN.ref)}" oninput="RTN.ref=this.value"></div>
+    </div>
+    <table class="rtbl"><thead><tr><th>What went out</th><th class="num">Still out</th><th>Coming back</th><th>Condition</th><th>WH location</th><th>Remarks</th></tr></thead><tbody>${body}</tbody></table>`;
+  sheet({ title:'Return against '+RTN.obn,
+    sub:'Leave a quantity empty to leave that line where it is. '+(t&&t.site?('It came back from '+t.site+'. '):'')+'The drum is never un-cut: a returned length books in as its own Cable piece.',
+    html, save:'Book the return in', onSave:saveReturn });
+}
+async function saveReturn(){
+  const items=RTN.rows.filter(r=>r.left>0&&+r.take>0)
+    .map(r=>({line_id:r.lid, qty:+r.take, cond:r.cond, bin:r.bin, remarks:r.remarks}));
+  if(!items.length) throw new Error('Put a quantity against at least one line.');
+  const over=RTN.rows.find(r=>+r.take>r.left);
+  if(over) throw new Error('Only '+fmt(over.left)+' of that line is still out.');
+  const p={obn:RTN.obn, date:RTN.date, by:RTN.by, ref:RTN.ref, items};
+  const id=await DB.whReturn(whOnly(WH_SENDS_wh_return,p,'wh_return'));
+  toast(id+' booked in · '+items.length+' line'+(items.length===1?'':'s')+' back');
+  RTN=null;
+}
+
 /* ---- taking several off at once -------------------------------------
 
    Loading a real warehouse by hand means typing things twice, and one
@@ -804,6 +889,37 @@ async function removeSelected(){
     kept.length+' '+(kept.length===1?'was':'were')+' refused, and nothing about '+(kept.length===1?'it':'them')+' has changed.',
     kept.map(k=>`<div class="rrow"><b>${esc(k.what)}</b><span>${esc(k.why)}</span></div>`).join(''));
 }
+/* THE SAME BOX, WITH ARBITRARY CONTENT AND ONE ACTION. editSheet draws a
+   form from a field list and reportSheet draws a read-only list; the
+   return form is neither - it is a small grid whose rows redraw as they
+   are typed into. Rather than a third copy of the overlay, this takes the
+   html and a save handler. onSave throwing keeps the sheet open and shows
+   the message, exactly as the edit sheet does, so a refusal from the
+   server is read where it happened. */
+function sheet(o){
+  const had=!!$('#esh');
+  closeSheet();
+  const d=document.createElement('div'); d.id='esh'; d.className='esh';
+  d.innerHTML=`<div class="ebox wide" role="dialog" aria-modal="true" aria-label="${esc(o.title)}">
+    <h3>${esc(o.title)}</h3>${o.sub?`<p class="esub">${esc(o.sub)}</p>`:''}
+    ${o.html}
+    <p class="eerr" id="eerr" hidden></p>
+    <div class="erow"><button class="btn sm" id="ecan">Cancel</button><div class="sp"></div>
+      <button class="btn pri sm" id="esav">${esc(o.save||'Save')}</button></div></div>`;
+  document.body.appendChild(d);
+  const say=m=>{ const e=$('#eerr'); e.textContent=m||''; e.hidden=!m; };
+  $('#ecan').onclick=closeSheet;
+  d.onclick=ev=>{ if(ev.target===d) closeSheet(); };
+  ESC_H=ev=>{ if(ev.key==='Escape') closeSheet(); };
+  document.addEventListener('keydown',ESC_H);
+  $('#esav').onclick=async()=>{
+    const b=$('#esav'); b.disabled=true; say('');
+    try{ await o.onSave(); closeSheet(); await reload(); }
+    catch(e){ say(e.message||String(e)); b.disabled=false; }
+  };
+  return had;
+}
+
 /* The same box as the edit sheet, with a list instead of a form. */
 function reportSheet(title,sub,html){
   closeSheet();
