@@ -79,7 +79,8 @@ if (!base) {
   console.log('  base:   NOT DECLARED. Nothing in the bundle names the commit it was');
   console.log('          built from, so how far behind it is cannot be worked out.');
 } else {
-  let behind = null, known = true;
+  let behind = null, known = true, shallow = false;
+  try { shallow = git('rev-parse', '--is-shallow-repository').trim() === 'true'; } catch (e) {}
   try { git('cat-file', '-e', base.sha + '^{commit}'); }
   catch (e) { known = false; }
   if (known) {
@@ -88,6 +89,13 @@ if (!base) {
   console.log('  base:   ' + base.sha + '  (from ' + base.where + ')'
     + (!known ? '  - NOT A COMMIT IN THIS REPOSITORY'
        : behind != null ? '  - HEAD is ' + behind + ' commit(s) ahead of it' : ''));
+  /* A shallow checkout does not have the older commits, so "not a commit
+     in this repository" would be a lie told confidently. Say which it
+     is rather than letting the reader guess. */
+  if (shallow && !known) {
+    console.log('          ...but this is a SHALLOW checkout, so it may simply not have');
+    console.log('          that commit. Run this in a full clone before believing it.');
+  }
   if (known && behind && +behind > 0)
     console.log('          Everything in those ' + behind + ' commits is at risk of being undone.');
 }

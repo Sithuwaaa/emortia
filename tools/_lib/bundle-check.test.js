@@ -91,15 +91,32 @@ const victim = lines.find(l => l.trim().startsWith('.dust-layer'));
 }
 
 {
-  /* and one that declares a real base is measured against HEAD */
+  /* A declared base is resolved and measured against HEAD. HEAD itself
+     is used, not HEAD~1: CI checks out with actions/checkout@v4, which
+     is shallow by default, so HEAD~1 is not a revision there. This test
+     passed locally and failed in CI for exactly that reason, which is
+     the sort of thing a test that reaches for git has to assume. */
   const d = tmp();
-  const sha = execFileSync('git', ['rev-parse', 'HEAD~1'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
   fs.writeFileSync(path.join(d, 'HANDOFF.md'), 'Built from base ' + sha + '\n');
   fs.mkdirSync(path.join(d, 'tools', '_lib'), { recursive: true });
   fs.writeFileSync(path.join(d, TARGET), real);
   const out = run(d);
   is('a declared base is resolved and measured against HEAD',
-     /HEAD is 1 commit\(s\) ahead of it/.test(out), true);
+     /HEAD is 0 commit\(s\) ahead of it/.test(out), true);
+  fs.rmSync(d, { recursive: true, force: true });
+}
+
+{
+  /* a base that is not a commit here is said to be one, rather than
+     being treated as zero commits behind */
+  const d = tmp();
+  fs.writeFileSync(path.join(d, 'HANDOFF.md'), 'Built from base deadbeefdeadbeefdeadbeefdeadbeefdeadbeef\n');
+  fs.mkdirSync(path.join(d, 'tools', '_lib'), { recursive: true });
+  fs.writeFileSync(path.join(d, TARGET), real);
+  const out = run(d);
+  is('a base this repository does not have is called out',
+     /NOT A COMMIT IN THIS REPOSITORY/.test(out), true);
   fs.rmSync(d, { recursive: true, force: true });
 }
 
