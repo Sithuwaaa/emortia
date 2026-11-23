@@ -868,7 +868,17 @@ const IMP_FIELDS=[
   ['remarks', ['remarks','remark','note','notes','comment','comments']],
   ['drumName',['drum','drum name','drum no','roll','roll no']],
   ['drumLower',['lower','drum lower','lower reading','from']],
-  ['drumUpper',['upper','drum upper','upper reading','to']]
+  ['drumUpper',['upper','drum upper','upper reading','to']],
+  /* His sheet's columns. Without these four the import read his file,
+     said nothing, and dropped them - which is the failure mode this
+     whole thing is supposed to avoid.
+     "reservation no box no" is "Reservation No/Box No" after impNorm
+     flattens the slash, which is the point of normalising at all. */
+  ['site',       ['site','site id','siteid']],
+  ['siteName',   ['site name','sitename']],
+  ['reservation',['reservation','reservation no','reservation no box no','rsv','box no']],
+  ['wh',         ['wh','warehouse','from wh','source wh','from warehouse']],
+  ['vendor',     ['vendor','owner','operator']]
 ];
 const impNorm=h=>String(h==null?'':h).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 function impField(header){
@@ -898,6 +908,11 @@ function impParse(text){
 /* A header row is one where enough cells name a field we know. Otherwise
    the first line is data and the columns go in form order. */
 const IMP_ORDER=['code','name','cat','uom','qty','sn','loc','remarks'];
+/* Where each imported column ends up. site, reservation and site name
+   are per row and go straight on it - 061 made that real. wh and vendor
+   are still note-level, so they are lifted to the note only when the
+   whole sheet agrees; see impLift. */
+const IMP_NOTE_LEVEL=['wh','vendor'];
 function impPlan(rows){
   if(!rows.length) return null;
   const first=rows[0];
@@ -914,13 +929,24 @@ function impRows(plan){
     plan.map.forEach((k,i)=>{ if(!k) return; const v=String(r[i]==null?'':r[i]).trim(); if(v!=='') o[k]=v; });
     const row={ name:o.name||'', code:o.code||'', q:o.code||'', cat:o.cat||'', uom:o.uom||'EA',
                 qty:o.qty?(+String(o.qty).replace(/[^0-9.\-]/g,'')||1):1, sn:o.sn||'', loc:o.loc||'',
-                remarks:o.remarks||'' };
+                remarks:o.remarks||'',
+                res:o.reservation||'', site:(o.site||'').toUpperCase(),
+                siteName:o.siteName||(o.site?siteLookup(o.site):'')||'',
+                _wh:o.wh||'', _vendor:o.vendor||'' };
     if(o.code&&MC.has(o.code)){ const m=MC.get(o.code);
       row.name=row.name||m.name; row.cat=row.cat||shortCat(m.cat); row.known=true; }
     if(o.drumName){ row.drum={name:o.drumName,lower:+o.drumLower||0,upper:+o.drumUpper||0};
       row.pack='drum'; row.uom='M'; }
     return row;
   }).filter(r=>r.name||r.code||(r.drum&&r.drum.name));
+}
+/* wh and vendor are written once per note, not per row, so a sheet can
+   only set them if it agrees with itself. One distinct value: take it.
+   More than one: say which, take none, and leave them to the pencil -
+   guessing which warehouse 300 rows came from is not this tool's job. */
+function impLift(rows,key){
+  const seen=[...new Set(rows.map(r=>r[key]).filter(v=>v&&v.trim()))];
+  return { one: seen.length===1?seen[0]:'', many: seen.length>1?seen:[] };
 }
 let IMP=null;
 function openImport(){
@@ -945,9 +971,20 @@ function impScan(){
   const m=$('#impMsg'); if(!m) return;
   if(!IMP.rows.length){ m.textContent=IMP.text.trim()?'Nothing in that looks like a row.':''; impCount(); return; }
   const cols=IMP.plan.map.filter(Boolean);
+  const wh=impLift(IMP.rows,'_wh'), ven=impLift(IMP.rows,'_vendor');
+  IMP.lift={wh:wh.one,vendor:ven.one};
+  const notes=[];
+  if(wh.one)  notes.push('from warehouse <b>'+esc(wh.one)+'</b>');
+  if(ven.one) notes.push('vendor <b>'+esc(ven.one)+'</b>');
+  const clash=[];
+  if(wh.many.length)  clash.push('warehouse ('+esc(wh.many.join(', '))+')');
+  if(ven.many.length) clash.push('vendor ('+esc(ven.many.join(', '))+')');
   m.innerHTML='<b>'+IMP.rows.length+'</b> row'+(IMP.rows.length===1?'':'s')
     +' · columns read: '+esc(cols.join(', '))
     +(IMP.plan.header?'':' <i>(no header row found, columns taken in form order)</i>')
+    +(notes.length?'<br>will set '+notes.join(' and ')+' on the note':'')
+    +(clash.length?'<br><span style="color:var(--warn)">rows disagree on '+clash.join(' and ')
+       +' - these are written once per note, so none is taken; set them per item afterwards</span>':'')
     +(IMP.plan.ignored.length?'<br><span style="color:var(--warn)">ignored: '+esc(IMP.plan.ignored.join(', '))+'</span>':'');
   impCount();
 }
@@ -964,6 +1001,9 @@ function drawImport(){
 }
 function impApply(){
   if(!IMP||!IMP.rows.length) throw new Error('Nothing to add yet - paste some rows first.');
+  if(IMP.lift){ if(IMP.lift.wh&&!nIn.wh) nIn.wh=IMP.lift.wh;
+                if(IMP.lift.vendor&&!nIn.vendor) nIn.vendor=IMP.lift.vendor; }
+  IMP.rows.forEach(r=>{ delete r._wh; delete r._vendor; });
   const blank=nIn.rows.filter(r=>Object.keys(r).length===0).length;
   nIn.rows=nIn.rows.filter(r=>Object.keys(r).length>0).concat(IMP.rows);
   const n=IMP.rows.length; IMP=null;
