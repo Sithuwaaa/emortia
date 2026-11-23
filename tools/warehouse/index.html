@@ -211,7 +211,6 @@ td.sn,td.dt{font-family:'Space Mono';font-size:12px;color:var(--soft)}
 .dmy{font-family:'Space Mono';font-size:11.5px;color:#F2B05E;border:1px dashed rgba(242,176,94,.6);border-radius:6px;padding:1px 6px;white-space:nowrap}
 .dmy::after{content:' DUMMY';font-size:9px;letter-spacing:.08em;opacity:.8}
 .fixsn{border:0;background:transparent;color:var(--acc2);font-size:11px;cursor:pointer;text-decoration:underline;margin-left:6px}
-.nosn{border:1px dashed rgba(242,176,94,.5);background:transparent;color:#F2B05E;border-radius:9px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:'Space Mono';margin-top:5px}
 .rsv{font-family:'Space Mono';font-size:11px;color:#bfe3ff}
 
 /* split panes (receive / issue) */
@@ -367,7 +366,7 @@ html[data-theme="light"] .drum{background:#fff}
 html[data-theme="light"] .drum .nm,html[data-theme="light"] .drumtag,html[data-theme="light"] .drumbox label,html[data-theme="light"] .drumbox .len b{color:#A35410}
 html[data-theme="light"] .dbtn{color:#A35410;border-color:rgba(163,84,16,.4)}
 html[data-theme="light"] .dbtn.on{background:#fbe8d4}
-html[data-theme="light"] .nosn,html[data-theme="light"] .dmy{color:#9A5C0C;border-color:rgba(154,92,12,.45)}
+html[data-theme="light"] .dmy{color:#9A5C0C;border-color:rgba(154,92,12,.45)}
 html[data-theme="light"] .rsv{color:#2F55B0}
 html[data-theme="light"] .plan{background:#e2f5ea;color:#146B42}
 html[data-theme="light"] .plan.no{background:#fbe6e9;color:#A3283D}
@@ -649,6 +648,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=24"></script>
+<script src="warehouse.js?v=25"></script>
 </body>
 </html>
