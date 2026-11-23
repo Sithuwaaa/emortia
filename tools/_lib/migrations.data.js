@@ -270,6 +270,10 @@
       {
         "file": "054_warehouse_item_edit_widen.sql",
         "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
+      },
+      {
+        "file": "058_warehouse_whole_drum.sql",
+        "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
       }
     ]
   };

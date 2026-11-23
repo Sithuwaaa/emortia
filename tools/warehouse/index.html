@@ -364,6 +364,9 @@ tr:hover .rdel{opacity:1}
   transition:all .15s ease}
 tr:hover .redit{opacity:1}
 .redit:hover{border-color:var(--acc);color:var(--acc2);background:rgba(117,155,235,.12)}
+/* the three things a drum can do, on one line */
+.drumhow{display:flex;gap:6px;flex-wrap:wrap}
+.drumhow .dbtn{margin-top:0}
 /* the return grid, inside the same sheet box */
 .ebox.wide{width:min(960px,100%)}
 .rtbl{width:100%;border-collapse:collapse;margin-top:14px;font-size:12.5px}
@@ -610,6 +613,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=15"></script>
+<script src="warehouse.js?v=16"></script>
 </body>
 </html>

@@ -482,13 +482,28 @@ function drawDRows(){
     <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nDn.rows[${i}].ok=!nDn.rows[${i}].ok;drawDRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nDn.rows.splice(${i},1);drawDRows()">✕</button></td></tr>
     ${cab?cableRow(i,r,L):''}`}).join('');
 }
+/* Which end moves decides what the handover reading says. Cutting from
+   the upper end drops it; cutting from the lower end raises it. */
+const hrText=(d,r)=>{ const q=+r.qty||0;
+  if((r.cutEnd||'upper')==='lower') return q?d.lower+' → '+(d.lower+q):d.lower+' → …';
+  return q?d.cur+' → '+(d.cur-q):d.cur+' → …'; };
+function drumHow(i,how){ const r=nDn.rows[i];
+  if(how==='whole'){ r.whole=true; delete r.cutEnd; }
+  else { delete r.whole; r.cutEnd=how; }
+  drawDRows(); }
 function cableRow(i,r,L){
-  if(L&&L.drum){ const d=L.drum;
+  if(L&&L.drum){ const d=L.drum, how=r.whole?'whole':(r.cutEnd||'upper');
+    /* A drum can do three things, and until now it could only do one.
+       Sending it whole is not a third kind of line - it is the ordinary
+       whole-item path an RRU takes - so the only thing this picks is
+       which numbers to send. */
+    const chip=(k,t)=>`<button class="dbtn ${how===k?'on':''}" onclick="drumHow(${i},'${k}')">${how===k?'● ':''}${t}</button>`;
     return `<tr class="drumrow"><td colspan="9"><div class="drumbox">
       <div><label>Drum</label><input class="in mono" readonly value="${esc(d.name)} · ${fmt(d.cur-d.lower)} m left"></div>
-      <div><label>Cut length (m)</label><input class="in mono" style="text-align:right" value="${r.qty||''}" placeholder="how much" oninput="nDn.rows[${i}].qty=+this.value;updCab(${i})"></div>
-      <div><label>Handover reading</label><input class="in mono" readonly id="hr${i}" value="${r.qty?d.cur+' → '+(d.cur-r.qty):d.cur+' → …'}"></div>
-      <div class="len" id="cl${i}">${cutText(L,r.qty)}</div></div></td></tr>`; }
+      <div style="grid-column:span 2"><label>What is going</label><div class="drumhow">${chip('upper','Cut from upper')}${chip('lower','Cut from lower')}${chip('whole','Send the whole drum')}</div></div>
+      ${r.whole?'':`<div><label>Cut length (m)</label><input class="in mono" style="text-align:right" value="${r.qty||''}" placeholder="how much" oninput="nDn.rows[${i}].qty=+this.value;updCab(${i})"></div>
+      <div><label>Handover reading</label><input class="in mono" readonly id="hr${i}" value="${hrText(d,r)}"></div>`}
+      <div class="len" id="cl${i}">${r.whole?`the whole drum goes · <b style="color:var(--ok)">${fmt(d.cur-d.lower)} m</b>, reading ${d.lower}–${d.cur}`:cutText(L,r.qty)}</div></div></td></tr>`; }
   return `<tr class="drumrow"><td colspan="9"><div class="drumbox">
       <div><label>Start reading (m)</label><input class="in mono" style="text-align:right" value="${r.ra??''}" placeholder="marking at one end" oninput="nDn.rows[${i}].ra=this.value;updCab(${i})"></div>
       <div><label>End reading (m)</label><input class="in mono" style="text-align:right" value="${r.rb??''}" placeholder="marking at the other" oninput="nDn.rows[${i}].rb=this.value;updCab(${i})"></div>
@@ -497,7 +512,7 @@ function cableRow(i,r,L){
 }
 function manText(r){ if(r.ra===''||r.rb===''||r.ra==null||r.rb==null) return 'Write both markings on the cable piece. Qty is worked out from them.'; const n=Math.abs(+r.rb-+r.ra); return `Reading <b>${r.ra} → ${r.rb}</b> = ${fmt(n)} m`; }
 function updCab(i){ const r=nDn.rows[i], L=r.lineId?lById(r.lineId):null;
-  if(L&&L.drum){ $('#hr'+i).value=r.qty?L.drum.cur+' → '+(L.drum.cur-r.qty):L.drum.cur+' → …'; $('#cl'+i).innerHTML=cutText(L,r.qty); $('#dq'+i).value=r.qty||''; }
+  if(L&&L.drum){ const hb=$('#hr'+i); if(hb) hb.value=hrText(L.drum,r); $('#cl'+i).innerHTML=cutText(L,r.qty); $('#dq'+i).value=r.qty||''; }
   else { $('#cl'+i).innerHTML=manText(r); if(r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null){ r.qty=Math.abs(+r.rb-+r.ra); $('#dq'+i).value=r.qty; } } }
 function toggleCable(i){ const r=nDn.rows[i]; r.cable=!r.cable; if(r.cable){ r.uom='M'; r.qty=''; r.sn=''; } drawDRows(); }
 function cutText(L,len){ const d=L.drum; if(!len) return `reading now ${d.lower}–${d.cur} · ${fmt(d.cur-d.lower)} m on drum`; if(len>d.cur-d.lower) return `<span style="color:var(--bad)">only ${fmt(d.cur-d.lower)} m left on this drum</span>`; return `hand over ${d.cur} → ${d.cur-len} · drum keeps <b style="color:var(--ok)">${fmt(d.cur-len-d.lower)} m</b>`; }
@@ -536,7 +551,7 @@ async function saveDispatch(){
   const rows=nDn.rows.filter(r=>r.lineId||r.code||r.name);
   if(!rows.length) return bad('Add at least one item.');
   for(const r of rows){ const L=r.lineId&&lById(r.lineId);
-    if(L&&L.drum&&(!(+r.qty>0)||+r.qty>L.qty)) return bad(`Give drum ${L.drum.name} a cut length that fits what is left on it.`);
+    if(L&&L.drum&&!r.whole&&(!(+r.qty>0)||+r.qty>L.qty)) return bad(`Give drum ${L.drum.name} a cut length that fits what is left on it, or send the whole drum.`);
     if(!L&&!r.name) return bad('Every manual row needs a material name.');
     if(!L&&r.cable&&(r.ra==null||r.rb==null||r.ra===''||r.rb==='')) return bad('A cable piece needs its start and end readings.');
     if(!L&&!(+r.qty>0)) return bad('Every manual row needs a quantity.'); }
@@ -544,7 +559,8 @@ async function saveDispatch(){
     party:nDn.dest==='party'?nDn.party.trim():'',purpose:nDn.dest==='party'?nDn.purpose:'',party_ref:nDn.dest==='party'?nDn.partyRef:'',
     requested_by:nDn.requestedBy,receiver:nDn.receiver,vehicle:nDn.vehicle,driver:nDn.driver,driver_nic:nDn.driverNic,contact:nDn.contact,issued_by:nDn.issuedBy||ME(),issued_contact:nDn.issuedContact,
     items:rows.map(r=>{ const L=r.lineId&&lById(r.lineId);
-      if(L) return {item_id:L.id,cut:L.drum?+r.qty:null,cut_end:L.drum?(r.cutEnd||'upper'):null,remarks:r.remarks||''};
+      if(L) return {item_id:L.id,whole:!!(L.drum&&r.whole),cut:(L.drum&&!r.whole)?+r.qty:null,
+        cut_end:(L.drum&&!r.whole)?(r.cutEnd||'upper'):null,remarks:r.remarks||''};
       return {code:r.code||'',name:r.name,cat:r.cat||'Other',uom:r.cable?'M':(r.uom||'EA'),qty:+r.qty,sn:r.sn||'',is_new:!!(r.code&&!MC.has(r.code)),
         read_start:r.cable?+r.ra:null,read_end:r.cable?+r.rb:null,remarks:r.remarks||''}; })};
   const btn=event&&event.target; if(btn) btn.disabled=true;
@@ -609,7 +625,7 @@ function renderDrums(){
       <div class="mt"><code>${L.code}</code> · ${esc(L.name)}</div>
       <div class="rd"><div class="left" style="width:${pl}%"></div><div class="used" style="width:${100-pl}%"></div>${fits?`<div class="need" style="left:${(left-need)/tot*100}%;width:${need/tot*100}%"></div>`:''}</div>
       <div class="rdl"><span>lower ${d.lower}</span><span style="color:#bff0d6">now ${d.cur}</span><span>upper ${d.upper}</span></div>
-      <div class="dq"><b>${fmt(left)} m</b><span>left of ${fmt(tot)} m · in ${L.inTicket}</span></div>
+      <div class="dq"><b>${fmt(left)} m</b><span>${L.status==='out'?`issued whole on ${esc(L.outTicket||'a note')}`:`left of ${fmt(tot)} m · in ${esc(L.inTicket)}`}</span></div>
       ${need&&match?`<div class="plan ${fits?'':'no'}">${fits?`Cut ${need} m: reading ${d.cur} → ${d.cur-need}. Leaves ${fmt(left-need)} m.`:`Not enough: ${fmt(left)} m left, ${fmt(need-left)} m short.`}</div>`:''}
       <div class="cuts">${d.cuts.length?d.cuts.map(c=>`<div>${tkChip(c.ticket)}<span>${dshort(c.date)} · ${c.site}</span><span style="margin-left:auto">${c.to}→${c.from}</span><b style="color:var(--ink)">${c.len} m</b></div>`).join(''):'<div>No cuts yet.</div>'}</div>
     </div>`}).join('');
