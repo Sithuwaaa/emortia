@@ -2,6 +2,7 @@
 
      node tools/_lib/migrations.test.js            check
      node tools/_lib/migrations.test.js --write    regenerate the manifest
+     node tools/_lib/migrations.test.js --live     ask the DATABASE
 
    WHY THIS FILE GENERATES THE MANIFEST. A hand-kept list of probes drifts
    the first time somebody adds a migration and forgets, and a checker
@@ -23,6 +24,11 @@ const ROOT = path.join(__dirname, '..', '..');
 const SQLDIR = path.join(ROOT, 'supabase');
 const DATA = path.join(__dirname, 'migrations.data.js');
 const M = require(path.join(__dirname, 'migrations.js'));
+
+/* --live asks the database instead of the files. It is a separate file
+   because it needs credentials and the network, and this one must stay
+   runnable by anybody with a checkout. */
+if (process.argv.includes('--live')) { require('./migrations-live.js').main(); return; }
 
 let pass = 0, fail = 0;
 const is = (label, got, want) => {
