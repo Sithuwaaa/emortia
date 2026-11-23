@@ -20,7 +20,7 @@ const shortCat = c => SHORT[c] || c || 'Other';
 const PURPOSES=['Repair','Return to vendor','Loan','Transfer','Testing','Scrap'];
 const CONDS=['Good','Faulty','Scrap'];
 const NEWPJ='+ New project…';
-let PROJECTS=[], PARTIES=[], SITES={};
+let PROJECTS=[], PARTIES=[], SOURCES=[], VENDORS=[], SITES={};
 /* note id + item id -> wh_lines.id, filled as the notes are read */
 const LID=new Map();
 /* outbound wh_lines.id -> how much of it has already been returned */
@@ -30,13 +30,27 @@ let lines=[], tickets=[], pins=new Set(), mins={}, newMats=new Map(), proj='';
 /* The warehouses stock comes from. Loaded with everything else; empty
    until 053 is run, which is survivable - the field just offers nothing
    to pick and takes whatever is typed. */
-let SOURCES=[];
-/* Who owns the material. A different axis from SOURCES, which is where
-   it physically came from, and from wh_items.source, which is how it
-   arrived. Dialog stock can arrive on a delivery, come back from a
-   site or turn up as REDEP, so one column could never answer "what
-   Dialog stock are we holding". */
-let VENDORS=[];
+/* ONE LOOKUP MECHANISM, FIVE LISTS. There were four tables of one column
+   and a fifth list with nowhere to live, each with its own "+ new"
+   behaviour. 059 made them one table keyed by kind; this makes them one
+   component and one add. A list that has not been migrated yet is simply
+   empty, and an empty list still takes whatever is typed. */
+const LOOK={project:[],party:[],source:[],vendor:[],location:[]};
+const lookList=k=>LOOK[k]||[];
+/* The component. An input backed by a datalist: pick an existing name or
+   type a new one, and the new one joins the list when it is used. No
+   modal, no separate "+ new" button to forget to wire up. */
+function lookBox(kind,id,value,ph,extra){
+  return `<input class="in" id="${id}" list="lk_${kind}" placeholder="${esc(ph||'type or pick')}" value="${esc(value||'')}" ${extra||''}>`
+    + `<datalist id="lk_${kind}">${lookList(kind).map(x=>`<option>${esc(x)}</option>`).join('')}</datalist>`;
+}
+/* Remembering a name is never allowed to fail the thing that used it. */
+async function lookAdd(kind,name){
+  name=String(name==null?'':name).trim(); if(!name) return;
+  if(lookList(kind).includes(name)) return;
+  try{ await DB.whAddLookup(kind,name); LOOK[kind].push(name); LOOK[kind].sort((a,b)=>a.localeCompare(b)); }catch(e){}
+}
+
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
 const isDummy=sn=>/^DMY-/.test(sn||'');
 /* A serial that is already on something else. THIS WARNS AND DOES NOT
@@ -108,9 +122,11 @@ function fromDB(d){
     if(L.drum&&cut) L.drum.cuts.push({ticket:t.id,date:t.date,site:t.site||t.party,from:cut.from,to:cut.to,len:+x.qty}); });
   pins=new Set(d.materials.filter(m=>m.pinned).map(m=>m.code));
   mins={}; d.materials.forEach(m=>{ if(+m.min_qty>0) mins[m.code]=+m.min_qty; });
-  PARTIES=d.parties.map(p=>p.name); PROJECTS=d.projects.map(p=>p.name);
-  SOURCES=(d.sources||[]).map(x=>x.name);
-  VENDORS=(d.vendors||[]).map(x=>x.name);
+  for(const k in LOOK) LOOK[k].length=0;
+  (d.lookups||[]).forEach(x=>{ if(LOOK[x.kind]) LOOK[x.kind].push(x.name); });
+  for(const k in LOOK) LOOK[k].sort((a,b)=>a.localeCompare(b));
+  /* the names the rest of the page already reads */
+  PROJECTS=LOOK.project; PARTIES=LOOK.party; SOURCES=LOOK.source; VENDORS=LOOK.vendor;
   newMats=new Map(); lines.filter(L=>L.isNew&&L.code&&!MC.has(L.code)).forEach(L=>{ if(!newMats.has(L.code)) newMats.set(L.code,{code:L.code,name:L.name,cat:L.cat,first:L.inDate||L.outDate}); });
 }
 let loading=null;
@@ -147,7 +163,7 @@ function askProject(sel){
   add.onclick=async()=>{
     const name=inp.value.trim(); if(!name){ inp.focus(); return; }
     add.disabled=true;
-    try{ await DB.whAddProject(name); if(!PROJECTS.includes(name)) PROJECTS.push(name); PROJECTS.sort((a,b)=>a.localeCompare(b));
+    try{ await lookAdd('project',name);
       document.querySelectorAll('select').forEach(s=>{ if(![...s.options].some(o=>o.textContent===NEWPJ)) return;
         if(![...s.options].some(o=>o.textContent===name)){ const o=document.createElement('option'); o.textContent=name; s.insertBefore(o,s.lastElementChild); } });
       fillSelects(); toast(`Project "${name}" added`); close(name); }
@@ -322,9 +338,9 @@ function drawInbound(){
       <div class="f"><label>Reservation no</label><input class="in mono" id="nRes" placeholder="${nIn.local?'a local purchase has none':'e.g. 4900000123'}" value="${esc(nIn.res||'')}" ${nIn.local?'disabled':''}></div>
       <div class="f"><label>Local purchase</label><button class="dbtn ${nIn.local?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.local=!nIn.local;if(nIn.local){nIn.res='';nIn.wh=''}drawInbound()">${nIn.local?'● Local purchase':'Mark as local purchase'}</button></div>
       <div class="f"><label>REDEP</label><button class="dbtn ${nIn.redep?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.redep=!nIn.redep;drawInbound()">${nIn.redep?'● Redeployed':'Mark as REDEP'}</button><small>${nIn.redep?'REDEP wins over how the note itself is typed':'material moved here, no site return behind it'}</small></div>
-      <div class="f"><label>Vendor · who owns it</label><input class="in" id="nVen" list="vendors" placeholder="Dialog, Mobitel, Hutch…" value="${esc(nIn.vendor||'')}"><datalist id="vendors">${VENDORS.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist><small>written onto every row, correctable per row later</small></div>
+      <div class="f"><label>Vendor · who owns it</label>${lookBox('vendor','nVen',nIn.vendor,'Dialog, Mobitel, Hutch…')}<small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
-    </div><div class="fh"><div class="f"><label>From warehouse</label><input class="in" id="nWh" list="sources" placeholder="${nIn.local?'local purchase - no warehouse':'type or pick a warehouse'}" value="${esc(nIn.wh||'')}" ${nIn.local?'disabled':''}><datalist id="sources">${SOURCES.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist><small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Site ID <span style="opacity:.6">(optional)</span></label><input class="in mono" id="nSite" placeholder="if it came for one site" value="${esc(nIn.site||'')}" oninput="const v=siteLookup(this.value);if(v)$('#nSiteN').value=v"></div><div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div></div></div>`}
+    </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Site ID <span style="opacity:.6">(optional)</span></label><input class="in mono" id="nSite" placeholder="if it came for one site" value="${esc(nIn.site||'')}" oninput="const v=siteLookup(this.value);if(v)$('#nSiteN').value=v"></div><div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div></div></div>`}
     <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">WH location</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
   </div>
@@ -352,7 +368,7 @@ function drawRows(){
     <td><input class="in mono" id="iq${i}" style="text-align:right" value="${d?Math.max(0,(d.upper||0)-(d.lower||0)):c?cl:(r.qty||1)}" ${d||c?'readonly':''} placeholder="${c?'readings':''}" oninput="nIn.rows[${i}].qty=+this.value"></td>
     <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c||isCableRow(r)?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
-    <td><input class="in mono" value="${esc(r.loc||'')}" placeholder="where it sits" oninput="nIn.rows[${i}].loc=this.value"></td>
+    <td><input class="in mono" list="lk_location" value="${esc(r.loc||'')}" placeholder="where it sits" oninput="nIn.rows[${i}].loc=this.value"><datalist id="lk_location">${lookList('location').map(x=>`<option>${esc(x)}</option>`).join('')}</datalist></td>
     <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nIn.rows[${i}].ok=!nIn.rows[${i}].ok;drawRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nIn.rows.splice(${i},1);drawRows()">✕</button></td></tr>
     ${c?`<tr class="drumrow"><td colspan="${ncol}"><div class="drumbox">
       <div><label>Start reading (m)</label><input class="in mono" style="text-align:right" value="${r.ra??''}" placeholder="marking at one end" oninput="nIn.rows[${i}].ra=this.value;rCabLen(${i})"></div>
@@ -419,8 +435,10 @@ async function saveInbound(){
        After the note is filed, never before: a name is only real once
        something actually arrived from it. Failing to remember it must
        not fail the note that is already saved. */
-    if(p.from_wh&&!SOURCES.includes(p.from_wh)){ try{ await DB.whAddSource(p.from_wh); }catch(e){} }
-    if(p.vendor&&!VENDORS.includes(p.vendor)){ try{ await DB.whAddVendor(p.vendor); }catch(e){} } toast(`${id} saved · ${ok.length} item${ok.length===1?'':'s'} in stock`); await reload(); nIn=null; if(tById(id)) showInbound(tById(id)); }
+    /* every new name this note introduced, through the one add */
+    await lookAdd('source',p.from_wh);
+    await lookAdd('vendor',p.vendor);
+    for(const it of p.items) await lookAdd('location',it.bin); toast(`${id} saved · ${ok.length} item${ok.length===1?'':'s'} in stock`); await reload(); nIn=null; if(tById(id)) showInbound(tById(id)); }
   catch(e){ msg.innerHTML=`<b style="color:var(--bad)">${esc(e.message)}</b>`; }
   finally{ if(btn) btn.disabled=false; }
 }

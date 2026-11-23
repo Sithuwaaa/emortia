@@ -1293,16 +1293,15 @@
   async function whLoad(){
     const c = await client(); if (!c) return { error: noClient().message };
     try {
-      const [notes, items, lines, materials, parties, projects, sources, vendors] = await Promise.all([
+      /* ONE LIST, FIVE KINDS, since 059. It replaced wh_projects,
+         wh_parties, wh_sources and wh_vendors, which were four tables of
+         one column each that had already started to drift apart. A page
+         that is missing a lookup list still works, so a table that is
+         not there yet must not stop the whole load. */
+      const [notes, items, lines, materials, lookups] = await Promise.all([
         whAll(c, 'wh_notes', 'id'), whAll(c, 'wh_items', 'id'), whAll(c, 'wh_lines', 'id'),
-        whAll(c, 'wh_materials', 'code'), whAll(c, 'wh_parties', 'name'), whAll(c, 'wh_projects', 'name'),
-        /* wh_sources arrives with 053. Until that migration is run the
-           table is not there, and a missing lookup list must not stop the
-           whole page loading - the warehouse still works without it. */
-        whAll(c, 'wh_sources', 'name').catch(() => []),
-        /* wh_vendors arrives with 056; same reasoning as wh_sources. */
-        whAll(c, 'wh_vendors', 'name').catch(() => [])]);
-      return { notes, items, lines, materials, parties, projects, sources, vendors, error: null };
+        whAll(c, 'wh_materials', 'code'), whAll(c, 'wh_lookups', 'name').catch(() => [])]);
+      return { notes, items, lines, materials, lookups, error: null };
     } catch(e){ return { error: whErr(e) }; }
   }
   async function whRpc(fn, args){
@@ -1324,17 +1323,13 @@
     return whWrite(c.from('wh_materials').upsert({ code, pinned }, { onConflict: 'code' })); }
   async function whMin(code, min_qty){ const c = await client(); if (!c) throw noClient();
     return whWrite(c.from('wh_materials').upsert({ code, min_qty }, { onConflict: 'code' })); }
-  async function whAddProject(name){ const c = await client(); if (!c) throw noClient();
-    return whWrite(c.from('wh_projects').upsert({ name }, { onConflict: 'name', ignoreDuplicates: true })); }
-  /* The warehouses stock comes FROM - ACE, Advantis, Oviklo, ESLL and the
-     rest. Same shape as wh_parties and wh_projects: a name that repeats,
-     so it is a list you add to rather than free text retyped each time. */
-  /* Who owns the material - Dialog, Mobitel, Hutch. A different axis
-     from how it arrived, which is wh_items.source. */
-  async function whAddVendor(name){ const c = await client(); if (!c) throw noClient();
-    return whWrite(c.from('wh_vendors').upsert({ name }, { onConflict: 'name', ignoreDuplicates: true })); }
-  async function whAddSource(name){ const c = await client(); if (!c) throw noClient();
-    return whWrite(c.from('wh_sources').upsert({ name }, { onConflict: 'name', ignoreDuplicates: true })); }
+  /* ONE ADD FUNCTION for all five lists. kind is one of project, party,
+     source, vendor, location. Five bespoke versions of this is five
+     chances to behave differently. */
+  async function whAddLookup(kind, name){ const c = await client(); if (!c) throw noClient();
+    name = String(name == null ? '' : name).trim(); if (!name) return;
+    return whWrite(c.from('wh_lookups').upsert({ kind, name },
+      { onConflict: 'kind,name', ignoreDuplicates: true })); }
   /* Owner only (materials_write is is_owner()). Puts the code on Material
      Codes, then clears the "new" flag on every warehouse item carrying it. */
   async function whAddMaterial(code, descr, type){
@@ -3098,7 +3093,7 @@
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 whLoad, whInbound, whOutbound, whNext, whSetSN, whRename, whPin, whMin,
-                whAddProject, whAddMaterial, whAddSource, whAddVendor, whSubscribe,
+                whAddLookup, whAddMaterial, whSubscribe,
                 whDeleteNote, whDeleteItem, whUpdateNote, whDeleteLine, whUpdateItem, whReturn,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 goalsLoad: goalsLoad, goalsWrite: goalsWrite, goalsRemove: goalsRemove,

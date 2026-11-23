@@ -208,6 +208,11 @@
         "file": "057_warehouse_cable_either_end.sql",
         "table": "wh_items",
         "col": "orig_lower"
+      },
+      {
+        "file": "059_warehouse_one_lookup.sql",
+        "table": "wh_lookups",
+        "col": null
       }
     ],
     "unverifiable": [
