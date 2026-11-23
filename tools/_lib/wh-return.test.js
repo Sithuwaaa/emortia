@@ -85,6 +85,39 @@ is('undoing a return can send a flipped row back out',
 is('undoing a split gives the quantity back to the row it came off',
    /set qty = qty \+ rec\.qty where id = rec\.orig_item/.test(N), true);
 
+/* ---- 057: the pointer is retired, and a cut has an end ---------------- */
+{
+  /* drum_cur is dropped by 057, so a function still reading it would fail
+     at runtime against a column that is not there - and only when somebody
+     cut a drum, which is exactly the sort of bug that waits. */
+  /* COMMENTS ARE NOT READERS. The first version of this matched the bare
+     word and named wh_outbound and wh_update_item, whose only mention of
+     drum_cur is a comment saying it was retired. A guard that cannot tell
+     code from prose cries wolf, and a guard that cries wolf gets ignored
+     on the day it is right - so it strips comments first. */
+  const code = sql => sql.replace(/\/\*[\s\S]*?\*\//g, ' ')
+                         .split('\n').filter(l => !/^\s*--/.test(l)).join('\n');
+  const still = [...D.entries()].filter(([, d]) => /\bdrum_cur\b/.test(code(d.body))).map(([n]) => n);
+  is('no live function still reads the retired drum_cur', still, []);
+  is('the migration that retires it really does drop it',
+     /alter table wh_items drop column if exists drum_cur/.test(
+       fs.readFileSync(path.join(SUPA, '057_warehouse_cable_either_end.sql'), 'utf8')), true);
+}
+{
+  const O = D.get('wh_outbound').body;
+  is('a cut reads which end it came off', /cut_end/.test(O), true);
+  is('what is left is the span, not a pointer', /drum_upper - L\.drum_lower/.test(O), true);
+  is('cutting the low end raises the lower mark', /set drum_lower = drum_lower \+ len/.test(O), true);
+  is('cutting the high end drops the upper mark', /set drum_upper = drum_upper - len/.test(O), true);
+}
+for (const fn of ['wh_delete_note', 'wh_delete_line']) {
+  const B = D.get(fn).body;
+  is(fn + ' gives the metres back to the end they came off',
+     /coalesce\(rec\.cut_end,'upper'\) = 'upper'/.test(B), true);
+  is(fn + ' will not push a drum past what came in',
+     /orig_upper/.test(B) && /orig_lower/.test(B), true);
+}
+
 /* ---- prove it by breaking --------------------------------------------- */
 console.log('\n  --- and the same checks against versions that are wrong ---');
 {

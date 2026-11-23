@@ -203,6 +203,11 @@
         "file": "056_warehouse_vendor_redep.sql",
         "table": "wh_items",
         "col": "vendor"
+      },
+      {
+        "file": "057_warehouse_cable_either_end.sql",
+        "table": "wh_items",
+        "col": "orig_lower"
       }
     ],
     "unverifiable": [

@@ -83,7 +83,10 @@ function fromDB(d){
     vendor:r.vendor||'',pack:r.pack||'',fromWh:r.from_wh||'',
     inTicket:r.in_note||'',inDate:r.in_date||'',fromSite:r.from_site||'',fromSiteName:r.from_site_name||'',res:r.reservation_no||'',
     outTicket:r.out_note||'',outDate:r.out_date||'',site:r.site_id||'',siteName:r.site_name||'',party:r.party||'',isNew:!!r.is_new,
-    drum:r.drum_name?{name:r.drum_name,lower:+r.drum_lower,upper:+r.drum_upper,cur:+r.drum_cur,cuts:[]}:null,
+    drum:r.drum_name?{name:r.drum_name,lower:+r.drum_lower,cur:+r.drum_upper,
+      upper:+(r.orig_upper!=null?r.orig_upper:r.drum_upper),
+      origLower:+(r.orig_lower!=null?r.orig_lower:r.drum_lower),
+      origUpper:+(r.orig_upper!=null?r.orig_upper:r.drum_upper),cuts:[]}:null,
     read:r.read_start!=null?{start:+r.read_start,end:+r.read_end}:null}));
   const byId=new Map(lines.map(L=>[L.id,L])), K={GRN:'IN',SRN:'RT',OBN:'DN',RTN:'RN'};
   tickets=d.notes.map(n=>({id:n.id,type:K[n.kind],date:n.note_date,project:n.project||'',res:n.reservation_no||'',ref:n.ref||'',site:n.site_id||'',siteName:n.site_name||'',
@@ -541,7 +544,7 @@ async function saveDispatch(){
     party:nDn.dest==='party'?nDn.party.trim():'',purpose:nDn.dest==='party'?nDn.purpose:'',party_ref:nDn.dest==='party'?nDn.partyRef:'',
     requested_by:nDn.requestedBy,receiver:nDn.receiver,vehicle:nDn.vehicle,driver:nDn.driver,driver_nic:nDn.driverNic,contact:nDn.contact,issued_by:nDn.issuedBy||ME(),issued_contact:nDn.issuedContact,
     items:rows.map(r=>{ const L=r.lineId&&lById(r.lineId);
-      if(L) return {item_id:L.id,cut:L.drum?+r.qty:null,remarks:r.remarks||''};
+      if(L) return {item_id:L.id,cut:L.drum?+r.qty:null,cut_end:L.drum?(r.cutEnd||'upper'):null,remarks:r.remarks||''};
       return {code:r.code||'',name:r.name,cat:r.cat||'Other',uom:r.cable?'M':(r.uom||'EA'),qty:+r.qty,sn:r.sn||'',is_new:!!(r.code&&!MC.has(r.code)),
         read_start:r.cable?+r.ra:null,read_end:r.cable?+r.rb:null,remarks:r.remarks||''}; })};
   const btn=event&&event.target; if(btn) btn.disabled=true;
@@ -598,7 +601,7 @@ function renderDrums(){
   const D=lines.filter(L=>L.drum&&inProj(L));
   $('#nDr').textContent=D.length;
   $('#dGrid').innerHTML=D.sort((a,b)=>a.drum.name.localeCompare(b.drum.name)).map(L=>{
-    const d=L.drum, tot=d.upper-d.lower, left=d.cur-d.lower, pl=left/tot*100;
+    const d=L.drum, tot=d.origUpper-d.origLower, left=d.cur-d.lower, pl=left/tot*100;
     const match=!nm||L.code===nm; const fits=need&&match&&left>=need;
     const cls=need?(fits?'fit':'nofit'):(left<tot*.2?'lowd':'');
     return `<div class="drum ${cls}">
