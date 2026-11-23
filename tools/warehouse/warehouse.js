@@ -53,6 +53,19 @@ async function lookAdd(kind,name){
 
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
 const isDummy=sn=>/^DMY-/.test(sn||'');
+/* WHERE IT CAME FROM. A different question from where it is now, and a
+   different one again from who owns it - vendor. REDEP has no warehouse
+   behind it, which is the whole meaning of the word, so it says REDEP
+   rather than leaving the space blank and looking like missing data.
+   Empty until 056 and 057 are run, because the columns do not exist in
+   the database yet; an empty chip is correct then, not broken. */
+function originOf(L){
+  if(!L) return '';
+  if(L.source==='redep') return '<span class="chip org rd">REDEP</span>';
+  if(L.source==='local') return '<span class="chip org lp">Local purchase</span>';
+  if(L.fromWh) return '<span class="chip org">'+esc(L.fromWh)+'</span>';
+  return '';
+}
 /* A serial that is already on something else. THIS WARNS AND DOES NOT
    REFUSE, deliberately. The same serial really does come back: a unit
    returned and booked in again, a label misread off a worn plate, two
@@ -278,13 +291,13 @@ function renderInv(hiId){
     if(fSt==='redep') rows=rows.filter(L=>L.source==='redep');
     if(fPin==='1') rows=rows.filter(L=>pins.has(L.code)); if(fPin==='s') rows=rows.filter(L=>(S.get(L.code)||{}).state==='short'); if(fPin==='d') rows=rows.filter(L=>isDummy(L.sn)); if(fPin==='u') rows=rows.filter(L=>!L.code);
     rows.sort((a,b)=>(b.outDate||b.inDate).localeCompare(a.outDate||a.inDate));
-    $('#tbl').innerHTML=`<thead><tr>${OWNER()?'<th style="width:34px"><input type="checkbox" class="tickbox" onchange="selAllShown(this.checked)" title="Select every row shown"></th>':''}<th style="width:44px">Pin</th><th>Material code</th><th>Material name</th><th>Category</th><th>Site ID / party</th><th>Site name</th><th>Project</th><th>UoM</th><th style="text-align:right">Qty</th><th>SN / drum</th><th>Inbound date</th><th>Inbound ref</th><th>Reservation no</th><th>Current location</th><th>Outbound date</th><th>Outbound ref</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody>${
+    $('#tbl').innerHTML=`<thead><tr>${OWNER()?'<th style="width:34px"><input type="checkbox" class="tickbox" onchange="selAllShown(this.checked)" title="Select every row shown"></th>':''}<th style="width:44px">Pin</th><th>Material code</th><th>Material name</th><th>Category</th><th>Site ID / party</th><th>Site name</th><th>Project</th><th>UoM</th><th style="text-align:right">Qty</th><th>SN / drum</th><th>Inbound date</th><th>Inbound ref</th><th>From</th><th>Reservation no</th><th>Current location</th><th>Outbound date</th><th>Outbound ref</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody>${
       rows.map(L=>{ const site=L.status==='out'?(L.party||L.site):L.fromSite, sname=L.status==='out'?L.siteName:L.fromSiteName;
         const where=L.status==='out'?(L.party?`<span class="loc-tp">3P · ${esc(L.party)}</span>`:`<span class="loc-site">Site ${L.site}</span>`):esc(L.loc);
         const st=L.drum?`<span class="st wh">ON DRUM</span>`:L.pending?'<span class="st low">DIRECT ISSUE · NOT RECEIVED</span>':L.party?'<span class="st tp">WITH 3RD PARTY</span>'+condChip(L.cond):L.status==='out'?'<span class="st out">ISSUED TO SITE</span>':L.source==='return'?'<span class="st rt">RETURNED · IN STOCK</span>'+condChip(L.cond):'<span class="st wh">IN STOCK</span>';
         const sn=L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> <span style="color:var(--dim)">${L.drum.lower}–${L.drum.cur}</span>`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:(editSn===L.id?`<input class="in mono" style="padding:4px 8px;width:190px" placeholder="real SN" onkeydown="if(event.key==='Enter')setSN(${L.id},this.value)" onblur="setSN(${L.id},this.value)" autofocus>`:snHtml(L.sn)+(isDummy(L.sn)?`<button class="fixsn" onclick="editSn=${L.id};renderInv(${L.id})">set real SN</button>`:''));
         const out=L.drum?(L.drum.cuts.length?L.drum.cuts.map(c=>tkChip(c.ticket)).join(' '):'—'):tkChip(L.outTicket);
-        return `<tr data-row="${L.id}" class="${L.id===hiId?'hl':''}${selIds.has(L.id)?' sel':''}">${OWNER()?`<td>${tickBox(L)}</td>`:''}<td>${pinBtn(L.code)}</td><td class="code">${L.code}${L.isNew?'<span class="newtag">NEW</span>':''}</td><td class="name" title="${esc(L.name)}">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td class="code" style="color:${L.party?'var(--tp)':L.status==='out'?'var(--site)':'var(--ink)'}">${site||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(sname)||'<span style="color:var(--dim)">—</span>'}</td><td><span class="chip pj">${esc(L.project)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.qty)}</td><td class="sn">${sn}</td><td class="dt">${L.inDate}</td><td>${tkChip(L.inTicket)}</td><td class="rsv">${L.res||'<span style="color:var(--dim)">—</span>'}</td><td class="dt">${where}</td><td class="dt">${L.outDate||(L.drum&&L.drum.cuts.length?'cuts →':'—')}</td><td>${out}</td><td>${st}</td><td>${rowEdit(L.id,L.sn||L.code||L.name)}</td></tr>`}).join('')}</tbody>`;
+        return `<tr data-row="${L.id}" class="${L.id===hiId?'hl':''}${selIds.has(L.id)?' sel':''}">${OWNER()?`<td>${tickBox(L)}</td>`:''}<td>${pinBtn(L.code)}</td><td class="code">${L.code}${L.isNew?'<span class="newtag">NEW</span>':''}</td><td class="name" title="${esc(L.name)}">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td class="code" style="color:${L.party?'var(--tp)':L.status==='out'?'var(--site)':'var(--ink)'}">${site||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(sname)||'<span style="color:var(--dim)">—</span>'}</td><td><span class="chip pj">${esc(L.project)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.qty)}</td><td class="sn">${sn}</td><td class="dt">${L.inDate}</td><td>${tkChip(L.inTicket)}</td><td>${originOf(L)||'<span style="color:var(--dim)">—</span>'}</td><td class="rsv">${L.res||'<span style="color:var(--dim)">—</span>'}</td><td class="dt">${where}</td><td class="dt">${L.outDate||(L.drum&&L.drum.cuts.length?'cuts →':'—')}</td><td>${out}</td><td>${st}</td><td>${rowEdit(L.id,L.sn||L.code||L.name)}</td></tr>`}).join('')}</tbody>`;
   }
   drawSelBar();
   $('#nInv').textContent=lines.length;
@@ -596,7 +609,7 @@ function dAc(i,el){
   const lv=v.toLowerCase(); const sh=stockHits(v,6); const mc=[];
   for(const m of [...newMats.values(),...MC.values()]){ if(m.code.startsWith(v)||m.name.toLowerCase().includes(lv)){mc.push(m); if(mc.length>=5)break;} }
   box.innerHTML=(sh.length?'<div style="cursor:default;color:var(--ok);font-family:Space Mono;font-size:10.5px;letter-spacing:.1em">IN STOCK</div>':'')+
-    sh.map(L=>`<div onmousedown="dPickLine(${i},${L.id})"><code>${L.code}</code><span>${L.drum?'<b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b> · ':''}${esc(L.name)}</span><em>${L.drum?fmt(L.qty)+' m left':esc(L.sn||fmt(L.qty)+' '+L.uom)}</em><span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')+
+    sh.map(L=>`<div onmousedown="dPickLine(${i},${L.id})"><code>${L.code}</code><span>${L.drum?'<b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b> · ':''}${esc(L.name)}</span><em>${L.drum?fmt(L.qty)+' m left':esc(L.sn||fmt(L.qty)+' '+L.uom)}</em>${originOf(L)}<span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')+
     (mc.length?'<div style="cursor:default;color:var(--warn);font-family:Space Mono;font-size:10.5px;letter-spacing:.1em">NOT IN STOCK · DIRECT ISSUE, RECEIVE LATER</div>':'')+
     mc.map(m=>`<div onmousedown="dPickMC(${i},'${m.code}')"><code>${m.code}</code><span>${esc(m.name)}</span><em>${esc(shortCat(m.cat))}</em></div>`).join('')+
     `<div class="add" onmousedown="dFree(${i})"><span>Use “${esc(v)}” as typed (local purchase, no code yet)</span><em>MANUAL</em></div>`;
@@ -612,7 +625,7 @@ function dFree(i){ const r=nDn.rows[i]; Object.assign(r,{lineId:null,code:'',nam
 function pickSearch(v){
   v=v.trim(); const box=$('#pr'); if(v.length<2){box.hidden=true;return}
   const hits=stockHits(v,10);
-  box.innerHTML=hits.map(L=>`<div onmousedown="addPick(${L.id})"><code>${L.code}</code><span>${L.drum?'<b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b> · ':''}${esc(L.name)}</span><em>${L.drum?fmt(L.qty)+' m left':L.sn||fmt(L.qty)+' '+L.uom}</em><span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')||'<div style="color:var(--dim);cursor:default">Not in stock. Type it in a row below to issue it directly.</div>';
+  box.innerHTML=hits.map(L=>`<div onmousedown="addPick(${L.id})"><code>${L.code}</code><span>${L.drum?'<b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b> · ':''}${esc(L.name)}</span><em>${L.drum?fmt(L.qty)+' m left':L.sn||fmt(L.qty)+' '+L.uom}</em>${originOf(L)}<span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')||'<div style="color:var(--dim);cursor:default">Not in stock. Type it in a row below to issue it directly.</div>';
   box.hidden=false;
 }
 function addPick(id){ let i=nDn.rows.findIndex(r=>!r.code&&!r.name&&!r.q); if(i<0){nDn.rows.push({});i=nDn.rows.length-1} dPickLine(i,id); $('#pq').value=''; $('#pq').focus(); }

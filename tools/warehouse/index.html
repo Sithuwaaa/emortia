@@ -186,6 +186,11 @@ td.name{max-width:280px;overflow:hidden;text-overflow:ellipsis}
 td.num{text-align:right;font-family:'Space Mono';font-weight:700}
 td.sn,td.dt{font-family:'Space Mono';font-size:12px;color:var(--soft)}
 .chip{display:inline-block;font-family:'Space Mono';font-size:10.5px;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:rgba(117,155,235,.14);color:var(--acc2);border:1px solid rgba(117,155,235,.25)}
+/* where a thing came from - a different axis from where it is now,
+   and from who owns it */
+.chip.org{background:rgba(92,200,214,.13);color:var(--tp);border-color:rgba(92,200,214,.3)}
+.chip.org.rd{background:rgba(196,155,255,.14);color:var(--new);border-color:rgba(196,155,255,.3)}
+.chip.org.lp{background:rgba(242,176,94,.13);color:var(--warn);border-color:rgba(242,176,94,.3)}
 .chip.pj{background:rgba(255,255,255,.05);color:var(--ink);border-color:var(--line)}
 .tk{font-family:'Space Mono';font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:8px;cursor:pointer;border:1px solid transparent;background:rgba(117,155,235,.14);color:var(--acc2)}
 .tk:hover{border-color:rgba(157,184,245,.5)}
@@ -648,6 +653,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=26"></script>
+<script src="warehouse.js?v=27"></script>
 </body>
 </html>
