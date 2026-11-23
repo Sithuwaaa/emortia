@@ -297,7 +297,10 @@ function showInbound(t){
   </div>`;
 }
 let nIn=null;
-function newInbound(){ rSel=null; renderRList(); nIn={type:'IN',rows:[{},{},{}]}; drawInbound(); }
+function newInbound(){ rSel=null; renderRList(); /* ONE blank row. It used to start with three, which is a guess about
+     how many things are on the paper - usually wrong, and the empties sit
+     there looking like work not done. + Add row costs one click. */
+  nIn={type:'IN',rows:[{}]}; drawInbound(); }
 function drawInbound(){
   const R=nIn.type==='RT', today=window.today();
   $('#rPane').innerHTML=`<div class="h"><h3>New inbound</h3><span class="k">gets its ticket no when saved</span><div class="sp"></div>
@@ -438,7 +441,7 @@ function showDispatch(t){
   </div>`;
 }
 let nDn=null;
-function newDispatch(){ iSel=null; renderIList(); nDn={dest:'site',party:'',purpose:'Repair',partyRef:'',date:today(),site:'',siteName:'',project:'',requestedBy:'',receiver:'',vehicle:'',driver:'',driverNic:'',contact:'',issuedBy:ME(),issuedContact:'',rows:[{},{},{}]}; drawDispatch(); }
+function newDispatch(){ iSel=null; renderIList(); nDn={dest:'site',party:'',purpose:'Repair',partyRef:'',date:today(),site:'',siteName:'',project:'',requestedBy:'',receiver:'',vehicle:'',driver:'',driverNic:'',contact:'',issuedBy:ME(),issuedContact:'',rows:[{}]}; drawDispatch(); }
 function drawDispatch(){
   const f=(k,l,ph,cls='')=>`<div class="f"><label>${l}</label><input class="in ${cls}" value="${esc(nDn[k])}" placeholder="${ph}" oninput="nDn['${k}']=this.value${k==='site'?";const n=siteLookup(this.value);if(n){nDn.siteName=n;$('#dSn').value=n}":''}" ${k==='siteName'?'id="dSn"':''}></div>`;
   $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">OBN · new</span><h3>New outbound</h3><span class="k">gets its note no when saved</span></div>
@@ -466,7 +469,7 @@ function drawDRows(){
     const cab=r.cable, dtw=snTwin(r.sn, r.lineId||undefined);
     return `<tr><td class="dt">${i+1}</td>
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code, SN or name" oninput="dAc(${i},this)" onblur="setTimeout(()=>dClose(${i},this),180)">${st}
-      ${L?'':`<button class="dbtn ${cab?'on':''}" onclick="toggleCable(${i})">${cab?'● Cable':'+ Cable'}</button>`}<div class="ac" id="dac${i}" hidden></div></td>
+      ${L||!isCableRow(r)?'':`<button class="dbtn ${cab?'on':''}" onclick="toggleCable(${i})">${cab?'● Cable':'+ Cable'}</button>`}<div class="ac" id="dac${i}" hidden></div></td>
     <td><input class="in" value="${esc(r.name||'')}" placeholder="${has?'type the material name':'fills in, or type it'}" ${L||r.known?'readonly':''} oninput="nDn.rows[${i}].name=this.value"></td>
     <td>${L||r.known?`<input class="in" readonly value="${esc(r.cat||'')}">`:`<select class="in" onchange="nDn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" ${L?'disabled':''} onchange="nDn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX','PKT'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
