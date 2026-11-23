@@ -27,6 +27,10 @@ const LID=new Map();
 const RET=new Map();
 const pad=(n,w=2)=>String(n).padStart(w,'0');
 let lines=[], tickets=[], pins=new Set(), mins={}, newMats=new Map(), proj='';
+/* The warehouses stock comes from. Loaded with everything else; empty
+   until 053 is run, which is survivable - the field just offers nothing
+   to pick and takes whatever is typed. */
+let SOURCES=[];
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
 const isDummy=sn=>/^DMY-/.test(sn||'');
 /* A serial that is already on something else. THIS WARNS AND DOES NOT
@@ -95,6 +99,7 @@ function fromDB(d){
   pins=new Set(d.materials.filter(m=>m.pinned).map(m=>m.code));
   mins={}; d.materials.forEach(m=>{ if(+m.min_qty>0) mins[m.code]=+m.min_qty; });
   PARTIES=d.parties.map(p=>p.name); PROJECTS=d.projects.map(p=>p.name);
+  SOURCES=(d.sources||[]).map(x=>x.name);
   newMats=new Map(); lines.filter(L=>L.isNew&&L.code&&!MC.has(L.code)).forEach(L=>{ if(!newMats.has(L.code)) newMats.set(L.code,{code:L.code,name:L.name,cat:L.cat,first:L.inDate||L.outDate}); });
 }
 let loading=null;
@@ -300,16 +305,23 @@ function drawInbound(){
     :`<div class="box"><h4>Delivery</h4><div class="fh">
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"></div>
       <div class="f"><label>Project</label><select class="in" id="nPj"><option value="">Pick a project…</option>${PROJECTS.map(p=>`<option>${esc(p)}</option>`).join('')}<option>${NEWPJ}</option></select></div>
-      <div class="f"><label>Reservation no</label><input class="in mono" id="nRes" placeholder="e.g. 4900000123" value="${esc(nIn.res||'')}"></div>
+      <div class="f"><label>Reservation no</label><input class="in mono" id="nRes" placeholder="${nIn.local?'a local purchase has none':'e.g. 4900000123'}" value="${esc(nIn.res||'')}" ${nIn.local?'disabled':''}></div>
+      <div class="f"><label>Local purchase</label><button class="dbtn ${nIn.local?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.local=!nIn.local;if(nIn.local){nIn.res='';nIn.wh=''}drawInbound()">${nIn.local?'● Local purchase':'Mark as local purchase'}</button></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
-    </div><div class="fh"><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Default bin</label><input class="in mono" id="nLoc" value="A-01-01"><small>each row can change it</small></div></div></div>`}
+    </div><div class="fh"><div class="f"><label>From warehouse</label><input class="in" id="nWh" list="sources" placeholder="${nIn.local?'local purchase - no warehouse':'type or pick a warehouse'}" value="${esc(nIn.wh||'')}" ${nIn.local?'disabled':''}><datalist id="sources">${SOURCES.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist><small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Site ID <span style="opacity:.6">(optional)</span></label><input class="in mono" id="nSite" placeholder="if it came for one site" value="${esc(nIn.site||'')}" oninput="const v=siteLookup(this.value);if(v)$('#nSiteN').value=v"></div><div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div><div class="f"><label>Default bin</label><input class="in mono" id="nLoc" value="A-01-01"><small>each row can change it</small></div></div></div>`}
     <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">Bin</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
   </div>
   <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="newInbound()">Clear</button><button class="btn pri" onclick="saveInbound()">Save inbound</button></div>`;
   drawRows();
 }
-function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date','nBy:by','nRef:ref','nRes:res'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
+function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date','nBy:by','nRef:ref','nRes:res','nWh:wh'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
+/* A row only offers Drum / Roll once it IS cable - by its category, or
+   by its unit. Before that the row is one line with nothing extra on
+   it. The same test hides "SN unreadable": a drum has no serial that
+   could be unreadable. */
+const CABLECATS=['Cables','Fibers','Jumpers'];
+const isCableRow=r=>!!(r.drum||r.cable)||CABLECATS.includes(r.cat)||r.uom==='M'||r.uom==='ROLL';
 function drawRows(){
   $('#nBody').innerHTML=nIn.rows.map((r,i)=>{
     const st=!r.code?'':r.known?'<span class="mstate ok">✓ in Material Codes</span>':'<span class="mstate nw">● new code → New materials</span>';
@@ -317,12 +329,12 @@ function drawRows(){
     const cl=c&&r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null?Math.abs(+r.rb-+r.ra):'';
     return `<tr><td class="dt">${i+1}</td>
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code or name" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
-      <button class="dbtn ${d?'on':''}" onclick="toggleDrum(${i})">${d?'● Drum':'+ Drum'}</button>${RT?` <button class="dbtn ${c?'on':''}" onclick="toggleRCable(${i})">${c?'● Cable':'+ Cable'}</button>`:''}<div class="ac" id="ac${i}" hidden></div></td>
+      ${isCableRow(r)?`<button class="dbtn ${d&&r.pack!=='roll'?'on':''}" onclick="toggleDrum(${i},'drum')">${d&&r.pack!=='roll'?'● Drum':'+ Drum'}</button> <button class="dbtn ${d&&r.pack==='roll'?'on':''}" onclick="toggleDrum(${i},'roll')">${d&&r.pack==='roll'?'● Roll':'+ Roll'}</button>`:''}${RT?` <button class="dbtn ${c?'on':''}" onclick="toggleRCable(${i})">${c?'● Cable':'+ Cable'}</button>`:''}<div class="ac" id="ac${i}" hidden></div></td>
     <td><input class="in" value="${esc(r.name||'')}" placeholder="${r.code&&!r.known?'type the material name':'fills from Material Codes'}" ${r.known?'readonly':''} oninput="nIn.rows[${i}].name=this.value"></td>
     <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" onchange="nIn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="iq${i}" style="text-align:right" value="${d?Math.max(0,(d.upper||0)-(d.lower||0)):c?cl:(r.qty||1)}" ${d||c?'readonly':''} placeholder="${c?'readings':''}" oninput="nIn.rows[${i}].qty=+this.value"></td>
-    <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
+    <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)" style="${isDummy(r.sn)?'color:#F2B05E':''}">${d||c||isCableRow(r)?'':`<button class="nosn" onclick="wDummy(nIn.rows[${i}],drawRows)">${isDummy(r.sn)?'● dummy SN':'SN unreadable → dummy'}</button>`}<span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" value="${esc(r.loc||'')}" placeholder="default" oninput="nIn.rows[${i}].loc=this.value"></td>
     <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nIn.rows[${i}].ok=!nIn.rows[${i}].ok;drawRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nIn.rows.splice(${i},1);drawRows()">✕</button></td></tr>
@@ -339,7 +351,13 @@ function drawRows(){
 }
 function toggleRCable(i){ const r=nIn.rows[i]; r.cable=!r.cable; if(r.cable){ delete r.drum; r.uom='M'; r.sn=''; } drawRows(); }
 function rCabLen(i){ const r=nIn.rows[i]; $('#rl'+i).innerHTML=manText(r); if(r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null) $('#iq'+i).value=Math.abs(+r.rb-+r.ra); }
-function toggleDrum(i){ const r=nIn.rows[i]; if(r.drum) delete r.drum; else { delete r.cable; r.drum={name:'',lower:'',upper:''}; r.uom='M'; r.loc=r.loc||'DY-01'; } drawRows(); }
+function toggleDrum(i,pack){ const r=nIn.rows[i]; pack=pack||'drum';
+  /* pressing the one already on turns it off; pressing the other swaps
+     which word it is without losing readings already typed */
+  if(r.drum&&(r.pack||'drum')===pack){ delete r.drum; delete r.pack; }
+  else if(r.drum){ r.pack=pack; }
+  else { delete r.cable; r.drum={name:'',lower:'',upper:''}; r.pack=pack; r.uom='M'; r.loc=r.loc||'DY-01'; }
+  drawRows(); }
 function drumLen(i){ const d=nIn.rows[i].drum; $('#dl'+i).querySelector('b').textContent=fmt(Math.max(0,(d.upper||0)-(d.lower||0)))+' m'; }
 function lookup(code){ return MC.get(code)||newMats.get(code); }
 function acType(i,el){
@@ -369,14 +387,22 @@ async function saveInbound(){
   if(ok.find(r=>r.cable&&(r.ra==null||r.rb==null||r.ra===''||r.rb===''))){msg.innerHTML='<b style="color:var(--warn)">A returned cable piece needs its start and end readings.</b>';return}
   if(nIn.type==='RT'&&!nIn.site){msg.innerHTML='<b style="color:var(--new)">A site return needs the site ID it came from.</b>';return}
   const pj=$('#nPj').value; if(!pj||pj===NEWPJ){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
-  const p={kind:nIn.type==='RT'?'SRN':'GRN',date:nIn.date||today(),project:pj,reservation_no:nIn.type==='RT'?'':(nIn.res||''),ref:nIn.ref||'',
+  keepHead();
+  const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,date:nIn.date||today(),project:pj,reservation_no:nIn.type==='RT'?'':(nIn.res||''),ref:nIn.ref||'',
     site_id:nIn.site||'',site_name:nIn.siteName||'',removed_on:nIn.removed||'',by:nIn.by||ME(),bin:$('#nLoc').value,
     items:ok.map(r=>({code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
       cond:nIn.type==='RT'?(r.cond||'Good'):null,is_new:!!(r.code&&!r.known),
+      pack:r.drum?(r.pack||'drum'):null,
       drum_name:r.drum?r.drum.name.trim():null,drum_lower:r.drum?+r.drum.lower:null,drum_upper:r.drum?+r.drum.upper:null,
       read_start:r.cable?+r.ra:null,read_end:r.cable?+r.rb:null}))};
   const btn=event&&event.target; if(btn) btn.disabled=true;
-  try{ const id=await DB.whInbound(p); rSel=id; toast(`${id} saved · ${ok.length} item${ok.length===1?'':'s'} in stock`); await reload(); nIn=null; if(tById(id)) showInbound(tById(id)); }
+  try{ const id=await DB.whInbound(p); rSel=id;
+    /* A warehouse name typed for the first time joins the list, so the
+       next note picks it instead of retyping it slightly differently.
+       After the note is filed, never before: a name is only real once
+       something actually arrived from it. Failing to remember it must
+       not fail the note that is already saved. */
+    if(p.from_wh&&!SOURCES.includes(p.from_wh)){ try{ await DB.whAddSource(p.from_wh); }catch(e){} } toast(`${id} saved · ${ok.length} item${ok.length===1?'':'s'} in stock`); await reload(); nIn=null; if(tById(id)) showInbound(tById(id)); }
   catch(e){ msg.innerHTML=`<b style="color:var(--bad)">${esc(e.message)}</b>`; }
   finally{ if(btn) btn.disabled=false; }
 }

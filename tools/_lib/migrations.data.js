@@ -190,6 +190,11 @@
         "col": "driver_nic"
       },
       {
+        "file": "053_warehouse_real_world.sql",
+        "table": "wh_notes",
+        "col": "from_wh"
+      },
+      {
         "file": "055_warehouse_return.sql",
         "table": "wh_notes",
         "col": "reverses"
