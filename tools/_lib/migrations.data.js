@@ -198,6 +198,11 @@
         "file": "055_warehouse_return.sql",
         "table": "wh_notes",
         "col": "reverses"
+      },
+      {
+        "file": "056_warehouse_vendor_redep.sql",
+        "table": "wh_items",
+        "col": "vendor"
       }
     ],
     "unverifiable": [

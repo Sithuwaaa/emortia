@@ -1293,14 +1293,16 @@
   async function whLoad(){
     const c = await client(); if (!c) return { error: noClient().message };
     try {
-      const [notes, items, lines, materials, parties, projects, sources] = await Promise.all([
+      const [notes, items, lines, materials, parties, projects, sources, vendors] = await Promise.all([
         whAll(c, 'wh_notes', 'id'), whAll(c, 'wh_items', 'id'), whAll(c, 'wh_lines', 'id'),
         whAll(c, 'wh_materials', 'code'), whAll(c, 'wh_parties', 'name'), whAll(c, 'wh_projects', 'name'),
         /* wh_sources arrives with 053. Until that migration is run the
            table is not there, and a missing lookup list must not stop the
            whole page loading - the warehouse still works without it. */
-        whAll(c, 'wh_sources', 'name').catch(() => [])]);
-      return { notes, items, lines, materials, parties, projects, sources, error: null };
+        whAll(c, 'wh_sources', 'name').catch(() => []),
+        /* wh_vendors arrives with 056; same reasoning as wh_sources. */
+        whAll(c, 'wh_vendors', 'name').catch(() => [])]);
+      return { notes, items, lines, materials, parties, projects, sources, vendors, error: null };
     } catch(e){ return { error: whErr(e) }; }
   }
   async function whRpc(fn, args){
@@ -1327,6 +1329,10 @@
   /* The warehouses stock comes FROM - ACE, Advantis, Oviklo, ESLL and the
      rest. Same shape as wh_parties and wh_projects: a name that repeats,
      so it is a list you add to rather than free text retyped each time. */
+  /* Who owns the material - Dialog, Mobitel, Hutch. A different axis
+     from how it arrived, which is wh_items.source. */
+  async function whAddVendor(name){ const c = await client(); if (!c) throw noClient();
+    return whWrite(c.from('wh_vendors').upsert({ name }, { onConflict: 'name', ignoreDuplicates: true })); }
   async function whAddSource(name){ const c = await client(); if (!c) throw noClient();
     return whWrite(c.from('wh_sources').upsert({ name }, { onConflict: 'name', ignoreDuplicates: true })); }
   /* Owner only (materials_write is is_owner()). Puts the code on Material
@@ -3092,7 +3098,7 @@
                 esnList, esnSave, esnDelete, esnUpload, esnLink, esnSubscribe,
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 whLoad, whInbound, whOutbound, whNext, whSetSN, whRename, whPin, whMin,
-                whAddProject, whAddMaterial, whAddSource, whSubscribe,
+                whAddProject, whAddMaterial, whAddSource, whAddVendor, whSubscribe,
                 whDeleteNote, whDeleteItem, whUpdateNote, whDeleteLine, whUpdateItem, whReturn,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 goalsLoad: goalsLoad, goalsWrite: goalsWrite, goalsRemove: goalsRemove,

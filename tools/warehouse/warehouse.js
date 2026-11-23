@@ -31,6 +31,12 @@ let lines=[], tickets=[], pins=new Set(), mins={}, newMats=new Map(), proj='';
    until 053 is run, which is survivable - the field just offers nothing
    to pick and takes whatever is typed. */
 let SOURCES=[];
+/* Who owns the material. A different axis from SOURCES, which is where
+   it physically came from, and from wh_items.source, which is how it
+   arrived. Dialog stock can arrive on a delivery, come back from a
+   site or turn up as REDEP, so one column could never answer "what
+   Dialog stock are we holding". */
+let VENDORS=[];
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
 const isDummy=sn=>/^DMY-/.test(sn||'');
 /* A serial that is already on something else. THIS WARNS AND DOES NOT
@@ -74,6 +80,7 @@ async function wDummy(row,redraw){ try{ row.sn=await DB.whNext('DMY'); redraw();
 function fromDB(d){
   lines=d.items.map(r=>({id:r.id,code:r.code||'',name:r.name,cat:r.cat||'Other',uom:r.uom||'EA',qty:+r.qty,sn:r.sn||'',loc:r.bin||'',project:r.project||'',
     status:r.status,source:r.source==='direct'?'pending':r.source,pending:r.source==='direct',cond:r.cond||'',
+    vendor:r.vendor||'',pack:r.pack||'',fromWh:r.from_wh||'',
     inTicket:r.in_note||'',inDate:r.in_date||'',fromSite:r.from_site||'',fromSiteName:r.from_site_name||'',res:r.reservation_no||'',
     outTicket:r.out_note||'',outDate:r.out_date||'',site:r.site_id||'',siteName:r.site_name||'',party:r.party||'',isNew:!!r.is_new,
     drum:r.drum_name?{name:r.drum_name,lower:+r.drum_lower,upper:+r.drum_upper,cur:+r.drum_cur,cuts:[]}:null,
@@ -100,6 +107,7 @@ function fromDB(d){
   mins={}; d.materials.forEach(m=>{ if(+m.min_qty>0) mins[m.code]=+m.min_qty; });
   PARTIES=d.parties.map(p=>p.name); PROJECTS=d.projects.map(p=>p.name);
   SOURCES=(d.sources||[]).map(x=>x.name);
+  VENDORS=(d.vendors||[]).map(x=>x.name);
   newMats=new Map(); lines.filter(L=>L.isNew&&L.code&&!MC.has(L.code)).forEach(L=>{ if(!newMats.has(L.code)) newMats.set(L.code,{code:L.code,name:L.name,cat:L.cat,first:L.inDate||L.outDate}); });
 }
 let loading=null;
@@ -307,6 +315,8 @@ function drawInbound(){
       <div class="f"><label>Project</label><select class="in" id="nPj"><option value="">Pick a project…</option>${PROJECTS.map(p=>`<option>${esc(p)}</option>`).join('')}<option>${NEWPJ}</option></select></div>
       <div class="f"><label>Reservation no</label><input class="in mono" id="nRes" placeholder="${nIn.local?'a local purchase has none':'e.g. 4900000123'}" value="${esc(nIn.res||'')}" ${nIn.local?'disabled':''}></div>
       <div class="f"><label>Local purchase</label><button class="dbtn ${nIn.local?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.local=!nIn.local;if(nIn.local){nIn.res='';nIn.wh=''}drawInbound()">${nIn.local?'● Local purchase':'Mark as local purchase'}</button></div>
+      <div class="f"><label>REDEP</label><button class="dbtn ${nIn.redep?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.redep=!nIn.redep;drawInbound()">${nIn.redep?'● Redeployed':'Mark as REDEP'}</button><small>${nIn.redep?'REDEP wins over how the note itself is typed':'material moved here, no site return behind it'}</small></div>
+      <div class="f"><label>Vendor · who owns it</label><input class="in" id="nVen" list="vendors" placeholder="Dialog, Mobitel, Hutch…" value="${esc(nIn.vendor||'')}"><datalist id="vendors">${VENDORS.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist><small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
     </div><div class="fh"><div class="f"><label>From warehouse</label><input class="in" id="nWh" list="sources" placeholder="${nIn.local?'local purchase - no warehouse':'type or pick a warehouse'}" value="${esc(nIn.wh||'')}" ${nIn.local?'disabled':''}><datalist id="sources">${SOURCES.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist><small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Site ID <span style="opacity:.6">(optional)</span></label><input class="in mono" id="nSite" placeholder="if it came for one site" value="${esc(nIn.site||'')}" oninput="const v=siteLookup(this.value);if(v)$('#nSiteN').value=v"></div><div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div><div class="f"><label>Default bin</label><input class="in mono" id="nLoc" value="A-01-01"><small>each row can change it</small></div></div></div>`}
     <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">Bin</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
@@ -315,7 +325,7 @@ function drawInbound(){
   <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="newInbound()">Clear</button><button class="btn pri" onclick="saveInbound()">Save inbound</button></div>`;
   drawRows();
 }
-function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date','nBy:by','nRef:ref','nRes:res','nWh:wh'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
+function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date','nBy:by','nRef:ref','nRes:res','nWh:wh','nVen:vendor'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
 /* A row only offers Drum / Roll once it IS cable - by its category, or
    by its unit. Before that the row is one line with nothing extra on
    it. The same test hides "SN unreadable": a drum has no serial that
@@ -388,7 +398,8 @@ async function saveInbound(){
   if(nIn.type==='RT'&&!nIn.site){msg.innerHTML='<b style="color:var(--new)">A site return needs the site ID it came from.</b>';return}
   const pj=$('#nPj').value; if(!pj||pj===NEWPJ){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
   keepHead();
-  const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,date:nIn.date||today(),project:pj,reservation_no:nIn.type==='RT'?'':(nIn.res||''),ref:nIn.ref||'',
+  const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,
+    vendor:(nIn.vendor||'').trim(),source:nIn.redep?'redep':'',date:nIn.date||today(),project:pj,reservation_no:nIn.type==='RT'?'':(nIn.res||''),ref:nIn.ref||'',
     site_id:nIn.site||'',site_name:nIn.siteName||'',removed_on:nIn.removed||'',by:nIn.by||ME(),bin:$('#nLoc').value,
     items:ok.map(r=>({code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
       cond:nIn.type==='RT'?(r.cond||'Good'):null,is_new:!!(r.code&&!r.known),
@@ -402,7 +413,8 @@ async function saveInbound(){
        After the note is filed, never before: a name is only real once
        something actually arrived from it. Failing to remember it must
        not fail the note that is already saved. */
-    if(p.from_wh&&!SOURCES.includes(p.from_wh)){ try{ await DB.whAddSource(p.from_wh); }catch(e){} } toast(`${id} saved · ${ok.length} item${ok.length===1?'':'s'} in stock`); await reload(); nIn=null; if(tById(id)) showInbound(tById(id)); }
+    if(p.from_wh&&!SOURCES.includes(p.from_wh)){ try{ await DB.whAddSource(p.from_wh); }catch(e){} }
+    if(p.vendor&&!VENDORS.includes(p.vendor)){ try{ await DB.whAddVendor(p.vendor); }catch(e){} } toast(`${id} saved · ${ok.length} item${ok.length===1?'':'s'} in stock`); await reload(); nIn=null; if(tById(id)) showInbound(tById(id)); }
   catch(e){ msg.innerHTML=`<b style="color:var(--bad)">${esc(e.message)}</b>`; }
   finally{ if(btn) btn.disabled=false; }
 }
@@ -701,7 +713,7 @@ function editSheet(o){
 const WH_SENDS_wh_update_note={id:1,note_date:1,project:1,ref:1,reservation_no:1,site_name:1,
   removed_on:1,purpose:1,party_ref:1,by_name:1,requested_by:1,receiver:1,vehicle:1,driver:1,
   driver_nic:1,contact:1,issued_by:1,issued_contact:1};
-const WH_SENDS_wh_update_item={id:1,name:1,code:1,cat:1,uom:1,bin:1,sn:1,cond:1,project:1,
+const WH_SENDS_wh_update_item={id:1,name:1,code:1,cat:1,uom:1,bin:1,sn:1,cond:1,project:1,vendor:1,source:1,
   drum_name:1,drum_lower:1,drum_upper:1,read_start:1,read_end:1,qty:1};
 function whOnly(declared,p,fn){
   for(const k in p) if(!declared[k])
@@ -742,7 +754,9 @@ function editItem(id){
     {k:'uom',label:'Unit',type:'select',opts:['EA','M','SET','ROLL','BOX','PKT'],v:L.uom},
     {k:'bin',label:'Bin / location',v:L.loc,mono:true},
     {k:'sn',label:'Serial',v:L.sn,mono:true},
-    {k:'project',label:'Project',v:L.project,hint:'empty for a local purchase that belongs to no project'}];
+    {k:'project',label:'Project',v:L.project,hint:'empty for a local purchase that belongs to no project'},
+    {k:'vendor',label:'Vendor · who owns it',v:L.vendor,hint:'Dialog, Mobitel, Hutch'},
+    {k:'source',label:'How it arrived',type:'select',opts:['new','return','direct','local','redep'],v:L.source==='pending'?'direct':L.source}];
   if(L.cond||L.source==='return') f.push({k:'cond',label:'Condition',type:'select',opts:['Good','Faulty','Scrap'],v:L.cond||'Good'});
   if(L.drum){ f.push({k:'drum_name',label:'Drum name',v:L.drum.name,mono:true,hint:'a printed note draws this name from here, so it will read differently afterwards'},
     {k:'drum_lower',label:'Lower reading',v:L.drum.lower,mono:true},
