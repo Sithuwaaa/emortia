@@ -349,6 +349,7 @@ function drawInbound(){
     </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Site ID <span style="opacity:.6">(optional)</span></label><input class="in mono" id="nSite" placeholder="if it came for one site" value="${esc(nIn.site||'')}" oninput="const v=siteLookup(this.value);if(v)$('#nSiteN').value=v"></div><div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div></div></div>`}
     <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">WH location</th><th style="width:170px">Remarks</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
+    <button class="btn sm" style="margin-top:10px;margin-left:6px" onclick="openImport()">⇪ Paste from Excel</button>
   </div>
   <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="newInbound()">Clear</button><button class="btn pri" onclick="saveInbound()">Save inbound</button></div>`;
   drawRows();
@@ -825,6 +826,147 @@ function editItem(id){
 }
 const noteEditBtn=t=>`<button class="btn sm" onclick="editNote('${esc(t.id)}')" title="Correct the words on ${esc(t.id)}">✎ Edit</button>`;
 const rowEdit=(itemId,label)=>`<button class="redit" title="Correct ${esc(String(label))}" onclick="editItem(${itemId})">✎</button>`;
+
+/* ---- bringing a sheet in --------------------------------------------
+
+   He is loading years of warehouse by hand, and most of it is already
+   typed - into Excel, on somebody's laptop. This is the shortest path
+   from that to here.
+
+   IT FILLS THE GRID, IT DOES NOT WRITE TO THE DATABASE. Imported rows
+   land in the inbound form exactly as if they had been typed: the same
+   validation, the same Drum and Cable chips, the same save. An import
+   that wrote straight to wh_items would be a second way in with its own
+   rules, and the one thing this tool cannot afford is two ways in that
+   disagree. Review-then-save is also how a column that landed in the
+   wrong place gets caught, which is the usual thing to go wrong.
+
+   PASTE IS THE INTERFACE, because it is what Excel already does.
+   Selecting cells and copying puts tab-separated text on the clipboard,
+   so pasting needs no file, no upload and no library. A .csv or .txt
+   file can be chosen instead. A .xlsx cannot be read here - it is a zip
+   of XML, and parsing it would mean shipping a library to do what
+   Ctrl+C already does - so the sheet says so rather than failing
+   quietly.
+
+   HEADERS ARE MATCHED LOOSELY AND REPORTED EXACTLY. "Material Code",
+   "material_code" and "CODE" all find the same field; anything not
+   recognised is listed by name as ignored rather than silently dropped.
+   A sheet with no header row still imports - the columns are then taken
+   in the order the form shows them, and it says so. */
+const IMP_FIELDS=[
+  ['code',    ['code','material code','materialcode','item code','mat code','sap code']],
+  ['name',    ['name','material name','description','descr','material','item']],
+  ['cat',     ['cat','category','type']],
+  ['uom',     ['uom','unit','units']],
+  ['qty',     ['qty','quantity','qnty','nos','count']],
+  ['sn',      ['sn','serial','serial no','serial number','esn']],
+  ['loc',     ['loc','bin','location','wh location','warehouse location','rack','store','shelf']],
+  ['remarks', ['remarks','remark','note','notes','comment','comments']],
+  ['drumName',['drum','drum name','drum no','roll','roll no']],
+  ['drumLower',['lower','drum lower','lower reading','from']],
+  ['drumUpper',['upper','drum upper','upper reading','to']]
+];
+const impNorm=h=>String(h==null?'':h).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+function impField(header){
+  const n=impNorm(header);
+  for(const pair of IMP_FIELDS) if(pair[1].includes(n)) return pair[0];
+  return null;
+}
+/* A delimiter-separated parser that understands quotes, because a
+   material name with a comma in it is not an error. Tabs win when both
+   are present, since that is what a spreadsheet paste gives. */
+function impParse(text){
+  const t=String(text||'').replace(/\r\n?/g,'\n').replace(/\n+$/,'');
+  if(!t.trim()) return [];
+  const d=t.includes('\t')?'\t':',';
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){ if(c==='"'){ if(t[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; continue; }
+    if(c==='"'){ q=true; continue; }
+    if(c===d){ row.push(cur); cur=''; continue; }
+    if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; continue; }
+    cur+=c;
+  }
+  row.push(cur); rows.push(row);
+  return rows.filter(r=>r.some(c=>String(c).trim()!==''));
+}
+/* A header row is one where enough cells name a field we know. Otherwise
+   the first line is data and the columns go in form order. */
+const IMP_ORDER=['code','name','cat','uom','qty','sn','loc','remarks'];
+function impPlan(rows){
+  if(!rows.length) return null;
+  const first=rows[0];
+  const hit=first.map(impField);
+  const named=hit.filter(Boolean).length;
+  const header=named>=Math.max(2,Math.ceil(first.length/2));
+  const map=header?hit:first.map((_,i)=>IMP_ORDER[i]||null);
+  const ignored=header?first.filter((h,i)=>!hit[i]&&String(h).trim()!=='').map(String):[];
+  return { header:header, map:map, ignored:ignored, body:rows.slice(header?1:0) };
+}
+function impRows(plan){
+  return plan.body.map(r=>{
+    const o={};
+    plan.map.forEach((k,i)=>{ if(!k) return; const v=String(r[i]==null?'':r[i]).trim(); if(v!=='') o[k]=v; });
+    const row={ name:o.name||'', code:o.code||'', q:o.code||'', cat:o.cat||'', uom:o.uom||'EA',
+                qty:o.qty?(+String(o.qty).replace(/[^0-9.\-]/g,'')||1):1, sn:o.sn||'', loc:o.loc||'',
+                remarks:o.remarks||'' };
+    if(o.code&&MC.has(o.code)){ const m=MC.get(o.code);
+      row.name=row.name||m.name; row.cat=row.cat||shortCat(m.cat); row.known=true; }
+    if(o.drumName){ row.drum={name:o.drumName,lower:+o.drumLower||0,upper:+o.drumUpper||0};
+      row.pack='drum'; row.uom='M'; }
+    return row;
+  }).filter(r=>r.name||r.code||(r.drum&&r.drum.name));
+}
+let IMP=null;
+function openImport(){
+  if(!nIn){ toast('Open an inbound note first.'); return; }
+  IMP={ text:'', plan:null, rows:[] };
+  drawImport();
+}
+function impRead(el){
+  const f=el.files&&el.files[0]; if(!f) return;
+  if(/\.xlsx$/i.test(f.name)){
+    $('#impMsg').textContent='An .xlsx cannot be read here. Open it, select the rows and paste them above, or save it as CSV.';
+    return;
+  }
+  const r=new FileReader();
+  r.onload=()=>{ IMP.text=String(r.result||''); const t=$('#impText'); if(t) t.value=IMP.text; impScan(); };
+  r.readAsText(f);
+}
+function impScan(){
+  const rows=impParse(IMP.text);
+  IMP.plan=impPlan(rows);
+  IMP.rows=IMP.plan?impRows(IMP.plan):[];
+  const m=$('#impMsg'); if(!m) return;
+  if(!IMP.rows.length){ m.textContent=IMP.text.trim()?'Nothing in that looks like a row.':''; impCount(); return; }
+  const cols=IMP.plan.map.filter(Boolean);
+  m.innerHTML='<b>'+IMP.rows.length+'</b> row'+(IMP.rows.length===1?'':'s')
+    +' · columns read: '+esc(cols.join(', '))
+    +(IMP.plan.header?'':' <i>(no header row found, columns taken in form order)</i>')
+    +(IMP.plan.ignored.length?'<br><span style="color:var(--warn)">ignored: '+esc(IMP.plan.ignored.join(', '))+'</span>':'');
+  impCount();
+}
+function impCount(){ const b=$('#esav'); if(b) b.textContent=IMP.rows.length?('Add '+IMP.rows.length+' row'+(IMP.rows.length===1?'':'s')):'Add rows'; }
+function drawImport(){
+  const html='<div class="f"><label>Paste from Excel</label>'
+    +'<textarea class="in" id="impText" rows="7" placeholder="Select the cells in Excel, copy, and paste here." oninput="IMP.text=this.value;impScan()" style="font-family:\'Space Mono\';font-size:12px;resize:vertical"></textarea>'
+    +'<small>or choose a .csv / .txt file <input type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" onchange="impRead(this)" style="margin-left:6px"></small></div>'
+    +'<p class="esub" id="impMsg" style="margin:12px 0 0"></p>';
+  sheet({ title:'Bring a sheet in', save:'Add rows',
+    sub:'The rows land in the form, not in the database - check them and press Save inbound as usual. A .xlsx cannot be read here; copy its cells or save it as CSV.',
+    html:html, onSave:impApply });
+  setTimeout(function(){ const t=$('#impText'); if(t) t.focus(); },30);
+}
+function impApply(){
+  if(!IMP||!IMP.rows.length) throw new Error('Nothing to add yet - paste some rows first.');
+  const blank=nIn.rows.filter(r=>Object.keys(r).length===0).length;
+  nIn.rows=nIn.rows.filter(r=>Object.keys(r).length>0).concat(IMP.rows);
+  const n=IMP.rows.length; IMP=null;
+  toast(n+' row'+(n===1?'':'s')+' added'+(blank?' · the blank row was replaced':''));
+  drawInbound();
+}
 
 /* ---- material coming back -------------------------------------------
 
