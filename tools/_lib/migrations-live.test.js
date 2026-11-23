@@ -78,22 +78,26 @@ is('a function with no usable marker says why, rather than passing quietly',
    legitimately is a test people learn to edit without reading. What
    actually matters is that the marker comes from the NEWEST definition,
    whichever that is. */
-{
-  const newest = fs.readdirSync(SQLDIR)
-    .filter(f => /^\d+_.*\.sql$/.test(f))
-    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-    .filter(f => /create\s+or\s+replace\s+function\s+wh_inbound/i
-      .test(fs.readFileSync(path.join(SQLDIR, f), 'utf8')))
-    .pop();
-  is('wh_inbound is marked from its newest definition', by.wh_inbound.from, newest);
-  is('and that marker is real', !!by.wh_inbound.marker, true);
+/* I generalised wh_inbound and left the next two pinned, and 062
+   re-emitting wh_outbound broke it again one row down - the identical
+   trap, in the identical file, an hour later. All three use the rule
+   now, and there is no fourth copy to forget. */
+const newestFor = fn => fs.readdirSync(SQLDIR)
+  .filter(f => /^\d+_.*\.sql$/.test(f))
+  .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+  .filter(f => new RegExp('create\\s+or\\s+replace\\s+function\\s+' + fn + '\\b', 'i')
+    .test(fs.readFileSync(path.join(SQLDIR, f), 'utf8')))
+  .pop();
+
+for (const fn of ['wh_inbound', 'wh_outbound', 'wh_update_item', 'wh_delete_note']) {
+  is(fn + ' is marked from its newest definition', by[fn].from, newestFor(fn));
+  is(fn + ' has a real marker', !!by[fn].marker, true);
 }
-is('wh_outbound is marked by the one-lookup insert 059 added',
-   /wh_lookups/.test(by.wh_outbound.marker), true);
-is('wh_update_item is marked by something 057 added, not something 054 had',
-   /orig_upper|orig_lower/.test(by.wh_update_item.marker), true);
-is('and wh_update_item is known to have been rewritten four times',
-   by.wh_update_item.versions, 4);
+/* these two have been rewritten more than once, which is the case the
+   recency rule exists for - if that ever stops being true the rule is
+   no longer being exercised by anything real */
+is('wh_outbound has more than one version', by.wh_outbound.versions > 1, true);
+is('wh_update_item has more than one version', by.wh_update_item.versions > 1, true);
 
 /* ---- prove it by breaking ---- */
 console.log('\n  --- and the rule, against markers that would not work ---');
