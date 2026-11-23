@@ -358,9 +358,47 @@ function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date'
    could be unreadable. */
 const CABLECATS=['Cables','Fibers','Jumpers'];
 const isCableRow=r=>!!(r.drum||r.cable)||CABLECATS.includes(r.cat)||r.uom==='M'||r.uom==='ROLL';
+function mcState(r,i){
+  if(!r.code) return '';
+  if(r.known){
+    const m=MC.get(r.code);
+    return '<span class="mstate ok">✓ '+esc(m&&m.name?m.name:'in Material Codes')+'</span>';
+  }
+  const ready=!!(String(r.name||'').trim()&&r.cat);
+  return '<span class="mstate nw">● not in Material Codes</span>'
+    + (OWNER()
+        ? '<button class="addmc" '+(ready?'':'disabled title="give it a name and a category first"')
+          +' onclick="addCodeHere('+i+')">+ Add '+esc(r.code)+' to Material Codes</button>'
+        : '<span class="mstate nw">it will show on New materials</span>');
+}
+/* The same add as the New materials tab, reachable from the row. It is
+   owner-only because materials_write is is_owner(); for anyone else the
+   row just says where the code will turn up. */
+async function addCodeHere(i){
+  const r=nIn.rows[i];
+  if(!OWNER()){ toast('Only the owner adds to Material Codes.'); return; }
+  const name=String(r.name||'').trim();
+  if(!r.code||!name||!r.cat){ toast('A code needs its name and category before it can be added.'); return; }
+  const type=TYPE_OF[r.cat]||r.cat;
+  try{
+    await DB.whAddMaterial(r.code,name,type);
+    MC.set(r.code,{code:r.code,name:name,cat:type});
+    newMats.delete(r.code);
+    r.known=true;
+    lines.forEach(L=>{ if(L.code===r.code) L.isNew=false; });
+    toast(r.code+' added to Material Codes');
+    drawRows();
+  }catch(e){ toast(e.message||String(e)); }
+}
 function drawRows(){
   $('#nBody').innerHTML=nIn.rows.map((r,i)=>{
-    const st=!r.code?'':r.known?'<span class="mstate ok">✓ in Material Codes</span>':'<span class="mstate nw">● new code → New materials</span>';
+        /* WHAT THE CODE TURNED OUT TO BE, on the row. A code that resolves
+       shows its Material Codes description, because the number means
+       nothing on its own and he is checking the box against the row.
+       A code that does not resolve says so AND offers to add it right
+       here - that is the moment he knows what the thing is, and sending
+       him to another tab to say so is how it ends up never said. */
+    const st=mcState(r,i);
     const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=RT?13:12, tw=snTwin(r.sn);
     const cl=c&&r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null?Math.abs(+r.rb-+r.ra):'';
     return `<tr><td class="dt">${i+1}</td>
