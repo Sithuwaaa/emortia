@@ -137,6 +137,21 @@ function fromDB(d){
     const cut=x.cut_from!=null?{from:+x.cut_from,to:+x.cut_to}:null;
     t.items.push({lineId:L.id,lid:x.id,qty:+x.qty,cut,remarks:x.remarks||''});
     if(L.drum&&cut) L.drum.cuts.push({ticket:t.id,date:t.date,site:t.site||t.party,from:cut.from,to:cut.to,len:+x.qty}); });
+  /* THE NOTE'S SITE IS NOW ITS ROWS' SITE. Nothing writes
+     wh_notes.site_id for an inbound any more, so a return would title
+     itself "Returned from  ·" - blank, looking like lost data. Where
+     the rows agree on one site the note shows it, exactly as before.
+     Where they do not, it says how many rather than picking one row's
+     answer and presenting it as the note's. Old notes already carrying
+     a site keep it: this only fills a blank. */
+  tickets.forEach(t=>{ if(t.type==='DN'||t.site) return;
+    const m=new Map();
+    t.items.forEach(x=>{ const L=byId.get(x.lineId??x); if(L&&L.fromSite) m.set(L.fromSite,L.fromSiteName||''); });
+    if(!m.size) return;
+    t.sites=[...m.keys()];
+    if(m.size===1){ t.site=t.sites[0]; t.siteName=m.get(t.site)||''; }
+    else { t.siteName=m.size+' sites'; }
+  });
   pins=new Set(d.materials.filter(m=>m.pinned).map(m=>m.code));
   mins={}; d.materials.forEach(m=>{ if(+m.min_qty>0) mins[m.code]=+m.min_qty; });
   for(const k in LOOK) LOOK[k].length=0;
@@ -237,7 +252,9 @@ function find(q){
   box.innerHTML=h||'<div class="empty">Nothing matches.</div>'; box.hidden=false;
 }
 function destTitle(t){ return t.dest==='party'?`To ${esc(t.party)} · 3rd party · ${esc(t.purpose)}`:`To ${t.site} · ${esc(t.siteName)}`; }
-function ticketTitle(t){ return t.type==='DN'?destTitle(t):t.type==='RT'?`Returned from ${t.site} · ${esc(t.siteName)}`:`New stock · ${esc(t.ref||'')}`; }
+/* raw text - every caller escapes it */
+const siteCell=t=>t.site||(t.sites&&t.sites.length>1?t.sites.join(' · '):'');
+function ticketTitle(t){ return t.type==='DN'?destTitle(t):t.type==='RT'?`Returned from ${esc(siteCell(t))}${t.site&&t.siteName?' · '+esc(t.siteName):''}`:`New stock · ${esc(t.ref||'')}`; }
 function showItem(id){ $('#gr').hidden=true; const L=lById(id); go('inv'); setInvMode('lines'); $('#q').value=L.sn||(L.drum&&L.drum.name)||L.code; setSeg('#fSt','all'); fSt='all'; renderInv(id); }
 $('#gq').oninput=e=>find(e.target.value);
 $('#gq').onfocus=e=>find(e.target.value);
@@ -331,7 +348,7 @@ function showInbound(t){
   const kv=(k,v)=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${v||'—'}</div></div>`;
   $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RN'?'Inbound · returned from site (RTN)':t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3>${t.type==='RN'&&t.reverses?`<span class="tk dn" title="the note this reverses" onclick="openTicket('${esc(t.reverses)}')" style="cursor:pointer;margin-left:8px">↩ ${esc(t.reverses)}</span>`:''}<div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print note</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and remove what it booked in">Delete note</button></div>
   <div class="pbody">
-    ${t.type==='RT'?`<div class="box rt"><h4>Site return details</h4><div class="fh five">${kv('Site ID',`<span class="mono">${t.site}</span>`)}${kv('Site name',esc(t.siteName))}${kv('Removed on',t.removed?dshort(t.removed):'<span style="color:var(--dim)">not known</span>')}${kv('Inbound date',dshort(t.date))}${kv('Returned by',esc(t.by))}</div><div class="fh">${kv('Return note',esc(t.ref))}${kv('Project',esc(t.project))}</div></div>`
+    ${t.type==='RT'?`<div class="box rt"><h4>Site return details</h4><div class="fh five">${kv('Site ID',`<span class="mono">${esc(siteCell(t))}</span>`)}${kv('Site name',esc(t.siteName))}${kv('Removed on',t.removed?dshort(t.removed):'<span style="color:var(--dim)">not known</span>')}${kv('Inbound date',dshort(t.date))}${kv('Returned by',esc(t.by))}</div><div class="fh">${kv('Return note',esc(t.ref))}${kv('Project',esc(t.project))}</div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">${kv('Inbound date',dshort(t.date))}${kv('Project',esc(t.project))}${kv('Reservation no',`<span class="mono">${esc(t.res)}</span>`)}${kv('Received by',esc(t.by))}</div><div class="fh">${kv('Supplier DN / PO',esc(t.ref))}</div></div>`}
     <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:240px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
     ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowEdit(L.id,L.sn||L.name)}${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
@@ -360,7 +377,7 @@ function drawInbound(){
       <div class="f"><label>REDEP</label><button class="dbtn ${nIn.redep?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.redep=!nIn.redep;drawInbound()">${nIn.redep?'● Redeployed':'Mark as REDEP'}</button><small>${nIn.redep?'REDEP wins over how the note itself is typed':'material moved here, no site return behind it'}</small></div>
       <div class="f"><label>Vendor · who owns it</label>${lookBox('vendor','nVen',nIn.vendor,'Dialog, Mobitel, Hutch…')}<small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
-    </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Site ID <span style="opacity:.6">(optional)</span></label><input class="in mono" id="nSite" placeholder="if it came for one site" value="${esc(nIn.site||'')}" oninput="const v=siteLookup(this.value);if(v)$('#nSiteN').value=v"></div><div class="f"><label>Site name</label><input class="in" id="nSiteN" placeholder="fills from Site Access" value="${esc(nIn.siteName||'')}"></div></div></div>`}
+    </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div></div></div>`}
     <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:150px">Reservation</th><th style="width:110px">Site ID</th><th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">WH location</th><th style="width:170px">Remarks</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
     <button class="btn sm" style="margin-top:10px;margin-left:6px" onclick="openImport()">⇪ Paste from Excel</button>
@@ -368,7 +385,7 @@ function drawInbound(){
   <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="newInbound()">Clear</button><button class="btn pri" onclick="saveInbound()">Save inbound</button></div>`;
   drawRows();
 }
-function keepHead(){ ['nSite:site','nSiteN:siteName','nRem:removed','nDate:date','nBy:by','nRef:ref','nWh:wh','nVen:vendor'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
+function keepHead(){ ['nRem:removed','nDate:date','nBy:by','nRef:ref','nWh:wh','nVen:vendor'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
 /* A row only offers Drum / Roll once it IS cable - by its category, or
    by its unit. Before that the row is one line with nothing extra on
    it. The same test hides "SN unreadable": a drum has no serial that
@@ -479,12 +496,20 @@ async function saveInbound(){
   if(ok.find(r=>!r.name||!String(r.name).trim())){msg.innerHTML='<b style="color:var(--new)">Every row needs a material name. Everything else can wait.</b>';return}
   if(ok.find(r=>r.drum&&(!r.drum.name||!(+r.drum.upper>+r.drum.lower)))){msg.innerHTML='<b style="color:var(--warn)">Each drum needs a name, and the upper reading must be above the lower.</b>';return}
   if(ok.find(r=>r.cable&&(r.ra==null||r.rb==null||r.ra===''||r.rb===''))){msg.innerHTML='<b style="color:var(--warn)">A returned cable piece needs its start and end readings.</b>';return}
-  if(nIn.type==='RT'&&!nIn.site){msg.innerHTML='<b style="color:var(--new)">A site return needs the site ID it came from.</b>';return}
+  /* 061 made the site a per-row answer in the database and moved the
+     refusal into the item loop. The PAGE kept asking the note for it -
+     and the return form has no note-level site box - so a return typed
+     the way his sheet has it, a site against every row, was refused
+     before it ever reached wh_inbound. Checked on the rendered page
+     first: one row carrying AUS0123, refused. It now asks the same
+     question of the same place, and names the row, as the function does. */
+  if(nIn.type==='RT'){ const b=ok.findIndex(r=>!String(r.site||'').trim());
+    if(b>=0){msg.innerHTML='<b style="color:var(--new)">Row '+(b+1)+' of a site return needs the site ID it came from.</b>';return} }
   const pj=$('#nPj').value; if(!pj||pj===NEWPJ){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
   keepHead();
   const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,
     vendor:(nIn.vendor||'').trim(),source:nIn.redep?'redep':'',date:nIn.date||today(),project:pj,ref:nIn.ref||'',
-    site_id:nIn.site||'',site_name:nIn.siteName||'',removed_on:nIn.removed||'',by:nIn.by||ME(),
+    removed_on:nIn.removed||'',by:nIn.by||ME(),
     items:ok.map(r=>({code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
       remarks:r.remarks||'',
       /* 061: the row's own answer, when it has one. wh_inbound falls
@@ -671,7 +696,7 @@ function noteHTML(t){
     <img class="wm" src="${TOOWAY_LOGO}" alt="">
     <div class="dt">
       <div class="site"><label>${t.type==='IN'?'Received from':t.type==='RT'?'Returned from':party?'Issued to':'Going to'}</label>
-        <div class="big">${esc(t.type==='IN'?(t.ref||'New stock'):party?t.party:t.site)}</div><div class="nm">${esc(t.type==='IN'?(t.res?'Reservation '+t.res:''):party?(t.purpose||'3rd party'):t.siteName)}</div>
+        <div class="big">${esc(t.type==='IN'?(t.ref||'New stock'):party?t.party:siteCell(t))}</div><div class="nm">${esc(t.type==='IN'?(t.res?'Reservation '+t.res:''):party?(t.purpose||'3rd party'):t.siteName)}</div>
         <div class="pj">${[t.project,dt].filter(Boolean).map(esc).join(' · ')}</div></div>
       <div class="req"><h4>Requested</h4>${row('Requested by',t.requestedBy)}</div>
       <div class="ho"><h4>Hand-over</h4>${row('Receiver',t.receiver)}${row('Vehicle no',t.vehicle)}${row('Driver name',t.driver)}${row('Driver NIC',t.driverNic)}${row('Contact no',t.contact)}</div>
