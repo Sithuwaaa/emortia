@@ -378,7 +378,7 @@ function drawInbound(){
       <div class="f"><label>Vendor · who owns it</label>${lookBox('vendor','nVen',nIn.vendor,'Dialog, Mobitel, Hutch…')}<small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
     </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div></div></div>`}
-    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th><th style="width:150px">Reservation</th><th style="width:210px">SN</th><th style="width:110px">Site ID</th><th style="width:150px">Site name</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:130px">WH location</th><th style="width:170px">Remarks</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
+    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:210px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:84px">Qty</th>${R?'':'<th style="width:150px">Reservation</th>'}<th style="width:210px">SN</th>${R?'<th style="width:120px">Condition</th>':''}<th style="width:110px">Site ID</th><th style="width:150px">Site name</th><th style="width:130px">WH location</th><th style="width:170px">Remarks</th><th style="width:40px"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
     <button class="btn sm" style="margin-top:10px;margin-left:6px" onclick="openImport()">⇪ Paste from Excel</button>
   </div>
@@ -433,7 +433,7 @@ function drawRows(){
        here - that is the moment he knows what the thing is, and sending
        him to another tab to say so is how it ends up never said. */
     const st=mcState(r,i);
-    const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=RT?14:13, tw=snTwin(r.sn);
+    const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=13, tw=snTwin(r.sn);
     const cl=c&&r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null?Math.abs(+r.rb-+r.ra):'';
     return `<tr><td class="dt">${i+1}</td>
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code or name" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
@@ -442,11 +442,11 @@ function drawRows(){
     <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" onchange="nIn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="iq${i}" style="text-align:right" value="${d?Math.max(0,(d.upper||0)-(d.lower||0)):c?cl:(r.qty||1)}" ${d||c?'readonly':''} placeholder="${c?'readings':''}" oninput="nIn.rows[${i}].qty=+this.value"></td>
-    <td><input class="in mono" value="${esc(r.res||'')}" placeholder="${nIn.type==='RT'?'if there is one':'4900000123'}" oninput="nIn.rows[${i}].res=this.value"></td>
+    ${RT?'':`<td><input class="in mono" value="${esc(r.res||'')}" placeholder="4900000123" oninput="nIn.rows[${i}].res=this.value"></td>`}
     <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)"><span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
+    ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" value="${esc(r.site||'')}" placeholder="${nIn.type==='RT'?'where from':'optional'}" oninput="nIn.rows[${i}].site=this.value.toUpperCase();const n=siteLookup(this.value);if(n){nIn.rows[${i}].siteName=n;const e=$('#isn${i}');if(e)e.value=n}"></td>
     <td><input class="in" id="isn${i}" value="${esc(r.siteName||'')}" placeholder="fills from Site Access" oninput="nIn.rows[${i}].siteName=this.value"></td>
-    ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" list="lk_location" value="${esc(r.loc||'')}" placeholder="where it sits" oninput="nIn.rows[${i}].loc=this.value"><datalist id="lk_location">${lookList('location').map(x=>`<option>${esc(x)}</option>`).join('')}</datalist></td>
     <td><input class="in" value="${esc(r.remarks||'')}" placeholder="anything worth noting" oninput="nIn.rows[${i}].remarks=this.value"></td>
     <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nIn.rows[${i}].ok=!nIn.rows[${i}].ok;drawRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nIn.rows.splice(${i},1);drawRows()">✕</button></td></tr>
@@ -516,7 +516,7 @@ async function saveInbound(){
       /* 061: the row's own answer, when it has one. wh_inbound falls
          back to the note's, so a delivery with one reservation is
          unchanged. */
-      reservation_no:r.res||'',site_id:r.site||'',site_name:r.siteName||'',
+      reservation_no:nIn.type==='RT'?'':(r.res||''),site_id:r.site||'',site_name:r.siteName||'',
       cond:nIn.type==='RT'?(r.cond||'Good'):null,is_new:!!(r.code&&!r.known),
       pack:r.drum?(r.pack||'drum'):null,
       drum_name:r.drum?r.drum.name.trim():null,drum_lower:r.drum?+r.drum.lower:null,drum_upper:r.drum?+r.drum.upper:null,
