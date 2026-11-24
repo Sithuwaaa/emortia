@@ -230,7 +230,7 @@ function whereOf(L){
   if(L.drum) return {cls:'wh',top:`${L.loc} · drum ${L.drum.name}`,sub:`${fmt(L.qty)} m left · reading ${L.drum.lower}–${L.drum.cur}`};
   if(L.status==='out'&&L.party) return {cls:'tp',top:`With ${L.party} · 3rd party`,sub:`outbound ${dshort(L.outDate)} on ${L.outTicket}`};
   if(L.status==='out') return {cls:'st',top:`At site ${L.site} · ${L.siteName}`,sub:`outbound ${dshort(L.outDate)} on ${L.outTicket}${L.pending?' · direct issue, receive it later':''}`};
-  return {cls:'wh',top:`In stock · bin ${L.loc}`,sub:`${L.source==='return'?'returned from '+L.fromSite:'received'} ${dshort(L.inDate)} on ${L.inTicket}`};
+  return {cls:'wh',top:`In stock · bin ${L.loc}`,sub:`${L.source==='redep'?'redeployed from '+L.fromSite:L.source==='return'?'returned from '+L.fromSite:'received'} ${dshort(L.inDate)} on ${L.inTicket}`};
 }
 function stock(){
   const by=new Map();
@@ -379,7 +379,7 @@ function drawInbound(){
       <div class="f"><label>Removed on · optional</label><input class="in mono" type="date" id="nRem" value="${nIn.removed||''}"><small>leave empty if not known</small></div>
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"><small>the day it reached the warehouse</small></div>
       <div class="f"><label>Returned by</label><input class="in" id="nBy" placeholder="team / rigger" value="${esc(nIn.by||'')}"></div>
-    </div><div class="fh"><div class="f"><label>Return note no</label><input class="in mono" id="nRef" placeholder="paper note no" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Project</label>${pjBox()}</div><div class="f"><label>REDEP</label><button class="dbtn ${nIn.redep?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.redep=!nIn.redep;drawInbound()">${nIn.redep?'● Redeployed':'Mark as REDEP'}</button><small>${nIn.redep?'stays with us - it is not going back to Dialog':'material off a site that does not go back'}</small></div></div></div>`
+    </div><div class="fh"><div class="f"><label>Return note no</label><input class="in mono" id="nRef" placeholder="paper note no" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Project</label>${pjBox()}</div></div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"></div>
       <div class="f"><label>Project</label>${pjBox()}</div>
@@ -407,6 +407,12 @@ function pjBox(){
     +PROJECTS.map(p=>'<option'+(p===cur?' selected':'')+'>'+esc(p)+'</option>').join('')
     +'<option>'+NEWPJ+'</option></select>';
 }
+/* REDEP, PER ROW. A REDEP is material taken off a site that does not
+   go back to Dialog - so it is a site return that stays with us, and
+   which pieces stay is decided piece by piece, not by the note. The
+   row's source goes out as 'redep' or 'return' accordingly; wh_inbound
+   reads the row first from 064. */
+function toggleRedep(i){ const r=nIn.rows[i]; r.redep=!r.redep; drawRows(); }
 function keepHead(){ ['nPj:project','nRem:removed','nDate:date','nBy:by','nRef:ref','nWh:wh','nVen:vendor'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e&&!e.disabled)nIn[k]=e.value}); }
 /* A row only offers Drum / Roll once it IS cable - by its category, or
    by its unit. Before that the row is one line with nothing extra on
@@ -459,7 +465,7 @@ function drawRows(){
     const cl=c&&r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null?Math.abs(+r.rb-+r.ra):'';
     return `<tr><td class="dt">${i+1}</td>
     <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="${nIn.local?'name it - no code needed':'code or name'}" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
-      ${isCableRow(r)?`<button class="dbtn ${d&&r.pack!=='roll'?'on':''}" onclick="toggleDrum(${i},'drum')">${d&&r.pack!=='roll'?'● Drum':'+ Drum'}</button> <button class="dbtn ${d&&r.pack==='roll'?'on':''}" onclick="toggleDrum(${i},'roll')">${d&&r.pack==='roll'?'● Roll':'+ Roll'}</button>${!d&&!c?'<span class="mstate lenok">a plain length is fine - add Drum or Roll only if it is on one</span>':''}`:''}${RT?` <button class="dbtn ${c?'on':''}" onclick="toggleRCable(${i})">${c?'● Cable':'+ Cable'}</button>`:''}<div class="ac" id="ac${i}" hidden></div></td>
+      ${isCableRow(r)?`<button class="dbtn ${d&&r.pack!=='roll'?'on':''}" onclick="toggleDrum(${i},'drum')">${d&&r.pack!=='roll'?'● Drum':'+ Drum'}</button> <button class="dbtn ${d&&r.pack==='roll'?'on':''}" onclick="toggleDrum(${i},'roll')">${d&&r.pack==='roll'?'● Roll':'+ Roll'}</button>${!d&&!c?'<span class="mstate lenok">a plain length is fine - add Drum or Roll only if it is on one</span>':''}`:''}${RT?` <button class="dbtn ${c?'on':''}" onclick="toggleRCable(${i})">${c?'● Cable':'+ Cable'}</button> <button class="dbtn ${r.redep?'on':''}" title="${r.redep?'kept and redeployed - not going back to Dialog':'going back to Dialog'}" onclick="toggleRedep(${i})">${r.redep?'● REDEP':'+ REDEP'}</button>`:''}<div class="ac" id="ac${i}" hidden></div></td>
     <td><input class="in" value="${esc(r.name||'')}" placeholder="${r.code&&!r.known?'type the material name':'fills from Material Codes'}" ${r.known?'readonly':''} oninput="nIn.rows[${i}].name=this.value"></td>
     <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" onchange="nIn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
@@ -536,7 +542,7 @@ async function saveInbound(){
   if(!nIn.local&&(!pj||pj===NEWPJ)){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
   keepHead();
   const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,
-    vendor:(nIn.vendor||'').trim(),source:(nIn.type==='RT'&&nIn.redep)?'redep':'',date:nIn.date||today(),project:pj,ref:nIn.ref||'',
+    vendor:(nIn.vendor||'').trim(),date:nIn.date||today(),project:pj,ref:nIn.ref||'',
     removed_on:nIn.removed||'',by:nIn.by||ME(),
     items:ok.map(r=>({code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
       remarks:r.remarks||'',
@@ -545,6 +551,10 @@ async function saveInbound(){
          unchanged. */
       reservation_no:nIn.type==='RT'?'':(r.res||''),site_id:r.site||'',site_name:r.siteName||'',
       cond:nIn.type==='RT'?(r.cond||'Good'):null,is_new:!!(r.code&&!r.known),
+      /* 064: this row's own answer. 'return' is sent explicitly rather
+         than left blank so the payload says what it means; wh_inbound
+         only acts on 'redep' and lets everything else fall through. */
+      source:nIn.type==='RT'?(r.redep?'redep':'return'):'',
       pack:r.drum?(r.pack||'drum'):null,
       drum_name:r.drum?r.drum.name.trim():null,drum_lower:r.drum?+r.drum.lower:null,drum_upper:r.drum?+r.drum.upper:null,
       read_start:r.cable?+r.ra:null,read_end:r.cable?+r.rb:null}))};

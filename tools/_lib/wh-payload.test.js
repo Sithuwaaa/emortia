@@ -59,6 +59,44 @@ const is = (name, got, want) => {
 
 /* ---- shared: brace matching ----------------------------------------- */
 
+/* COMMENTS ARE BLANKED BEFORE ANYTHING IS WALKED, and the reason is a
+   bug this file had. The walkers below track strings so that a brace
+   inside a message cannot end an object early - but they knew nothing
+   about comments, and an apostrophe in a comment INSIDE a payload
+   literal opened a string that never closed. One "this row's own
+   answer" above a key, and the whole call site came back unparseable:
+
+     source:nIn.type==='RT'?...     <- swallowed by the open quote
+
+   It failed loudly rather than quietly, which is the right way round,
+   but it also meant the payload could only be commented in prose with
+   no apostrophes in it - a rule nobody would remember, enforced by a
+   confusing failure. Blanking keeps the byte offsets and the newlines
+   exactly as they were, so every index and line number downstream is
+   unchanged. */
+function blankComments(src) {
+  let out = '', i = 0, inStr = null;
+  const blank = t => t.replace(/[^\n]/g, ' ');
+  while (i < src.length) {
+    const c = src[i];
+    if (inStr) { out += c; if (c === '\\') { out += src[i + 1] || ''; i += 2; continue; }
+      if (c === inStr) inStr = null; i++; continue; }
+    if (c === '"' || c === "'" || c === '`') { inStr = c; out += c; i++; continue; }
+    if (c === '/' && src[i + 1] === '*') {
+      const end = src.indexOf('*/', i + 2);
+      const stop = end < 0 ? src.length : end + 2;
+      out += blank(src.slice(i, stop)); i = stop; continue;
+    }
+    if (c === '/' && src[i + 1] === '/') {
+      const end = src.indexOf('\n', i);
+      const stop = end < 0 ? src.length : end;
+      out += blank(src.slice(i, stop)); i = stop; continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+
 /* from the opening brace to its partner, respecting strings so a } inside
    a message or a template literal cannot end the object early */
 function blockFrom(src, open) {
@@ -192,7 +230,7 @@ function readSide() {
    what gets compared here. The page's whOnly() throws at runtime on a
    key outside its declaration, so the two cannot drift apart quietly. */
 function declaredSide() {
-  const src = fs.readFileSync(PAGE, 'utf8');
+  const src = blankComments(fs.readFileSync(PAGE, 'utf8'));
   const out = new Map();
   for (const m of src.matchAll(/const\s+WH_SENDS_(wh_[a-z_]+)\s*=\s*\{/g)) {
     const b = blockFrom(src, m.index + m[0].length - 1);
@@ -206,7 +244,7 @@ function declaredSide() {
 /* Every call site of every payload wrapper. The argument is either an
    object literal written in place, or the name of one built just above. */
 function sentSide(wrappers) {
-  const src = fs.readFileSync(PAGE, 'utf8');
+  const src = blankComments(fs.readFileSync(PAGE, 'utf8'));
   const found = [], unreadable = [];
   for (const [wrapper, fn] of wrappers) {
     const rx = new RegExp('DB\\.' + wrapper + '\\s*\\(', 'g');
@@ -323,7 +361,27 @@ console.log('\n  --- and the same machinery against inputs that are wrong ---');
      ['driver_nic', 'issued_contact']);
 }
 {
-  /* an unparseable call site must fail, not vanish */
+  /* the comment that broke it, asserted both ways round */
+{
+  const withApostrophe = `const p={kind:'GRN',
+    /* this row's own answer, and 'return' in the same breath */
+    items:ok.map(r=>({code:r.code,source:'redep'}))};`;
+  is('an apostrophe in a comment no longer opens a string',
+     itemKeys(blankComments(withApostrophe)).keys.sort(), ['code', 'source']);
+  is('and without blanking it really did swallow the rest',
+     itemKeys(withApostrophe).keys.length === 0
+       || !itemKeys(withApostrophe).present, true);
+  is('a brace inside a REAL string is still respected',
+     topKeys(blankComments(`{a:'}{',b:1}`)).sort(), ['a', 'b']);
+  is('and a // comment goes too',
+     topKeys(blankComments("{a:1, // b:2 is not a key\n c:3}")).sort(), ['a', 'c']);
+  is('blanking keeps the file the same length',
+     blankComments("{a:1 /* xx */}").length, "{a:1 /* xx */}".length);
+  is('and keeps its line count',
+     blankComments("{a:1 /* x\ny */}").split('\n').length, 2);
+}
+
+/* an unparseable call site must fail, not vanish */
   const src = "DB.whUpdateItem(buildIt(row))";
   const argAt = src.indexOf('(') + 1;
   const rest = src.slice(argAt);
