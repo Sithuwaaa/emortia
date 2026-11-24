@@ -300,6 +300,12 @@ tr.bulk td:first-child{box-shadow:inset 3px 0 0 #ffd9a8}
   background:rgba(255,217,168,.12);border:1px solid rgba(255,217,168,.3)}
 /* a length that came back off this drum. Listed with the cuts, which
    is the drum's own history, and never merged into its range. */
+/* issued, back, outstanding - three figures in one cell, because the
+   note keeps saying what was handed over */
+.rtcell .rtq{font-family:'Space Mono';font-weight:700;color:var(--ok)}
+.rtcell .rtd{font-family:'Space Mono';font-size:10.5px;color:var(--dim);margin-left:6px}
+.rtcell .rtn{margin-top:3px}
+.rtcell .rtout{font-size:10.5px;color:var(--site);margin-top:3px}
 .backpc{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--site)}
 .backpc:hover{color:var(--ink)}
 .backpc b{color:var(--site)}
@@ -700,6 +706,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=50"></script>
+<script src="warehouse.js?v=51"></script>
 </body>
 </html>

@@ -23,6 +23,10 @@ let PROJECTS=[], SITES={};
 const LID=new Map();
 /* outbound wh_lines.id -> how much of it has already been returned */
 const RET=new Map();
+/* and WHICH notes it came back on, with their dates. The sum alone
+   answers "how much is still out"; the note answers "when", which is
+   the other half of what a line needs to say. */
+const RETN=new Map();
 const pad=(n,w=2)=>String(n).padStart(w,'0');
 /* local wall clock, HH:MM, which is what <input type="time"> wants and
    what he reads off the clock on the wall */
@@ -235,7 +239,13 @@ function fromDB(d){
   const tb=new Map(tickets.map(t=>[t.id,t]));
   /* stale entries would point at lines that no longer exist */
   LID.clear(); RET.clear();
-  d.lines.forEach(x=>{ if(x.returns_line!=null) RET.set(+x.returns_line,(RET.get(+x.returns_line)||0)+(+x.qty||0)); });
+  RETN.clear();
+  const noteDate=new Map(d.notes.map(n=>[n.id,n.note_date]));
+  d.lines.forEach(x=>{ if(x.returns_line==null) return;
+    const k=+x.returns_line;
+    RET.set(k,(RET.get(k)||0)+(+x.qty||0));
+    if(!RETN.has(k)) RETN.set(k,[]);
+    RETN.get(k).push({note:x.note_id,date:noteDate.get(x.note_id)||'',qty:+x.qty||0}); });
   d.lines.slice().sort((a,b)=>a.line_no-b.line_no).forEach(x=>{ const t=tb.get(x.note_id), L=byId.get(x.item_id); if(!t||!L) return;
     /* LID maps an item id to the id of the LINE that put it on this note.
        An inbound note's items are bare ids and an outbound note's are
@@ -810,6 +820,35 @@ function noteRows(t){ // one printed line per item; the drum goes in remarks
     return {desc: L.drum?L.name:`${short}${L.sn?' - '+L.sn:''}${x.cut?' · '+x.cut.to+'→'+x.cut.from+' m':''}`,
       unit:L.uom==='M'?'M':'PCS', qty:x.qty, remarks:x.remarks||drumText(L,x), code:L.code, L, x}; });
 }
+/* WHAT CAME BACK, ON THE NOTE THAT SENT IT.
+
+   wh_lines.returns_line has held the link since 055 and the RTN note
+   holds the date, so nothing new is stored - a line simply never said
+   it. An outbound line that has had material returned against it read
+   as though all of it were still at site.
+
+   ALL THREE FIGURES, not a rewritten one. He asked for the issued
+   quantity to read 140 where 100 of 240 has come back, and I have
+   shown 240 issued, 100 back, 140 outstanding instead: 240 is what
+   was handed over and signed for, and 051 and 054 both say a number
+   on a note already issued is not ours to rewrite. The net is beside
+   it, so he gets 140 without the note claiming something else was
+   handed over. He can overrule this. */
+function returnedOn(lid){
+  const rs=RETN.get(lid)||[]; if(!rs.length) return null;
+  const qty=rs.reduce((a,r)=>a+r.qty,0);
+  const last=rs.map(r=>r.date).filter(Boolean).sort().pop()||'';
+  return {qty,last,notes:[...new Set(rs.map(r=>r.note))]};
+}
+const returnedQty=x=>{ const b=returnedOn(x.lid); return b?String(b.qty):''; };
+function returnCell(x){
+  const b=returnedOn(x.lid); if(!b) return '<span style="color:var(--dim)">—</span>';
+  const out=(+x.qty||0)-b.qty;
+  return '<span class="rtq">'+fmt(b.qty)+'</span>'
+    +'<span class="rtd">'+(b.last?dshort(b.last):'')+'</span>'
+    +'<div class="rtn">'+b.notes.map(n=>tkChip(n)).join(' ')+'</div>'
+    +'<div class="rtout">'+(out>0?fmt(out)+' still out':'all back')+'</div>';
+}
 function showDispatch(t){
   const R=noteRows(t);
   $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button>${noteEditBtn(t)}<button class="btn sm" onclick="openReturn('${t.id}')" title="Book material back in from this note">↩ Return</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and put its stock back">Delete note</button></div>
@@ -817,8 +856,8 @@ function showDispatch(t){
     <div class="box"><h4>Outbound details</h4><div class="fh five">
       ${[['Date',dtshort(t)],...(t.dest==='party'?[['3rd party',t.party],['Purpose',t.purpose],['Their ref / PO',t.partyRef]]:[]),['Project',t.project],['Requested by',t.requestedBy],['Issued by',t.issuedBy],['Receiver',t.receiver],['Vehicle no',t.vehicle],['Driver name',t.driver],['Driver NIC',t.driverNic],['Contact no',t.contact],['Issuer contact',t.issuedContact],['Items',t.items.length+(t.items.length===1?' line':' lines')]].map(([k,v])=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${esc(v)||'<span style="color:var(--dim)">—</span>'}</div></div>`).join('')}
     </div></div>
-    <div class="rows"><table><thead><tr><th style="width:36px">No</th><th style="width:120px">Code</th><th>Items &amp; description</th><th style="width:60px">Unit</th><th style="width:80px;text-align:right">Issued</th><th style="width:110px">Remarks</th><th style="width:200px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
-    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</td><td>${rowEdit(r.L.id,r.L.sn||r.L.name)}${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
+    <div class="rows"><table><thead><tr><th style="width:36px">No</th><th style="width:120px">Code</th><th>Items &amp; description</th><th style="width:60px">Unit</th><th style="width:80px;text-align:right">Issued</th><th style="width:130px">Returned</th><th style="width:110px">Remarks</th><th style="width:200px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
+    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt rtcell">${returnCell(r.x)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</td><td>${rowEdit(r.L.id,r.L.sn||r.L.name)}${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -979,7 +1018,7 @@ function noteHTML(t){
       <tbody>${Array.from({length:PER},(_,i)=>{ const r=P[i], n=pi*PER+i+1; if(!r) return `<tr><td class="n">${n}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
         const L=r.L, x=r.x, desc=L.drum?`Cable drum ${L.drum.name}`:(L.pending?L.name.replace(/ \(local purchase\)/,''):modelOf(L.name).replace(/_/g,' '));
         const sn=x.cut?`${x.cut.to} → ${x.cut.from} m`:(L.sn||'');
-        return `<tr><td class="n">${n}</td><td class="hw">${esc(desc)}</td><td class="hw s">${esc(sn)}</td><td class="c hw">${r.unit}</td><td class="c hw">${String(r.qty).padStart(2,'0')}</td><td></td><td class="hw">${esc(r.remarks)}</td></tr>`; }).join('')}</tbody></table>
+        return `<tr><td class="n">${n}</td><td class="hw">${esc(desc)}</td><td class="hw s">${esc(sn)}</td><td class="c hw">${r.unit}</td><td class="c hw">${String(r.qty).padStart(2,'0')}</td><td class="c hw">${returnedQty(r.x)}</td><td class="hw">${esc(r.remarks)}</td></tr>`; }).join('')}</tbody></table>
     <div class="sg">
       <div><h4>Issued by</h4>${row('Name',t.issuedBy)}${row('Contact no',t.issuedContact)}${row('Signature &amp; date','')}</div>
       <div><h4>Received by</h4>${row('Name',t.receiver)}${row('Contact no',t.contact)}${row('Signature &amp; date','')}</div>
