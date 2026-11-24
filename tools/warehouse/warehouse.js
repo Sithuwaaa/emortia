@@ -486,13 +486,15 @@ async function setMin(c,v){ const n=parseFloat(v); try{ await DB.whMin(c,n>0?n:n
 let rSel=null, iSel=null, rFilter='';
 function ticketMatches(t,q){ if(!q) return true; q=q.toLowerCase(); return [t.id,t.site,t.siteName,t.project,t.ref,t.requestedBy,t.res,t.party,t.partyRef].join(' ').toLowerCase().includes(q)||t.items.some(x=>{const L=lById(x.lineId??x);return L&&[L.sn,L.code,L.drum&&L.drum.name].join(' ').toLowerCase().includes(q)}); }
 function renderRList(){
+  setTimeout(drawTkBar,0);
   const q=$('#rq').value.trim();
-  $('#rList').innerHTML=tickets.filter(t=>t.type!=='DN'&&(!rFilter||t.type===rFilter)&&(!proj||t.project===proj)&&ticketMatches(t,q)).sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="tic ${rSel===t.id?'on':''}" onclick="openTicket('${t.id}')"><div class="a"><span class="tk ${tkCls(t.id)}">${t.id}</span><span class="st ${t.type==='RT'?'rt':'wh'}">${t.type==='RT'?'SRN · SITE RETURN':'GRN · NEW STOCK'}</span><span class="d">${dshort(t.date)}</span></div><div class="b">${ticketTitle(t)}</div><div class="c">${esc(t.project)} · ${t.items.length} item${t.items.length===1?'':'s'} · by ${esc(t.by)}${t.res?` · <span class="rsv">RSV ${t.res}</span>`:''}</div></div>`).join('')||'<div class="empty">No tickets.</div>';
+  $('#rList').innerHTML=tickets.filter(t=>t.type!=='DN'&&(!rFilter||t.type===rFilter)&&(!proj||t.project===proj)&&ticketMatches(t,q)).sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="tic ${rSel===t.id?'on':''}${tkSel.has(t.id)?' sel':''}" onclick="openTicket('${t.id}')"><div class="a">${tkBox(t)}<span class="tk ${tkCls(t.id)}">${t.id}</span><span class="st ${t.type==='RT'?'rt':'wh'}">${t.type==='RT'?'SRN · SITE RETURN':'GRN · NEW STOCK'}</span><span class="d">${dshort(t.date)}</span></div><div class="b">${ticketTitle(t)}</div><div class="c">${esc(t.project)} · ${t.items.length} item${t.items.length===1?'':'s'} · by ${esc(t.by)}${t.res?` · <span class="rsv">RSV ${t.res}</span>`:''}</div></div>`).join('')||'<div class="empty">No tickets.</div>';
   $('#nRc').textContent=tickets.filter(t=>t.type!=='DN').length;
 }
 function renderIList(){
+  setTimeout(drawTkBar,0);
   const q=$('#iq').value.trim();
-  $('#iList').innerHTML=tickets.filter(t=>t.type==='DN'&&(!proj||t.project===proj)&&ticketMatches(t,q)).sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="tic ${iSel===t.id?'on':''}" onclick="openTicket('${t.id}')"><div class="a"><span class="tk dn">${t.id}</span><span class="d">${dtshort(t)}</span></div><div class="b">${t.dest==='party'?`<span style="color:var(--tp)">${esc(t.party)}</span> · 3rd party · ${esc(t.purpose)}`:`${t.site} · ${esc(t.siteName)}`}</div><div class="c">${esc(t.project)} · ${t.items.length} item${t.items.length===1?'':'s'} · asked by ${esc(t.requestedBy)}</div></div>`).join('')||'<div class="empty">No outbound notes.</div>';
+  $('#iList').innerHTML=tickets.filter(t=>t.type==='DN'&&(!proj||t.project===proj)&&ticketMatches(t,q)).sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<div class="tic ${iSel===t.id?'on':''}${tkSel.has(t.id)?' sel':''}" onclick="openTicket('${t.id}')"><div class="a">${tkBox(t)}<span class="tk dn">${t.id}</span><span class="d">${dtshort(t)}</span></div><div class="b">${t.dest==='party'?`<span style="color:var(--tp)">${esc(t.party)}</span> · 3rd party · ${esc(t.purpose)}`:`${t.site} · ${esc(t.siteName)}`}</div><div class="c">${esc(t.project)} · ${t.items.length} item${t.items.length===1?'':'s'} · asked by ${esc(t.requestedBy)}</div></div>`).join('')||'<div class="empty">No outbound notes.</div>';
   $('#nDn').textContent=tickets.filter(t=>t.type==='DN').length;
 }
 function openTicket(id){
@@ -535,7 +537,7 @@ function showInbound(t){
        return ks.map(k=>rsvLine(rsvTotals(k,null))).join('')})()}
     <div class="rows"><table style="min-width:1560px"><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:130px">Reservation</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:110px">Site ID</th><th style="width:160px">Site name</th><th style="width:240px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
     ${items.map((L,i)=>{const w=whereOf(L); const b=BULK.get(L.id);
-      return `<tr class="${b?'bulk b'+(b.n%2):''}"><td class="dt">${i+1}${b?`<span class="bn">${b.idx}/${b.of}</span>`:''}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}${b&&b.idx===1?`<span class="bulkchip">one delivery · ${b.of} drums · ${fmt(b.qty)} m</span>`:''}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="rsv">${esc(L.res)||'<span style="color:var(--dim)">—</span>'}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="code">${esc(L.fromSite)||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(L.fromSiteName)||'<span style="color:var(--dim)">—</span>'}</td><td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowEdit(L.id,L.sn||L.name)}${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
+      return `<tr class="${b?'bulk b'+(b.n%2):''}"><td class="dt">${i+1}${b?`<span class="bn">${b.idx}/${b.of}</span>`:''}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}${b&&b.idx===1?`<span class="bulkchip">one delivery · ${b.of} drums · ${fmt(b.qty)} m</span>`:''}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="rsv">${esc(L.res)||'<span style="color:var(--dim)">—</span>'}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="code">${esc(L.fromSite)||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(L.fromSiteName)||'<span style="color:var(--dim)">—</span>'}</td><td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -867,13 +869,13 @@ function returnCell(x){
 }
 function showDispatch(t){
   const R=noteRows(t);
-  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button>${noteEditBtn(t)}<button class="btn sm" onclick="openReturn('${t.id}')" title="Book material back in from this note">↩ Return</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and put its stock back">Delete note</button></div>
+  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${t.id}</span><h3>${destTitle(t)}</h3><div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print / Save PDF</button>${noteEditBtn(t)}<button class="btn sm" onclick="openReturn('${t.id}')" title="Book material back in from this note">↩ Return</button><button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and put its stock back">Delete note</button></div>
   <div class="pbody">
     <div class="box"><h4>Outbound details</h4><div class="fh five">
       ${[['Date',dtshort(t)],...(t.dest==='party'?[['3rd party',t.party],['Purpose',t.purpose],['Their ref / PO',t.partyRef]]:[]),['Project',t.project],['Requested by',t.requestedBy],['Issued by',t.issuedBy],['Receiver',t.receiver],['Vehicle no',t.vehicle],['Driver name',t.driver],['Driver NIC',t.driverNic],['Contact no',t.contact],['Issuer contact',t.issuedContact],['Items',t.items.length+(t.items.length===1?' line':' lines')]].map(([k,v])=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${esc(v)||'<span style="color:var(--dim)">—</span>'}</div></div>`).join('')}
     </div></div>
     <div class="rows"><table><thead><tr><th style="width:36px">No</th><th style="width:120px">Code</th><th>Items &amp; description</th><th style="width:60px">Unit</th><th style="width:80px;text-align:right">Issued</th><th style="width:130px">Returned</th><th style="width:110px">Remarks</th><th style="width:200px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
-    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt rtcell">${returnCell(r.x)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</td><td>${rowEdit(r.L.id,r.L.sn||r.L.name)}${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
+    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt rtcell">${returnCell(r.x)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</td><td>${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -1682,6 +1684,62 @@ async function saveReturn(){
    a reload drops out of it.
 
    Owner only, because wh_delete_item is is_owner(). */
+/* NOTES SELECTED FOR DELETION, which is a different question from the
+   items selected in Inventory and so a different set. Owner only, the
+   same as deleting one: wh_delete_note refuses anyone else, and
+   offering a checkbox that cannot be acted on is worse than offering
+   none. Each note is still deleted by wh_delete_note, one call each -
+   so a note that cannot go (a return stands against it, a drum cannot
+   take its metres back) is refused on its own and the rest still go,
+   exactly as removing them one at a time would behave. */
+let tkSel=new Set();
+function tkTick(id,on){ on?tkSel.add(id):tkSel.delete(id); drawTkBar(); }
+function tkClear(){ tkSel.clear(); renderRList(); renderIList(); }
+function tkAllShown(kind,on){
+  document.querySelectorAll('#'+(kind==='DN'?'iList':'rList')+' .tsel-box').forEach(b=>{
+    const id=b.getAttribute('data-id'); on?tkSel.add(id):tkSel.delete(id); b.checked=on; });
+  drawTkBar();
+}
+const tkBox=t=>OWNER()
+  ? `<input type="checkbox" class="tickbox tsel-box" data-id="${esc(t.id)}"${tkSel.has(t.id)?' checked':''} onclick="event.stopPropagation()" onchange="tkTick('${esc(t.id)}',this.checked)" title="Select for deletion">`
+  : '';
+function drawTkBar(){
+  for(const [id,kind] of [['rSel','IN'],['iSel','DN']]){
+    const bar=$('#'+id); if(!bar) continue;
+    const mine=[...tkSel].filter(x=>{const t=tById(x);return t&&(kind==='DN'?t.type==='DN':t.type!=='DN')});
+    bar.hidden=!(mine.length&&OWNER());
+    if(bar.hidden) continue;
+    bar.innerHTML=`<b>${mine.length}</b> note${mine.length===1?'':'s'} selected<div class="sp"></div>`
+      +`<button class="btn sm" onclick="tkClear()">Clear</button>`
+      +`<button class="btn sm danger" onclick="deleteSelectedNotes('${kind}')">Delete ${mine.length} note${mine.length===1?'':'s'}</button>`;
+  }
+}
+/* one call per note, so each refusal is its own and the rest still go */
+async function deleteSelectedNotes(kind){
+  const ids=[...tkSel].filter(x=>{const t=tById(x);return t&&(kind==='DN'?t.type==='DN':t.type!=='DN')});
+  if(!ids.length) return;
+  const ok=await window.Ask.twice([
+    { title:'Delete '+ids.length+' note'+(ids.length===1?'':'s')+'?',
+      body:'Each note is deleted on its own and puts its stock back as it goes. Anything that cannot go - a note with a return against it, a drum that cannot take its metres back - is refused and left exactly as it is, and the rest still go.',
+      no:'Cancel', yes:'Continue' },
+    { title:'Delete '+ids.length+' for good?',
+      body:'This cannot be undone from here. You will get a list of anything that would not go, and why.',
+      no:'No, keep them', yes:'Delete them' }
+  ]);
+  if(!ok) return;
+  const gone=[], kept=[];
+  for(const id of ids){
+    try{ await DB.whDeleteNote(id); gone.push(id); }
+    catch(e){ kept.push({what:id, why:(e&&e.message)||String(e)}); }
+  }
+  tkSel.clear(); rSel=null; iSel=null; await reload();
+  if(!kept.length){ toast(gone.length+' note'+(gone.length===1?'':'s')+' deleted'); return; }
+  /* the report the item removal already uses, rather than a second
+     one that would say the same thing differently */
+  reportSheet('Deleted '+gone.length+' of '+ids.length,
+    kept.length+' '+(kept.length===1?'was':'were')+' refused, and nothing about '+(kept.length===1?'it':'them')+' has changed.',
+    kept.map(k=>`<div class="rrow"><b>${esc(k.what)}</b><span>${esc(k.why)}</span></div>`).join(''));
+}
 let selIds=new Set();
 function selSync(){ const live=new Set(lines.map(L=>L.id));
   for(const id of [...selIds]) if(!live.has(id)) selIds.delete(id); }

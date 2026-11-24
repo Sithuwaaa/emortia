@@ -306,6 +306,9 @@ tr.bulk td:first-child{box-shadow:inset 3px 0 0 #ffd9a8}
 .rtcell .rtd{font-family:'Space Mono';font-size:10.5px;color:var(--dim);margin-left:6px}
 .rtcell .rtn{margin-top:3px}
 .rtcell .rtout{font-size:10.5px;color:var(--site);margin-top:3px}
+/* the ticket lists borrow the Inventory selection bar, narrower */
+.selbar.tsel{margin:0 0 8px;font-size:12px;flex-wrap:wrap;gap:6px}
+.tic .tsel-box{margin-right:8px;vertical-align:middle}
 .backpc{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--site)}
 .backpc:hover{color:var(--ink)}
 .backpc b{color:var(--site)}
@@ -656,6 +659,7 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
           <input class="in" id="rq" placeholder="GRN / SRN no, site, SN inside…">
           <div class="seg" id="rf"><button data-f="" class="on">All</button><button data-f="IN">New stock</button><button data-f="RT">Site returns</button></div>
         </div>
+        <div class="selbar tsel" id="rSel" hidden></div>
         <div class="tlist" id="rList"></div>
       </div>
       <div class="gl pane" id="rPane"></div>
@@ -668,6 +672,7 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
       <div class="gl tl">
         <div class="h"><h3>Outbound notes</h3><div class="sp"></div><button class="btn pri sm" onclick="newDispatch()">+ New outbound</button></div>
         <div class="tb"><input class="in" id="iq" placeholder="OBN no, site, project, SN inside…"></div>
+        <div class="selbar tsel" id="iSel" hidden></div>
         <div class="tlist" id="iList"></div>
       </div>
       <div class="gl pane" id="iPane"></div>
@@ -706,6 +711,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=52"></script>
+<script src="warehouse.js?v=53"></script>
 </body>
 </html>

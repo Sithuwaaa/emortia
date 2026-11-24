@@ -134,9 +134,16 @@ is('both ask originOf', src.split('originOf(L)').length - 1 >= 2, true);
      q:L.sn||... as object properties. None of them renders HTML, so
      none of them needs escaping. Moved, having looked, which is what
      the number is for. */
-  is('the page mentions a serial exactly where it did', n, 41);
+  /* 41 -> 39. The two note views lost their per-row pencil: the whole
+     note is editable now, so a pencil opening one row beside a form
+     opening all of them was two answers to one question. Each of those
+     calls passed a serial as the button's label - rowEdit(L.id,
+     L.sn||...) - so two mentions went with them, and both were inside
+     an escaper, which is why the count below fell by two as well.
+     Moved, having looked. */
+  is('the page mentions a serial exactly where it did', n, 39);
   is('and ten of those are inside something that escapes',
-     (src.match(/(?:esc|hlt|snHtml|rowEdit|rowDel)\([^()]*L\.sn/g) || []).length, 10);
+     (src.match(/(?:esc|hlt|snHtml|rowEdit|rowDel)\([^()]*L\.sn/g) || []).length, 8);
 }
 
 /* ---- prove it by breaking ---- */
