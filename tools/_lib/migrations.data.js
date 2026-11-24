@@ -313,6 +313,10 @@
       {
         "file": "066_warehouse_item_edit_reaches_everything.sql",
         "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
+      },
+      {
+        "file": "068_warehouse_overissue_and_returned_piece.sql",
+        "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
       }
     ]
   };
