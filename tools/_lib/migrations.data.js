@@ -218,6 +218,11 @@
         "file": "063_warehouse_item_remarks.sql",
         "table": "wh_items",
         "col": "remarks"
+      },
+      {
+        "file": "067_warehouse_outbound_time.sql",
+        "table": "wh_notes",
+        "col": "note_time"
       }
     ],
     "unverifiable": [

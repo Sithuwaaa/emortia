@@ -127,5 +127,47 @@ console.log('\n--- prove it by breaking ---');
      R.uses('select drum_cur from wh_items;', { kind: 'column', table: 'wh_items', col: 'drum_cur' }), true);
 }
 
+console.log('\n--- no function body lost a dollar quote ---');
+{
+  /* A FILE CAN BE UNRUNNABLE FOR A DULLER REASON THAN A MISSING TABLE.
+     067 was first written by appending a second function with
+     String.replace, and $$ in a REPLACEMENT string is an escape for a
+     literal $ - so "as $$" became "as $" and "end $$;" became "end $;".
+     The file held one dollar-quoted body where it should have held two
+     and Postgres would have rejected it outright. Nothing noticed until
+     the payload guard reported a field as never read, because the
+     second function was no longer parseable AS a function.
+
+     COUNTING MARKERS DOES NOT CATCH IT - I tried that first and it was
+     wrong twice over. These files also use plain "create function",
+     bare DO blocks and triggers, so two-per-function is not the rule;
+     and the corruption leaves an EVEN number of $$ anyway, because the
+     damaged pair stops being $$ at all. What is diagnostic is the
+     shape left behind: a dollar quote written with one $. That never
+     occurs on purpose. */
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const dir = path2.join(__dirname, '..', '..', 'supabase');
+  const OPEN = /\bas\s*\$(?!\$)/i;          /* as $  - should be as $$ */
+  const CLOSE = /\bend\s*\$(?!\$)\s*;/i;    /* end $; - should be end $$; */
+  const hurt = [];
+  for (const f of R.files()) {
+    const raw = fs2.readFileSync(path2.join(dir, f.file), 'utf8');
+    if (OPEN.test(raw)) hurt.push(f.file + ': opens a body with a single $');
+    if (CLOSE.test(raw)) hurt.push(f.file + ': closes a body with a single $');
+  }
+  is('no migration dollar-quotes a body with one $', hurt, []);
+
+  /* and the shape, so this is not taking my word for it */
+  const broken = 'create or replace function f() returns int\nlanguage plpgsql as $\nbegin return 1; end $;';
+  is('the corruption is caught', OPEN.test(broken) && CLOSE.test(broken), true);
+  const whole = 'create or replace function f() returns int\nlanguage plpgsql as $' + '$\nbegin return 1; end $' + '$;';
+  is('a whole body is not', OPEN.test(whole) || CLOSE.test(whole), false);
+  is('counting markers would NOT have caught it - both are even',
+     [(broken.match(/\$\$/g) || []).length, 2], [0, 2]);
+  is('String.replace is what eats it',
+     'x'.replace('x', 'as $' + '$'), 'as $');
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);
