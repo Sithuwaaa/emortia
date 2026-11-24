@@ -193,6 +193,15 @@ stays, with the date it stopped applying. The point is that the next person to l
 value finds the reasoning, not just the number, and does not "fix" something back to the
 way it was broken.
 
+`docs/reading-the-migration-state.md` is the one to read before telling anyone which
+migrations are applied. The SQL Editor stores function bodies with CRLF while the files
+are LF, so a naive comparison shows every function as changed – which reads exactly
+like nothing is applied. The numbered order in `supabase/` is also not a run order:
+eleven migrations reference a table or column that they, or a later migration, take
+away, so they cannot be re-run against the schema the rest leave behind.
+`node tools/_lib/migrations-replay.js` lists them. And when the database cannot be
+read, that is the answer – not an order guessed from file numbers.
+
 `docs/whattodo-delete-proposal.md` was written to be read and argued with before
 anything was wired, and it was — **the feature shipped**. Migration 045 added
 `deleted_at`; `removeTodo` soft-deletes rather than destroying; restore, the bin and
