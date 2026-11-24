@@ -128,7 +128,13 @@ is('both ask originOf', src.split('originOf(L)').length - 1 >= 2, true);
 
   const n = (src.match(/\bL\.sn\b/g) || []).length;
   console.log('  serial mentions in the page: ' + n);
-  is('the page mentions a serial exactly where it did', n, 38);
+  /* 38 -> 41 on 069. The tripwire fired and I looked: the three
+     new mentions are in editInboundNote and editDispatchNote, which
+     build the form's own state from a filed note - sn:L.sn and
+     q:L.sn||... as object properties. None of them renders HTML, so
+     none of them needs escaping. Moved, having looked, which is what
+     the number is for. */
+  is('the page mentions a serial exactly where it did', n, 41);
   is('and ten of those are inside something that escapes',
      (src.match(/(?:esc|hlt|snHtml|rowEdit|rowDel)\([^()]*L\.sn/g) || []).length, 10);
 }

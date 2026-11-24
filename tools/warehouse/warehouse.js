@@ -546,8 +546,11 @@ function newInbound(){ rSel=null; renderRList(); /* ONE blank row. It used to st
   nIn={type:'IN',rows:[{}]}; drawInbound(); }
 function drawInbound(){
   const R=nIn.type==='RT', today=window.today();
-  $('#rPane').innerHTML=`<div class="h"><h3>New inbound</h3><span class="k">gets its ticket no when saved</span><div class="sp"></div>
-    <div class="seg"><button class="${!R?'on':''}" onclick="nIn.type='IN';keepHead();drawInbound()">New stock</button><button class="${R?'on':''}" onclick="nIn.type='RT';keepHead();drawInbound()">Return from site</button></div></div>
+  const E=nIn.edit;
+  /* the kind of a filed note is not editable: a GRN that became an
+     SRN would have to move stock it has already booked in */
+  $('#rPane').innerHTML=`<div class="h"><h3>${E?'Editing '+esc(E):'New inbound'}</h3><span class="k">${E?'every row at once · ✕ removes one · changes land together':'gets its ticket no when saved'}</span><div class="sp"></div>
+    ${E?'':`<div class="seg"><button class="${!R?'on':''}" onclick="nIn.type='IN';keepHead();drawInbound()">New stock</button><button class="${R?'on':''}" onclick="nIn.type='RT';keepHead();drawInbound()">Return from site</button></div>`}</div>
   <div class="pbody">
     ${R?`<div class="box rt"><h4>Site return details</h4><div class="fh">
       <div class="f"><label>Removed on · optional</label><input class="in mono" type="date" id="nRem" value="${nIn.removed||''}"><small>leave empty if not known</small></div>
@@ -566,7 +569,7 @@ function drawInbound(){
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
     <button class="btn sm" style="margin-top:10px;margin-left:6px" onclick="openImport()">⇪ Paste from Excel</button>
   </div>
-  <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="newInbound()">Clear</button><button class="btn pri" onclick="saveInbound()">Save inbound</button></div>`;
+  <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="${E?`openTicket('${esc(E)}')`:'newInbound()'}">${E?'Cancel':'Clear'}</button><button class="btn pri" onclick="saveInbound()">${E?'Save changes':'Save inbound'}</button></div>`;
   drawRows();
 }
 /* THE PROJECT BOX. Written once because the delivery form and the
@@ -724,6 +727,26 @@ function acType(i,el){
 function closeAc(i,el){ const b=$('#ac'+i); if(b) b.hidden=true; const v=el.value.trim(); if(/^\d{6,}$/.test(v)&&nIn.rows[i].code!==v){ lookup(v)?pickMat(i,v):newCode(i,v);} }
 function pickMat(i,code){ const m=lookup(code); const r=nIn.rows[i]; Object.assign(r,{code,q:code,name:m.name,cat:shortCat(m.cat),known:MC.has(code)}); if(/CBL|CABLE/i.test(m.name)) r.uom='M'; drawRows(); }
 function newCode(i,code){ Object.assign(nIn.rows[i],{code,q:code,name:'',cat:'',known:false}); drawRows(); }
+/* ONE DESCRIPTION OF AN INBOUND ROW. Filing a note and editing one
+   send the same thing, because 069 made them the same insert on the
+   other side - wh_add_inbound_line - and two descriptions of one row
+   would have drifted the way the two inserts would have. */
+function inItem(r){
+  return {code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
+    remarks:r.remarks||'',
+    /* 061: the row's own answer, when it has one. wh_inbound falls
+       back to the note's, so a delivery with one reservation is
+       unchanged. */
+    reservation_no:nIn.type==='RT'?'':(r.res||''),site_id:r.site||'',site_name:r.siteName||'',
+    cond:nIn.type==='RT'?(r.cond||'Good'):null,is_new:!!(r.code&&!r.known),
+    /* 064: this row's own answer. 'return' is sent explicitly rather
+       than left blank so the payload says what it means; wh_inbound
+       only acts on 'redep' and lets everything else fall through. */
+    source:nIn.type==='RT'?(r.redep?'redep':'return'):'',
+    pack:r.drum?(r.pack||'drum'):null,
+    drum_name:r.drum?r.drum.name.trim():null,drum_lower:r.drum?+r.drum.lower:null,drum_upper:r.drum?+r.drum.upper:null,
+    read_start:r.cable?+r.ra:null,read_end:r.cable?+r.rb:null};
+}
 async function saveInbound(){
   keepHead(); const ok=nIn.rows.filter(r=>r.code||r.name); const msg=$('#nMsg');
   if(!ok.length){toast('Add at least one material');return}
@@ -753,23 +776,16 @@ async function saveInbound(){
   const pj=nIn.local?'':$('#nPj').value;
   if(!nIn.local&&(!pj||isNewOpt(pj))){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
   keepHead();
+  /* EDITING GOES THROUGH THE RECONCILE, which settles the header, the
+     changed rows, the removed ones and the new ones in one
+     transaction. Everything above this line - the refusals - applies
+     to both, because an edit has to answer the same questions filing
+     it did. */
+  if(nIn.edit) return reconcileInbound(ok,msg);
   const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,
     vendor:(nIn.vendor||'').trim(),date:nIn.date||today(),project:pj,ref:nIn.ref||'',
     removed_on:nIn.removed||'',by:nIn.by||ME(),
-    items:ok.map(r=>({code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
-      remarks:r.remarks||'',
-      /* 061: the row's own answer, when it has one. wh_inbound falls
-         back to the note's, so a delivery with one reservation is
-         unchanged. */
-      reservation_no:nIn.type==='RT'?'':(r.res||''),site_id:r.site||'',site_name:r.siteName||'',
-      cond:nIn.type==='RT'?(r.cond||'Good'):null,is_new:!!(r.code&&!r.known),
-      /* 064: this row's own answer. 'return' is sent explicitly rather
-         than left blank so the payload says what it means; wh_inbound
-         only acts on 'redep' and lets everything else fall through. */
-      source:nIn.type==='RT'?(r.redep?'redep':'return'):'',
-      pack:r.drum?(r.pack||'drum'):null,
-      drum_name:r.drum?r.drum.name.trim():null,drum_lower:r.drum?+r.drum.lower:null,drum_upper:r.drum?+r.drum.upper:null,
-      read_start:r.cable?+r.ra:null,read_end:r.cable?+r.rb:null}))};
+    items:ok.map(inItem)};
   const btn=event&&event.target; if(btn) btn.disabled=true;
   try{ const id=await DB.whInbound(p); rSel=id;
     /* A warehouse name typed for the first time joins the list, so the
@@ -865,7 +881,8 @@ let nDn=null;
 function newDispatch(){ iSel=null; renderIList(); nDn={dest:'site',party:'',purpose:'Repair',partyRef:'',date:today(),time:nowHM(),site:'',siteName:'',project:'',requestedBy:'',receiver:'',vehicle:'',driver:'',driverNic:'',contact:'',issuedBy:ME(),issuedContact:'',rows:[{}]}; drawDispatch(); }
 function drawDispatch(){
   const f=(k,l,ph,cls='')=>`<div class="f"><label>${l}</label><input class="in ${cls}" value="${esc(nDn[k])}" placeholder="${ph}" oninput="nDn['${k}']=this.value${k==='site'?";const n=siteLookup(this.value);if(n){nDn.siteName=n;$('#dSn').value=n}":''}" ${k==='siteName'?'id="dSn"':''}></div>`;
-  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">OBN · new</span><h3>New outbound</h3><span class="k">gets its note no when saved</span></div>
+  const E=nDn.edit;
+  $('#iPane').innerHTML=`<div class="h"><span class="tk dn" style="font-size:14px">${E?esc(E):'OBN · new'}</span><h3>${E?'Editing '+esc(E):'New outbound'}</h3><span class="k">${E?'every row at once · ✕ removes one, which puts its stock back · changes land together':'gets its note no when saved'}</span></div>
   <div class="pbody">
     <div class="box ${nDn.dest==='party'?'tpb':''}"><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><h4 style="margin:0">Outbound details</h4><div class="seg"><button class="${nDn.dest!=='party'?'on':''}" onclick="nDn.dest='site';drawDispatch()">To site</button><button class="${nDn.dest==='party'?'on':''}" onclick="nDn.dest='party';drawDispatch()">To 3rd party</button></div></div><div class="fh five">
       <div class="f"><label>Date</label><input class="in mono" type="date" value="${nDn.date}" oninput="nDn.date=this.value"></div>
@@ -880,7 +897,7 @@ function drawDispatch(){
     <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:220px">Material code</th><th>Material name</th><th style="width:130px">Category</th><th style="width:84px">UoM</th><th style="width:90px">Qty</th><th style="width:200px">SN</th><th style="width:140px">Remarks</th><th style="width:40px"></th></tr></thead><tbody id="dBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nDn.rows.push({});drawDRows()">+ Add row</button>
   </div>
-  <div class="ff"><div class="msg" id="dMsg">Type a code, SN or name in a row. Stock links itself; anything else (local purchase, not received yet) goes out as a <b style="color:var(--warn)">direct issue</b> and waits for you to receive it later.</div><button class="btn" onclick="newDispatch()">Clear</button><button class="btn pri" onclick="saveDispatch()">Save outbound</button></div>`;
+  <div class="ff"><div class="msg" id="dMsg">Type a code, SN or name in a row. Stock links itself; anything else (local purchase, not received yet) goes out as a <b style="color:var(--warn)">direct issue</b> and waits for you to receive it later.</div><button class="btn" onclick="${E?`openTicket('${esc(E)}')`:'newDispatch()'}">${E?'Cancel':'Clear'}</button><button class="btn pri" onclick="saveDispatch()">${E?'Save changes':'Save outbound'}</button></div>`;
   drawDRows();
 }
 function drawDRows(){
@@ -963,6 +980,34 @@ function pickSearch(v){
   box.hidden=false;
 }
 function addPick(id){ let i=nDn.rows.findIndex(r=>!r.code&&!r.name&&!r.q); if(i<0){nDn.rows.push({});i=nDn.rows.length-1} dPickLine(i,id); $('#pq').value=''; $('#pq').focus(); }
+async function reconcileInbound(ok,msg){
+  const p=inboundReconcilePayload(ok);
+  const btn=event&&event.target; if(btn) btn.disabled=true;
+  try{ const res=await DB.whReconcile(whOnly(WH_SENDS_wh_reconcile,p,'wh_reconcile'));
+    const r=res||{};
+    toast(`${nIn.edit} updated · ${r.changed||0} changed, ${r.added||0} added, ${r.removed||0} removed`);
+    const id=nIn.edit; nIn=null; await reload(); if(tById(id)) showInbound(tById(id)); }
+  catch(e){ msg.innerHTML=`<b style="color:var(--bad)">${esc(e.message)}</b>`; }
+  finally{ if(btn) btn.disabled=false; }
+}
+/* and one description of an outbound row, for the same reason */
+function dnItem(r){
+  const L=r.lineId&&lById(r.lineId);
+  if(L) return {item_id:L.id,whole:!!(L.drum&&r.whole),cut:(L.drum&&!r.whole)?+r.qty:null,
+    cut_end:(L.drum&&!r.whole)?(r.cutEnd||'upper'):null,remarks:r.remarks||''};
+  return {code:r.code||'',name:r.name,cat:r.cat||'Other',uom:r.cable?'M':(r.uom||'EA'),qty:+r.qty,sn:r.sn||'',is_new:!!(r.code&&!MC.has(r.code)),
+    read_start:r.cable?+r.ra:null,read_end:r.cable?+r.rb:null,remarks:r.remarks||''};
+}
+async function reconcileDispatch(rows,bad){
+  const p=dispatchReconcilePayload(rows);
+  const btn=event&&event.target; if(btn) btn.disabled=true;
+  try{ const res=await DB.whReconcile(whOnly(WH_SENDS_wh_reconcile,p,'wh_reconcile'));
+    const r=res||{};
+    toast(`${nDn.edit} updated · ${r.changed||0} changed, ${r.added||0} added, ${r.removed||0} removed`);
+    const id=nDn.edit; nDn=null; await reload(); if(tById(id)) showDispatch(tById(id)); }
+  catch(e){ bad(e.message); }
+  finally{ if(btn) btn.disabled=false; }
+}
 async function saveDispatch(){
   const m=$('#dMsg'), bad=t=>{m.innerHTML=`<b style="color:var(--site)">${esc(t)}</b>`};
   if(nDn.dest==='party'?!nDn.party.trim():!nDn.site.trim()) return bad(nDn.dest==='party'?'Type the 3rd party company.':'Type the site ID first.');
@@ -974,14 +1019,13 @@ async function saveDispatch(){
     if(!L&&!r.name) return bad('Every manual row needs a material name.');
     if(!L&&r.cable&&(r.ra==null||r.rb==null||r.ra===''||r.rb==='')) return bad('A cable piece needs its start and end readings.');
     if(!L&&!(+r.qty>0)) return bad('Every manual row needs a quantity.'); }
+  /* an edit answers the same questions, then goes through the
+     reconcile instead of filing a second note */
+  if(nDn.edit) return reconcileDispatch(rows,bad);
   const p={date:nDn.date||today(),time:nDn.time||'',project:nDn.project,dest:nDn.dest,site_id:nDn.dest==='site'?nDn.site.trim().toUpperCase():'',site_name:nDn.dest==='site'?nDn.siteName:'',
     party:nDn.dest==='party'?nDn.party.trim():'',purpose:nDn.dest==='party'?nDn.purpose:'',party_ref:nDn.dest==='party'?nDn.partyRef:'',
     requested_by:nDn.requestedBy,receiver:nDn.receiver,vehicle:nDn.vehicle,driver:nDn.driver,driver_nic:nDn.driverNic,contact:nDn.contact,issued_by:nDn.issuedBy||ME(),issued_contact:nDn.issuedContact,
-    items:rows.map(r=>{ const L=r.lineId&&lById(r.lineId);
-      if(L) return {item_id:L.id,whole:!!(L.drum&&r.whole),cut:(L.drum&&!r.whole)?+r.qty:null,
-        cut_end:(L.drum&&!r.whole)?(r.cutEnd||'upper'):null,remarks:r.remarks||''};
-      return {code:r.code||'',name:r.name,cat:r.cat||'Other',uom:r.cable?'M':(r.uom||'EA'),qty:+r.qty,sn:r.sn||'',is_new:!!(r.code&&!MC.has(r.code)),
-        read_start:r.cable?+r.ra:null,read_end:r.cable?+r.rb:null,remarks:r.remarks||''}; })};
+    items:rows.map(dnItem)};
   const btn=event&&event.target; if(btn) btn.disabled=true;
   try{ const id=await DB.whOutbound(p); iSel=id; const pend=rows.filter(r=>!r.lineId).length;
     toast(`${id} saved · ${rows.length} item${rows.length===1?'':'s'} to ${p.site_id||p.party}${pend?` · ${pend} direct issue`:''}`);
@@ -1170,6 +1214,12 @@ function editSheet(o){
 const WH_SENDS_wh_update_note={id:1,note_date:1,note_time:1,project:1,ref:1,reservation_no:1,site_name:1,
   removed_on:1,purpose:1,party_ref:1,by_name:1,requested_by:1,receiver:1,vehicle:1,driver:1,
   driver_nic:1,contact:1,issued_by:1,issued_contact:1};
+/* 069 takes a whole note, so its surface is the note's own keys plus
+   two arrays. The rows carry line_id for a row that already exists and
+   nothing for a new one; a row's edits travel in its own "item"
+   object, which is checked against the wh_update_item declaration
+   below because that is the function that applies them. */
+const WH_SENDS_wh_reconcile={id:1,header:1,note:1,rows:1};
 const WH_SENDS_wh_update_item={id:1,name:1,code:1,cat:1,uom:1,bin:1,sn:1,cond:1,project:1,vendor:1,source:1,remarks:1,
   reservation_no:1,site_id:1,site_name:1,from_wh:1,
   drum_name:1,drum_lower:1,drum_upper:1,read_start:1,read_end:1,qty:1};
@@ -1259,7 +1309,94 @@ function editItem(id){
     after:()=>{ if(invMode==='lines'&&$('#tbl')) renderInv(id); }
   });
 }
-const noteEditBtn=t=>`<button class="btn sm" onclick="editNote('${esc(t.id)}')" title="Correct the words on ${esc(t.id)}">✎ Edit</button>`;
+/* EDIT REOPENS THE NOTE IN THE FORM THAT MADE IT.
+
+   Editing used to mean a small sheet for the header and a pencil per
+   row, and no way at all to add one. 069 gave the database a
+   reconcile; this is the form that drives it. Every row is editable
+   at once, the row's own ✕ removes it, + Add row adds one, and the
+   whole thing is settled in a single transaction.
+
+   A row that already exists keeps its lineId and its itemId. A row
+   added here has neither, which is exactly how wh_reconcile tells
+   them apart. */
+function editNoteFull(id){
+  const t=tById(id); if(!t) return;
+  if(t.type==='RN'){ toast('A return is edited from the note it reverses.'); return; }
+  if(t.type==='DN') return editDispatchNote(t);
+  return editInboundNote(t);
+}
+function editInboundNote(t){
+  rSel=t.id;
+  nIn={edit:t.id, type:t.type==='RT'?'RT':'IN', date:t.date, project:t.project, ref:t.ref,
+    removed:t.removed, by:t.by, res:t.res, wh:'', vendor:'', local:false,
+    rows:t.items.map(x=>{ const L=lById(x.lineId??x); if(!L) return null;
+      return {lineId:LID.get(t.id+'|'+L.id)||null, itemId:L.id,
+        q:L.code||L.name, code:L.code, name:L.name, cat:L.cat, uom:L.uom, qty:L.qty,
+        known:MC.has(L.code), sn:L.sn, loc:L.loc, res:L.res, site:L.fromSite, siteName:L.fromSiteName,
+        cond:L.cond||'Good', redep:L.source==='redep', remarks:L.remarks||'',
+        drum:L.drum?{name:L.drum.name,lower:L.drum.lower,upper:L.drum.cur}:null,
+        cable:!!L.read, ra:L.read?L.read.start:'', rb:L.read?L.read.end:''};
+    }).filter(Boolean)};
+  /* the warehouse and vendor are per item; the form asks once, so it
+     offers what the rows agree on and leaves it blank when they do not */
+  const one=(k)=>{ const v=new Set(nIn.rows.map(r=>r[k]).filter(Boolean)); return v.size===1?[...v][0]:''; };
+  const its=t.items.map(x=>lById(x.lineId??x)).filter(Boolean);
+  const u=k=>{ const v=new Set(its.map(L=>L[k]).filter(Boolean)); return v.size===1?[...v][0]:''; };
+  nIn.wh=u('fromWh'); nIn.vendor=u('vendor');
+  go('rcv'); drawInbound();
+}
+function editDispatchNote(t){
+  iSel=t.id;
+  nDn={edit:t.id, dest:t.dest||'site', party:t.party, purpose:t.purpose, partyRef:t.partyRef,
+    date:t.date, time:t.time||'', site:t.site, siteName:t.siteName, project:t.project,
+    requestedBy:t.requestedBy, receiver:t.receiver, vehicle:t.vehicle, driver:t.driver,
+    driverNic:t.driverNic, contact:t.contact, issuedBy:t.issuedBy, issuedContact:t.issuedContact,
+    rows:t.items.map(x=>{ const L=lById(x.lineId); if(!L) return null;
+      return {lineId:L.id, lid:x.lid, q:L.sn||(L.drum&&L.drum.name)||L.code, code:L.code, name:L.name,
+        cat:L.cat, uom:L.drum?'M':L.uom, qty:+x.qty, sn:L.sn||'', known:true,
+        cable:!!L.drum, whole:!!(L.drum&&!x.cut), cutEnd:x.cut?'upper':'', remarks:x.remarks||''};
+    }).filter(Boolean)};
+  go('iss'); drawDispatch();
+}
+/* what the reconcile is told. The header keys are wh_update_note's,
+   the note keys are what a NEW row needs to be inserted the way the
+   creating form inserts it, and a row that exists sends only its
+   item's own fields - wh_update_item applies those and raises its
+   usual refusals. */
+function inboundReconcilePayload(ok){
+  return {id:nIn.edit,
+    header:{note_date:nIn.date||today(), project:nIn.project||'', ref:nIn.ref||'',
+      removed_on:nIn.removed||'', by_name:nIn.by||ME()},
+    note:{project:nIn.project||'', from_wh:(nIn.wh||'').trim(), vendor:(nIn.vendor||'').trim(),
+      is_local:!!nIn.local},
+    rows:ok.map(r=>{ const it=inItem(r);
+      if(!r.lineId) return it;
+      return {line_id:r.lineId, remarks:r.remarks||'',
+        item:{name:it.name, code:it.code, cat:it.cat, uom:it.uom, bin:it.bin, sn:it.sn,
+          cond:nIn.type==='RT'?it.cond:undefined, project:nIn.project||'',
+          remarks:it.remarks, reservation_no:it.reservation_no,
+          site_id:it.site_id, site_name:it.site_name, from_wh:(nIn.wh||'').trim(),
+          qty:it.qty}};
+    })};
+}
+function dispatchReconcilePayload(rows){
+  return {id:nDn.edit,
+    header:{note_date:nDn.date||today(), note_time:nDn.time||'', project:nDn.project||'',
+      site_name:nDn.siteName||'', purpose:nDn.purpose||'', party_ref:nDn.partyRef||'',
+      requested_by:nDn.requestedBy||'', receiver:nDn.receiver||'', vehicle:nDn.vehicle||'',
+      driver:nDn.driver||'', driver_nic:nDn.driverNic||'', contact:nDn.contact||'',
+      issued_by:nDn.issuedBy||ME(), issued_contact:nDn.issuedContact||''},
+    note:{project:nDn.project||'', dest:nDn.dest, site_id:nDn.dest==='site'?(nDn.site||'').trim().toUpperCase():'',
+      site_name:nDn.dest==='site'?(nDn.siteName||''):'', party:nDn.dest==='party'?(nDn.party||'').trim():''},
+    rows:rows.map(r=>{ if(!r.lineId) return dnItem(r);
+      const L=lById(r.lineId);
+      return {line_id:r.lid, remarks:r.remarks||'',
+        item:{name:r.name, code:r.code||'', cat:r.cat||'Other',
+          uom:(L&&L.drum)?'M':(r.uom||'EA'), sn:r.sn||'', project:nDn.project||''}};
+    })};
+}
+const noteEditBtn=t=>`<button class="btn sm" onclick="editNoteFull('${esc(t.id)}')" title="Reopen ${esc(t.id)} and edit every row at once">✎ Edit</button>`;
 const rowEdit=(itemId,label)=>`<button class="redit" title="Correct ${esc(String(label))}" onclick="editItem(${itemId})">✎</button>`;
 
 /* ---- bringing a sheet in --------------------------------------------

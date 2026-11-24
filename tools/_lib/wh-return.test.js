@@ -41,6 +41,21 @@ function lastDefs() {
 }
 
 const D = lastDefs();
+/* THE PER-ITEM BODY MOVED AND THE INVARIANTS DID NOT. 069 lifted the
+   item loops of wh_inbound and wh_outbound into wh_add_inbound_line
+   and wh_add_outbound_line, so that editing a note adds a row through
+   the same code that creating one does. Everything below asks the
+   same questions of the same statements; only their address changed.
+   The fallback keeps this readable against a database where 069 has
+   not been applied yet - and the parent is still where the note-level
+   checks live, so this looks at both. */
+const itemBody = (parent, helper) => {
+  const h = D.get(helper), pa = D.get(parent);
+  return { body: (h ? h.body : '') + '\n' + (pa ? pa.body : ''),
+           from: h ? h.from : (pa ? pa.from : '(none)') };
+};
+D.set('wh_inbound',  itemBody('wh_inbound',  'wh_add_inbound_line'));
+D.set('wh_outbound', itemBody('wh_outbound', 'wh_add_outbound_line'));
 
 console.log('--- the return path, as the database will actually run it ---');
 for (const n of ['wh_inbound', 'wh_return', 'wh_delete_note', 'wh_assert_returnable'])

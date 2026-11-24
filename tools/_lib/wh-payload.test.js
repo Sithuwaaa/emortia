@@ -167,13 +167,29 @@ function valueOf(block, key) {
    "0 per item" - green, and blind to the very field (remarks) that this
    file was written about. So every returned literal is collected, and the
    union of their keys is what the page sends. */
-function itemKeys(block) {
+function itemKeys(block, page) {
   const expr = valueOf(block, 'items');
   if (expr === null) return { keys: [], shapes: 0, present: false };
   const keys = new Set();
   let shapes = 0;
-  for (const m of expr.matchAll(/(?:=>\s*\(\s*|return\s+)\{/g)) {
-    const b = blockFrom(expr, expr.indexOf('{', m.index + m[0].length - 1));
+  /* A MAP CAN NAME ITS MAPPER. 069 pulled the two item descriptions
+     out of the save functions into inItem() and dnItem(), so that
+     filing a note and editing one send the same row - the page's half
+     of the same move the SQL made. The moment it did, "items:
+     ok.map(inItem)" returned nothing this could read, and the guard
+     reported both call sites as unparseable. The keys are still there;
+     they are one hop away, so follow the name. */
+  const named = expr.match(/\.map\(\s*([A-Za-z_$][\w$]*)\s*\)/);
+  let src = expr;
+  if (named && page) {
+    const at = page.search(new RegExp('function\\s+' + named[1] + '\\s*\\('));
+    if (at >= 0) {
+      const body = blockFrom(page, page.indexOf('{', at));
+      if (body) src = body;
+    }
+  }
+  for (const m of src.matchAll(/(?:=>\s*\(\s*|return\s+)\{/g)) {
+    const b = blockFrom(src, src.indexOf('{', m.index + m[0].length - 1));
     if (!b) continue;
     shapes++;
     for (const k of topKeys(b)) keys.add(k);
@@ -218,7 +234,23 @@ function readSide() {
        is actually in the USING list, so this cannot invent a read. */
     if (/\busing\b[^;]*\bp\b/i.test(d.body))
       for (const mm of d.body.matchAll(/\$\d+\s*(?:->>|->|\?)\s*''?([a-zA-Z_]\w*)''?/g)) p.add(mm[1]);
-    out.set(name, { p, it, from: d.from, jsonb: /\bp\s+jsonb\b/i.test(d.args) });
+    out.set(name, { p, it, from: d.from, jsonb: /\bp\s+jsonb\b/i.test(d.args), body: d.body });
+  }
+  /* A FUNCTION READS WHAT THE FUNCTION IT DELEGATES TO READS. 069 moved
+     the per-item bodies of wh_inbound and wh_outbound into
+     wh_add_inbound_line and wh_add_outbound_line so that editing a note
+     adds a row the same way creating one does - and the moment it did,
+     this file reported every item key as never read, because it was
+     reading an address the body had left. The keys are still read; they
+     are read one call away. Only a perform that hands over BOTH p and
+     it counts, so this cannot absorb an unrelated helper. */
+  for (const [, d] of out) {
+    for (const mm of (d.body || '').matchAll(/perform\s+(wh_[a-z_]+)\s*\([^;]*\bp\b[^;]*\bit\b[^;]*\)/g)) {
+      const h = out.get(mm[1]);
+      if (!h) continue;
+      for (const k of h.p) d.p.add(k);
+      for (const k of h.it) d.it.add(k);
+    }
   }
   return out;
 }
@@ -265,7 +297,7 @@ function sentSide(wrappers) {
       }
       const line = src.slice(0, m.index).split('\n').length;
       if (!block) { unreadable.push({ fn, at: wrapper + ' at warehouse.js:' + line }); continue; }
-      const it = itemKeys(block);
+      const it = itemKeys(block, src);
       if (it.present && !it.shapes) unreadable.push({ fn, at: wrapper + ' at warehouse.js:' + line + ' - its items map returns nothing this can read' });
       found.push({ wrapper, fn, line, how, top: topKeys(block).filter(k => k !== 'items'),
                    items: it.keys, shapes: it.shapes, hasItems: it.present });

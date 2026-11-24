@@ -1366,6 +1366,10 @@
      server flips the original row rather than booking a second one in,
      which is what an SRN used to do. Migration 055. */
   const whReturn = p => whRpc('wh_return', { p });
+  /* 069: the whole note at once - header, changed rows, removed rows
+     and new ones - settled in one transaction by the functions that
+     already own each job. */
+  const whReconcile = p => whRpc('wh_reconcile', { p });
   async function whSubscribe(fn){
     const c = await client(); if (!c) return;
     return liveChannel(
@@ -3103,7 +3107,7 @@
                 swapList, swapSave, swapDelete, swapDropFiles, swapUpload, swapLink, swapSubscribe,
                 whLoad, whInbound, whOutbound, whNext, whSetSN, whRename, whPin, whMin,
                 whAddLookup, whAddMaterial, whSubscribe,
-                whDeleteNote, whDeleteItem, whUpdateNote, whDeleteLine, whUpdateItem, whReturn,
+                whDeleteNote, whDeleteItem, whUpdateNote, whDeleteLine, whUpdateItem, whReturn, whReconcile,
                 WH24_LIST: WH24_LIST, WH24_HEAVY: WH24_HEAVY, wh24Narrow: wh24Narrow,
                 goalsLoad: goalsLoad, goalsWrite: goalsWrite, goalsRemove: goalsRemove,
                 goalsCurrency: goalsCurrency, goalsSubscribe: goalsSubscribe,

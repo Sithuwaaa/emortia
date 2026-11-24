@@ -63,11 +63,21 @@ function wholeBranch(body) {
   return end < 0 ? src.slice(start) : src.slice(start, end);
 }
 
-const ob = lastDef('wh_outbound');
+/* THE BODY MOVED AND THE INVARIANT DID NOT. 069 lifted wh_outbound's
+   per-item body into wh_add_outbound_line, so create and edit add a
+   line through one implementation. Everything below asks the same
+   questions of the same code; only its address changed. Falling back
+   to the parent keeps this file honest against a database where 069
+   has not been applied. */
+const itemBody = (parent, helper) => {
+  const h = lastDef(helper);
+  return h.body ? h : lastDef(parent);
+};
+const ob = itemBody('wh_outbound', 'wh_add_outbound_line');
 console.log('--- a drum that has gone out cannot be cut ---');
-console.log('  wh_outbound last defined in ' + ob.from + '\n');
+console.log('  the outbound item body lives in ' + ob.from + '\n');
 
-is('wh_outbound was found', !!ob.body, true);
+is('the outbound item body was found', !!ob.body, true);
 const cut = cutBranch(ob.body), whole = wholeBranch(ob.body);
 is('the cut branch was found', cut.length > 200, true);
 is('the whole-drum branch was found', whole.length > 100, true);
@@ -94,6 +104,8 @@ console.log('\n  --- and the same reading of the version that let it through ---
     const m = sql.match(/create or replace function wh_outbound\([^)]*\)[\s\S]*?\$\$;/i);
     if (m) { before = m[0]; from = f; }
   }
+  /* before 068 the body was still inside wh_outbound, so this one
+     really is the right place to look */
   is('the definition before 068 was found', !!before, true);
   console.log('  (it is ' + from + ')');
   is('its cut branch had no status check', /L\.status\s*<>\s*'in'/.test(cutBranch(before)), false);
