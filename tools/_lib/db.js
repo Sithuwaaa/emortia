@@ -1298,10 +1298,19 @@
          one column each that had already started to drift apart. A page
          that is missing a lookup list still works, so a table that is
          not there yet must not stop the whole load. */
+      /* THE CATCH SAYS WHICH ONE IT WAS. A page missing a lookup list
+         still works, so this read is allowed to fail - but .catch(() =>
+         [])  made a refused read and an empty table the same answer,
+         and the page then showed every list as empty with nothing
+         saying why. That reads exactly like a warehouse nobody has
+         filled in yet. The list is still empty either way; the
+         difference is that the page can now say so. */
+      let lookupError = null;
       const [notes, items, lines, materials, lookups] = await Promise.all([
         whAll(c, 'wh_notes', 'id'), whAll(c, 'wh_items', 'id'), whAll(c, 'wh_lines', 'id'),
-        whAll(c, 'wh_materials', 'code'), whAll(c, 'wh_lookups', 'name').catch(() => [])]);
-      return { notes, items, lines, materials, lookups, error: null };
+        whAll(c, 'wh_materials', 'code'),
+        whAll(c, 'wh_lookups', 'name').catch(e => { lookupError = whErr(e); return []; })]);
+      return { notes, items, lines, materials, lookups, lookupError, error: null };
     } catch(e){ return { error: whErr(e) }; }
   }
   async function whRpc(fn, args){

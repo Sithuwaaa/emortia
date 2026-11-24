@@ -17,10 +17,8 @@ const SHORT = {'BB,MPT,EXT,BB accs':'Baseband','Com & Filters':'Combiners','H & 
 const TYPE_OF = Object.fromEntries(Object.entries(SHORT).map(([k,v])=>[v,k]));   // short category -> Material Codes type
 const CATS = ['RRU','AAU','Antenna','Baseband','BBU','Fibers','Jumpers','Cables','Power','RRU PWR','SFP','IP','TX','Combiners','IBS','Civil','Other'];
 const shortCat = c => SHORT[c] || c || 'Other';
-const PURPOSES=['Repair','Return to vendor','Loan','Transfer','Testing','Scrap'];
 const CONDS=['Good','Faulty','Scrap'];
-const NEWPJ='+ New project…';
-let PROJECTS=[], PARTIES=[], SOURCES=[], VENDORS=[], SITES={};
+let PROJECTS=[], SITES={};
 /* note id + item id -> wh_lines.id, filled as the notes are read */
 const LID=new Map();
 /* outbound wh_lines.id -> how much of it has already been returned */
@@ -35,20 +33,67 @@ let lines=[], tickets=[], pins=new Set(), mins={}, newMats=new Map(), proj='';
    behaviour. 059 made them one table keyed by kind; this makes them one
    component and one add. A list that has not been migrated yet is simply
    empty, and an empty list still takes whatever is typed. */
-const LOOK={project:[],party:[],source:[],vendor:[],location:[]};
+const LOOK={project:[],party:[],source:[],vendor:[],location:[],purpose:[]};
 const lookList=k=>LOOK[k]||[];
-/* The component. An input backed by a datalist: pick an existing name or
-   type a new one, and the new one joins the list when it is used. No
-   modal, no separate "+ new" button to forget to wire up. */
-function lookBox(kind,id,value,ph,extra){
-  return `<input class="in" id="${id}" list="lk_${kind}" placeholder="${esc(ph||'type or pick')}" value="${esc(value||'')}" ${extra||''}>`
-    + `<datalist id="lk_${kind}">${lookList(kind).map(x=>`<option>${esc(x)}</option>`).join('')}</datalist>`;
+/* THERE WERE TWO OF THESE AND THAT WAS THE PROBLEM.
+
+   lookBox was an <input> backed by a <datalist> - "no modal, no separate
+   + new button to forget to wire up", which read well and was true. Then
+   askProject was written as a <select> carrying a literal "+ New
+   project…" option, hardcoded to project in four places, and lookBox was
+   never removed. So the tool asked the same question two different ways
+   depending on which field you were standing in: Project showed
+   "+ New project…", 3rd Party Company showed a type-ahead with nothing
+   at the bottom, and Purpose was six words compiled into the page.
+
+   The select wins - it is the one that shows you there is an add. This is
+   that component, kind-aware, and it is the only one. Every list goes
+   through it: project, party, purpose, vendor, source, location.
+
+   THE CURRENT VALUE IS ALWAYS AN OPTION, even when the list has never
+   heard of it. A note written before its list existed, a bin that came
+   in from the Excel import, a purpose typed years ago - a select that
+   silently dropped those would silently rewrite them to whatever its
+   first option happened to be. */
+const LOOKLABEL={project:'project',party:'company',source:'warehouse',
+  vendor:'vendor',location:'bin',purpose:'purpose'};
+const NEWOPT=k=>'+new:'+k;
+const isNewOpt=v=>typeof v==='string'&&v.startsWith('+new:');
+function pickBox(kind,o){
+  o=o||{};
+  const v=o.value==null?'':String(o.value), list=lookList(kind);
+  const kept=v&&!list.includes(v);
+  return `<select class="in${o.cls?' '+o.cls:''}"${o.id?' id="'+o.id+'"':''} ${o.extra||''}>`
+    + `<option value=""${v?'':' selected'}>${esc(o.first||'Pick a '+(LOOKLABEL[kind]||kind)+'…')}</option>`
+    + (kept?`<option selected>${esc(v)}</option>`:'')
+    + list.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('')
+    + `<option value="${NEWOPT(kind)}">+ New ${esc(LOOKLABEL[kind]||kind)}…</option></select>`;
 }
-/* Remembering a name is never allowed to fail the thing that used it. */
+/* REMEMBERING A NAME IS NEVER ALLOWED TO FAIL THE THING THAT USED IT -
+   which was true, and was implemented as catch(e){}, which is a
+   different thing. A bare catch does not mean "this is allowed to
+   fail", it means "nobody will ever be told whether it did".
+
+   That is what 065 was needed for. wh_lookups had a CHECK constraint
+   naming five kinds, 'purpose' was not one of them, so Postgres refused
+   the insert - and the page said "added", because the Add button toasted
+   success on the line after the catch regardless. The name was gone on
+   the next load with nothing anywhere saying why. 065 widens the
+   constraint; this is the part 065 cannot fix.
+
+   So it still never throws at its caller, and it now RETURNS what
+   happened. added:false with no why is "nothing to do". ok:false means
+   the row was not written, and whoever asked has to decide whether that
+   matters to them - for the Add button it is the whole point, for a
+   note that has already been filed it is a footnote on a success. */
 async function lookAdd(kind,name){
-  name=String(name==null?'':name).trim(); if(!name) return;
-  if(lookList(kind).includes(name)) return;
-  try{ await DB.whAddLookup(kind,name); LOOK[kind].push(name); LOOK[kind].sort((a,b)=>a.localeCompare(b)); }catch(e){}
+  name=String(name==null?'':name).trim();
+  if(!name) return {ok:true,added:false};
+  if(lookList(kind).includes(name)) return {ok:true,added:false};
+  try{ await DB.whAddLookup(kind,name);
+    LOOK[kind].push(name); LOOK[kind].sort((a,b)=>a.localeCompare(b));
+    return {ok:true,added:true}; }
+  catch(e){ return {ok:false,added:false,why:(e&&e.message)||String(e)}; }
 }
 
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
@@ -168,15 +213,19 @@ function fromDB(d){
   (d.lookups||[]).forEach(x=>{ if(LOOK[x.kind]) LOOK[x.kind].push(x.name); });
   for(const k in LOOK) LOOK[k].sort((a,b)=>a.localeCompare(b));
   /* the names the rest of the page already reads */
-  PROJECTS=LOOK.project; PARTIES=LOOK.party; SOURCES=LOOK.source; VENDORS=LOOK.vendor;
+  PROJECTS=LOOK.project;
   newMats=new Map(); lines.filter(L=>L.isNew&&L.code&&!MC.has(L.code)).forEach(L=>{ if(!newMats.has(L.code)) newMats.set(L.code,{code:L.code,name:L.name,cat:L.cat,first:L.inDate||L.outDate}); });
 }
-let loading=null;
+let loading=null, lookWarned=null;
 async function reload(){
   if(loading) return loading;
   loading=(async()=>{ const d=await DB.whLoad(); loading=null;
     if(d.error){ $('#loading').textContent=d.error; $('#loading').hidden=false; return false; }
     fromDB(d); fillSelects(); renderAll();
+    /* Said once per load, not per field. Every pick list will be empty
+       and that is not because the warehouse is new. */
+    if(d.lookupError&&d.lookupError!==lookWarned){ lookWarned=d.lookupError;
+      toast('The pick lists could not be read, so they are all empty: '+d.lookupError); }
     if(iSel&&tById(iSel)) showDispatch(tById(iSel)); if(rSel&&tById(rSel)) showInbound(tById(rSel));
     $('#loading').hidden=true; return true; })();
   return loading;
@@ -187,17 +236,19 @@ function fillSelects(){
   $('#projSel').value=PROJECTS.includes(keep)?keep:'';
   $('#needMat').innerHTML='<option value="">any cable</option>'+[...new Map(lines.filter(L=>L.drum).map(L=>[L.code,L])).values()].map(L=>`<option value="${esc(L.code)}">${esc(L.name)}</option>`).join('');
 }
-/* "+ New project…" in any project list opens a small field right under it
-   (no browser prompt - some app windows block those). Saved for everybody. */
+/* "+ New …" in ANY list opens a small field right under it (no browser
+   prompt - some app windows block those). Saved for everybody. The kind
+   travels in the option's value, so one listener serves all six. */
 document.addEventListener('change',e=>{
-  const el=e.target; if(el.tagName!=='SELECT'||el.value!==NEWPJ) return;
-  askProject(el);
+  const el=e.target; if(el.tagName!=='SELECT'||!isNewOpt(el.value)) return;
+  askNew(el,el.value.slice(5));
 });
-function askProject(sel){
+function askNew(sel,kind){
+  const label=LOOKLABEL[kind]||kind;
   const host=sel.closest('.f')||sel.parentNode;
   let box=host.querySelector('.npj');
   if(!box){ box=document.createElement('div'); box.className='npj';
-    box.innerHTML='<input class="in" placeholder="New project name" maxlength="60"><button class="btn sm pri" type="button">Add</button><button class="btn sm" type="button">Cancel</button>';
+    box.innerHTML='<input class="in" placeholder="New '+esc(label)+' name" maxlength="60"><button class="btn sm pri" type="button">Add</button><button class="btn sm" type="button">Cancel</button>';
     host.appendChild(box); }
   const inp=box.querySelector('input'), [add,cancel]=box.querySelectorAll('button');
   const close=(v)=>{ box.remove(); sel.value=v||''; sel.dispatchEvent(new Event('input')); if(sel.onchange) sel.onchange({target:sel}); };
@@ -205,10 +256,12 @@ function askProject(sel){
   add.onclick=async()=>{
     const name=inp.value.trim(); if(!name){ inp.focus(); return; }
     add.disabled=true;
-    try{ await lookAdd('project',name);
-      document.querySelectorAll('select').forEach(s=>{ if(![...s.options].some(o=>o.textContent===NEWPJ)) return;
+    try{ const r=await lookAdd(kind,name);
+      if(!r.ok) throw new Error('Could not save that '+label+': '+r.why);
+      document.querySelectorAll('select').forEach(s=>{ if(![...s.options].some(o=>o.value===NEWOPT(kind))) return;
         if(![...s.options].some(o=>o.textContent===name)){ const o=document.createElement('option'); o.textContent=name; s.insertBefore(o,s.lastElementChild); } });
-      fillSelects(); toast(`Project "${name}" added`); close(name); }
+      if(kind==='project') fillSelects();
+      toast(label[0].toUpperCase()+label.slice(1)+' "'+name+'" added'); close(name); }
     catch(err){ add.disabled=false; toast(err.message); }
   };
   inp.onkeydown=ev=>{ if(ev.key==='Enter'){ ev.preventDefault(); add.click(); } if(ev.key==='Escape') cancel.click(); };
@@ -384,9 +437,9 @@ function drawInbound(){
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"></div>
       <div class="f"><label>Project</label>${pjBox()}</div>
       <div class="f"><label>Local purchase</label><button class="dbtn ${nIn.local?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.local=!nIn.local;if(nIn.local){nIn.res='';nIn.wh=''}drawInbound()">${nIn.local?'● Local purchase':'Mark as local purchase'}</button></div>
-      <div class="f"><label>Vendor · who owns it</label>${lookBox('vendor','nVen',nIn.vendor,'Dialog, Mobitel, Hutch…')}<small>written onto every row, correctable per row later</small></div>
+      <div class="f"><label>Vendor · who owns it</label>${pickBox('vendor',{id:'nVen',value:nIn.vendor,first:'Pick a vendor…'})}<small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
-    </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div></div></div>`}
+    </div><div class="fh"><div class="f"><label>From warehouse</label>${pickBox('source',{id:'nWh',value:nIn.wh,first:nIn.local?'local purchase - no warehouse':'Pick a warehouse…',extra:nIn.local?'disabled':''})}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'+ New warehouse… adds one for everybody'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div></div></div>`}
     <div class="rows"><table><thead><tr><th style="width:2.5%">#</th><th style="width:12%">Material code</th><th style="width:13%">Material name</th><th style="width:8%">Category</th><th style="width:4.5%">UoM</th><th style="width:4.5%">Qty</th>${R?'':'<th style="width:8.5%">Reservation</th>'}<th style="width:11.5%">SN</th>${R?'<th style="width:8.5%">Condition</th>':''}<th style="width:6.5%">Site ID</th><th style="width:9.5%">Site name</th><th style="width:7.5%">WH location</th><th style="width:9.5%">Remarks</th><th style="width:2.5%"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
     <button class="btn sm" style="margin-top:10px;margin-left:6px" onclick="openImport()">⇪ Paste from Excel</button>
@@ -402,10 +455,7 @@ function drawInbound(){
 function pjBox(){
   if(nIn.local) return '<select class="in" id="nPj" disabled><option value="">no project · local purchase</option></select>'
     +'<small>bought for everything at once - a local purchase belongs to no one project</small>';
-  const cur=nIn.project||'';
-  return '<select class="in" id="nPj"><option value="">Pick a project…</option>'
-    +PROJECTS.map(p=>'<option'+(p===cur?' selected':'')+'>'+esc(p)+'</option>').join('')
-    +'<option>'+NEWPJ+'</option></select>';
+  return pickBox('project',{id:'nPj',value:nIn.project});
 }
 /* REDEP, PER ROW. A REDEP is material taken off a site that does not
    go back to Dialog - so it is a site return that stays with us, and
@@ -475,7 +525,7 @@ function drawRows(){
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" value="${esc(r.site||'')}" placeholder="${nIn.type==='RT'?'where from':'optional'}" oninput="nIn.rows[${i}].site=this.value.toUpperCase();const n=siteLookup(this.value);if(n){nIn.rows[${i}].siteName=n;const e=$('#isn${i}');if(e)e.value=n}"></td>
     <td><input class="in" id="isn${i}" value="${esc(r.siteName||'')}" placeholder="fills from Site Access" oninput="nIn.rows[${i}].siteName=this.value"></td>
-    <td><input class="in mono" list="lk_location" value="${esc(r.loc||'')}" placeholder="where it sits" oninput="nIn.rows[${i}].loc=this.value"><datalist id="lk_location">${lookList('location').map(x=>`<option>${esc(x)}</option>`).join('')}</datalist></td>
+    <td>${pickBox('location',{value:r.loc,first:'where it sits…',cls:'mono',extra:`onchange="nIn.rows[${i}].loc=this.value"`})}</td>
     <td><input class="in" value="${esc(r.remarks||'')}" placeholder="anything worth noting" oninput="nIn.rows[${i}].remarks=this.value"></td>
     <td class="rowx"><button class="tick${r.ok?' on':''}" title="${r.ok?'Checked - press to unlock':'Mark this row checked'}" onclick="nIn.rows[${i}].ok=!nIn.rows[${i}].ok;drawRows()">✓</button><button class="btn sm" style="padding:6px 9px" onclick="nIn.rows.splice(${i},1);drawRows()">✕</button></td></tr>
     ${c?`<tr class="drumrow"><td colspan="${ncol}"><div class="drumbox">
@@ -539,7 +589,7 @@ async function saveInbound(){
      everything at once, the box is switched off, and the form then
      demanded the thing it had just stopped offering. */
   const pj=nIn.local?'':$('#nPj').value;
-  if(!nIn.local&&(!pj||pj===NEWPJ)){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
+  if(!nIn.local&&(!pj||isNewOpt(pj))){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
   keepHead();
   const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,
     vendor:(nIn.vendor||'').trim(),date:nIn.date||today(),project:pj,ref:nIn.ref||'',
@@ -566,9 +616,19 @@ async function saveInbound(){
        something actually arrived from it. Failing to remember it must
        not fail the note that is already saved. */
     /* every new name this note introduced, through the one add */
-    await lookAdd('source',p.from_wh);
-    await lookAdd('vendor',p.vendor);
-    for(const it of p.items) await lookAdd('location',it.bin); toast(`${id} saved · ${ok.length} item${ok.length===1?'':'s'} in stock`); await reload(); nIn=null; if(tById(id)) showInbound(tById(id)); }
+    /* The note is filed. A name that would not stick is reported ON the
+       success rather than instead of it, and never swallowed: before
+       065 this was the exact path that lost new purposes silently. */
+    const miss=[];
+    for(const [kind,name] of [['source',p.from_wh],['vendor',p.vendor],
+        ...p.items.map(it=>['location',it.bin])]){
+      const r=await lookAdd(kind,name); if(!r.ok) miss.push({kind,name,why:r.why});
+    }
+    const saved=`${id} saved · ${ok.length} item${ok.length===1?'':'s'} in stock`;
+    toast(miss.length
+      ? saved+` · but "${miss[0].name}" was not remembered for next time: ${miss[0].why}`
+      : saved);
+    await reload(); nIn=null; if(tById(id)) showInbound(tById(id)); }
   catch(e){ msg.innerHTML=`<b style="color:var(--bad)">${esc(e.message)}</b>`; }
   finally{ if(btn) btn.disabled=false; }
 }
@@ -599,9 +659,9 @@ function drawDispatch(){
   <div class="pbody">
     <div class="box ${nDn.dest==='party'?'tpb':''}"><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><h4 style="margin:0">Outbound details</h4><div class="seg"><button class="${nDn.dest!=='party'?'on':''}" onclick="nDn.dest='site';drawDispatch()">To site</button><button class="${nDn.dest==='party'?'on':''}" onclick="nDn.dest='party';drawDispatch()">To 3rd party</button></div></div><div class="fh five">
       <div class="f"><label>Date</label><input class="in mono" type="date" value="${nDn.date}" oninput="nDn.date=this.value"></div>
-      ${nDn.dest==='party'?`<div class="f"><label>3rd party company</label><input class="in" list="parties" value="${esc(nDn.party)}" placeholder="Fame, DAR, Browns…" oninput="nDn.party=this.value"><datalist id="parties">${PARTIES.map(x=>`<option>${x}</option>`).join('')}</datalist><small>type a new name to add it</small></div>
-      <div class="f"><label>Purpose</label><select class="in" onchange="nDn.purpose=this.value">${PURPOSES.map(x=>`<option ${x===nDn.purpose?'selected':''}>${x}</option>`).join('')}</select></div>`:`${f('site','Site ID','e.g. ZZ0071','mono')}${f('siteName','Site name','fills from Site Access')}`}
-      <div class="f"><label>Project</label><select class="in" onchange="nDn.project=this.value"><option value="">Pick a project…</option>${PROJECTS.map(p=>`<option ${p===nDn.project?'selected':''}>${esc(p)}</option>`).join('')}<option>${NEWPJ}</option></select></div>
+      ${nDn.dest==='party'?`<div class="f"><label>3rd party company</label>${pickBox('party',{value:nDn.party,first:'Pick a company…',extra:'onchange="nDn.party=this.value"'})}</div>
+      <div class="f"><label>Purpose</label>${pickBox('purpose',{value:nDn.purpose,first:'Pick a purpose…',extra:'onchange="nDn.purpose=this.value"'})}</div>`:`${f('site','Site ID','e.g. ZZ0071','mono')}${f('siteName','Site name','fills from Site Access')}`}
+      <div class="f"><label>Project</label>${pickBox('project',{value:nDn.project,extra:'onchange="nDn.project=this.value"'})}</div>
       ${f('requestedBy','Requested by','Mr. …')}
       ${f('receiver','Receiver','')}${f('vehicle','Vehicle no','','mono')}${f('driver','Driver name','')}${f('driverNic','Driver NIC','','mono')}${f('contact','Receiver contact no','','mono')}${f('issuedBy','Issued by','')}${f('issuedContact','Issuer contact no','','mono')}${nDn.dest==='party'?f('partyRef','Their ref / PO','e.g. BR-RMA-2240','mono'):''}
     </div></div>
@@ -695,7 +755,7 @@ function addPick(id){ let i=nDn.rows.findIndex(r=>!r.code&&!r.name&&!r.q); if(i<
 async function saveDispatch(){
   const m=$('#dMsg'), bad=t=>{m.innerHTML=`<b style="color:var(--site)">${esc(t)}</b>`};
   if(nDn.dest==='party'?!nDn.party.trim():!nDn.site.trim()) return bad(nDn.dest==='party'?'Type the 3rd party company.':'Type the site ID first.');
-  if(!nDn.project||nDn.project===NEWPJ) return bad('Pick the project.');
+  if(!nDn.project||isNewOpt(nDn.project)) return bad('Pick the project.');
   const rows=nDn.rows.filter(r=>r.lineId||r.code||r.name);
   if(!rows.length) return bad('Add at least one item.');
   for(const r of rows){ const L=r.lineId&&lById(r.lineId);

@@ -300,6 +300,10 @@
       {
         "file": "064_warehouse_row_level_redep.sql",
         "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
+      },
+      {
+        "file": "065_warehouse_purpose_lookup.sql",
+        "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
       }
     ]
   };
