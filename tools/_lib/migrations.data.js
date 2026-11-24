@@ -213,6 +213,11 @@
         "file": "059_warehouse_one_lookup.sql",
         "table": "wh_lookups",
         "col": null
+      },
+      {
+        "file": "063_warehouse_item_remarks.sql",
+        "table": "wh_items",
+        "col": "remarks"
       }
     ],
     "unverifiable": [

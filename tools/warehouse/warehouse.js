@@ -121,7 +121,7 @@ function buildSiteIndex(ds){
 function fromDB(d){
   lines=d.items.map(r=>({id:r.id,code:r.code||'',name:r.name,cat:r.cat||'Other',uom:r.uom||'EA',qty:+r.qty,sn:r.sn||'',loc:r.bin||'',project:r.project||'',
     status:r.status,source:r.source==='direct'?'pending':r.source,pending:r.source==='direct',cond:r.cond||'',
-    vendor:r.vendor||'',pack:r.pack||'',fromWh:r.from_wh||'',
+    vendor:r.vendor||'',pack:r.pack||'',fromWh:r.from_wh||'',remarks:r.remarks||'',
     inTicket:r.in_note||'',inDate:r.in_date||'',fromSite:r.from_site||'',fromSiteName:r.from_site_name||'',res:r.reservation_no||'',
     outTicket:r.out_note||'',outDate:r.out_date||'',site:r.site_id||'',siteName:r.site_name||'',party:r.party||'',isNew:!!r.is_new,
     drum:r.drum_name?{name:r.drum_name,lower:+r.drum_lower,cur:+r.drum_upper,
@@ -379,12 +379,11 @@ function drawInbound(){
       <div class="f"><label>Removed on · optional</label><input class="in mono" type="date" id="nRem" value="${nIn.removed||''}"><small>leave empty if not known</small></div>
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"><small>the day it reached the warehouse</small></div>
       <div class="f"><label>Returned by</label><input class="in" id="nBy" placeholder="team / rigger" value="${esc(nIn.by||'')}"></div>
-    </div><div class="fh"><div class="f"><label>Return note no</label><input class="in mono" id="nRef" placeholder="paper note no" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Project</label>${pjBox()}</div></div></div>`
+    </div><div class="fh"><div class="f"><label>Return note no</label><input class="in mono" id="nRef" placeholder="paper note no" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Project</label>${pjBox()}</div><div class="f"><label>REDEP</label><button class="dbtn ${nIn.redep?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.redep=!nIn.redep;drawInbound()">${nIn.redep?'● Redeployed':'Mark as REDEP'}</button><small>${nIn.redep?'stays with us - it is not going back to Dialog':'material off a site that does not go back'}</small></div></div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"></div>
       <div class="f"><label>Project</label>${pjBox()}</div>
       <div class="f"><label>Local purchase</label><button class="dbtn ${nIn.local?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.local=!nIn.local;if(nIn.local){nIn.res='';nIn.wh=''}drawInbound()">${nIn.local?'● Local purchase':'Mark as local purchase'}</button></div>
-      <div class="f"><label>REDEP</label><button class="dbtn ${nIn.redep?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.redep=!nIn.redep;drawInbound()">${nIn.redep?'● Redeployed':'Mark as REDEP'}</button><small>${nIn.redep?'REDEP wins over how the note itself is typed':'material moved here, no site return behind it'}</small></div>
       <div class="f"><label>Vendor · who owns it</label>${lookBox('vendor','nVen',nIn.vendor,'Dialog, Mobitel, Hutch…')}<small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
     </div><div class="fh"><div class="f"><label>From warehouse</label>${lookBox('source','nWh',nIn.wh,nIn.local?'local purchase - no warehouse':'type or pick a warehouse',nIn.local?'disabled':'')}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'type a new name to add it'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div></div></div>`}
@@ -537,7 +536,7 @@ async function saveInbound(){
   if(!nIn.local&&(!pj||pj===NEWPJ)){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
   keepHead();
   const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,
-    vendor:(nIn.vendor||'').trim(),source:nIn.redep?'redep':'',date:nIn.date||today(),project:pj,ref:nIn.ref||'',
+    vendor:(nIn.vendor||'').trim(),source:(nIn.type==='RT'&&nIn.redep)?'redep':'',date:nIn.date||today(),project:pj,ref:nIn.ref||'',
     removed_on:nIn.removed||'',by:nIn.by||ME(),
     items:ok.map(r=>({code:r.code||'',name:r.name,cat:r.cat||'Other',uom:(r.drum||r.cable)?'M':(r.uom||'EA'),qty:+(r.qty||1),sn:r.sn||'',bin:r.loc||'',
       remarks:r.remarks||'',
@@ -874,7 +873,7 @@ function editSheet(o){
 const WH_SENDS_wh_update_note={id:1,note_date:1,project:1,ref:1,reservation_no:1,site_name:1,
   removed_on:1,purpose:1,party_ref:1,by_name:1,requested_by:1,receiver:1,vehicle:1,driver:1,
   driver_nic:1,contact:1,issued_by:1,issued_contact:1};
-const WH_SENDS_wh_update_item={id:1,name:1,code:1,cat:1,uom:1,bin:1,sn:1,cond:1,project:1,vendor:1,source:1,
+const WH_SENDS_wh_update_item={id:1,name:1,code:1,cat:1,uom:1,bin:1,sn:1,cond:1,project:1,vendor:1,source:1,remarks:1,
   drum_name:1,drum_lower:1,drum_upper:1,read_start:1,read_end:1,qty:1};
 function whOnly(declared,p,fn){
   for(const k in p) if(!declared[k])
@@ -917,7 +916,12 @@ function editItem(id){
     {k:'sn',label:'Serial',v:L.sn,mono:true},
     {k:'project',label:'Project',v:L.project,hint:'empty for a local purchase that belongs to no project'},
     {k:'vendor',label:'Vendor · who owns it',v:L.vendor,hint:'Dialog, Mobitel, Hutch'},
-    {k:'source',label:'How it arrived',type:'select',opts:['new','return','direct','local','redep'],v:L.source==='pending'?'direct':L.source}];
+    {k:'source',label:'How it arrived',type:'select',opts:['new','return','direct','local','redep'],v:L.source==='pending'?'direct':L.source},
+    /* 063 gave wh_items a remarks column. The inbound row has had a
+       Remarks box since 048 and it only ever reached wh_lines, so a
+       fact about the thing itself - dented, plate unreadable, swapped
+       under warranty - was gone the moment you looked at the item. */
+    {k:'remarks',label:'Remarks',v:L.remarks,hint:'about this item itself, not about the note it arrived on'}];
   if(L.cond||L.source==='return') f.push({k:'cond',label:'Condition',type:'select',opts:['Good','Faulty','Scrap'],v:L.cond||'Good'});
   if(L.drum){ f.push({k:'drum_name',label:'Drum name',v:L.drum.name,mono:true,hint:'a printed note draws this name from here, so it will read differently afterwards'},
     {k:'drum_lower',label:'Lower reading',v:L.drum.lower,mono:true},
