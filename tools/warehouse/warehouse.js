@@ -455,7 +455,7 @@ function drawInbound(){
       <div class="f"><label>Vendor · who owns it</label>${pickBox('vendor',{id:'nVen',value:nIn.vendor,first:'Pick a vendor…'})}<small>written onto every row, correctable per row later</small></div>
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
     </div><div class="fh"><div class="f"><label>From warehouse</label>${pickBox('source',{id:'nWh',value:nIn.wh,first:nIn.local?'local purchase - no warehouse':'Pick a warehouse…',extra:nIn.local?'disabled':''})}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'+ New warehouse… adds one for everybody'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div></div></div>`}
-    <div class="rows"><table><thead><tr><th style="width:2.5%">#</th><th style="width:12%">Material code</th><th style="width:13%">Material name</th><th style="width:8%">Category</th><th style="width:4.5%">UoM</th><th style="width:4.5%">Qty</th>${R?'':'<th style="width:8.5%">Reservation</th>'}<th style="width:11.5%">SN</th>${R?'<th style="width:8.5%">Condition</th>':''}<th style="width:6.5%">Site ID</th><th style="width:9.5%">Site name</th><th style="width:7.5%">WH location</th><th style="width:9.5%">Remarks</th><th style="width:2.5%"></th></tr></thead><tbody id="nBody"></tbody></table></div>
+    <div class="rows"><table style="min-width:1760px"><thead><tr><th style="width:2.2%">#</th><th style="width:11.5%">Material code</th><th style="width:17%">Material name</th><th style="width:7.5%">Category</th><th style="width:4%">UoM</th><th style="width:4.3%">Qty</th>${R?'':'<th style="width:8%">Reservation</th>'}<th style="width:11%">SN</th>${R?'<th style="width:8%">Condition</th>':''}<th style="width:6%">Site ID</th><th style="width:9%">Site name</th><th style="width:7.5%">WH location</th><th style="width:9.8%">Remarks</th><th style="width:2.2%"></th></tr></thead><tbody id="nBody"></tbody></table></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
     <button class="btn sm" style="margin-top:10px;margin-left:6px" onclick="openImport()">⇪ Paste from Excel</button>
   </div>
@@ -565,6 +565,43 @@ function toggleDrum(i,pack){ const r=nIn.rows[i]; pack=pack||'drum';
   drawRows(); }
 function drumLen(i){ const d=nIn.rows[i].drum; $('#dl'+i).querySelector('b').textContent=fmt(Math.max(0,(d.upper||0)-(d.lower||0)))+' m'; }
 function lookup(code){ return MC.get(code)||newMats.get(code); }
+/* The dropdown is position:fixed now, so it has to be told where to
+   be. Anchored to the input it belongs to, flipped above when there is
+   no room below, and clamped to the window so a column on the far
+   right of a scrolled grid does not push it off screen. */
+function placeAc(box,el){
+  const r=el.getBoundingClientRect(), w=box.offsetWidth||560;
+  /* A TRANSFORMED ANCESTOR BECOMES THE CONTAINING BLOCK for a fixed
+     element, and #v-rcv carries transform:matrix(1,0,0,1,0,0) - an
+     identity transform, which changes nothing visually and everything
+     about what "fixed" is fixed to. So the coordinates are expressed
+     relative to whatever that turns out to be rather than to the
+     window. Measured on the page before this: placeAc wrote the right
+     numbers, left:167px top:612px, and the box rendered at 568, 733.
+     offsetParent is null while the box is display:none, which is why
+     this is called after it is unhidden and not before. */
+  const op=box.offsetParent;
+  const cb=op?op.getBoundingClientRect():{left:0,top:0,right:window.innerWidth,bottom:window.innerHeight};
+  /* CLAMPED INTO THE PANE, NOT INTO THE WINDOW, and that is a stacking
+     question rather than a tidiness one. z-index only ranks siblings
+     within a stacking context; .gl.pane establishes one, so no value on
+     .ac can lift it above the ticket list in the other grid column. A
+     box spilling left over that list therefore loses, whatever its
+     z-index - measured: elementFromPoint at its top-left corner
+     returned a DIV.b inside #rList. Kept inside the pane it is always
+     the topmost thing there. 560px inside a 1460px pane always fits. */
+  const left=Math.max(cb.left+2,Math.min(r.left,cb.right-w-2));
+  const below=window.innerHeight-r.bottom;
+  box.style.left=(left-cb.left)+'px';
+  if(below<180&&r.top>below){ box.style.bottom=''; box.style.top=(r.top-4-box.offsetHeight-cb.top)+'px'; }
+  else { box.style.bottom=''; box.style.top=(r.bottom+4-cb.top)+'px'; }
+}
+/* a floating box over a grid that has moved under it is worse than no
+   box, so scrolling the grid closes whatever is open */
+document.addEventListener('scroll',e=>{
+  const sc=e.target; if(!sc||!sc.classList||!sc.classList.contains('rows')) return;
+  sc.querySelectorAll('.ac:not([hidden])').forEach(b=>b.hidden=true);
+},true);
 function acType(i,el){
   const v=el.value.trim(); nIn.rows[i].q=v; const box=$('#ac'+i);
   if(v.length<2){box.hidden=true;return}
@@ -572,7 +609,7 @@ function acType(i,el){
   for(const m of [...newMats.values(),...MC.values()]){ if(m.code.startsWith(v)||m.name.toLowerCase().includes(lv)){hits.push(m); if(hits.length>=8)break;} }
   const isCode=/^\d{6,}$/.test(v), exact=lookup(v);
   box.innerHTML=hits.map(m=>`<div onmousedown="pickMat(${i},'${m.code}')"><code>${m.code}</code><span>${esc(m.name)}</span><em>${esc(shortCat(m.cat))}</em></div>`).join('')+(isCode&&!exact?`<div class="add" onmousedown="newCode(${i},'${v}')"><code>${esc(v)}</code><span>Not in Material Codes. Add it as a new material</span><em>NEW</em></div>`:'')||`<div style="color:var(--dim);cursor:default">No match. Type the full code to add it as new.</div>`;
-  box.hidden=false;
+  box.hidden=false; placeAc(box,el);
 }
 function closeAc(i,el){ const b=$('#ac'+i); if(b) b.hidden=true; const v=el.value.trim(); if(/^\d{6,}$/.test(v)&&nIn.rows[i].code!==v){ lookup(v)?pickMat(i,v):newCode(i,v);} }
 function pickMat(i,code){ const m=lookup(code); const r=nIn.rows[i]; Object.assign(r,{code,q:code,name:m.name,cat:shortCat(m.cat),known:MC.has(code)}); if(/CBL|CABLE/i.test(m.name)) r.uom='M'; drawRows(); }
@@ -752,7 +789,7 @@ function dAc(i,el){
     (mc.length?'<div style="cursor:default;color:var(--warn);font-family:Space Mono;font-size:10.5px;letter-spacing:.1em">NOT IN STOCK · DIRECT ISSUE, RECEIVE LATER</div>':'')+
     mc.map(m=>`<div onmousedown="dPickMC(${i},'${m.code}')"><code>${m.code}</code><span>${esc(m.name)}</span><em>${esc(shortCat(m.cat))}</em></div>`).join('')+
     `<div class="add" onmousedown="dFree(${i})"><span>Use “${esc(v)}” as typed (local purchase, no code yet)</span><em>MANUAL</em></div>`;
-  box.hidden=false;
+  box.hidden=false; placeAc(box,el);
 }
 function dClose(i,el){ const b=$('#dac'+i); if(b) b.hidden=true; const r=nDn.rows[i]; const v=el.value.trim(); if(!v||r.code===v||r.lineId||(r.name&&!r.code)) return;
   const sn=lines.find(L=>L.status==='in'&&L.sn&&L.sn.toLowerCase()===v.toLowerCase()); if(sn) return dPickLine(i,sn.id);

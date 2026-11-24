@@ -31,7 +31,14 @@ const path = require('path');
 const W = path.join(__dirname, '..', 'warehouse', 'warehouse.js');
 const src = fs.readFileSync(W, 'utf8');
 
-const PANE = 1400;      /* the pane at his widest, rounded down */
+/* THE REFERENCE WIDTH IS THE TABLE'S CANVAS, NOT THE VIEWPORT, since
+   .rows scrolls horizontally. Every .rows table has a min-width floor
+   in the stylesheet, so a width-less column has that much to work with
+   whatever the pane is doing - which is a stronger guarantee than the
+   one this file started with, where the answer moved with the window.
+   The entry grid asks for more than the floor and says so inline. */
+const FLOOR = 1200;     /* .rows table{min-width} in index.html */
+const PANE = FLOOR;
 const READABLE = 120;   /* what a column needs to be worth having */
 
 let pass = 0, fail = 0;
@@ -83,9 +90,25 @@ const check = (name, c) => {
   }
 };
 
-console.log('--- no column may be squeezed to nothing ---');
+/* none of the above means anything if the canvas is not really there */
+{
+  const css = fs.readFileSync(path.join(__dirname, '..', 'warehouse', 'index.html'), 'utf8');
+  console.log('--- the canvas the shares are shares OF ---');
+  is('.rows scrolls horizontally', /\.rows\{[^}]*overflow-x:\s*auto/.test(css), true);
+  is('and every .rows table has a floor',
+     (css.match(/\.rows table\{[^}]*min-width:\s*(\d+)px/) || [])[1], String(FLOOR));
+  is('the dropdown is fixed, so the scroller cannot clip it',
+     /\.ac\{position:fixed/.test(css), true);
+  is('and the pick box keeps its own anchored position',
+     /\.pick \.ac\{position:absolute/.test(css), true);
+  const entry = (src.match(/<div class="rows"><table style="min-width:(\d+)px">[\s\S]*?Reservation/) || [])[1];
+  is('the entry grid asks for more than the floor', Number(entry) > FLOOR, true);
+  is('and it is wide enough for thirteen readable columns', Number(entry) >= 1700, true);
+}
 
-const heads = src.match(/<div class="rows"><table><thead><tr>[\s\S]*?<\/tr>/g) || [];
+console.log('\n--- no column may be squeezed to nothing ---');
+
+const heads = src.match(/<div class="rows"><table[^>]*><thead><tr>[\s\S]*?<\/tr>/g) || [];
 is('all four .rows grids were found', heads.length, 4);
 if (heads.length !== 4) { console.log('\n' + pass + ' passed, 1 failed\n'); process.exit(1); }
 
@@ -134,8 +157,12 @@ console.log('\n  --- and the rule against the header that shipped ---');
   is('the version before Site name was already too tight', t.px, 1354);
   is('and this rule would have refused it as well',
      t.px + READABLE * t.bare <= PANE, false);
-  is('it had 46px left at this pane, and 105 at the one he uses',
-     [PANE - t.px, 1459 - t.px], [46, 105]);
+  /* 1400 was what PANE meant when this was written - the widest pane.
+     PANE now means the scrolling canvas floor, so the historical figures
+     are written out rather than derived from a constant whose meaning
+     has changed under them. */
+  is('it had 46px left at a 1400px pane, and 105 at the one he uses',
+     [1400 - t.px, 1459 - t.px], [46, 105]);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
