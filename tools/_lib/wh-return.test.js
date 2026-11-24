@@ -70,8 +70,22 @@ is('a partial return splits the row', /set qty = qty - want/.test(R), true);
 is('a serialised item is refused a partial return', /comes back whole or not at all/.test(R), true);
 is('a drum cut comes back as a loose piece, not a restored drum',
    /cut_from is not null/.test(R) && /'return'/.test(R), true);
-is('and that path never writes a drum name onto the new piece',
-   /drum_name/.test(R.split('cut_from is not null')[1].split('elsif')[0] || ''), false);
+/* THE INVARIANT IS ABOUT THE COLUMN, NOT THE WORD. This read
+   /drum_name/ over the whole branch, which was right until 068 began
+   passing rec.drum_name into a DIFFERENT column - from_drum - and the
+   substring fired on the value expression. The piece still must not
+   become a drum; what says so is the insert's column list, so that is
+   what is read now. Tightened rather than dropped: writing drum_name
+   on the returned row would still fail this. */
+{
+  const branch = R.split('cut_from is not null')[1].split('elsif')[0] || '';
+  const cols = (branch.match(/insert into wh_items\(([^)]*)\)/) || ['', ''])[1]
+    .split(',').map(c => c.trim());
+  is('the returned piece is inserted with a column list', cols.length > 5, true);
+  is('and that path never makes it a drum', cols.includes('drum_name'), false);
+  is('nor gives it readings', cols.filter(c => /^drum_(lower|upper)$/.test(c)), []);
+  is('it records which drum it came off instead', cols.includes('from_drum'), true);
+}
 is('how much is still out is computed from returns_line, not stored',
    /returns_line/.test(R) && /coalesce\(sum\(r\.qty\),0\)/.test(R), true);
 
