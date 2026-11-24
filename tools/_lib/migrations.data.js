@@ -223,6 +223,11 @@
         "file": "067_warehouse_outbound_time.sql",
         "table": "wh_notes",
         "col": "note_time"
+      },
+      {
+        "file": "068_warehouse_overissue_and_returned_piece.sql",
+        "table": "wh_items",
+        "col": "from_drum"
       }
     ],
     "unverifiable": [
@@ -312,10 +317,6 @@
       },
       {
         "file": "066_warehouse_item_edit_reaches_everything.sql",
-        "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
-      },
-      {
-        "file": "068_warehouse_overissue_and_returned_piece.sql",
         "why": "creates no table and no column - policies, data or functions only. Functions are not probed by calling them, because some of them write."
       }
     ]

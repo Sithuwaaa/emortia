@@ -217,10 +217,13 @@ function buildSiteIndex(ds){
 function fromDB(d){
   lines=d.items.map(r=>({id:r.id,code:r.code||'',name:r.name,cat:r.cat||'Other',uom:r.uom||'EA',qty:+r.qty,sn:r.sn||'',loc:r.bin||'',project:r.project||'',
     status:r.status,source:r.source==='direct'?'pending':r.source,pending:r.source==='direct',cond:r.cond||'',
-    vendor:r.vendor||'',pack:r.pack||'',fromWh:r.from_wh||'',remarks:r.remarks||'',
+    vendor:r.vendor||'',pack:r.pack||'',fromWh:r.from_wh||'',remarks:r.remarks||'',fromDrum:r.from_drum||'',
     inTicket:r.in_note||'',inDate:r.in_date||'',fromSite:r.from_site||'',fromSiteName:r.from_site_name||'',res:r.reservation_no||'',
     outTicket:r.out_note||'',outDate:r.out_date||'',site:r.site_id||'',siteName:r.site_name||'',party:r.party||'',isNew:!!r.is_new,
-    drum:r.drum_name?{name:r.drum_name,lower:+r.drum_lower,cur:+r.drum_upper,
+    /* 068: a returned piece can be NAMED before it is MEASURED, so a
+       drum whose readings are still null is marked pending rather
+       than drawn as a 0-0 drum holding nothing. */
+    drum:r.drum_name?{name:r.drum_name,pending:r.drum_upper==null,lower:+r.drum_lower,cur:+r.drum_upper,
       upper:+(r.orig_upper!=null?r.orig_upper:r.drum_upper),
       origLower:+(r.orig_lower!=null?r.orig_lower:r.drum_lower),
       origUpper:+(r.orig_upper!=null?r.orig_upper:r.drum_upper),cuts:[]}:null,
@@ -400,7 +403,14 @@ function renderOv(){
   const ym=today().slice(0,7); $('#kTkL').textContent='Movements · '+new Date().toLocaleString('en',{month:'short'});
   const nov=tickets.filter(t=>(t.date||'').startsWith(ym)&&(!proj||t.project===proj));
   $('#kTk').textContent=nov.length; $('#kTkS').textContent=`${nov.filter(t=>t.type==='IN').length} GRN · ${nov.filter(t=>t.type==='RT').length} SRN · ${nov.filter(t=>t.type==='DN').length} outbound`;
-  const dr=L.filter(x=>x.drum); $('#kDr').textContent=fmt(dr.reduce((a,x)=>a+x.qty,0))+' m'; $('#kDrS').textContent=`on ${dr.length} drums`;
+  /* the returned pieces are counted apart from the drums. They are
+     real stock and the total is not wrong, but reading them into
+     "cable on drums" is how 200 m of returns turned a 1,000 m figure
+     into 1,200 with nothing saying why. */
+  const dr=L.filter(x=>x.drum), bk=L.filter(x=>!x.drum&&x.fromDrum&&x.status==='in');
+  const bkQty=bk.reduce((a,x)=>a+(+x.qty||0),0);
+  $('#kDr').textContent=fmt(dr.reduce((a,x)=>a+x.qty,0))+' m';
+  $('#kDrS').textContent=`on ${dr.length} drums`+(bk.length?` · ${fmt(bkQty)} m back off ${bk.length} of them`:'');
   const sh=all.filter(s=>s.state==='short'); $('#kSh').textContent=sh.length; $('#kNw').textContent=newMats.size; $('#kNwS').textContent=`not in Material Codes · ${L.filter(x=>isDummy(x.sn)).length} dummy SNs to fix`;
   $('#pgrid').innerHTML=[...pins].map(c=>S.get(c)).filter(Boolean).map(s=>{
     const pct=s.min?Math.min(100,s.inQty/(s.min*2)*100):100;
@@ -985,22 +995,35 @@ async function printNote(id){
 }
 
 /* ================= DRUMS ================= */
+/* PIECES THAT CAME BACK OFF A DRUM. 068 records which spool each one
+   was cut from; before that they landed as items with no drum name
+   and no readings, indistinguishable from cable that arrived on a
+   lorry - which is why two 100 m returns read as new stock.
+
+   They are shown under their parent, not merged into it. A length cut
+   off and brought back is a separate object that was never rejoined:
+   splicing it back onto the parent's range would claim a join that
+   did not happen and make the cut history unreconstructable. */
+const piecesOf=name=>!name?[]:lines.filter(L=>!L.drum&&L.status==='in'
+  &&String(L.fromDrum||'').toLowerCase()===String(name).toLowerCase()&&inProj(L));
 function renderDrums(){
   const need=+$('#need').value||0, nm=$('#needMat').value;
   const D=lines.filter(L=>L.drum&&inProj(L));
-  $('#nDr').textContent=D.length;
+  const loose=lines.filter(L=>!L.drum&&L.fromDrum&&L.status==='in'&&inProj(L));
+  $('#nDr').textContent=D.length+(loose.length?' + '+loose.length:'');
   $('#dGrid').innerHTML=D.sort((a,b)=>a.drum.name.localeCompare(b.drum.name)).map(L=>{
     const d=L.drum, tot=d.origUpper-d.origLower, left=d.cur-d.lower, pl=left/tot*100;
     const match=!nm||L.code===nm; const fits=need&&match&&left>=need;
+    const back=piecesOf(d.name);
     const cls=need?(fits?'fit':'nofit'):(left<tot*.2?'lowd':'');
     return `<div class="drum ${cls}">
       <div style="display:flex;align-items:center;gap:10px"><div class="nm">${esc(d.name)}</div><span class="chip">${esc(L.cat)}</span><span class="chip pj">${esc(L.project)}</span><div style="flex:1"></div><span class="dt mono" style="font-size:11.5px;color:var(--soft)">${esc(L.loc)}</span></div>
       <div class="mt"><code>${L.code}</code> · ${esc(L.name)}</div>
       <div class="rd"><div class="left" style="width:${pl}%"></div><div class="used" style="width:${100-pl}%"></div>${fits?`<div class="need" style="left:${(left-need)/tot*100}%;width:${need/tot*100}%"></div>`:''}</div>
-      <div class="rdl"><span>lower ${d.lower}</span><span style="color:#bff0d6">now ${d.cur}</span><span>upper ${d.upper}</span></div>
+      <div class="rdl">${d.pending?'<span style="color:var(--warn)">readings pending - open it and type them in</span>':`<span>lower ${d.lower}</span><span style="color:#bff0d6">now ${d.cur}</span><span>upper ${d.upper}</span>`}</div>
       <div class="dq"><b>${fmt(left)} m</b><span>${L.status==='out'?`issued whole on ${esc(L.outTicket||'a note')}`:`left of ${fmt(tot)} m · in ${esc(L.inTicket)}`}</span></div>
       ${need&&match?`<div class="plan ${fits?'':'no'}">${fits?`Cut ${need} m: reading ${d.cur} → ${d.cur-need}. Leaves ${fmt(left-need)} m.`:`Not enough: ${fmt(left)} m left, ${fmt(need-left)} m short.`}</div>`:''}
-      <div class="cuts">${d.cuts.length?d.cuts.map(c=>`<div>${tkChip(c.ticket)}<span>${dshort(c.date)} · ${c.site}</span><span style="margin-left:auto">${c.to}→${c.from}</span><b style="color:var(--ink)">${c.len} m</b></div>`).join(''):'<div>No cuts yet.</div>'}</div>
+      <div class="cuts">${d.cuts.length?d.cuts.map(c=>`<div>${tkChip(c.ticket)}<span>${dshort(c.date)} · ${c.site}</span><span style="margin-left:auto">${c.to}→${c.from}</span><b style="color:var(--ink)">${c.len} m</b></div>`).join(''):'<div>No cuts yet.</div>'}${back.map(P=>`<div class="backpc" onclick="editItem(${P.id})" title="Give this piece its readings">${tkChip(P.inTicket)}<span>came back off this drum</span><span style="margin-left:auto">${P.read?P.read.start+'–'+P.read.end:'readings pending'}</span><b>${fmt(P.qty)} m</b></div>`).join('')}</div>
     </div>`}).join('');
 }
 $('#need').oninput=renderDrums; $('#needMat').onchange=renderDrums;
@@ -1174,6 +1197,15 @@ function editItem(id){
   if(L.drum){ f.push({k:'drum_name',label:'Drum name',v:L.drum.name,mono:true,hint:'a printed note draws this name from here, so it will read differently afterwards'},
     {k:'drum_lower',label:'Lower reading',v:L.drum.lower,mono:true},
     {k:'drum_upper',label:'Upper reading',v:L.drum.upper,mono:true}); }
+  /* A PIECE THAT CAME BACK OFF A DRUM can be named and measured here,
+     and nowhere else. It arrives with no name because nobody had
+     measured it when it came off the lorry; 068 lets wh_update_item
+     accept one for exactly these rows, and without these boxes that
+     permission would have nothing to reach it through. */
+  else if(L.fromDrum){ f.push(
+    {k:'drum_name',label:'Name this piece',v:'',mono:true,hint:'it came off '+L.fromDrum+' - give it its own name and it becomes a drum in its own right'},
+    {k:'drum_lower',label:'Lower reading',v:'',mono:true,hint:'leave both empty until you have measured it'},
+    {k:'drum_upper',label:'Upper reading',v:'',mono:true}); }
   else if(L.read) f.push({k:'read_start',label:'Start reading',v:L.read.start,mono:true},
     {k:'read_end',label:'End reading',v:L.read.end,mono:true});
   else f.push({k:'qty',label:'Quantity',v:L.qty,mono:true});

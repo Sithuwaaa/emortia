@@ -113,5 +113,60 @@ console.log('\n  --- and the same reading of the version that let it through ---
   is('which is 140 more than it had', issued - span, 140);
 }
 
+/* ---- a returned piece belongs to its drum, and only to it ---- */
+console.log('\n--- a length that came back off a drum ---');
+{
+  const rt = lastDef('wh_return'), ui = lastDef('wh_update_item');
+  console.log('  wh_return last defined in ' + rt.from);
+  console.log('  wh_update_item last defined in ' + ui.from + '\n');
+  const R = code(rt.body), U = code(ui.body);
+
+  is('a piece cut off a drum records which drum', /from_drum\)/.test(R), true);
+  is('and it is the source item\'s own drum name', /rec\.drum_name\)/.test(R), true);
+  is('both branches that make a new row from a drum carry it',
+     (R.match(/rec\.drum_name\)/g) || []).length, 2);
+
+  /* THE ONE THING THIS MUST NOT DO. The parent's range is a continuous
+     physical measure and the cuts against it are its audit trail. A
+     returned length was cut off and never rejoined, so splicing it
+     back would claim a join that did not happen - and the cut history
+     could not be reconstructed afterwards. */
+  is('the parent drum\'s readings are never written by a return',
+     /update wh_items set[^;]*drum_(upper|lower)/i.test(R), false);
+  is('nor its original readings',
+     /update wh_items set[^;]*orig_(upper|lower)/i.test(R), false);
+
+  /* and he can measure it afterwards, which he could not before */
+  is('naming is allowed for a piece that came off a drum',
+     /i\.drum_name is null and i\.from_drum is null/.test(U), true);
+  is('and still refused for anything else',
+     /is not a drum\. A drum is named when it is booked in/.test(U), true);
+  is('the uniqueness check is still there',
+     /There is already a drum called/.test(U), true);
+  is('which is what makes a cut traceable',
+     /lower\(drum_name\) = lower\(p->>'drum_name'\)/.test(U), true);
+}
+
+/* ---- prove it by breaking ---- */
+console.log('\n  --- and the same reading of the versions before 068 ---');
+{
+  const before = fn => {
+    const files = fs.readdirSync(SQLDIR).filter(f => /^\d+_.*\.sql$/.test(f))
+      .sort((x, y) => parseInt(x, 10) - parseInt(y, 10)).filter(f => parseInt(f, 10) < 68);
+    let body = null;
+    for (const f of files) {
+      const sql = fs.readFileSync(path.join(SQLDIR, f), 'utf8').replace(/\r/g, '');
+      const m = sql.match(new RegExp('create or replace function ' + fn + '\\([^)]*\\)[\\s\\S]*?\\$\\$;', 'i'));
+      if (m) body = m[0];
+    }
+    return body ? code(body) : '';
+  };
+  is('wh_return did not record the drum', /from_drum/.test(before('wh_return')), false);
+  is('and wh_update_item refused to name the piece',
+     /i\.drum_name is null and i\.from_drum is null/.test(before('wh_update_item')), false);
+  is('it refused on drum_name alone, which a returned piece never has',
+     /if i\.drum_name is null then/.test(before('wh_update_item')), true);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
 process.exit(fail ? 1 : 0);
