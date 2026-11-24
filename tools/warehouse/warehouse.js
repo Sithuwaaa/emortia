@@ -379,10 +379,10 @@ function drawInbound(){
       <div class="f"><label>Removed on · optional</label><input class="in mono" type="date" id="nRem" value="${nIn.removed||''}"><small>leave empty if not known</small></div>
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"><small>the day it reached the warehouse</small></div>
       <div class="f"><label>Returned by</label><input class="in" id="nBy" placeholder="team / rigger" value="${esc(nIn.by||'')}"></div>
-    </div><div class="fh"><div class="f"><label>Return note no</label><input class="in mono" id="nRef" placeholder="paper note no" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Project</label><select class="in" id="nPj"><option value="">Pick a project…</option>${PROJECTS.map(p=>`<option>${esc(p)}</option>`).join('')}<option>${NEWPJ}</option></select></div></div></div>`
+    </div><div class="fh"><div class="f"><label>Return note no</label><input class="in mono" id="nRef" placeholder="paper note no" value="${esc(nIn.ref||'')}"></div><div class="f"><label>Project</label>${pjBox()}</div></div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">
       <div class="f"><label>Inbound date</label><input class="in mono" type="date" id="nDate" value="${nIn.date||today}"></div>
-      <div class="f"><label>Project</label><select class="in" id="nPj"><option value="">Pick a project…</option>${PROJECTS.map(p=>`<option>${esc(p)}</option>`).join('')}<option>${NEWPJ}</option></select></div>
+      <div class="f"><label>Project</label>${pjBox()}</div>
       <div class="f"><label>Local purchase</label><button class="dbtn ${nIn.local?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.local=!nIn.local;if(nIn.local){nIn.res='';nIn.wh=''}drawInbound()">${nIn.local?'● Local purchase':'Mark as local purchase'}</button></div>
       <div class="f"><label>REDEP</label><button class="dbtn ${nIn.redep?'on':''}" style="margin-top:0;padding:9px 12px" onclick="keepHead();nIn.redep=!nIn.redep;drawInbound()">${nIn.redep?'● Redeployed':'Mark as REDEP'}</button><small>${nIn.redep?'REDEP wins over how the note itself is typed':'material moved here, no site return behind it'}</small></div>
       <div class="f"><label>Vendor · who owns it</label>${lookBox('vendor','nVen',nIn.vendor,'Dialog, Mobitel, Hutch…')}<small>written onto every row, correctable per row later</small></div>
@@ -395,7 +395,20 @@ function drawInbound(){
   <div class="ff"><div class="msg" id="nMsg">Type a code or part of a name. Codes in Material Codes fill in by themselves. Cable on a drum → <b style="color:#ffd9a8">Drum</b>${R?'; a loose cable piece → <b style="color:#ffd9a8">Cable</b> and write its two readings':''}.</div><button class="btn" onclick="newInbound()">Clear</button><button class="btn pri" onclick="saveInbound()">Save inbound</button></div>`;
   drawRows();
 }
-function keepHead(){ ['nRem:removed','nDate:date','nBy:by','nRef:ref','nWh:wh','nVen:vendor'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e)nIn[k]=e.value}); }
+/* THE PROJECT BOX. Written once because the delivery form and the
+   return form both have one, and because a local purchase needs it off
+   rather than empty: these are 35/10 lugs, tape, ties, bondings, IF
+   leads - bought for everything at once, deliberately tied to no
+   project. Defaulting them into one would be inventing an answer. */
+function pjBox(){
+  if(nIn.local) return '<select class="in" id="nPj" disabled><option value="">no project · local purchase</option></select>'
+    +'<small>bought for everything at once - a local purchase belongs to no one project</small>';
+  const cur=nIn.project||'';
+  return '<select class="in" id="nPj"><option value="">Pick a project…</option>'
+    +PROJECTS.map(p=>'<option'+(p===cur?' selected':'')+'>'+esc(p)+'</option>').join('')
+    +'<option>'+NEWPJ+'</option></select>';
+}
+function keepHead(){ ['nPj:project','nRem:removed','nDate:date','nBy:by','nRef:ref','nWh:wh','nVen:vendor'].forEach(p=>{const [i,k]=p.split(':');const e=$('#'+i);if(e&&!e.disabled)nIn[k]=e.value}); }
 /* A row only offers Drum / Roll once it IS cable - by its category, or
    by its unit. Before that the row is one line with nothing extra on
    it. The same test hides "SN unreadable": a drum has no serial that
@@ -446,14 +459,14 @@ function drawRows(){
     const d=r.drum, RT=nIn.type==='RT', c=r.cable, ncol=13, tw=snTwin(r.sn);
     const cl=c&&r.ra!==''&&r.rb!==''&&r.ra!=null&&r.rb!=null?Math.abs(+r.rb-+r.ra):'';
     return `<tr><td class="dt">${i+1}</td>
-    <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="code or name" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
+    <td class="cell"><input class="in mono" value="${esc(r.q??r.code??'')}" placeholder="${nIn.local?'name it - no code needed':'code or name'}" oninput="acType(${i},this)" onblur="setTimeout(()=>closeAc(${i},this),180)">${st}
       ${isCableRow(r)?`<button class="dbtn ${d&&r.pack!=='roll'?'on':''}" onclick="toggleDrum(${i},'drum')">${d&&r.pack!=='roll'?'● Drum':'+ Drum'}</button> <button class="dbtn ${d&&r.pack==='roll'?'on':''}" onclick="toggleDrum(${i},'roll')">${d&&r.pack==='roll'?'● Roll':'+ Roll'}</button>${!d&&!c?'<span class="mstate lenok">a plain length is fine - add Drum or Roll only if it is on one</span>':''}`:''}${RT?` <button class="dbtn ${c?'on':''}" onclick="toggleRCable(${i})">${c?'● Cable':'+ Cable'}</button>`:''}<div class="ac" id="ac${i}" hidden></div></td>
     <td><input class="in" value="${esc(r.name||'')}" placeholder="${r.code&&!r.known?'type the material name':'fills from Material Codes'}" ${r.known?'readonly':''} oninput="nIn.rows[${i}].name=this.value"></td>
     <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" onchange="nIn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="iq${i}" style="text-align:right" value="${d?Math.max(0,(d.upper||0)-(d.lower||0)):c?cl:(r.qty||1)}" ${d||c?'readonly':''} placeholder="${c?'readings':''}" oninput="nIn.rows[${i}].qty=+this.value"></td>
     ${RT?'':`<td><input class="in mono" value="${esc(r.res||'')}" placeholder="4900000123" oninput="nIn.rows[${i}].res=this.value"></td>`}
-    <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)"><span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
+    <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':nIn.local?'no serial':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)"><span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" value="${esc(r.site||'')}" placeholder="${nIn.type==='RT'?'where from':'optional'}" oninput="nIn.rows[${i}].site=this.value.toUpperCase();const n=siteLookup(this.value);if(n){nIn.rows[${i}].siteName=n;const e=$('#isn${i}');if(e)e.value=n}"></td>
     <td><input class="in" id="isn${i}" value="${esc(r.siteName||'')}" placeholder="fills from Site Access" oninput="nIn.rows[${i}].siteName=this.value"></td>
@@ -516,7 +529,12 @@ async function saveInbound(){
      question of the same place, and names the row, as the function does. */
   if(nIn.type==='RT'){ const b=ok.findIndex(r=>!String(r.site||'').trim());
     if(b>=0){msg.innerHTML='<b style="color:var(--new)">Row '+(b+1)+' of a site return needs the site ID it came from.</b>';return} }
-  const pj=$('#nPj').value; if(!pj||pj===NEWPJ){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
+  /* A LOCAL PURCHASE HAS NO PROJECT, and this refusal is why one
+     could not be saved at all: tape and cable ties are bought for
+     everything at once, the box is switched off, and the form then
+     demanded the thing it had just stopped offering. */
+  const pj=nIn.local?'':$('#nPj').value;
+  if(!nIn.local&&(!pj||pj===NEWPJ)){msg.innerHTML='<b style="color:var(--warn)">Pick the project.</b>';return}
   keepHead();
   const p={kind:nIn.type==='RT'?'SRN':'GRN',from_wh:(nIn.wh||'').trim(),is_local:!!nIn.local,
     vendor:(nIn.vendor||'').trim(),source:nIn.redep?'redep':'',date:nIn.date||today(),project:pj,ref:nIn.ref||'',
