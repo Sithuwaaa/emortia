@@ -482,8 +482,30 @@ function openTicket(id){
 }
 
 /* ================= RECEIVE ================= */
+/* FIFTEEN ROWS THAT ARE ONE DELIVERY. A bulk cable receipt is the
+   same material code against the same reservation, arriving as drum
+   after drum, and on the note it looked like fifteen unrelated lines
+   that happened to be next to each other. Grouped here so it reads as
+   what it is: the rows are banded, numbered within their group, and
+   the first of each carries what the whole group came to.
+
+   Two rows is a group. One is just a drum. The reservation is required
+   because that is what makes them one delivery rather than the same
+   cable received twice on different days. */
+function bulkGroups(items){
+  const g=new Map();
+  items.forEach(L=>{ if(!L||!L.drum) return; const k=String(L.res||'').trim(); if(!k) return;
+    const key=k+'|'+(L.code||''); if(!g.has(key)) g.set(key,[]); g.get(key).push(L); });
+  const out=new Map(); let n=0;
+  for(const [,ls] of g){ if(ls.length<2) continue; n++;
+    const qty=ls.reduce((a,L)=>a+Math.max(0,(+L.drum.origUpper||0)-(+L.drum.origLower||0)),0);
+    ls.forEach((L,i)=>out.set(L.id,{n,idx:i+1,of:ls.length,qty,res:String(L.res||'').trim()}));
+  }
+  return out;
+}
 function showInbound(t){
   const items=t.items.map(lById);
+  const BULK=bulkGroups(items);
   const kv=(k,v)=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${v||'—'}</div></div>`;
   $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RN'?'Inbound · returned from site (RTN)':t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3>${t.type==='RN'&&t.reverses?`<span class="tk dn" title="the note this reverses" onclick="openTicket('${esc(t.reverses)}')" style="cursor:pointer;margin-left:8px">↩ ${esc(t.reverses)}</span>`:''}<div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print note</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and remove what it booked in">Delete note</button></div>
   <div class="pbody">
@@ -492,7 +514,8 @@ function showInbound(t){
     ${(()=>{const ks=[];items.forEach(L=>{const k=String(L.res||'').trim();if(k&&!ks.includes(k))ks.push(k)});
        return ks.map(k=>rsvLine(rsvTotals(k,null))).join('')})()}
     <div class="rows"><table style="min-width:1560px"><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:130px">Reservation</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:110px">Site ID</th><th style="width:160px">Site name</th><th style="width:240px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
-    ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="rsv">${esc(L.res)||'<span style="color:var(--dim)">—</span>'}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="code">${esc(L.fromSite)||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(L.fromSiteName)||'<span style="color:var(--dim)">—</span>'}</td><td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowEdit(L.id,L.sn||L.name)}${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
+    ${items.map((L,i)=>{const w=whereOf(L); const b=BULK.get(L.id);
+      return `<tr class="${b?'bulk b'+(b.n%2):''}"><td class="dt">${i+1}${b?`<span class="bn">${b.idx}/${b.of}</span>`:''}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}${b&&b.idx===1?`<span class="bulkchip">one delivery · ${b.of} drums · ${fmt(b.qty)} m</span>`:''}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="rsv">${esc(L.res)||'<span style="color:var(--dim)">—</span>'}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="code">${esc(L.fromSite)||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(L.fromSiteName)||'<span style="color:var(--dim)">—</span>'}</td><td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowEdit(L.id,L.sn||L.name)}${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
