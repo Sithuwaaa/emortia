@@ -99,6 +99,54 @@ async function lookAdd(kind,name){
   catch(e){ return {ok:false,added:false,why:(e&&e.message)||String(e)}; }
 }
 
+/* WHAT HAS COME IN AGAINST ONE RESERVATION.
+
+   Cable arrives in bulk against a single reservation and is booked in
+   drum by drum: one reservation can be 5,000 m, which is ten 500 m
+   drums, and some of his run past fifteen. Booking the eleventh, the
+   question is always the same - how much of it is in, and how many
+   drums is that - and until now the only way to answer it was to
+   count the rows by eye, on a note that is still being typed.
+
+   So it counts both sides: what is already in stock against that
+   reservation, and what the rows on screen will add. Drum length is
+   taken from the ORIGINAL readings, not the current ones, because the
+   question is what was received - a drum that has since been cut down
+   was still delivered full. */
+function rsvTotals(res,rows){
+  const k=String(res==null?'':res).trim(); if(!k) return null;
+  const t={key:k,inQty:0,inDrums:0,inRows:0,addQty:0,addDrums:0,addRows:0,uom:''};
+  const uomOf=x=>t.uom||(t.uom=x||'');
+  lines.forEach(L=>{ if(String(L.res||'').trim()!==k) return;
+    t.inRows++; if(L.drum){ t.inDrums++; t.inQty+=Math.max(0,(+L.drum.origUpper||0)-(+L.drum.origLower||0)); }
+    else t.inQty+=+L.qty||0;
+    uomOf(L.drum?'M':L.uom); });
+  (rows||[]).forEach(r=>{ if(String(r.res||'').trim()!==k) return;
+    t.addRows++; if(r.drum){ t.addDrums++; t.addQty+=Math.max(0,(+r.drum.upper||0)-(+r.drum.lower||0)); }
+    else t.addQty+=+r.qty||0;
+    uomOf(r.drum?'M':r.uom); });
+  t.qty=t.inQty+t.addQty; t.drums=t.inDrums+t.addDrums; t.rows=t.inRows+t.addRows;
+  return t;
+}
+/* "10 drums" when they are drums, "10 items" when they are not */
+const rsvCount=t=>t.drums?fmt(t.drums)+' drum'+(t.drums===1?'':'s'):fmt(t.rows)+' item'+(t.rows===1?'':'s');
+function rsvLine(t){
+  if(!t||!t.rows) return '';
+  const both=t.inRows&&t.addRows;
+  return '<div class="rsvroll"><span class="rsv">RSV '+esc(t.key)+'</span>'
+    +'<b>'+fmt(t.qty)+' '+esc(t.uom||'EA')+'</b><span class="n">'+rsvCount(t)+'</span>'
+    +(both?'<span class="sp2">in stock '+fmt(t.inQty)+' on '+(t.inDrums||t.inRows)
+        +' · this note '+fmt(t.addQty)+' on '+(t.addDrums||t.addRows)+'</span>'
+      :t.addRows?'<span class="sp2">all of it on this note</span>'
+      :'<span class="sp2">already in stock</span>')+'</div>';
+}
+/* every reservation the rows on screen mention, in the order typed */
+function rsvStrip(rows){
+  const seen=[];
+  (rows||[]).forEach(r=>{ const k=String(r.res||'').trim(); if(k&&!seen.includes(k)) seen.push(k); });
+  if(!seen.length) return '';
+  return seen.map(k=>rsvLine(rsvTotals(k,rows))).join('');
+}
 const condChip=c=>c&&c!=='Good'?`<span class="st ${c==='Faulty'?'short':'out'}" style="margin-left:6px">${c.toUpperCase()}</span>`:'';
 const isDummy=sn=>/^DMY-/.test(sn||'');
 /* WHERE IT CAME FROM. A different question from where it is now, and a
@@ -441,6 +489,8 @@ function showInbound(t){
   <div class="pbody">
     ${t.type==='RT'?`<div class="box rt"><h4>Site return details</h4><div class="fh five">${kv('Site ID',`<span class="mono">${esc(siteCell(t))}</span>`)}${kv('Site name',esc(t.siteName))}${kv('Removed on',t.removed?dshort(t.removed):'<span style="color:var(--dim)">not known</span>')}${kv('Inbound date',dshort(t.date))}${kv('Returned by',esc(t.by))}</div><div class="fh">${kv('Return note',esc(t.ref))}${kv('Project',esc(t.project))}</div></div>`
     :`<div class="box"><h4>Delivery</h4><div class="fh">${kv('Inbound date',dshort(t.date))}${kv('Project',esc(t.project))}${kv('Reservation no',`<span class="mono">${esc(t.res)}</span>`)}${kv('Received by',esc(t.by))}</div><div class="fh">${kv('Supplier DN / PO',esc(t.ref))}${kv('From warehouse',whOfNote(t))}${kv('Vendor',vendorOfNote(t))}</div></div>`}
+    ${(()=>{const ks=[];items.forEach(L=>{const k=String(L.res||'').trim();if(k&&!ks.includes(k))ks.push(k)});
+       return ks.map(k=>rsvLine(rsvTotals(k,null))).join('')})()}
     <div class="rows"><table style="min-width:1560px"><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:130px">Reservation</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:110px">Site ID</th><th style="width:160px">Site name</th><th style="width:240px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
     ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="rsv">${esc(L.res)||'<span style="color:var(--dim)">—</span>'}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="code">${esc(L.fromSite)||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(L.fromSiteName)||'<span style="color:var(--dim)">—</span>'}</td><td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowEdit(L.id,L.sn||L.name)}${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
@@ -469,6 +519,7 @@ function drawInbound(){
       <div class="f"><label>Received by</label><input class="in" id="nBy" value="${esc(nIn.by||ME())}"></div>
     </div><div class="fh"><div class="f"><label>From warehouse</label>${pickBox('source',{id:'nWh',value:nIn.wh,first:nIn.local?'local purchase - no warehouse':'Pick a warehouse…',extra:nIn.local?'disabled':''})}<small>${nIn.local?'a local purchase comes from nobody\'s warehouse':'+ New warehouse… adds one for everybody'}</small></div><div class="f"><label>Supplier DN / PO</label><input class="in mono" id="nRef" placeholder="e.g. Huawei DN 89501" value="${esc(nIn.ref||'')}"></div></div></div>`}
     <div class="rows"><table style="min-width:1760px"><thead><tr><th style="width:2.2%">#</th><th style="width:11.5%">Material code</th><th style="width:17%">Material name</th><th style="width:7.5%">Category</th><th style="width:4%">UoM</th><th style="width:4.3%">Qty</th>${R?'':'<th style="width:8%">Reservation</th>'}<th style="width:11%">SN</th>${R?'<th style="width:8%">Condition</th>':''}<th style="width:6%">Site ID</th><th style="width:9%">Site name</th><th style="width:7.5%">WH location</th><th style="width:9.8%">Remarks</th><th style="width:2.2%"></th></tr></thead><tbody id="nBody"></tbody></table></div>
+    <div id="rsvRoll"></div>
     <button class="btn sm" style="margin-top:10px" onclick="nIn.rows.push({});drawRows()">+ Add row</button>
     <button class="btn sm" style="margin-top:10px;margin-left:6px" onclick="openImport()">⇪ Paste from Excel</button>
   </div>
@@ -531,6 +582,9 @@ async function addCodeHere(i){
   }catch(e){ toast(e.message||String(e)); }
 }
 function drawRows(){
+  /* redrawn with the rows, because the whole point is that it moves
+     while he is still entering drums */
+  const rr=$('#rsvRoll'); if(rr) rr.innerHTML=rsvStrip(nIn.rows);
   $('#nBody').innerHTML=nIn.rows.map((r,i)=>{
         /* WHAT THE CODE TURNED OUT TO BE, on the row. A code that resolves
        shows its Material Codes description, because the number means
@@ -548,7 +602,7 @@ function drawRows(){
     <td>${r.known?`<input class="in" readonly value="${esc(r.cat)}">`:`<select class="in" onchange="nIn.rows[${i}].cat=this.value"><option value="">category · later</option>${CATS.map(c=>`<option ${r.cat===c?'selected':''}>${c}</option>`).join('')}</select>`}</td>
     <td><select class="in" onchange="nIn.rows[${i}].uom=this.value">${['EA','M','SET','ROLL','BOX'].map(u=>`<option ${(r.uom||'EA')===u?'selected':''}>${u}</option>`).join('')}</select></td>
     <td><input class="in mono" id="iq${i}" style="text-align:right" value="${d?Math.max(0,(d.upper||0)-(d.lower||0)):c?cl:(r.qty||1)}" ${d||c?'readonly':''} placeholder="${c?'readings':''}" oninput="nIn.rows[${i}].qty=+this.value"></td>
-    ${RT?'':`<td><input class="in mono" value="${esc(r.res||'')}" placeholder="4900000123" oninput="nIn.rows[${i}].res=this.value"></td>`}
+    ${RT?'':`<td><input class="in mono" value="${esc(r.res||'')}" placeholder="4900000123" oninput="nIn.rows[${i}].res=this.value;const rr=$('#rsvRoll');if(rr)rr.innerHTML=rsvStrip(nIn.rows)"></td>`}
     <td><input class="in mono" value="${esc(r.sn||'')}" placeholder="${d?'drum has no SN':c?'cable has no SN':nIn.local?'no serial':'scan or type'}" ${d||c?'readonly':''} oninput="nIn.rows[${i}].sn=this.value;snWarn(${i},0)"><span id="snw0_${i}">${tw?twinSays(tw):''}</span></td>
     ${RT?`<td><select class="in" onchange="nIn.rows[${i}].cond=this.value" style="${r.cond&&r.cond!=='Good'?'color:'+(r.cond==='Faulty'?'var(--bad)':'var(--site)'):''}">${CONDS.map(x=>`<option ${(r.cond||'Good')===x?'selected':''}>${x}</option>`).join('')}</select></td>`:''}
     <td><input class="in mono" value="${esc(r.site||'')}" placeholder="${nIn.type==='RT'?'where from':'optional'}" oninput="nIn.rows[${i}].site=this.value.toUpperCase();const n=siteLookup(this.value);if(n){nIn.rows[${i}].siteName=n;const e=$('#isn${i}');if(e)e.value=n}"></td>
