@@ -777,9 +777,28 @@ async function saveInbound(){
 
 /* ================= ISSUE OUT ================= */
 function modelOf(n){ n=n.replace(/^HUA_|^Huawei_|^HW_?|^Hua_/i,''); if(/_/.test(n)){ const p=n.split('_'); n=p.slice(0,2).join('_'); } return n.length>22?n.slice(0,22):n; }
-function noteRows(t){ // one printed line per item; drums print their cut
+/* DESCRIPTION IS THE MATERIAL, REMARKS IS THE DRUM.
+
+   A cable line read "Cable drum ZZ-H1 · 565→325 m" in the Items &
+   Description column and the material name appeared nowhere on the
+   note - so the one column that says WHAT was issued said only which
+   spool it came off. The name goes in Description; the drum and its
+   readings go in Remarks, which is where a note about how this line
+   was taken belongs, and which is empty on every cable line because
+   nothing has ever written wh_lines.remarks for one. A remark that IS
+   stored wins: his words are not overwritten by generated text.
+
+   AND THE WHOLE-DRUM CASE CRASHED. x.cut is null when a drum goes out
+   whole, which 058 made possible, and this read x.cut.to without
+   asking - so opening such a note threw "Cannot read properties of
+   null" and left the previous note on screen. Reproduced on the
+   rendered page before changing it. */
+const drumText=(L,x)=>!L.drum?'':'drum '+L.drum.name+(x.cut?' · '+x.cut.to+'→'+x.cut.from+' m'
+  :' · whole, '+fmt(L.drum.origUpper-L.drum.origLower)+' m');
+function noteRows(t){ // one printed line per item; the drum goes in remarks
   return t.items.map(x=>{ const L=lById(x.lineId); const short=L.pending?L.name.replace(/ \(local purchase\)/,'').slice(0,26):L.sn?modelOf(L.name).split('_')[0]:modelOf(L.name);
-    return {desc: L.drum?`Cable drum ${L.drum.name} · ${x.cut.to}→${x.cut.from} m`:`${short}${L.sn?' - '+L.sn:''}${x.cut?' · '+x.cut.to+'→'+x.cut.from+' m':''}`, unit:L.uom==='M'?'M':'PCS', qty:x.qty, remarks:x.remarks||'', code:L.code, L, x}; });
+    return {desc: L.drum?L.name:`${short}${L.sn?' - '+L.sn:''}${x.cut?' · '+x.cut.to+'→'+x.cut.from+' m':''}`,
+      unit:L.uom==='M'?'M':'PCS', qty:x.qty, remarks:x.remarks||drumText(L,x), code:L.code, L, x}; });
 }
 function showDispatch(t){
   const R=noteRows(t);
@@ -789,7 +808,7 @@ function showDispatch(t){
       ${[['Date',dtshort(t)],...(t.dest==='party'?[['3rd party',t.party],['Purpose',t.purpose],['Their ref / PO',t.partyRef]]:[]),['Project',t.project],['Requested by',t.requestedBy],['Issued by',t.issuedBy],['Receiver',t.receiver],['Vehicle no',t.vehicle],['Driver name',t.driver],['Driver NIC',t.driverNic],['Contact no',t.contact],['Issuer contact',t.issuedContact],['Items',t.items.length+(t.items.length===1?' line':' lines')]].map(([k,v])=>`<div class="f"><label>${k}</label><div class="in" style="background:rgba(5,10,28,.25)">${esc(v)||'<span style="color:var(--dim)">—</span>'}</div></div>`).join('')}
     </div></div>
     <div class="rows"><table><thead><tr><th style="width:36px">No</th><th style="width:120px">Code</th><th>Items &amp; description</th><th style="width:60px">Unit</th><th style="width:80px;text-align:right">Issued</th><th style="width:110px">Remarks</th><th style="width:200px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
-    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${r.L.drum?'#ffd9a8':w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${r.L.drum?'cut from '+esc(r.L.drum.name):esc(w.top)}</td><td>${rowEdit(r.L.id,r.L.sn||r.L.name)}${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
+    ${R.map((r,i)=>{const w=whereOf(r.L);return `<tr><td class="dt">${i+1}</td><td class="code">${r.code}</td><td class="name" style="max-width:none">${esc(r.desc)}</td><td>${r.unit}</td><td class="num">${fmt(r.qty)}</td><td class="dt">${esc(r.remarks)}</td><td class="dt" style="color:${w.cls==='tp'?'var(--tp)':w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</td><td>${rowEdit(r.L.id,r.L.sn||r.L.name)}${rowDel(t,r.L.id,r.L.sn||r.L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
