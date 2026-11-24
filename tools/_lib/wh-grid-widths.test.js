@@ -38,8 +38,17 @@ const src = fs.readFileSync(W, 'utf8');
    one this file started with, where the answer moved with the window.
    The entry grid asks for more than the floor and says so inline. */
 const FLOOR = 1200;     /* .rows table{min-width} in index.html */
-const PANE = FLOOR;
 const READABLE = 120;   /* what a column needs to be worth having */
+/* EACH GRID IS JUDGED AGAINST ITS OWN CANVAS, not one number for all
+   of them. A table may ask for more than the floor inline, and two now
+   do: the entry grid at 1760 and the note's item grid at 1560. Judging
+   the second against the floor would have failed it for columns it has
+   the room for - which is what happened when this file carried a single
+   PANE constant and the note grid grew three columns. */
+const canvasOf = head => {
+  const m = head.match(/<table[^>]*min-width:\s*(\d+)px/);
+  return m ? Number(m[1]) : FLOOR;
+};
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -73,7 +82,8 @@ const tally = c => ({
 });
 
 /* the rule, applied to one grid */
-const check = (name, c) => {
+const check = (name, c, canvas) => {
+  const PANE = canvas || FLOOR;
   const t = tally(c);
   console.log('\n  ' + name + ': ' + t.n + ' columns, ' + t.px + 'px + ' + t.pc
     + '% declared, ' + t.bare + ' left to fend'
@@ -101,9 +111,12 @@ const check = (name, c) => {
      /\.ac\{position:fixed/.test(css), true);
   is('and the pick box keeps its own anchored position',
      /\.pick \.ac\{position:absolute/.test(css), true);
-  const entry = (src.match(/<div class="rows"><table style="min-width:(\d+)px">[\s\S]*?Reservation/) || [])[1];
-  is('the entry grid asks for more than the floor', Number(entry) > FLOOR, true);
-  is('and it is wide enough for thirteen readable columns', Number(entry) >= 1700, true);
+  /* the NEAREST table before that tbody, not the first one in the file:
+     the note grid also declares a min-width now, and a lazy [\s\S]*? reached
+     straight across it and read 1560 for the entry grid. */
+  const entryMin = (src.match(/<table style="min-width:(\d+)px">(?:(?!<table)[\s\S])*?id="nBody"/) || [])[1];
+  is('the entry grid asks for more than the floor', Number(entryMin) > FLOOR, true);
+  is('and it is wide enough for thirteen readable columns', Number(entryMin) >= 1700, true);
 }
 
 console.log('\n--- no column may be squeezed to nothing ---');
@@ -112,14 +125,19 @@ const heads = src.match(/<div class="rows"><table[^>]*><thead><tr>[\s\S]*?<\/tr>
 is('all four .rows grids were found', heads.length, 4);
 if (heads.length !== 4) { console.log('\n' + pass + ' passed, 1 failed\n'); process.exit(1); }
 
-/* the entry grid is the one with a Reservation column */
-const entry = heads.find(h => /Reservation/.test(h));
+/* THE ENTRY GRID IS THE ONE THE ROW BUILDER WRITES TO. It used to be
+   found as "the grid with a Reservation column", which stopped
+   identifying it the moment the note's own grid got one - and the file
+   then tested the wrong table and failed on it. nBody is the tbody
+   drawRows fills, and there is exactly one. */
+const entry = heads.find(h => /Reservation/.test(h) && /id="nBody"/.test(src.slice(src.indexOf(h), src.indexOf(h) + h.length + 200)));
 is('the inbound entry grid was found', !!entry, true);
 
 for (const [label, R] of [['entry · delivery', false], ['entry · return', true]])
-  check(label, cols(variant(entry, R)));
+  check(label, cols(variant(entry, R)), canvasOf(entry));
 
-heads.filter(h => h !== entry).forEach((h, i) => check('grid ' + (i + 1), cols(variant(h, false))));
+heads.filter(h => h !== entry).forEach((h, i) =>
+  check('grid ' + (i + 1), cols(variant(h, false)), canvasOf(h)));
 
 /* the two entry variants trade one column for the other and must
    otherwise agree, or a row looks like it jumped when he switches */
@@ -141,7 +159,7 @@ console.log('\n  --- and the rule against the header that shipped ---');
   const t = tally(c);
   is('Material name is the column with no width', t.bareLabels, ['Material name']);
   is('the declared pixels are what starved it', t.px, 1504);
-  is('and the rule rejects it', t.px + READABLE * t.bare <= PANE, false);
+  is('and the rule rejects it', t.px + READABLE * t.bare <= FLOOR, false);
 }
 {
   /* THE VERSION BEFORE SITE NAME FAILS THIS RULE TOO, and I expected it
@@ -156,7 +174,7 @@ console.log('\n  --- and the rule against the header that shipped ---');
   const t = tally(cols(before));
   is('the version before Site name was already too tight', t.px, 1354);
   is('and this rule would have refused it as well',
-     t.px + READABLE * t.bare <= PANE, false);
+     t.px + READABLE * t.bare <= FLOOR, false);
   /* 1400 was what PANE meant when this was written - the widest pane.
      PANE now means the scrolling canvas floor, so the historical figures
      are written out rather than derived from a constant whose meaning

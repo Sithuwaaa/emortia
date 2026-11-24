@@ -324,6 +324,19 @@ function find(q){
 function destTitle(t){ return t.dest==='party'?`To ${esc(t.party)} · 3rd party · ${esc(t.purpose)}`:`To ${t.site} · ${esc(t.siteName)}`; }
 /* raw text - every caller escapes it */
 const siteCell=t=>t.site||(t.sites&&t.sites.length>1?t.sites.join(' · '):'');
+/* THE NOTE'S WAREHOUSE AND VENDOR, read off its rows. 053 put from_wh
+   on the note and 061's insert copies it onto every item, so either
+   would do - the rows are the ones that survive an item being moved to
+   another note, and they are the ones the edit form can correct. One
+   value when they agree, a count when they do not, the same shape
+   siteCell uses for a mixed return. */
+const offRows=(t,pick)=>{
+  const v=new Set();
+  (t.items||[]).forEach(x=>{ const L=lById(x.lineId??x); const y=L&&pick(L); if(y) v.add(y); });
+  return v.size===1?esc([...v][0]):v.size>1?v.size+' different':'';
+};
+const whOfNote=t=>offRows(t,L=>L.fromWh);
+const vendorOfNote=t=>offRows(t,L=>L.vendor);
 function ticketTitle(t){ return t.type==='DN'?destTitle(t):t.type==='RT'?`Returned from ${esc(siteCell(t))}${t.site&&t.siteName?' · '+esc(t.siteName):''}`:`New stock · ${esc(t.ref||'')}`; }
 function showItem(id){ $('#gr').hidden=true; const L=lById(id); go('inv'); setInvMode('lines'); $('#q').value=L.sn||(L.drum&&L.drum.name)||L.code; setSeg('#fSt','all'); fSt='all'; renderInv(id); }
 $('#gq').oninput=e=>find(e.target.value);
@@ -427,9 +440,9 @@ function showInbound(t){
   $('#rPane').innerHTML=`<div class="h"><span class="tk ${tkCls(t.id)}" style="font-size:14px">${t.id}</span><h3>${t.type==='RN'?'Inbound · returned from site (RTN)':t.type==='RT'?'Inbound · site return (SRN)':'Inbound · new stock (GRN)'}</h3>${t.type==='RN'&&t.reverses?`<span class="tk dn" title="the note this reverses" onclick="openTicket('${esc(t.reverses)}')" style="cursor:pointer;margin-left:8px">↩ ${esc(t.reverses)}</span>`:''}<div class="sp"></div><button class="btn sm" onclick="printNote('${t.id}')">Print note</button>${noteEditBtn(t)}<button class="btn sm danger" onclick="delNote('${t.id}')" title="Delete this note and remove what it booked in">Delete note</button></div>
   <div class="pbody">
     ${t.type==='RT'?`<div class="box rt"><h4>Site return details</h4><div class="fh five">${kv('Site ID',`<span class="mono">${esc(siteCell(t))}</span>`)}${kv('Site name',esc(t.siteName))}${kv('Removed on',t.removed?dshort(t.removed):'<span style="color:var(--dim)">not known</span>')}${kv('Inbound date',dshort(t.date))}${kv('Returned by',esc(t.by))}</div><div class="fh">${kv('Return note',esc(t.ref))}${kv('Project',esc(t.project))}</div></div>`
-    :`<div class="box"><h4>Delivery</h4><div class="fh">${kv('Inbound date',dshort(t.date))}${kv('Project',esc(t.project))}${kv('Reservation no',`<span class="mono">${esc(t.res)}</span>`)}${kv('Received by',esc(t.by))}</div><div class="fh">${kv('Supplier DN / PO',esc(t.ref))}</div></div>`}
-    <div class="rows"><table><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:240px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
-    ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowEdit(L.id,L.sn||L.name)}${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
+    :`<div class="box"><h4>Delivery</h4><div class="fh">${kv('Inbound date',dshort(t.date))}${kv('Project',esc(t.project))}${kv('Reservation no',`<span class="mono">${esc(t.res)}</span>`)}${kv('Received by',esc(t.by))}</div><div class="fh">${kv('Supplier DN / PO',esc(t.ref))}${kv('From warehouse',whOfNote(t))}${kv('Vendor',vendorOfNote(t))}</div></div>`}
+    <div class="rows"><table style="min-width:1560px"><thead><tr><th style="width:36px">#</th><th style="width:120px">Code</th><th>Material name</th><th style="width:100px">Category</th><th style="width:60px">UoM</th><th style="width:70px;text-align:right">Qty</th><th style="width:130px">Reservation</th><th style="width:220px">SN / drum / reading</th>${t.type==='RT'?'<th style="width:100px">Condition</th>':''}<th style="width:110px">Site ID</th><th style="width:160px">Site name</th><th style="width:240px">Current location</th><th style="width:40px"></th></tr></thead><tbody>
+    ${items.map((L,i)=>{const w=whereOf(L);return `<tr><td class="dt">${i+1}</td><td class="code">${L.code}</td><td class="name">${esc(L.name)}</td><td><span class="chip">${esc(L.cat)}</span></td><td>${L.uom}</td><td class="num">${fmt(L.drum?L.drum.upper-L.drum.lower:L.qty)}</td><td class="rsv">${esc(L.res)||'<span style="color:var(--dim)">—</span>'}</td><td class="sn">${L.drum?`<span class="drumtag">${esc(L.drum.name)}</span> ${L.drum.lower}–${L.drum.upper} m`:L.read?`<span style="color:#ffd9a8">reading ${L.read.start}–${L.read.end}</span>`:snHtml(L.sn)}</td>${t.type==='RT'?`<td>${L.cond&&L.cond!=='Good'?condChip(L.cond):'<span class="st ok">GOOD</span>'}</td>`:''}<td class="code">${esc(L.fromSite)||'<span style="color:var(--dim)">—</span>'}</td><td>${esc(L.fromSiteName)||'<span style="color:var(--dim)">—</span>'}</td><td class="dt"><span style="color:${w.cls==='st'?'var(--site)':'var(--ok)'}">${esc(w.top)}</span></td><td>${rowEdit(L.id,L.sn||L.name)}${rowDel(t,L.id,L.sn||L.name)}</td></tr>`}).join('')}
     </tbody></table></div>
   </div>`;
 }
@@ -1000,6 +1013,7 @@ const WH_SENDS_wh_update_note={id:1,note_date:1,note_time:1,project:1,ref:1,rese
   removed_on:1,purpose:1,party_ref:1,by_name:1,requested_by:1,receiver:1,vehicle:1,driver:1,
   driver_nic:1,contact:1,issued_by:1,issued_contact:1};
 const WH_SENDS_wh_update_item={id:1,name:1,code:1,cat:1,uom:1,bin:1,sn:1,cond:1,project:1,vendor:1,source:1,remarks:1,
+  reservation_no:1,site_id:1,site_name:1,from_wh:1,
   drum_name:1,drum_lower:1,drum_upper:1,read_start:1,read_end:1,qty:1};
 function whOnly(declared,p,fn){
   for(const k in p) if(!declared[k])
@@ -1047,7 +1061,19 @@ function editItem(id){
        Remarks box since 048 and it only ever reached wh_lines, so a
        fact about the thing itself - dented, plate unreadable, swapped
        under warranty - was gone the moment you looked at the item. */
-    {k:'remarks',label:'Remarks',v:L.remarks,hint:'about this item itself, not about the note it arrived on'}];
+    {k:'remarks',label:'Remarks',v:L.remarks,hint:'about this item itself, not about the note it arrived on'},
+    /* THE FOUR THE INBOUND WRITES AND THIS FORM COULD NOT REACH. 061
+       put the site and the reservation on the row, 053 put the
+       warehouse on it; all three were written correctly and none could
+       be corrected, so a reservation typed wrong at the counter stayed
+       wrong for good. 066 widened wh_update_item to accept them - and
+       it had to land first, because the function ignores keys it does
+       not know, so these boxes without that migration would have
+       accepted a correction, reported success and changed nothing. */
+    {k:'reservation_no',label:'Reservation no',v:L.res,mono:true,hint:'the reservation this row came in against'},
+    {k:'site_id',label:'Site ID it came from',v:L.fromSite,mono:true,hint:'empty for a delivery that was not for one site'},
+    {k:'site_name',label:'Site name it came from',v:L.fromSiteName},
+    {k:'from_wh',label:'From warehouse',v:L.fromWh,hint:'ACE, ESLL, Advantis, Oviklo, Browns, Mapping'}];
   if(L.cond||L.source==='return') f.push({k:'cond',label:'Condition',type:'select',opts:['Good','Faulty','Scrap'],v:L.cond||'Good'});
   if(L.drum){ f.push({k:'drum_name',label:'Drum name',v:L.drum.name,mono:true,hint:'a printed note draws this name from here, so it will read differently afterwards'},
     {k:'drum_lower',label:'Lower reading',v:L.drum.lower,mono:true},
