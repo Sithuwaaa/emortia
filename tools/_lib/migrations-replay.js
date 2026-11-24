@@ -32,8 +32,22 @@ const SQLDIR = path.join(__dirname, '..', '..', 'supabase');
 
 /* comments are prose. A migration that says "wh_vendors is gone" in a
    header must not read as a reference to it - which is most of them,
-   because these files explain themselves at length. */
+   because these files explain themselves at length.
+
+   CARRIAGE RETURNS GO FIRST, and the reason is the whole point of
+   docs/reading-the-migration-state.md. In JS, . does not match \r, so
+   --.*$ cannot match a comment on a CRLF line: $ sits after the \r and
+   the match fails. The comment then survives stripping and every table
+   named in a header counts as a reference.
+
+   This file is LF in the repository and CRLF in a fresh clone on
+   Windows, which is how CI checks it out - so the same folder gave two
+   different answers, LF saying 053 needs wh_sources and CRLF saying it
+   needs wh_parties and wh_projects as well, from its header prose. I
+   wrote the document about this trap and then walked into it in the
+   same hour. */
 const strip = sql => sql
+  .replace(/\r/g, '')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
   .split('\n').map(l => l.replace(/--.*$/, '')).join('\n');
 

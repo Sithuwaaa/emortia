@@ -93,6 +93,19 @@ console.log('\n--- prose is not a reference ---');
      R.strip('/* drops wh_parties */\nselect 1;').includes('wh_parties'), false);
   is('but the code on the same line survives',
      R.strip('select 1; -- wh_vendors').trim(), 'select 1;');
+  /* THE SAME LINE WITH WINDOWS ENDINGS. "." does not match \r in JS, so
+     --.*$ cannot match a comment that ends in one, and the comment
+     survives. The repository is LF and a fresh Windows clone is CRLF -
+     which is how CI checks it out - so this file read the same folder
+     two different ways until strip() dropped the \r first. */
+  is('a CRLF comment is stripped too',
+     R.strip('-- wh_vendors is gone\r\nselect 1;\r\n').includes('wh_vendors'), false);
+  is('and a CRLF file gives the same answer as an LF one',
+     R.strip('insert into wh_vendors(name) values (x);\r\n-- wh_parties is gone\r\n'),
+     R.strip('insert into wh_vendors(name) values (x);\n-- wh_parties is gone\n'));
+  is('which is what CI was reading differently',
+     R.uses(R.strip('-- wh_parties was replaced by wh_lookups\r\nselect 1;\r\n'),
+            { kind: 'table', table: 'wh_parties' }), false);
   is('a real insert is still seen',
      R.uses('insert into wh_vendors(name) values (x);', { kind: 'table', table: 'wh_vendors' }), true);
   is('and the drop statement itself is not a use',
