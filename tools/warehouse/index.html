@@ -191,6 +191,7 @@ td.sn,td.dt{font-family:'Space Mono';font-size:12px;color:var(--soft)}
 .chip.org{background:rgba(92,200,214,.13);color:var(--tp);border-color:rgba(92,200,214,.3)}
 .chip.org.rd{background:rgba(196,155,255,.14);color:var(--new);border-color:rgba(196,155,255,.3)}
 .chip.org.lp{background:rgba(242,176,94,.13);color:var(--warn);border-color:rgba(242,176,94,.3)}
+.chip.org.st{background:rgba(247,168,107,.13);color:var(--site);border-color:rgba(247,168,107,.32)}
 .chip.pj{background:rgba(255,255,255,.05);color:var(--ink);border-color:var(--line)}
 .tk{font-family:'Space Mono';font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:8px;cursor:pointer;border:1px solid transparent;background:rgba(117,155,235,.14);color:var(--acc2)}
 .tk:hover{border-color:rgba(157,184,245,.5)}
@@ -261,6 +262,9 @@ td.sn,td.dt{font-family:'Space Mono';font-size:12px;color:var(--soft)}
 .ac code{font-family:'Space Mono';font-size:12px;color:var(--acc2)}
 .ac span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ac em{font-style:normal;font-family:'Space Mono';font-size:10px;color:var(--dim)}
+/* an origin chip states its case and then stops - the material name
+   beside it is flex:1 and must keep room to be read */
+.ac .chip.org{flex:none;max-width:188px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ac .add{color:#e3d0ff}
 .mstate{font-family:'Space Mono';font-size:10.5px;margin-top:4px;display:block}
 .mstate.ok{color:var(--ok)}.mstate.nw{color:#e3d0ff}
@@ -654,6 +658,6 @@ html[data-tool="warehouse"] .acc-menu .acc-swatch{box-shadow:inset 0 1px 0 rgba(
      one - no "Pick a project..." and the old prompt() path, which is why
      projects could not be added. Bump this whenever warehouse.js changes;
      deploy-check cannot see it, because it fetches the URL fresh. -->
-<script src="warehouse.js?v=32"></script>
+<script src="warehouse.js?v=33"></script>
 </body>
 </html>

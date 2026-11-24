@@ -63,6 +63,16 @@ function originOf(L){
   if(!L) return '';
   if(L.source==='redep') return '<span class="chip org rd">REDEP</span>';
   if(L.source==='local') return '<span class="chip org lp">Local purchase</span>';
+  /* A RETURN'S ORIGIN IS A SITE, and it had none of this until now.
+     originOf was already called in both outbound hit lists, but it
+     could only answer for a warehouse, a REDEP or a local purchase - so
+     a unit that came back off a site, which is most of what he is
+     picking between, drew nothing at all and read as missing data.
+     The ID is what he matches against the paper; the name is what tells
+     him which site that is. Both, when both are known. */
+  if(L.fromSite) return '<span class="chip org st" title="returned from '
+    +esc(L.fromSiteName||L.fromSite)+'">'+esc(L.fromSite)
+    +(L.fromSiteName?' · '+esc(L.fromSiteName):'')+'</span>';
   if(L.fromWh) return '<span class="chip org">'+esc(L.fromWh)+'</span>';
   return '';
 }
@@ -651,7 +661,7 @@ function dFree(i){ const r=nDn.rows[i]; Object.assign(r,{lineId:null,code:'',nam
 function pickSearch(v){
   v=v.trim(); const box=$('#pr'); if(v.length<2){box.hidden=true;return}
   const hits=stockHits(v,10);
-  box.innerHTML=hits.map(L=>`<div onmousedown="addPick(${L.id})"><code>${L.code}</code><span>${L.drum?'<b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b> · ':''}${esc(L.name)}</span><em>${L.drum?fmt(L.qty)+' m left':L.sn||fmt(L.qty)+' '+L.uom}</em>${originOf(L)}<span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')||'<div style="color:var(--dim);cursor:default">Not in stock. Type it in a row below to issue it directly.</div>';
+  box.innerHTML=hits.map(L=>`<div onmousedown="addPick(${L.id})"><code>${L.code}</code><span>${L.drum?'<b style="color:#ffd9a8">drum '+esc(L.drum.name)+'</b> · ':''}${esc(L.name)}</span><em>${L.drum?fmt(L.qty)+' m left':esc(L.sn||fmt(L.qty)+' '+L.uom)}</em>${originOf(L)}<span class="loc" style="flex:none">${esc(L.loc)}</span></div>`).join('')||'<div style="color:var(--dim);cursor:default">Not in stock. Type it in a row below to issue it directly.</div>';
   box.hidden=false;
 }
 function addPick(id){ let i=nDn.rows.findIndex(r=>!r.code&&!r.name&&!r.q); if(i<0){nDn.rows.push({});i=nDn.rows.length-1} dPickLine(i,id); $('#pq').value=''; $('#pq').focus(); }
